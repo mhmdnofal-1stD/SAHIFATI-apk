@@ -28,7 +28,7 @@ class Evaluation {
     return {
       '_id': _id,
       'code': code,
-      if (name != null) 'name': name,
+      'name': name,
     };
   }
 
