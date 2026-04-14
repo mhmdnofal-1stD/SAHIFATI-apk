@@ -23,7 +23,7 @@ import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
 
 class IndexPage extends StatefulWidget {
-  IndexPage(
+  const IndexPage(
       {super.key,
       required this.surah,
       required this.filterTypeId,
@@ -37,8 +37,6 @@ class IndexPage extends StatefulWidget {
   final int? hizbQuarter;
   final int? juz;
 
-  List<Ayat> ayat = [];
-
   @override
   State<IndexPage> createState() => _IndexPageState();
 }
@@ -46,12 +44,14 @@ class IndexPage extends StatefulWidget {
 class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final gc = GeneralController();
   OverlayEntry? _menuEntry;
+  final List<Ayat> _ayat = [];
   final Map<int, Color> _selectedColors = {};
   int? _currentHizbQuarter;
   int? _minHizbQuarter;
   int? _maxHizbQuarter;
   int? _initialHizbQuarter;
-  final ScrollController _scrollController = ScrollController(keepScrollOffset: true);
+  final ScrollController _scrollController =
+      ScrollController(keepScrollOffset: true);
   bool _isInitialLoad = true;
 
   Color _onColor(Color bg) {
@@ -64,7 +64,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     _menuEntry = null;
   }
 
-  void _showOptionsAt( Offset globalPos, Ayat ayah, EvaluationsProvider evaluationsProvider, LanguageProvider languageProvider) {
+  void _showOptionsAt(
+      Offset globalPos,
+      Ayat ayah,
+      EvaluationsProvider evaluationsProvider,
+      LanguageProvider languageProvider) {
     _removeMenu();
 
     final overlayBox =
@@ -104,13 +108,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.transparent,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 150, maxWidth: 150),
+                  constraints:
+                      const BoxConstraints(minWidth: 150, maxWidth: 150),
                   child: Column(
                     children: evaluationsProvider.evaluations.map((evaluation) {
                       final color = gc.getColorFromCategory(evaluation.id!);
 
                       return InkWell(
-                        onTap:  () async {
+                        onTap: () async {
                           final savedScrollOffset = _scrollController.offset;
                           setState(() {
                             _selectedColors[ayah.id!] = color;
@@ -131,7 +136,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           color: color,
                           child: Center(
                             child: Text(
-                                '${evaluation.name[languageProvider.langCode]}',
+                              '${evaluation.name[languageProvider.langCode]}',
                               style: TextStyle(
                                   color: _onColor(color),
                                   fontFamily: AppFonts.versesFont),
@@ -173,7 +178,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             await AyatController().loadAyatBySurah(widget.surah.id);
         if (surahAyat.isNotEmpty) {
           int surahStart = surahAyat.first.hizbQuarter!;
-          _currentHizbQuarter = surahStart.clamp(_minHizbQuarter!, _maxHizbQuarter!);
+          _currentHizbQuarter =
+              surahStart.clamp(_minHizbQuarter!, _maxHizbQuarter!);
         } else {
           _currentHizbQuarter = _minHizbQuarter;
         }
@@ -229,9 +235,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
     await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
 
-
     setState(() {
-      widget.ayat = ayat;
+      _ayat
+        ..clear()
+        ..addAll(ayat);
     });
   }
 
@@ -294,7 +301,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           return Consumer<GeneralProvider>(
             builder: (context, generalProvider, _) {
               final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
-              
+
               return Theme(
                 data: isDarkMode
                     ? ThemeData(
@@ -332,116 +339,138 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 child: NoPopScope(
                   child: Scaffold(
                     appBar: PreferredSize(
-                    preferredSize: const Size.fromHeight(kToolbarHeight),
-                    child: Directionality(
-                      textDirection: TextDirection.ltr,
-                      child: AppBar(
-                        leading: CustomBackButton(onPressed: () => Get.off(const MainScreen()),),
-                        actions: [
-                          Builder(
-                            builder: (context) => IconButton(
-                              icon: const Icon(Icons.menu),
-                              onPressed: () {
-                                if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
-                                  Scaffold.of(context).openDrawer();
-                                } else {
-                                  Scaffold.of(context).openEndDrawer();
-                                }
-                              },
-                            ),
+                      preferredSize: const Size.fromHeight(kToolbarHeight),
+                      child: Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: AppBar(
+                          leading: CustomBackButton(
+                            onPressed: () => Get.off(const MainScreen()),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  drawer: (Get.locale?.languageCode ?? 'ar') == 'ar' ? const GlobalDrawer() : null,
-                  endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar' ? null : const GlobalDrawer(),
-                  body: Container(
-                    margin: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: AppColors.blackFontColor,
-                        width: 8.0,
-                      ),
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: SizeConfig.getProportionalHeight(5),
-                        horizontal: SizeConfig.getProportionalWidth(10),
-                      ),
-                      child: SingleChildScrollView(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            ..._buildAyatWidgets(languageProvider, evaluationProvider, hasConnection, isDarkMode),
-
-                            // ORIGINAL PAGINATION BUTTONS (UNCHANGED)
-                            if (_currentHizbQuarter != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 20, bottom: 20),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    if (_currentHizbQuarter! > (_initialHizbQuarter ?? _minHizbQuarter!))
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primaryPurple,
-                                          foregroundColor: Colors.white,
-                                          shape: const CircleBorder(),
-                                          padding: const EdgeInsets.all(12),
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _currentHizbQuarter =
-                                                _currentHizbQuarter! - 1;
-                                          });
-                                          final userId = context
-                                              .read<UsersProvider>()
-                                              .selectedUser!
-                                              .id;
-                                          final evalProvider =
-                                              context.read<EvaluationsProvider>();
-                                          _loadAyat(userId, evalProvider);
-                                        },
-                                        child: const Icon(Icons.arrow_back_ios_new, size: 20),
-                                      )
-                                    else
-                                      const SizedBox(width: 48),
-                                    if (_currentHizbQuarter! < _maxHizbQuarter!)
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primaryPurple,
-                                          foregroundColor: Colors.white,
-                                          shape: const CircleBorder(),
-                                          padding: const EdgeInsets.all(12),
-                                        ),
-                                        onPressed: () {
-                                          setState(() {
-                                            _currentHizbQuarter =
-                                                _currentHizbQuarter! + 1;
-                                          });
-                                          final userId = context
-                                              .read<UsersProvider>()
-                                              .selectedUser!
-                                              .id;
-                                          final evalProvider =
-                                              context.read<EvaluationsProvider>();
-                                          _loadAyat(userId, evalProvider);
-                                        },
-                                        child: const Icon(Icons.arrow_forward_ios, size: 20),
-                                      )
-                                    else
-                                      const SizedBox(width: 48),
-                                  ],
-                                ),
-                              )
+                          actions: [
+                            Builder(
+                              builder: (context) => IconButton(
+                                icon: const Icon(Icons.menu),
+                                onPressed: () {
+                                  if ((Get.locale?.languageCode ?? 'ar') ==
+                                      'ar') {
+                                    Scaffold.of(context).openDrawer();
+                                  } else {
+                                    Scaffold.of(context).openEndDrawer();
+                                  }
+                                },
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  ),
+                    drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                        ? const GlobalDrawer()
+                        : null,
+                    endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                        ? null
+                        : const GlobalDrawer(),
+                    body: Container(
+                      margin: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppColors.blackFontColor,
+                          width: 8.0,
+                        ),
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: SizeConfig.getProportionalHeight(5),
+                          horizontal: SizeConfig.getProportionalWidth(10),
+                        ),
+                        child: SingleChildScrollView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              ..._buildAyatWidgets(
+                                  languageProvider,
+                                  evaluationProvider,
+                                  hasConnection,
+                                  isDarkMode),
+
+                              // ORIGINAL PAGINATION BUTTONS (UNCHANGED)
+                              if (_currentHizbQuarter != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      top: 20, bottom: 20),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      if (_currentHizbQuarter! >
+                                          (_initialHizbQuarter ??
+                                              _minHizbQuarter!))
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                AppColors.primaryPurple,
+                                            foregroundColor: Colors.white,
+                                            shape: const CircleBorder(),
+                                            padding: const EdgeInsets.all(12),
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _currentHizbQuarter =
+                                                  _currentHizbQuarter! - 1;
+                                            });
+                                            final userId = context
+                                                .read<UsersProvider>()
+                                                .selectedUser!
+                                                .id;
+                                            final evalProvider = context
+                                                .read<EvaluationsProvider>();
+                                            _loadAyat(userId, evalProvider);
+                                          },
+                                          child: const Icon(
+                                              Icons.arrow_back_ios_new,
+                                              size: 20),
+                                        )
+                                      else
+                                        const SizedBox(width: 48),
+                                      if (_currentHizbQuarter! <
+                                          _maxHizbQuarter!)
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                AppColors.primaryPurple,
+                                            foregroundColor: Colors.white,
+                                            shape: const CircleBorder(),
+                                            padding: const EdgeInsets.all(12),
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _currentHizbQuarter =
+                                                  _currentHizbQuarter! + 1;
+                                            });
+                                            final userId = context
+                                                .read<UsersProvider>()
+                                                .selectedUser!
+                                                .id;
+                                            final evalProvider = context
+                                                .read<EvaluationsProvider>();
+                                            _loadAyat(userId, evalProvider);
+                                          },
+                                          child: const Icon(
+                                              Icons.arrow_forward_ios,
+                                              size: 20),
+                                        )
+                                      else
+                                        const SizedBox(width: 48),
+                                    ],
+                                  ),
+                                )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -450,15 +479,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         });
   }
 
-  List<Widget> _buildAyatWidgets(LanguageProvider languageProvider, EvaluationsProvider evaluationProvider, bool hasConnection, bool isDarkMode) {
+  List<Widget> _buildAyatWidgets(
+      LanguageProvider languageProvider,
+      EvaluationsProvider evaluationProvider,
+      bool hasConnection,
+      bool isDarkMode) {
     List<Widget> widgets = [];
-    if (widget.ayat.isEmpty) return widgets;
+    if (_ayat.isEmpty) return widgets;
 
     List<List<Ayat>> groups = [];
     List<Ayat> currentGroup = [];
     int? currentSurahId;
 
-    for (var ayah in widget.ayat) {
+    for (var ayah in _ayat) {
       if (currentSurahId != null && ayah.surah.id != currentSurahId) {
         groups.add(currentGroup);
         currentGroup = [];
@@ -519,7 +552,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               final userEvaluation = evaluationProvider.userEvaluations
                   .firstWhereOrNull((e) => e.ayah!.id == ayah.id);
 
-              final defaultColor = isDarkMode ? Colors.white : AppColors.blackFontColor;
+              final defaultColor =
+                  isDarkMode ? Colors.white : AppColors.blackFontColor;
 
               Color color = hasConnection
                   ? _selectedColors[ayah.id!] ??
@@ -540,7 +574,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 recognizer: hasConnection
                     ? (TapGestureRecognizer()
                       ..onTapDown = (details) => _showOptionsAt(
-                          details.globalPosition, ayah, evaluationProvider,languageProvider))
+                          details.globalPosition,
+                          ayah,
+                          evaluationProvider,
+                          languageProvider))
                     : null,
                 children: [
                   TextSpan(

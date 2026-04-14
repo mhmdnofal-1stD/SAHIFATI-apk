@@ -171,6 +171,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   _userController.signUpPasswordController.text,
                                 );
 
+                                if (!mounted) return;
+
                                 setState(() {
                                   _userController.changeTextFieldsColors(false);
                                 });
@@ -185,6 +187,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                                 await usersProvider.saveUserSession(
                                     user, authData.accessToken!);
+
+                                if (!mounted) return;
+
                                 Get.to(() => const WelcomeScreen());
                               } catch (e) {
                                 // ✅ All validation & register errors handled here
@@ -199,6 +204,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                       .toString()
                                       .replaceFirst('Exception: ', '');
                                 }
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

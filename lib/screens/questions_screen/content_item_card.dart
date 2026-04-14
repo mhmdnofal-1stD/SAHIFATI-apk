@@ -127,7 +127,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
     return ayahs;
   }
 
-  Future<void> _evaluateUnit(BuildContext context, LanguageProvider languageProvider) async {
+  Future<void> _evaluateUnit(
+      BuildContext context, LanguageProvider languageProvider) async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
 
     // Show dialog to select evaluation
@@ -177,6 +178,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
     try {
       final ayahs = await _fetchAyahs();
 
+      if (!context.mounted) return;
+
       if (ayahs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('no_verses_found_to_evaluate'.tr)),
@@ -199,6 +202,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
       // Update completion status
       _checkCompletion();
     } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text(
@@ -211,7 +216,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
     }
   }
 
-  Future<void> _showIndividualEvaluation(BuildContext context, LanguageProvider languageProvider) async {
+  Future<void> _showIndividualEvaluation(
+      BuildContext context, LanguageProvider languageProvider) async {
     if (widget.content.type == 'juz' && widget.content.juz != null) {
       _showJuzBreakdown(context, widget.content.juz!, languageProvider);
       return;
@@ -221,6 +227,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
     try {
       final ayahs = await _fetchAyahs(withEvaluations: true);
+
+      if (!context.mounted) return;
 
       showModalBottomSheet(
         context: context,
@@ -392,6 +400,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
         ),
       );
     } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:
@@ -400,12 +410,15 @@ class _ContentItemCardState extends State<ContentItemCard> {
     }
   }
 
-  Future<void> _showJuzBreakdown(BuildContext context, int juz, LanguageProvider languageProvider) async {
+  Future<void> _showJuzBreakdown(
+      BuildContext context, int juz, LanguageProvider languageProvider) async {
     final surahsController = SurahsController();
     final evaluationsProvider = context.read<EvaluationsProvider>();
 
     try {
       final surahs = await surahsController.loadSurahsByJuz(juz);
+
+      if (!context.mounted) return;
 
       showModalBottomSheet(
           context: context,
@@ -498,7 +511,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                         ),
                                                         child: ListTile(
                                                           title: Text(
-                                                            evaluation.name[languageProvider.langCode]!,
+                                                            evaluation.name[
+                                                                languageProvider
+                                                                    .langCode]!,
                                                             textAlign: TextAlign
                                                                 .center,
                                                             style:
@@ -530,6 +545,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                   await ayatController
                                                       .loadAyatBySurah(
                                                           surah.id);
+
+                                              if (!context.mounted) return;
 
                                               // Filter ayahs to current Juz
                                               surahAyahs = surahAyahs
@@ -572,8 +589,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                           child: const Text("تقييم"),
                                         ),
                                         onTap: () {
-                                          _showJuzSurahAyahs(
-                                              context, surah, juz, languageProvider);
+                                          _showJuzSurahAyahs(context, surah,
+                                              juz, languageProvider);
                                         },
                                       ),
                                     );
@@ -584,6 +601,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 });
               }));
     } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content:
@@ -592,12 +611,16 @@ class _ContentItemCardState extends State<ContentItemCard> {
     }
   }
 
-  Future<void> _showJuzSurahAyahs(BuildContext context, Surah surah, int juz, LanguageProvider languageProvider) async {
+  Future<void> _showJuzSurahAyahs(BuildContext context, Surah surah, int juz,
+      LanguageProvider languageProvider) async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final ayatController = AyatController();
 
     try {
       List<Ayat> ayahs = await ayatController.loadAyatBySurah(surah.id);
+
+      if (!context.mounted) return;
+
       // Filter by Juz
       ayahs = ayahs.where((a) => a.juz == juz).toList();
 
@@ -615,6 +638,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
           }
         }
       }
+
+      if (!context.mounted) return;
 
       showModalBottomSheet(
         context: context,
@@ -720,7 +745,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                         ),
                                                         child: ListTile(
                                                           title: Text(
-                                                            evaluation.name[languageProvider.langCode]!,
+                                                            evaluation.name[
+                                                                languageProvider
+                                                                    .langCode]!,
                                                             textAlign: TextAlign
                                                                 .center,
                                                             style:
@@ -784,6 +811,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
         ),
       );
     } catch (e) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('حدث خطأ أثناء تحميل الآيات: $e')),
       );
@@ -842,7 +871,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             CustomButton(
-                              onPressed: () => _evaluateUnit(context, languageProvider),
+                              onPressed: () =>
+                                  _evaluateUnit(context, languageProvider),
                               text: "full".tr,
                               width: 90,
                               height: 35,
@@ -850,8 +880,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                             SizedBox(
                                 width: SizeConfig.getProportionalHeight(5)),
                             CustomButton(
-                              onPressed: () =>
-                                  _showIndividualEvaluation(context, languageProvider),
+                              onPressed: () => _showIndividualEvaluation(
+                                  context, languageProvider),
                               text: "by_ayah".tr,
                               width: 90,
                               height: 35,
@@ -862,7 +892,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
               ] else ...[
                 SizedBox(height: SizeConfig.getProportionalHeight(15)),
                 CustomButton(
-                  onPressed: () => _showIndividualEvaluation(context, languageProvider),
+                  onPressed: () =>
+                      _showIndividualEvaluation(context, languageProvider),
                   text: "verses_evaluation".tr,
                   width: 150,
                   height: 35,

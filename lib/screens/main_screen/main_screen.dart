@@ -44,13 +44,12 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
+    super.initState();
+
     if (widget.comesFirst) {
       final evaluationsProvider = context.read<EvaluationsProvider>();
       evaluationsProvider.getAllEvaluations();
     }
-
-    super.initState();
   }
 
   @override

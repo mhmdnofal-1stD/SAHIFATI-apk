@@ -44,12 +44,17 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
     );
   }
 
-  void _showOverlay(SurahsProvider surahsProvider, EvaluationsProvider evaluationsProvider, UsersProvider usersProvider) async {
+  void _showOverlay(
+      SurahsProvider surahsProvider,
+      EvaluationsProvider evaluationsProvider,
+      UsersProvider usersProvider) async {
     if (_overlayEntry != null) return;
 
     // Start fetching surahs for the selected part
     // await surahsProvider.getSurahsByJuz(widget.part['id']);
     final surahs = await SurahsController().loadSurahsByJuz(widget.part['id']);
+
+    if (!mounted) return;
 
     final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
@@ -117,7 +122,8 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
                                   vertical: 10, horizontal: 12),
                               child: Align(
                                 alignment: Alignment.centerRight,
-                                child: Text(quran.getSurahNameArabic(surah.id),
+                                child: Text(
+                                  quran.getSurahNameArabic(surah.id),
                                   style: const TextStyle(
                                       fontSize: 14, color: Colors.black87),
                                 ),
@@ -149,9 +155,9 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
   void didUpdateWidget(covariant CustomPartsDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
     SurahsProvider surahsProvider = Provider.of<SurahsProvider>(context);
-    EvaluationsProvider evaluationsProvider = Provider.of<EvaluationsProvider>(context);
+    EvaluationsProvider evaluationsProvider =
+        Provider.of<EvaluationsProvider>(context);
     UsersProvider usersProvider = Provider.of<UsersProvider>(context);
-
 
     // Avoid triggering overlay changes during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
