@@ -13,6 +13,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/no_pop_scope.dart';
+import '../widgets/responsive_content_shell.dart';
 import 'content_item_card.dart';
 
 class QuestionsScreen extends StatefulWidget {
@@ -82,54 +83,58 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
         left: false,
         right: false,
         bottom: true,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
+        child: ResponsiveContentShell(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
               vertical: SizeConfig.getProportionalHeight(0),
-              horizontal: SizeConfig.getProportionalHeight(20)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  itemCount: schoolProvider.quickQuestionsSchool
-                      .levels[selectedIndex].content.length,
-                  itemBuilder: (context, index) {
-                    return ContentItemCard(
-                      content: schoolProvider.quickQuestionsSchool
-                          .levels[selectedIndex].content[index],
-                      index: index,
-                    );
-                  },
+              horizontal: SizeConfig.getProportionalWidth(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    itemCount: schoolProvider
+                        .quickQuestionsSchool.levels[selectedIndex].content.length,
+                    itemBuilder: (context, index) {
+                      return ContentItemCard(
+                        content: schoolProvider
+                            .quickQuestionsSchool.levels[selectedIndex].content[index],
+                        index: index,
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizeConfig.customSizedBox(null, 15, null),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: SizeConfig.getProportionalWidth(5),
-                  vertical: SizeConfig.getProportionalWidth(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    CustomButton(
-                      onPressed: () async {
-                        UsersProvider usersProvider =
-                            context.read<UsersProvider>();
-                        await evaluationsProvider
-                            .getQuranChartData(usersProvider.selectedUser!.id);
-                        Get.to(const SahifaScreen(
-                          firstScreen: false,
-                        ));
-                      },
-                      text: "skip".tr,
-                      width: 60,
-                      height: 35,
-                      isDisabled: false,
-                    ),
-                    SizeConfig.customSizedBox(80, null, null),
-                    CustomButton(
+                SizeConfig.customSizedBox(null, 15, null),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: SizeConfig.getProportionalWidth(5),
+                    vertical: SizeConfig.getProportionalWidth(10),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      CustomButton(
+                        onPressed: () async {
+                          UsersProvider usersProvider =
+                              context.read<UsersProvider>();
+                          await evaluationsProvider
+                              .getQuranChartData(usersProvider.selectedUser!.id);
+                          Get.to(const SahifaScreen(
+                            firstScreen: false,
+                          ));
+                        },
+                        text: "skip".tr,
+                        width: 60,
+                        height: 35,
+                        isDisabled: false,
+                      ),
+                      CustomButton(
                         onPressed: () {
                           if (selectedIndex > 0) {
                             _scrollController.animateTo(
@@ -142,21 +147,21 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                             });
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text("you_are_at_first_level".tr)));
+                              SnackBar(
+                                content: Text("you_are_at_first_level".tr),
+                              ),
+                            );
                           }
                         },
                         text: "previous_level".tr,
                         width: 120,
                         height: 35,
-                        isDisabled: false),
-                    SizeConfig.customSizedBox(50, null, null),
-                    CustomButton(
+                        isDisabled: false,
+                      ),
+                      CustomButton(
                         onPressed: () {
                           if (selectedIndex + 1 <
-                              schoolProvider
-                                  .quickQuestionsSchool.levels.length) {
+                              schoolProvider.quickQuestionsSchool.levels.length) {
                             _scrollController.animateTo(
                               0,
                               duration: const Duration(milliseconds: 400),
@@ -166,18 +171,23 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                               selectedIndex = selectedIndex + 1;
                             });
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text("questions_finished".tr)));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("questions_finished".tr),
+                              ),
+                            );
                           }
                         },
                         text: "next_level".tr,
                         width: 120,
                         height: 35,
-                        isDisabled: false),
-                  ],
+                        isDisabled: false,
+                      ),
+                    ],
+                  ),
                 ),
-              )
-            ],
+              ],
+            ),
           ),
         ),
       ),

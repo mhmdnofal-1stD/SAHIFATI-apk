@@ -4,105 +4,54 @@ import 'package:flutter/services.dart';
 import '../models/ayat.dart';
 
 class AyatController {
+  static Future<List<Ayat>>? _cachedAyatFuture;
+
+  Future<List<Ayat>> _loadAllAyat() {
+    _cachedAyatFuture ??= _readAllAyat();
+    return _cachedAyatFuture!;
+  }
+
+  Future<List<Ayat>> _readAllAyat() async {
+    final String response = await rootBundle.loadString('assets/json/data.json');
+    final Map<String, dynamic> jsonData = json.decode(response);
+    final List<dynamic> ayahs = jsonData['data'];
+
+    return ayahs.map((item) => Ayat.fromJson(item)).toList();
+  }
+
   Future<List<Ayat>> loadAyatBySurah(int surahId) async {
-    try{
-      // Load file from assets
-      final String response =
-          await rootBundle.loadString('assets/json/data.json');
+    try {
+      final ayahs = await _loadAllAyat();
 
-      // Decode JSON — your root is a map, not a list
-      final Map<String, dynamic> jsonData = json.decode(response);
-
-      // Extract the 'data' array
-      final List<dynamic> ayahs = jsonData['data'];
-      // Filter and map to Surah objects
-      final List<Ayat> surahAyat = ayahs
-          .where((item) => item['surah']['id'] == surahId)
-          .map((item) => Ayat.fromJson(item))
-          .toList();
-
-      return surahAyat;
-    }
-    catch(e) {
+      return ayahs.where((item) => item.surah.id == surahId).toList();
+    } catch (e) {
       rethrow;
     }
   }
 
   Future<List<Ayat>> loadAyatByHizb(int hizb) async {
-    // Load file from assets
-    final String response =
-    await rootBundle.loadString('assets/json/data.json');
+    final ayahs = await _loadAllAyat();
 
-    // Decode JSON — your root is a map, not a list
-    final Map<String, dynamic> jsonData = json.decode(response);
-
-    // Extract the 'data' array
-    final List<dynamic> ayahs = jsonData['data'];
-
-    // Filter and map to Surah objects
-    final List<Ayat> hizbAyat = ayahs
-        .where((item) => item['hizb'] == hizb)
-        .map((item) => Ayat.fromJson(item))
-        .toList();
-
-
-    return hizbAyat;
+    return ayahs.where((item) => item.hizb == hizb).toList();
   }
 
   Future<List<Ayat>> loadAyatByHizbQuarter(int hizbQuarter) async {
-    // Load file from assets
-    final String response =
-        await rootBundle.loadString('assets/json/data.json');
+    final ayahs = await _loadAllAyat();
 
-    // Decode JSON — your root is a map, not a list
-    final Map<String, dynamic> jsonData = json.decode(response);
-
-    // Extract the 'data' array
-    final List<dynamic> ayahs = jsonData['data'];
-
-
-    // Filter and map to Surah objects
-    final List<Ayat> hizbQuarterAyat = ayahs
-        .where((item) => item['hizbQuarter'] == hizbQuarter)
-        .map((item) => Ayat.fromJson(item))
-        .toList();
-
-    return hizbQuarterAyat;
+    return ayahs.where((item) => item.hizbQuarter == hizbQuarter).toList();
   }
 
   Future<List<Ayat>> loadAyatByJuz(int juz) async {
-    // Load file from assets
-    final String response =
-        await rootBundle.loadString('assets/json/data.json');
+    final ayahs = await _loadAllAyat();
 
-    // Decode JSON — your root is a map, not a list
-    final Map<String, dynamic> jsonData = json.decode(response);
-
-    // Extract the 'data' array
-    final List<dynamic> ayahs = jsonData['data'];
-
-    // Filter and map to Surah objects
-    final List<Ayat> juzAyat = ayahs
-        .where((item) => item['juz'] == juz)
-        .map((item) => Ayat.fromJson(item))
-        .toList();
-
-    return juzAyat;
+    return ayahs.where((item) => item.juz == juz).toList();
   }
 
   Future<List<Ayat>> loadAyatByRange(int surahId, int startAyah, int endAyah) async {
     if (kDebugMode) {
       print("AyatController: loadAyatByRange called with surahId: $surahId, start: $startAyah, end: $endAyah");
     }
-    // Load file from assets
-    final String response =
-        await rootBundle.loadString('assets/json/data.json');
-
-    // Decode JSON — your root is a map, not a list
-    final Map<String, dynamic> jsonData = json.decode(response);
-
-    // Extract the 'data' array
-    final List<dynamic> ayahs = jsonData['data'];
+    final ayahs = await _loadAllAyat();
     if (kDebugMode) {
       print("AyatController: Loaded ${ayahs.length} ayahs from JSON");
     }
@@ -110,14 +59,13 @@ class AyatController {
     // Filter and map to Surah objects
     final List<Ayat> rangeAyat = ayahs
         .where((item) {
-            final itemSurahId = item['surah']['id'];
-            final itemAyahNo = item['ayahNo'];
+            final itemSurahId = item.surah.id;
+            final itemAyahNo = item.ayahNo;
             final match = itemSurahId == surahId &&
             itemAyahNo >= startAyah &&
             itemAyahNo <= endAyah;
             return match;
         })
-        .map((item) => Ayat.fromJson(item))
         .toList();
     
     if (kDebugMode) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -24,10 +25,14 @@ Future<void> main() async {
   await LocalizationService().init();
   Locale initialLocale = await LocalizationService.getCurrentLocale();
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  await SystemChrome.setPreferredOrientations(
+    kIsWeb
+        ? DeviceOrientation.values
+        : [
+            DeviceOrientation.portraitUp,
+            DeviceOrientation.portraitDown,
+          ],
+  );
 
   runApp(
     MultiProvider(
@@ -102,7 +107,8 @@ class MyApp extends StatelessWidget {
                 secondary: AppColors.buttonColor,
               ),
             ),
-            home: hasConnection ? const InitialScreen() : const MainScreen(comesFirst: true),
+            home:
+                hasConnection ? const InitialScreen() : const MainScreen(comesFirst: true),
           );
         });
   }

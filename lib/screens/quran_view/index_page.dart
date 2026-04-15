@@ -53,6 +53,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final ScrollController _scrollController =
       ScrollController(keepScrollOffset: true);
   bool _isInitialLoad = true;
+  bool _hasConnection = true;
+  bool _isConnectivityResolved = false;
 
   Color _onColor(Color bg) {
     final b = ThemeData.estimateBrightnessForColor(bg);
@@ -62,6 +64,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   void _removeMenu() {
     _menuEntry?.remove();
     _menuEntry = null;
+  }
+
+  Future<void> _refreshConnectivity() async {
+    final hasConnection = await gc.checkConnectivity();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _hasConnection = hasConnection;
+      _isConnectivityResolved = true;
+    });
   }
 
   void _showOptionsAt(
@@ -159,6 +173,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   Future<void> _loadAyat(
       int userId, EvaluationsProvider evaluationsProvider) async {
+    await _refreshConnectivity();
+
     if (_currentHizbQuarter == null ||
         _minHizbQuarter == null ||
         _maxHizbQuarter == null) {
@@ -285,7 +301,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
 
-    if (evaluationProvider.isLoading) {
+    if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
         child: Scaffold(
           body: Center(child: CircularProgressIndicator()),
@@ -293,16 +309,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       );
     }
 
-    return FutureBuilder(
-        future: GeneralController().checkConnectivity(),
-        builder: (context, snapshot) {
-          final hasConnection = snapshot.data ?? false;
+    if (!_isConnectivityResolved && _ayat.isEmpty) {
+      return const NoPopScope(
+        child: Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
 
-          return Consumer<GeneralProvider>(
-            builder: (context, generalProvider, _) {
-              final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
+    return Consumer<GeneralProvider>(
+      builder: (context, generalProvider, _) {
+        final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
 
-              return Theme(
+        return Theme(
                 data: isDarkMode
                     ? ThemeData(
                         scaffoldBackgroundColor: const Color(0xFF121212),
@@ -392,7 +411,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               ..._buildAyatWidgets(
                                   languageProvider,
                                   evaluationProvider,
-                                  hasConnection,
+                                  _hasConnection,
                                   isDarkMode),
 
                               // ORIGINAL PAGINATION BUTTONS (UNCHANGED)
@@ -474,9 +493,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   ),
                 ),
               );
-            },
-          );
-        });
+      },
+    );
   }
 
   List<Widget> _buildAyatWidgets(

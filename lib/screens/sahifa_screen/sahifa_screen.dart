@@ -15,6 +15,7 @@ import '../widgets/custom_text.dart';
 import '../widgets/user_profile_badge.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/no_pop_scope.dart';
+import '../widgets/responsive_content_shell.dart';
 
 class SahifaScreen extends StatelessWidget {
   const SahifaScreen({super.key, required this.firstScreen});
@@ -23,9 +24,6 @@ class SahifaScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (firstScreen) {
-      SizeConfig().init(context);
-    }
     UsersProvider usersProvider = Provider.of<UsersProvider>(context);
     EvaluationsProvider evaluationsProvider =
         Provider.of<EvaluationsProvider>(context);
@@ -74,53 +72,60 @@ class SahifaScreen extends StatelessWidget {
         endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
             ? null
             : const GlobalDrawer(),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.only(
-                left: SizeConfig.getProportionalWidth(75),
-                right: SizeConfig.getProportionalWidth(50),
+        body: ResponsiveContentShell(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: SizeConfig.getProportionalWidth(16),
+                right: SizeConfig.getProportionalWidth(16),
                 top: SizeConfig.getProportionalHeight(50),
-                bottom: SizeConfig.getProportionalHeight(55)),
-            child: Column(
-              children: [
-                CustomText(
-                  text:
-                      '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
-                  structHeight: 3,
-                  textAlign: TextAlign.center,
-                  fontSize: 24,
-                  withBackground: false,
-                ),
-                BarChartWidget(
-                  evaluationsProvider: evaluationsProvider,
-                  languageProvider: languageProvider,
-                ),
-                SizedBox(
-                  height: SizeConfig.getProportionalHeight(50),
-                ),
-                Text(
-                  "categorized_verses_msg"
-                      .trParams({'percentage': evaluatedPercentage}),
-                  textAlign: TextAlign.center,
-                  strutStyle: const StrutStyle(
-                    forceStrutHeight: true,
-                    height: 1.35,
-                    leading: 0.0,
+                bottom: SizeConfig.getProportionalHeight(55),
+              ),
+              child: Column(
+                children: [
+                  CustomText(
+                    text:
+                        '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
+                    structHeight: 3,
+                    textAlign: TextAlign.center,
+                    fontSize: 24,
+                    withBackground: false,
                   ),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    height: 1.35,
+                  BarChartWidget(
+                    evaluationsProvider: evaluationsProvider,
+                    languageProvider: languageProvider,
                   ),
-                ),
-                SizedBox(
-                  height: SizeConfig.getProportionalHeight(50),
-                ),
-                CustomButton(
+                  SizedBox(
+                    height: SizeConfig.getProportionalHeight(50),
+                  ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Text(
+                      "categorized_verses_msg"
+                          .trParams({'percentage': evaluatedPercentage}),
+                      textAlign: TextAlign.center,
+                      strutStyle: const StrutStyle(
+                        forceStrutHeight: true,
+                        height: 1.35,
+                        leading: 0.0,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: SizeConfig.getProportionalHeight(50),
+                  ),
+                  CustomButton(
                     onPressed: () => {Get.to(const MainScreen())},
                     text: "browse_verses".tr,
                     width: 120,
-                    height: 35),
-              ],
+                    height: 35,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
