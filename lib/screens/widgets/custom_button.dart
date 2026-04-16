@@ -22,6 +22,8 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final labelFontSize = height >= 48 ? 16.0 : 14.0;
     final Color backgroundColor =
     isDisabled ? Colors.grey : AppColors.primaryPurple;
 
@@ -32,9 +34,13 @@ class CustomButton extends StatelessWidget {
         onPressed: isDisabled ? null : onPressed, // disable if needed
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
-          padding: EdgeInsets.zero,
+          padding: EdgeInsets.symmetric(
+            horizontal: isWide ? 18 : 12,
+            vertical: height >= 48 ? 10 : 8,
+          ),
+          minimumSize: Size(width, height),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(height >= 48 ? 10 : 6),
           ),
         ),
         child: Center(
@@ -48,7 +54,7 @@ class CustomButton extends StatelessWidget {
               ? CustomText(
             text: text!,
             withBackground: false,
-            fontSize: 14,
+            fontSize: labelFontSize,
             fontWeight:  FontWeight.bold ,
             color: isDisabled ? Colors.black38 : Colors.white,
           )

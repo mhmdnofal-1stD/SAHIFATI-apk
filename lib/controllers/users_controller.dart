@@ -139,21 +139,19 @@ class UsersController {
     rememberMe = !rememberMe;
   }
 
-  Future<void> saveLoginInfo(String email, String password) async {
+  Future<void> saveLoginInfo(String email) async {
     final prefs = await SharedPreferences.getInstance();
 
     await prefs.setString('email', email);
-    await prefs.setString('password', password);
+    await prefs.remove('password');
     await prefs.setBool('saved for $email', true);
   }
 
-  Future<Map<String, String>> getLoginInfo() async {
+  Future<void> getLoginInfo() async {
     final prefs = await SharedPreferences.getInstance();
     final email = prefs.getString('email') ?? '';
-    final password = prefs.getString('password') ?? '';
     loginEmailController.text = email;
-    loginPasswordController.text = password;
-    return {'email': email, 'password': password};
+    loginPasswordController.clear();
   }
 
 

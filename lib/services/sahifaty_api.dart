@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'app_exception.dart';
+import 'secure_session_storage.dart';
 
 class SahifatyApi {
   final String _baseURL = 'https://sahifati.org/';
@@ -14,12 +13,8 @@ class SahifatyApi {
   Future<Map<String, String>> _getHeaders({bool auth = true}) async {
     if (!auth) return {'Content-Type': 'application/json'};
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('accessToken') ?? '';
-    final refreshToken = prefs.getString('refreshToken') ?? '';
-    if (kDebugMode) {
-      print(token);
-    }
+    final token = await SecureSessionStorage.readAccessToken() ?? '';
+    final refreshToken = await SecureSessionStorage.readRefreshToken() ?? '';
 
     return {
       'Authorization': 'Bearer $token',
@@ -38,9 +33,6 @@ class SahifatyApi {
   }) async {
     try {
       final headers = await _getHeaders(auth: auth);
-      if (kDebugMode) {
-        print(headers);
-      }
       http.Response response;
 
       final uri = Uri.parse(_baseURL + url);

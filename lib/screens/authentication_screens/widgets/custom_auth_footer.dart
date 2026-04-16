@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/fonts.dart';
-import '../../../core/utils/size_config.dart';
 
 class CustomAuthFooter extends StatelessWidget {
   const CustomAuthFooter({
@@ -18,7 +17,6 @@ class CustomAuthFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Text.rich(
@@ -32,11 +30,11 @@ class CustomAuthFooter extends StatelessWidget {
                 color: AppColors.blackFontColor,
               ),
             ),
-            WidgetSpan(
-              child: SizeConfig.customSizedBox(20, null, null),
+            const WidgetSpan(
+              child: SizedBox(width: 8),
             ),
             TextSpan(
-              text:tailText,
+              text: tailText,
               style: TextStyle(
                 fontFamily: AppFonts.primaryFont,
                 fontSize: 16,

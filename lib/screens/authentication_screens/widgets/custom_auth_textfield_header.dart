@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/fonts.dart';
-import '../../../core/utils/size_config.dart';
 
 class CustomAuthTextFieldHeader extends StatelessWidget {
   const CustomAuthTextFieldHeader({super.key, required this.text});
@@ -11,9 +10,9 @@ class CustomAuthTextFieldHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment:  Alignment.topRight,
+      alignment: Alignment.topRight,
       child: Padding(
-        padding:EdgeInsets.only(right: SizeConfig.getProportionalWidth(15)),
+        padding: const EdgeInsets.only(right: 4),
         child: Text(
           text,
           style: TextStyle(

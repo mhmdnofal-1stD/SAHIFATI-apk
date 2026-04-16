@@ -158,9 +158,12 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     if (!widget.comesFirst)
-                      BarChartWidget(
-                        evaluationsProvider: evaluationsProvider,
-                        languageProvider: languageProvider,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 920),
+                        child: BarChartWidget(
+                          evaluationsProvider: evaluationsProvider,
+                          languageProvider: languageProvider,
+                        ),
                       )
                     else
                       SizedBox(height: SizeConfig.getProportionalHeight(250)),
@@ -229,7 +232,7 @@ class _MainScreenState extends State<MainScreen> {
           }
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primaryPurple : AppColors.uncategorizedColor,
             border: Border(
@@ -244,7 +247,7 @@ class _MainScreenState extends State<MainScreen> {
             style: TextStyle(
               color: AppColors.whiteFontColor,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              fontSize: 14,
+              fontSize: 15,
             ),
           ),
         ),

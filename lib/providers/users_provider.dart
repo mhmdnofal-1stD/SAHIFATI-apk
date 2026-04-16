@@ -6,6 +6,8 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../controllers/users_controller.dart';
 import '../core/constants/colors.dart';
 import '../models/user.dart';
+import '../services/sahifaty_api.dart';
+import '../services/secure_session_storage.dart';
 import '../services/users_services.dart';
 
 class UsersProvider with ChangeNotifier {
@@ -34,7 +36,7 @@ class UsersProvider with ChangeNotifier {
       // result can be User or String error
       if (result is AuthData) {
         if (result.user != null) {
-            await saveUserToDevice(result.user!, password);
+            await saveUserToDevice(result.user!);
         }
         return result;
       } else {
@@ -56,7 +58,7 @@ class UsersProvider with ChangeNotifier {
       // result can be User or String error
       if (result is AuthData) {
          if (result.user != null) {
-            await saveUserToDevice(result.user!, password);
+          await saveUserToDevice(result.user!);
         }
         return result;
       } else {
@@ -125,9 +127,16 @@ class UsersProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _usersService.logout();
+    await clearPersistedSession();
+  }
+
+  Future<void> clearPersistedSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('userData');
     await prefs.remove('accessToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('password');
+    await SecureSessionStorage.clearSessionTokens();
     selectedUser = null;
     notifyListeners();
   }
@@ -170,8 +179,15 @@ class UsersProvider with ChangeNotifier {
   }
 
   Future<bool> tryAutoLogin() async {
+    try {
       final prefs = await SharedPreferences.getInstance();
       if (!prefs.containsKey('userData')) {
+        return false;
+      }
+
+      final accessToken = await SecureSessionStorage.readAccessToken();
+      if (accessToken == null || accessToken.isEmpty) {
+        await clearPersistedSession();
         return false;
       }
 
@@ -181,33 +197,44 @@ class UsersProvider with ChangeNotifier {
       selectedUser = User.fromJson(extractedUserData);
       notifyListeners();
       return true;
+    } catch (_) {
+      await clearPersistedSession();
+      return false;
     }
+  }
 
-    Future<void> saveUserSession(User user, String accessToken) async {
-      final prefs = await SharedPreferences.getInstance();
-      final userData = json.encode(user.toMap());
-      await prefs.setString('userData', userData);
-      await prefs.setString('accessToken', accessToken);
-    } 
+  Future<void> saveUserSession(User user, String accessToken,
+      {String? refreshToken}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userData = json.encode(user.toMap());
+    await prefs.setString('userData', userData);
+    await prefs.remove('accessToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('password');
+    await SecureSessionStorage.writeSessionTokens(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+  }
 
   Future<void> checkFirstLogin() async {
     final prefs = await SharedPreferences.getInstance();
     final email = prefs.getString('email') ?? '';
-    final password = prefs.getString('password') ?? '';
 
-    isFirstLogin = email == '' && password == '';
+    isFirstLogin = email == '';
     notifyListeners();
   }
 
   Future<void> deleteAccount() async {
     setLoading();
     try {
-      final result = await _usersService.deleteAccount(selectedUser!.id);
-      if (result == true) {
+      final response = await SahifatyApi().delete('users/${selectedUser!.id}');
+      if (response.statusCode == 200 || response.statusCode == 204) {
         // Clear all user data
         await logout();
       } else {
-        throw result;
+        final responseData = json.decode(response.body);
+        throw responseData['message'] ?? 'Failed to delete account';
       }
     } catch (ex) {
       rethrow;
@@ -218,7 +245,7 @@ class UsersProvider with ChangeNotifier {
 
   // --- Stored Device Users Management ---
 
-  Future<void> saveUserToDevice(User user, String password) async {
+  Future<void> saveUserToDevice(User user) async {
     final prefs = await SharedPreferences.getInstance();
     
     // Fetch existing users
@@ -232,8 +259,6 @@ class UsersProvider with ChangeNotifier {
     final int existingIndex = storedUsersList.indexWhere((element) => element['email'] == user.email);
     
     final Map<String, dynamic> userMap = user.toMap();
-    // Add password for auto-login from SelectUserScreen
-    userMap['password'] = password;
 
     if (existingIndex != -1) {
       // Update existing

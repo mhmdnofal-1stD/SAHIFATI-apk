@@ -2,7 +2,6 @@ class User {
   int id;
   String fullName;
   String email;
-  String? password;
   int? userRoleId;
 
 
@@ -10,7 +9,6 @@ class User {
     required this.id,
     required this.fullName,
     required this.email,
-    this.password,
     this.userRoleId,
   });
 
@@ -21,7 +19,6 @@ class User {
       id: json['id'],
       fullName: json['fullName'],
       email: json['email'],
-      password: json['password'],
       userRoleId: json['userRoleId'],
     );
   }
@@ -31,13 +28,12 @@ class User {
       'id': id,
       'fullName': fullName,
       'email': email,
-      'password': password,
       'userRoleId': userRoleId,
     };
   }
 
   @override
   String toString() {
-    return 'AuthData(id: $id, fullName: $fullName, email: $email, password: $password, userRoleId: $userRoleId)';
+    return 'User(id: $id, fullName: $fullName, email: $email, userRoleId: $userRoleId)';
   }
 }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -22,11 +21,15 @@ import '../widgets/custom_text.dart';
 class ContentItemCard extends StatefulWidget {
   final SchoolLevelContent content;
   final int index;
+  final bool? isCompleted;
+  final bool isLoadingStatus;
 
   const ContentItemCard({
     super.key,
     required this.content,
     required this.index,
+    this.isCompleted,
+    this.isLoadingStatus = false,
   });
 
   @override
@@ -35,91 +38,44 @@ class ContentItemCard extends StatefulWidget {
 
 class _ContentItemCardState extends State<ContentItemCard> {
   bool isEvaluating = false;
-  bool isCompleted = false;
-  bool isLoadingStatus = true;
   String unitName = "الوحدة";
 
   @override
   void initState() {
     super.initState();
     _setUnitName();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkCompletion();
-    });
-  }
-
-  Future<void> _checkCompletion() async {
-    if (!mounted) return;
-    setState(() {
-      isLoadingStatus = true;
-    });
-
-    try {
-      final ayahs = await _fetchAyahs(withEvaluations: true);
-      if (ayahs.isNotEmpty) {
-        final allEvaluated = ayahs.every((ayah) => ayah.userEvaluation != null);
-        if (mounted) {
-          setState(() {
-            isCompleted = allEvaluated;
-          });
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Error checking completion: $e");
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoadingStatus = false;
-        });
-      }
-    }
   }
 
   Future<List<Ayat>> _fetchAyahs({bool withEvaluations = false}) async {
     final ayatController = AyatController();
-    List<Ayat> ayahs = [];
+    final evaluationsProvider = context.read<EvaluationsProvider>();
 
-    // Prioritize range check if start/end ayah are present
-    if (widget.content.startAyah != null &&
-        widget.content.endAyah != null &&
-        widget.content.surahId != null) {
-      ayahs = await ayatController.loadAyatByRange(
-        widget.content.surahId!,
-        widget.content.startAyah!,
-        widget.content.endAyah!,
-      );
-    } else if (widget.content.type.contains('surah') &&
-        widget.content.surahId != null) {
-      ayahs = await ayatController.loadAyatBySurah(widget.content.surahId!);
-    } else if (widget.content.type.contains('hizb') &&
-        widget.content.hizb != null) {
-      ayahs = await ayatController.loadAyatByHizb(widget.content.hizb!);
-    } else if (widget.content.type.contains('hizbQuarter') &&
-        widget.content.hizbQuarter != null) {
-      ayahs = await ayatController
-          .loadAyatByHizbQuarter(widget.content.hizbQuarter!);
-    } else if (widget.content.type.contains('juz') &&
-        widget.content.juz != null) {
-      ayahs = await ayatController.loadAyatByJuz(widget.content.juz!);
+    List<Ayat> ayahs =
+        evaluationsProvider.getQuestionContentAyahs(widget.content);
+
+    if (ayahs.isEmpty) {
+      ayahs = await ayatController.loadAyatForContent(widget.content);
     }
 
     if (withEvaluations && ayahs.isNotEmpty && mounted) {
       final usersProvider = context.read<UsersProvider>();
-      final evaluationsProvider = context.read<EvaluationsProvider>();
 
       if (usersProvider.selectedUser != null) {
-        final userId = usersProvider.selectedUser!.id;
-        final ayatIds = ayahs.map((e) => e.id!).toList();
+        final needsEvaluations =
+            ayahs.any((ayah) => ayah.userEvaluation == null && ayah.id != null);
+        if (needsEvaluations) {
+          final userId = usersProvider.selectedUser!.id;
+          final ayatIds = ayahs.where((ayah) => ayah.id != null).map((e) => e.id!).toList();
 
-        await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
+          await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
 
-        // Map evaluations to ayahs
-        for (var ayah in ayahs) {
-          final userEval = evaluationsProvider.userEvaluations.firstWhereOrNull(
-              (e) => e.ayah?.id == ayah.id || e.ayahId == ayah.id);
-          ayah.userEvaluation = userEval;
+          for (var ayah in ayahs) {
+            final userEval = evaluationsProvider.userEvaluations.firstWhereOrNull(
+                (e) => e.ayah?.id == ayah.id || e.ayahId == ayah.id);
+            ayah.userEvaluation = userEval;
+          }
+
+          evaluationsProvider.syncQuestionContentAyahs(widget.content, ayahs);
         }
       }
     }
@@ -199,8 +155,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
         );
       }
 
-      // Update completion status
-      _checkCompletion();
+      evaluationsProvider.syncQuestionContentAyahs(widget.content, ayahs);
     } catch (e) {
       if (!context.mounted) return;
 
@@ -377,7 +332,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               );
                                             });
 
-                                            _checkCompletion(); // Update unit status
+                                            evaluationsProvider
+                                                .syncQuestionContentAyahs(
+                                                    widget.content, ayahs);
                                           }
                                         },
                                         child: CustomText(
@@ -573,7 +530,14 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                                   .id);
                                                 });
 
-                                                _checkCompletion();
+                                                        final refreshedAyahs =
+                                                          await _fetchAyahs(
+                                                            withEvaluations: true);
+                                                        if (!context.mounted) return;
+                                                        evaluationsProvider
+                                                          .syncQuestionContentAyahs(
+                                                            widget.content,
+                                                            refreshedAyahs);
                                               } else {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -791,7 +755,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 );
                                               });
 
-                                              _checkCompletion();
+                                              evaluationsProvider
+                                                  .syncQuestionContentAyahs(
+                                                      widget.content, ayahs);
                                             }
                                           },
                                           child: const Text('تقييم'),
@@ -822,6 +788,20 @@ class _ContentItemCardState extends State<ContentItemCard> {
   @override
   Widget build(BuildContext context) {
     final languageProvider = context.read<LanguageProvider>();
+    final completionIcon = widget.isLoadingStatus
+      ? const SizedBox(
+        width: 18,
+        height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+        )
+      : Icon(
+        widget.isCompleted == true
+          ? Icons.check_circle_rounded
+          : Icons.pending_outlined,
+        color: widget.isCompleted == true
+          ? Colors.green
+          : AppColors.primaryPurple,
+        );
 
     return GestureDetector(
         onTap: () {
@@ -851,6 +831,12 @@ class _ContentItemCardState extends State<ContentItemCard> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: SizeConfig.getProportionalWidth(8),
+                ),
+                child: completionIcon,
+              ),
               if (widget.content.surahId != null) ...[
                 CustomText(
                   text:

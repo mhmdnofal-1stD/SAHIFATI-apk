@@ -12,7 +12,6 @@ import 'providers/school_provider.dart';
 import 'providers/surahs_provider.dart';
 import 'providers/users_provider.dart';
 import 'providers/language_provider.dart';
-import 'screens/main_screen/main_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/sahifa_screen/sahifa_screen.dart';
@@ -56,61 +55,38 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-        future: GeneralController().checkConnectivity(),
-        builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const MaterialApp(
-              home: Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              ),
-            );
-          }
-
-          if (snapshot.hasError) {
-            return const MaterialApp(
-              home: Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              ),
-            );
-          }
-
-          final hasConnection = snapshot.data ?? false;
-
-          return GetMaterialApp(
-            debugShowCheckedModeBanner: false,
-            translations: LocalizationService(),
-            locale: Get.locale ?? initialLocale,
-            fallbackLocale: LocalizationService.fallbackLocale,
-            themeMode: ThemeMode.light,
-            theme: ThemeData(
-              scaffoldBackgroundColor: AppColors.backgroundColor,
-              brightness: Brightness.light,
-              textTheme: const TextTheme(
-                bodyLarge: TextStyle(color: AppColors.blackFontColor),
-              ),
-              colorScheme: const ColorScheme.light(
-                surface: AppColors.backgroundColor,
-                primary: AppColors.backgroundColor,
-                secondary: AppColors.buttonColor,
-              ),
-            ),
-            darkTheme: ThemeData(
-              scaffoldBackgroundColor: const Color(0xFF121212),
-              brightness: Brightness.dark,
-              textTheme: const TextTheme(
-                bodyLarge: TextStyle(color: Colors.white),
-              ),
-              colorScheme: const ColorScheme.dark(
-                surface: Color(0xFF1E1E1E),
-                primary: Color(0xFF121212),
-                secondary: AppColors.buttonColor,
-              ),
-            ),
-            home:
-                hasConnection ? const InitialScreen() : const MainScreen(comesFirst: true),
-          );
-        });
+    return GetMaterialApp(
+      debugShowCheckedModeBanner: false,
+      translations: LocalizationService(),
+      locale: Get.locale ?? initialLocale,
+      fallbackLocale: LocalizationService.fallbackLocale,
+      themeMode: ThemeMode.light,
+      theme: ThemeData(
+        scaffoldBackgroundColor: AppColors.backgroundColor,
+        brightness: Brightness.light,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: AppColors.blackFontColor),
+        ),
+        colorScheme: const ColorScheme.light(
+          surface: AppColors.backgroundColor,
+          primary: AppColors.backgroundColor,
+          secondary: AppColors.buttonColor,
+        ),
+      ),
+      darkTheme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        brightness: Brightness.dark,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+        ),
+        colorScheme: const ColorScheme.dark(
+          surface: Color(0xFF1E1E1E),
+          primary: Color(0xFF121212),
+          secondary: AppColors.buttonColor,
+        ),
+      ),
+      home: const InitialScreen(),
+    );
   }
 }
 
@@ -132,19 +108,38 @@ class _InitialScreenState extends State<InitialScreen> {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
+    final hasConnection = await GeneralController().checkConnectivity();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!hasConnection) {
+      await usersProvider.clearPersistedSession();
+      await _routeToLoginOrSelectUser(usersProvider);
+      return;
+    }
 
     final bool isLoggedIn = await usersProvider.tryAutoLogin();
+
+    if (!mounted) {
+      return;
+    }
 
     if (isLoggedIn && usersProvider.selectedUser != null) {
       try {
         await evaluationsProvider
             .getQuranChartData(usersProvider.selectedUser!.id);
+        if (!mounted) {
+          return;
+        }
         Get.off(() => const SahifaScreen(firstScreen: true,));
       } catch (e) {
-        // Error getting data, fall back to stored users check
+        await usersProvider.clearPersistedSession();
         _routeToLoginOrSelectUser(usersProvider);
       }
     } else {
+        await usersProvider.clearPersistedSession();
         _routeToLoginOrSelectUser(usersProvider);
     }
   }

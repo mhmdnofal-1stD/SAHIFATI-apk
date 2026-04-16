@@ -91,9 +91,12 @@ class SahifaScreen extends StatelessWidget {
                     fontSize: 24,
                     withBackground: false,
                   ),
-                  BarChartWidget(
-                    evaluationsProvider: evaluationsProvider,
-                    languageProvider: languageProvider,
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 920),
+                    child: BarChartWidget(
+                      evaluationsProvider: evaluationsProvider,
+                      languageProvider: languageProvider,
+                    ),
                   ),
                   SizedBox(
                     height: SizeConfig.getProportionalHeight(50),
@@ -121,8 +124,8 @@ class SahifaScreen extends StatelessWidget {
                   CustomButton(
                     onPressed: () => {Get.to(const MainScreen())},
                     text: "browse_verses".tr,
-                    width: 120,
-                    height: 35,
+                    width: 180,
+                    height: 48,
                   ),
                 ],
               ),

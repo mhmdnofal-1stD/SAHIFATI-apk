@@ -12,6 +12,20 @@ class UsersServices with ChangeNotifier {
     'accept': 'application/json',
   };
 
+  String _extractErrorMessage(dynamic responseData, String fallback) {
+    final message = responseData['message'];
+
+    if (message is String && message.isNotEmpty) {
+      return message;
+    }
+
+    if (message is List && message.isNotEmpty) {
+      return message.join(', ');
+    }
+
+    return fallback;
+  }
+
   Future<dynamic> register({
     required String username,
     required String email,
@@ -69,13 +83,13 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-  Future<dynamic> loginWithGoogle(String idToken) async {
+  Future<dynamic> loginWithGoogle(String token) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseURL/auth/google'),
+            Uri.parse('$_baseURL/auth/social/google'),
             headers: _authHeaders,
-            body: json.encode({'idToken': idToken}),
+            body: json.encode({'token': token}),
           )
           .timeout(_timeout);
 
@@ -83,20 +97,23 @@ class UsersServices with ChangeNotifier {
       if (response.statusCode == 200) {
         return AuthData.fromJson(responseData);
       } else {
-        return responseData['message'] ?? 'Google login failed';
+        return _extractErrorMessage(
+          responseData,
+          'Google login failed',
+        );
       }
     } catch (ex) {
       rethrow;
     }
   }
 
-  Future<dynamic> loginWithFacebook(String accessToken) async {
+  Future<dynamic> loginWithFacebook(String token) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$_baseURL/auth/facebook'),
+            Uri.parse('$_baseURL/auth/social/facebook'),
             headers: _authHeaders,
-            body: json.encode({'accessToken': accessToken}),
+            body: json.encode({'token': token}),
           )
           .timeout(_timeout);
 
@@ -104,7 +121,10 @@ class UsersServices with ChangeNotifier {
       if (response.statusCode == 200) {
         return AuthData.fromJson(responseData);
       } else {
-        return responseData['message'] ?? 'Facebook login failed';
+        return _extractErrorMessage(
+          responseData,
+          'Facebook login failed',
+        );
       }
     } catch (ex) {
       rethrow;

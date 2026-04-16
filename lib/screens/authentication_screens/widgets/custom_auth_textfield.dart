@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import '../../../core/constants/colors.dart';
-import '../../../core/utils/size_config.dart';
 
 class CustomAuthenticationTextField extends StatefulWidget {
   const CustomAuthenticationTextField({
@@ -34,13 +33,11 @@ class _CustomAuthenticationTextFieldState
   Widget build(BuildContext context) {
     return Padding(
       padding: widget.isSettings == null || widget.isSettings == false
-          ? EdgeInsets.only(bottom: SizeConfig.getProportionalHeight(6))
-          : EdgeInsets.only(
-              bottom: SizeConfig.getProportionalHeight(12),
-              top: SizeConfig.getProportionalHeight(6)),
+          ? const EdgeInsets.only(bottom: 6)
+          : const EdgeInsets.only(bottom: 12, top: 6),
       child: Container(
-        width: SizeConfig.getProportionalWidth(312),
-        height: SizeConfig.getProportionalHeight(48),
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 48),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -48,7 +45,7 @@ class _CustomAuthenticationTextFieldState
           color: Colors.white,
         ),
         child: Padding(
-          padding: EdgeInsets.only(right: SizeConfig.getProportionalWidth(10)),
+          padding: const EdgeInsets.only(right: 10),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: TextField(
@@ -56,9 +53,9 @@ class _CustomAuthenticationTextFieldState
                 controller: widget.textEditingController,
                 obscureText: widget.obscureText && !showPassword,
                 decoration: InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: SizeConfig.getProportionalWidth(10),
-                    vertical: SizeConfig.getProportionalWidth(5),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
                   ),
                   suffixIcon: widget.obscureText
                       ? IconButton(

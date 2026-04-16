@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/ayat.dart';
+import '../models/school_level_content.dart';
 
 class AyatController {
   static Future<List<Ayat>>? _cachedAyatFuture;
@@ -72,6 +73,36 @@ class AyatController {
       print("AyatController: Returning ${rangeAyat.length} ayahs");
     }
     return rangeAyat;
+  }
+
+  Future<List<Ayat>> loadAyatForContent(SchoolLevelContent content) async {
+    if (content.startAyah != null &&
+        content.endAyah != null &&
+        content.surahId != null) {
+      return loadAyatByRange(
+        content.surahId!,
+        content.startAyah!,
+        content.endAyah!,
+      );
+    }
+
+    if (content.type.contains('surah') && content.surahId != null) {
+      return loadAyatBySurah(content.surahId!);
+    }
+
+    if (content.type.contains('hizb') && content.hizb != null) {
+      return loadAyatByHizb(content.hizb!);
+    }
+
+    if (content.type.contains('hizbQuarter') && content.hizbQuarter != null) {
+      return loadAyatByHizbQuarter(content.hizbQuarter!);
+    }
+
+    if (content.type.contains('juz') && content.juz != null) {
+      return loadAyatByJuz(content.juz!);
+    }
+
+    return [];
   }
 
 }

@@ -21,6 +21,19 @@ class SchoolLevelContent {
 
   String? get id => _id;
 
+  String get cacheKey {
+    return [
+      _id ?? '',
+      type,
+      surahId?.toString() ?? '',
+      hizb?.toString() ?? '',
+      hizbQuarter?.toString() ?? '',
+      startAyah?.toString() ?? '',
+      endAyah?.toString() ?? '',
+      juz?.toString() ?? '',
+    ].join('|');
+  }
+
   factory SchoolLevelContent.fromJson(Map<String, dynamic> json) {
     return SchoolLevelContent(
         id: json['_id'],

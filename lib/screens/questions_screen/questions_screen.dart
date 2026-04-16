@@ -29,6 +29,31 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preloadSelectedLevel();
+    });
+  }
+
+  Future<void> _preloadSelectedLevel() async {
+    if (!mounted) return;
+
+    final usersProvider = context.read<UsersProvider>();
+    final schoolProvider = context.read<SchoolProvider>();
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
+    if (usersProvider.selectedUser == null) {
+      return;
+    }
+
+    await evaluationsProvider.preloadQuestionLevelData(
+      usersProvider.selectedUser!.id,
+      schoolProvider.quickQuestionsSchool.levels[selectedIndex].content,
+    );
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
@@ -40,6 +65,11 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     EvaluationsProvider evaluationsProvider =
         Provider.of<EvaluationsProvider>(context);
     LanguageProvider languageProvider = Provider.of<LanguageProvider>(context);
+    final contentWidth = MediaQuery.sizeOf(context).width;
+    final isDesktop = contentWidth >= 900;
+    final actionHeight = isDesktop ? 50.0 : 44.0;
+    final skipWidth = isDesktop ? 140.0 : 110.0;
+    final navigationWidth = isDesktop ? 190.0 : 150.0;
     return NoPopScope(
       child: Scaffold(
         appBar: PreferredSize(
@@ -93,25 +123,32 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (evaluationsProvider.isQuestionsLevelLoading)
+                  const LinearProgressIndicator(minHeight: 3),
                 Expanded(
                   child: ListView.builder(
                     controller: _scrollController,
                     itemCount: schoolProvider
                         .quickQuestionsSchool.levels[selectedIndex].content.length,
                     itemBuilder: (context, index) {
+                      final content = schoolProvider
+                          .quickQuestionsSchool.levels[selectedIndex].content[index];
                       return ContentItemCard(
-                        content: schoolProvider
-                            .quickQuestionsSchool.levels[selectedIndex].content[index],
+                        content: content,
                         index: index,
+                        isCompleted:
+                            evaluationsProvider.getQuestionContentCompletion(content),
+                        isLoadingStatus:
+                            evaluationsProvider.isQuestionsLevelLoading,
                       );
                     },
                   ),
                 ),
                 SizeConfig.customSizedBox(null, 15, null),
                 Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: SizeConfig.getProportionalWidth(5),
-                    vertical: SizeConfig.getProportionalWidth(10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
                   ),
                   child: Wrap(
                     alignment: WrapAlignment.center,
@@ -130,8 +167,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                           ));
                         },
                         text: "skip".tr,
-                        width: 60,
-                        height: 35,
+                        width: skipWidth,
+                        height: actionHeight,
                         isDisabled: false,
                       ),
                       CustomButton(
@@ -145,6 +182,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                             setState(() {
                               selectedIndex = selectedIndex - 1;
                             });
+                            _preloadSelectedLevel();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -154,8 +192,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                           }
                         },
                         text: "previous_level".tr,
-                        width: 120,
-                        height: 35,
+                        width: navigationWidth,
+                        height: actionHeight,
                         isDisabled: false,
                       ),
                       CustomButton(
@@ -170,6 +208,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                             setState(() {
                               selectedIndex = selectedIndex + 1;
                             });
+                            _preloadSelectedLevel();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -179,8 +218,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                           }
                         },
                         text: "next_level".tr,
-                        width: 120,
-                        height: 35,
+                        width: navigationWidth,
+                        height: actionHeight,
                         isDisabled: false,
                       ),
                     ],
