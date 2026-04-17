@@ -22,17 +22,51 @@ class EvaluationsController {
 
   EvaluationsController._internal();
 
+  static const String memorizationDimension = 'memorization';
+  static const String comprehensionDimension = 'comprehension';
+
   Future<void> sendEvaluation(
       Ayat verse,
       Evaluation evaluation,
       EvaluationsProvider evaluationsProvider,
-      AyatProvider? ayatProvider) async {
+      AyatProvider? ayatProvider,
+      {bool clearSelection = false}) async {
+    final isComprehension = evaluation.type == comprehensionDimension;
+
+    await sendEvaluationSelection(
+      verse,
+      evaluationsProvider,
+      ayatProvider,
+      memoId: isComprehension ? null : (clearSelection ? null : evaluation.id),
+      compreId:
+          isComprehension ? (clearSelection ? null : evaluation.id) : null,
+      memoChanged: !isComprehension,
+      compreChanged: isComprehension,
+    );
+  }
+
+  Future<void> sendEvaluationSelection(
+      Ayat verse,
+      EvaluationsProvider evaluationsProvider,
+      AyatProvider? ayatProvider,
+      {int? memoId,
+      int? compreId,
+      required bool memoChanged,
+      required bool compreChanged}) async {
+    if (!memoChanged && !compreChanged) {
+      return;
+    }
+
     try {
-      final Map<String, dynamic> userEvaluation = UserEvaluation(
+      final Map<String, dynamic> userEvaluation = buildSinglePayload(
         ayahId: verse.id!,
-        evaluationId: evaluation.id!,
-        comment: '',
-      ).toMap();
+        memoId: memoId,
+        compreId: compreId,
+        includeMemo: memoChanged,
+        includeCompre: compreChanged,
+        clearMemo: memoChanged && memoId == null,
+        clearCompre: compreChanged && compreId == null,
+      );
 
       final http.Response response =
           await evaluationsProvider.evaluateAyah(userEvaluation);
@@ -80,14 +114,47 @@ class EvaluationsController {
       Evaluation evaluation,
       EvaluationsProvider evaluationsProvider,
       AyatProvider? ayatProvider,
-      String unitName) async {
+      String unitName,
+      {bool clearSelection = false}) async {
+    final isComprehension = evaluation.type == comprehensionDimension;
+
+    await sendMultipleEvaluationSelection(
+      verses,
+      evaluationsProvider,
+      ayatProvider,
+      unitName,
+      memoId: isComprehension ? null : (clearSelection ? null : evaluation.id),
+      compreId:
+          isComprehension ? (clearSelection ? null : evaluation.id) : null,
+      memoChanged: !isComprehension,
+      compreChanged: isComprehension,
+    );
+  }
+
+  Future<void> sendMultipleEvaluationSelection(
+      List<Ayat> verses,
+      EvaluationsProvider evaluationsProvider,
+      AyatProvider? ayatProvider,
+      String unitName,
+      {int? memoId,
+      int? compreId,
+      required bool memoChanged,
+      required bool compreChanged}) async {
+    if (!memoChanged && !compreChanged) {
+      return;
+    }
+
     try {
       final ayatIds = verses.map((v) => v.id!).toList();
-      final Map<String, dynamic> userEvaluation = UserEvaluation(
+      final Map<String, dynamic> userEvaluation = buildBulkPayload(
         ayahIds: ayatIds,
-        evaluationId: evaluation.id!,
-        comment: '',
-      ).toMap();
+        memoId: memoId,
+        compreId: compreId,
+        includeMemo: memoChanged,
+        includeCompre: compreChanged,
+        clearMemo: memoChanged && memoId == null,
+        clearCompre: compreChanged && compreId == null,
+      );
 
       final http.Response response =
           await evaluationsProvider.evaluateMultipleAyat(userEvaluation);
@@ -152,8 +219,7 @@ class EvaluationsController {
       fontSize = (value * 2.5).clamp(5.0, 18.0);
 
       return PieChartSectionData(
-        color: EvaluationsController()
-            .getColorForEvaluation(evaluation.evaluationId),
+        color: getColorForChartEntry(evaluation),
         value: adjustedValue,
         title: '${evaluation.percentage?.toStringAsFixed(2)}%',
         radius: 150,
@@ -166,7 +232,108 @@ class EvaluationsController {
     }).toList();
   }
 
-  Color getColorForEvaluation(int? evaluationId) {
+  Map<String, dynamic> buildSinglePayload({
+    required int ayahId,
+    int? memoId,
+    int? compreId,
+    bool includeMemo = false,
+    bool includeCompre = false,
+    bool clearMemo = false,
+    bool clearCompre = false,
+  }) {
+    final payload = <String, dynamic>{
+      'ayahId': ayahId,
+    };
+
+    if (includeMemo) {
+      payload['memo_id'] = clearMemo ? null : memoId;
+    }
+    if (includeCompre) {
+      payload['compre_id'] = clearCompre ? null : compreId;
+    }
+
+    return payload;
+  }
+
+  Map<String, dynamic> buildBulkPayload({
+    required List<int> ayahIds,
+    int? memoId,
+    int? compreId,
+    bool includeMemo = false,
+    bool includeCompre = false,
+    bool clearMemo = false,
+    bool clearCompre = false,
+  }) {
+    final payload = <String, dynamic>{
+      'ayahIds': ayahIds,
+    };
+
+    if (includeMemo) {
+      payload['memo_id'] = clearMemo ? null : memoId;
+    }
+    if (includeCompre) {
+      payload['compre_id'] = clearCompre ? null : compreId;
+    }
+
+    return payload;
+  }
+
+  UserEvaluation mergeUserEvaluation({
+    required UserEvaluation? existing,
+    required Ayat ayah,
+    required EvaluationsProvider evaluationsProvider,
+    int? memoId,
+    int? compreId,
+    bool memoChanged = false,
+    bool compreChanged = false,
+  }) {
+    final nextMemoId = memoChanged ? memoId : existing?.memoId;
+    final nextCompreId = compreChanged ? compreId : existing?.compreId;
+
+    return UserEvaluation(
+      id: existing?.id,
+      ayahId: ayah.id,
+      comment: existing?.comment,
+      memoId: nextMemoId,
+      compreId: nextCompreId,
+      memoEvaluation: evaluationsProvider.findEvaluationById(nextMemoId),
+      compreEvaluation: evaluationsProvider.findEvaluationById(nextCompreId),
+      ayah: existing?.ayah ?? ayah,
+    );
+  }
+
+  bool isPositiveComprehension(Evaluation? evaluation) {
+    if (evaluation == null) {
+      return false;
+    }
+
+    final code = evaluation.code.trim().toUpperCase();
+    if (code == 'YES') {
+      return true;
+    }
+
+    final localizedNames = evaluation.name.values.map(
+      (value) => value.trim().toLowerCase(),
+    );
+    return localizedNames.contains('yes') || localizedNames.contains('نعم');
+  }
+
+  Color getColorForChartEntry(ChartEvaluationData evaluation) {
+    return _parseColor(evaluation.color, fallback: getColorForEvaluationId(evaluation.evaluationId));
+  }
+
+  Color getColorForEvaluationModel(Evaluation? evaluation) {
+    if (evaluation == null) {
+      return AppColors.uncategorizedColor;
+    }
+
+    return _parseColor(
+      evaluation.color,
+      fallback: getColorForEvaluationId(evaluation.id),
+    );
+  }
+
+  Color getColorForEvaluationId(int? evaluationId) {
     switch (evaluationId) {
       case 0:
         return AppColors.uncategorizedColor; // غير مصنف
@@ -182,6 +349,25 @@ class EvaluationsController {
         return AppColors.hardColor; // صعب
       default:
         return AppColors.uncategorizedColor; // fallback color
+    }
+  }
+
+  Color _parseColor(String? rawColor, {required Color fallback}) {
+    if (rawColor == null || rawColor.isEmpty) {
+      return fallback;
+    }
+
+    final hex = rawColor.replaceFirst('#', '');
+    if (hex.length != 6 && hex.length != 8) {
+      return fallback;
+    }
+
+    final normalized = hex.length == 6 ? 'FF$hex' : hex;
+
+    try {
+      return Color(int.parse(normalized, radix: 16));
+    } catch (_) {
+      return fallback;
     }
   }
 }

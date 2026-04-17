@@ -9,6 +9,7 @@ import '../../controllers/evaluations_controller.dart';
 import '../../core/utils/size_config.dart';
 import '../../core/constants/colors.dart';
 import '../questions_screen/questions_screen.dart';
+import '../widgets/assessment_dimension_toggle.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/no_pop_scope.dart';
@@ -133,6 +134,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         withBackground: false,
                         textAlign: TextAlign.center,
                       )),
+                ),
+                SizeConfig.customSizedBox(null, 10, null),
+                Consumer2<EvaluationsProvider, UsersProvider>(
+                  builder: (context, evaluationsProvider, usersProvider, child) {
+                    return AssessmentDimensionToggle(
+                      selectedDimension: evaluationsProvider.chartDimension,
+                      onChanged: (dimension) async {
+                        final user = usersProvider.selectedUser;
+                        if (user == null) {
+                          return;
+                        }
+
+                        await evaluationsProvider.getQuranChartData(
+                          user.id,
+                          dimension: dimension,
+                        );
+                      },
+                    );
+                  },
                 ),
                 SizeConfig.customSizedBox(null, 10, null),
                 Consumer<EvaluationsProvider>(

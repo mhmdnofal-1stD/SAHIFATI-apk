@@ -15,6 +15,7 @@ class EvaluationsProvider with ChangeNotifier {
   List<Evaluation> evaluations = [];
   List<UserEvaluation> userEvaluations = [];
   List<ChartEvaluationData> chartEvaluationData = [];
+  String chartDimension = 'memorization';
   bool isLoading = true;
   bool isQuestionsLevelLoading = false;
   int totalCount = 0;
@@ -23,9 +24,19 @@ class EvaluationsProvider with ChangeNotifier {
   Map<String, bool> _questionContentCompletion = {};
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
 
-  Future<List<Evaluation?>> getAllEvaluations() async {
+  List<Evaluation> get memorizationEvaluations => evaluations
+      .where((evaluation) =>
+          evaluation.id != 0 && evaluation.type != 'comprehension')
+      .toList();
+
+  List<Evaluation> get comprehensionEvaluations => evaluations
+      .where((evaluation) => evaluation.type == 'comprehension')
+      .toList();
+
+  Future<List<Evaluation?>> getAllEvaluations({String? type}) async {
     setLoading();
-    evaluations = await _evaluationsServices.getAllEvaluations();
+    evaluations = await _evaluationsServices.getAllEvaluations(type: type);
+    _refreshUserEvaluationMetadata();
     resetLoading();
     return evaluations;
   }
@@ -59,11 +70,18 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
 
-  Future<void> getQuranChartData(int userId) async {
+  Future<void> getQuranChartData(
+    int userId, {
+    String dimension = 'memorization',
+  }) async {
     try {
       setLoading();
+      chartDimension = dimension;
       chartEvaluationData.clear();
-      final response = await _evaluationsServices.getQuranChartData(userId);
+      final response = await _evaluationsServices.getQuranChartData(
+        userId,
+        dimension: dimension,
+      );
 
       totalCount = response['totalVerses'];
       chartEvaluationData = (response['evaluations'] as List)
@@ -86,6 +104,7 @@ class EvaluationsProvider with ChangeNotifier {
     setLoading();
     userEvaluations =
         await _evaluationsServices.getAllUserEvaluations(userId, ayatIds);
+    _refreshUserEvaluationMetadata();
     resetLoading();
   }
 
@@ -121,6 +140,7 @@ class EvaluationsProvider with ChangeNotifier {
             await _evaluationsServices.getAllUserEvaluations(userId, ayahIds.toList());
 
         for (final evaluation in fetchedEvaluations) {
+          _enrichUserEvaluation(evaluation);
           final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
           if (ayahId != null) {
             evaluationsByAyahId[ayahId] = evaluation;
@@ -138,7 +158,8 @@ class EvaluationsProvider with ChangeNotifier {
         }
 
         completionByContent[entry.key] =
-            entry.value.isNotEmpty && entry.value.every((ayah) => ayah.userEvaluation != null);
+          entry.value.isNotEmpty &&
+            entry.value.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
       }
 
       _questionContentAyahs = ayahsByContent;
@@ -169,8 +190,63 @@ class EvaluationsProvider with ChangeNotifier {
   ) {
     _questionContentAyahs[content.cacheKey] = ayahs;
     _questionContentCompletion[content.cacheKey] =
-        ayahs.isNotEmpty && ayahs.every((ayah) => ayah.userEvaluation != null);
+        ayahs.isNotEmpty &&
+            ayahs.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
     notifyListeners();
+  }
+
+  Evaluation? findEvaluationById(int? id) {
+    if (id == null) {
+      return null;
+    }
+
+    return evaluations.firstWhereOrNull((evaluation) => evaluation.id == id);
+  }
+
+  UserEvaluation? getUserEvaluationForAyah(int? ayahId) {
+    if (ayahId == null) {
+      return null;
+    }
+
+    return userEvaluations.firstWhereOrNull(
+      (evaluation) => evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
+    );
+  }
+
+  void upsertUserEvaluation(UserEvaluation userEvaluation) {
+    _enrichUserEvaluation(userEvaluation);
+
+    final ayahId = userEvaluation.ayah?.id ?? userEvaluation.ayahId;
+    if (ayahId == null) {
+      return;
+    }
+
+    final index = userEvaluations.indexWhere(
+      (evaluation) => evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
+    );
+
+    if (index == -1) {
+      userEvaluations.add(userEvaluation);
+    } else {
+      userEvaluations[index] = userEvaluation;
+    }
+
+    notifyListeners();
+  }
+
+  void _refreshUserEvaluationMetadata() {
+    for (final userEvaluation in userEvaluations) {
+      _enrichUserEvaluation(userEvaluation);
+    }
+  }
+
+  void _enrichUserEvaluation(UserEvaluation userEvaluation) {
+    userEvaluation.memoEvaluation =
+        userEvaluation.memoEvaluation ?? findEvaluationById(userEvaluation.memoId);
+    userEvaluation.compreEvaluation =
+        userEvaluation.compreEvaluation ?? findEvaluationById(userEvaluation.compreId);
+    userEvaluation.evaluation = userEvaluation.memoEvaluation;
+    userEvaluation.evaluationId = userEvaluation.memoId;
   }
 
 
@@ -190,8 +266,7 @@ class EvaluationsProvider with ChangeNotifier {
     try {
       if (id == null) return '';
 
-      final evaluation =
-      evaluations.firstWhereOrNull((e) => e.id == id);
+      final evaluation = findEvaluationById(id);
 
       return evaluation?.name[languageProvider.langCode] ?? '';
     } finally {

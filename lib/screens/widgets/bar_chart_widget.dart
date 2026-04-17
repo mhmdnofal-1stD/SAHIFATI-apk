@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import '../../controllers/evaluations_controller.dart';
-import '../../controllers/general_controller.dart';
 
 class BarChartWidget extends StatelessWidget {
   const BarChartWidget({
@@ -19,20 +18,16 @@ class BarChartWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final evaluationsController = EvaluationsController();
-    final generalController = GeneralController();
 
     final List<BarChartGroupData> barGroups = [];
 
-    for (int i = 0; i < generalController.dropdownOptions.length; i++) {
-      final evaluation =
-          evaluationsController.getEvaluationById(i, evaluationsProvider);
-
-      if (evaluation == null) continue;
+    for (int i = 0; i < evaluationsProvider.chartEvaluationData.length; i++) {
+      final evaluation = evaluationsProvider.chartEvaluationData[i];
 
       final raw = evaluation.percentage ?? 0;
       final value = (raw * 100).round() / 100;
 
-      final color = generalController.dropdownOptions[i]['color'] as Color;
+      final color = evaluationsController.getColorForChartEntry(evaluation);
 
       barGroups.add(
         BarChartGroupData(
@@ -81,8 +76,8 @@ class BarChartWidget extends StatelessWidget {
                           tooltipPadding: EdgeInsets.zero,
                           tooltipMargin: 8,
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final evaluation = evaluationsController
-                                .getEvaluationById(group.x, evaluationsProvider);
+                            final evaluation = evaluationsProvider
+                                .chartEvaluationData[group.x.toInt()];
                             return BarTooltipItem(
                               '${rod.toY.toStringAsFixed(2)}%\n',
                               const TextStyle(
@@ -93,7 +88,7 @@ class BarChartWidget extends StatelessWidget {
                               children: [
                                 TextSpan(
                                   text:
-                                      '${evaluation?.verseCount} ${'verses'.tr}',
+                                      '${evaluation.verseCount} ${'verses'.tr}',
                                   style: const TextStyle(
                                     color: Colors.blueGrey,
                                     fontSize: 12,
@@ -112,16 +107,22 @@ class BarChartWidget extends StatelessWidget {
                             showTitles: true,
                             reservedSize: reservedLabelHeight,
                             getTitlesWidget: (double value, TitleMeta meta) {
-                              final evaluation =
-                                  evaluationsController.getEvaluationById(
-                                      value.toInt(), evaluationsProvider);
+                              if (value.toInt() < 0 ||
+                                  value.toInt() >=
+                                      evaluationsProvider.chartEvaluationData
+                                          .length) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final evaluation = evaluationsProvider
+                                  .chartEvaluationData[value.toInt()];
                               return SideTitleWidget(
                                 meta: meta,
                                 space: 10,
                                 child: SizedBox(
                                   width: labelWidth,
                                   child: Text(
-                                    evaluation?.name[languageProvider.langCode] ??
+                                    evaluation.name[languageProvider.langCode] ??
                                         '',
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,

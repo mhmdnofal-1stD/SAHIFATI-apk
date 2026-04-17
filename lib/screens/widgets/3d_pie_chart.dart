@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import '../../controllers/evaluations_controller.dart';
-import '../../controllers/general_controller.dart';
 
 class DonutChart extends StatefulWidget {
   const DonutChart({
@@ -28,15 +27,11 @@ class _DonutChartState extends State<DonutChart> {
   @override
   Widget build(BuildContext context) {
     final evaluationsController = EvaluationsController();
-    final generalController = GeneralController();
 
     final List<PieChartSectionData> sections = [];
     List<int> sectionEvaluationIds = [];
-    for (int i = 0; i < generalController.dropdownOptions.length; i++) {
-      final evaluation = evaluationsController.getEvaluationById(
-          i, widget.evaluationsProvider);
-
-      if (evaluation == null) continue;
+    for (int i = 0; i < widget.evaluationsProvider.chartEvaluationData.length; i++) {
+      final evaluation = widget.evaluationsProvider.chartEvaluationData[i];
 
       final value = evaluation.percentage?.toDouble() ?? 0;
       // if (value <= 0) continue; // Optional: Hide 0% sections
@@ -44,7 +39,7 @@ class _DonutChartState extends State<DonutChart> {
       final isTouched = sectionEvaluationIds.length == touchedIndex;
       final fontSize = isTouched ? 20.0 : 16.0;
       final radius = isTouched ? 90.0 : 80.0;
-      final color = generalController.dropdownOptions[i]['color'] as Color;
+      final color = evaluationsController.getColorForChartEntry(evaluation);
 
       sections.add(
         PieChartSectionData(
@@ -109,14 +104,15 @@ class _DonutChartState extends State<DonutChart> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                "${sections[touchedIndex].value.toStringAsFixed(1)}%",
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+              if (touchedIndex != -1)
+                Text(
+                  "${sections[touchedIndex].value.toStringAsFixed(1)}%",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
               if (touchedIndex != -1)
                 Text(
                   widget.evaluationsProvider

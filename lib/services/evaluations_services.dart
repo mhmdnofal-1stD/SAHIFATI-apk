@@ -9,9 +9,10 @@ import 'package:sahifaty/services/sahifaty_api.dart';
 class EvaluationsServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
 
-  Future<List<Evaluation>> getAllEvaluations() async {
+  Future<List<Evaluation>> getAllEvaluations({String? type}) async {
     try {
-      final http.Response res = await _sahifatyApi.get('evaluations');
+      final query = type == null || type.isEmpty ? '' : '?type=$type';
+      final http.Response res = await _sahifatyApi.get('evaluations$query');
 
       if (res.statusCode == 200) {
         final List<dynamic> data = jsonDecode(res.body);
@@ -36,9 +37,13 @@ class EvaluationsServices {
     }
   }
 
-  Future<Map<String, dynamic>> getQuranChartData(int userId) async {
+  Future<Map<String, dynamic>> getQuranChartData(
+    int userId, {
+    String dimension = 'memorization',
+  }) async {
     try {
-      final res = await _sahifatyApi.get('user-evaluations/chart/$userId');
+      final res = await _sahifatyApi
+          .get('user-evaluations/chart/$userId?dimension=$dimension');
 
       if (res.statusCode == 200) {
         // Decode the full JSON map

@@ -4,9 +4,11 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
+import 'package:sahifaty/providers/users_provider.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
 import '../sahifa_screen/sahifa_screen.dart';
+import '../widgets/assessment_dimension_toggle.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/no_pop_scope.dart';
@@ -18,10 +20,13 @@ class FirstPieChartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     EvaluationsProvider evaluationsProvider =
         Provider.of<EvaluationsProvider>(context);
+    UsersProvider usersProvider = Provider.of<UsersProvider>(context);
     final uncategorized =
         EvaluationsController().getEvaluationById(0, evaluationsProvider);
     final evaluatedPercentage =
         (100 - (uncategorized?.percentage ?? 0)).toStringAsFixed(2);
+    final isComprehension = evaluationsProvider.chartDimension ==
+      EvaluationsController.comprehensionDimension;
 
     return NoPopScope(
       child: Scaffold(
@@ -48,6 +53,21 @@ class FirstPieChartScreen extends StatelessWidget {
                   withBackground: false,
                 ),
                 SizeConfig.customSizedBox(null, 5, null),
+                AssessmentDimensionToggle(
+                  selectedDimension: evaluationsProvider.chartDimension,
+                  onChanged: (dimension) async {
+                    final user = usersProvider.selectedUser;
+                    if (user == null) {
+                      return;
+                    }
+
+                    await evaluationsProvider.getQuranChartData(
+                      user.id,
+                      dimension: dimension,
+                    );
+                  },
+                ),
+                SizeConfig.customSizedBox(null, 5, null),
                 SizedBox(
                     width: 100,
                     height: 100,
@@ -65,7 +85,9 @@ class FirstPieChartScreen extends StatelessWidget {
                     ))),
                 SizeConfig.customSizedBox(null, 5, null),
                 Text(
-                  'لقد تم تصنيف $evaluatedPercentage% من آيات القرآن في صحيفتك',
+                  isComprehension
+                      ? 'يعرض هذا المخطط الآيات التي تم تقييم فهمها فقط'
+                      : 'لقد تم تصنيف $evaluatedPercentage% من آيات القرآن في صحيفتك',
                   textAlign: TextAlign.center,
                   locale: const Locale('ar'),
                   strutStyle: const StrutStyle(

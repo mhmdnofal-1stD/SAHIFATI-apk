@@ -8,6 +8,7 @@ import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import '../main_screen/main_screen.dart';
+import '../widgets/assessment_dimension_toggle.dart';
 import '../widgets/bar_chart_widget.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/custom_button.dart';
@@ -32,6 +33,8 @@ class SahifaScreen extends StatelessWidget {
         EvaluationsController().getEvaluationById(0, evaluationsProvider);
     final evaluatedPercentage =
         (100 - (uncategorized?.percentage ?? 0)).toStringAsFixed(2);
+    final isComprehension = evaluationsProvider.chartDimension ==
+      EvaluationsController.comprehensionDimension;
     return NoPopScope(
       child: Scaffold(
         appBar: PreferredSize(
@@ -91,6 +94,23 @@ class SahifaScreen extends StatelessWidget {
                     fontSize: 24,
                     withBackground: false,
                   ),
+                  AssessmentDimensionToggle(
+                    selectedDimension: evaluationsProvider.chartDimension,
+                    onChanged: (dimension) async {
+                      final user = usersProvider.selectedUser;
+                      if (user == null) {
+                        return;
+                      }
+
+                      await evaluationsProvider.getQuranChartData(
+                        user.id,
+                        dimension: dimension,
+                      );
+                    },
+                  ),
+                  SizedBox(
+                    height: SizeConfig.getProportionalHeight(16),
+                  ),
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 920),
                     child: BarChartWidget(
@@ -104,8 +124,10 @@ class SahifaScreen extends StatelessWidget {
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 720),
                     child: Text(
-                      "categorized_verses_msg"
-                          .trParams({'percentage': evaluatedPercentage}),
+                      isComprehension
+                          ? 'يعرض هذا المخطط الآيات التي تم تقييم فهمها فقط.'
+                          : "categorized_verses_msg"
+                              .trParams({'percentage': evaluatedPercentage}),
                       textAlign: TextAlign.center,
                       strutStyle: const StrutStyle(
                         forceStrutHeight: true,

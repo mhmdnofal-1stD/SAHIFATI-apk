@@ -2,6 +2,7 @@ class ChartEvaluationData {
   int evaluationId;
   Map<String, String> name;
   String code;
+  String? color;
   int? characterCount;
   int? verseCount;
   num? percentage;
@@ -10,6 +11,7 @@ class ChartEvaluationData {
       {required this.evaluationId,
       required this.name,
       required this.code,
+      this.color,
       required this.characterCount,
       required this.verseCount,
       required this.percentage});
@@ -26,6 +28,7 @@ class ChartEvaluationData {
         evaluationId: json['evaluationId'],
         name: parsedName!,
         code: json['code'],
+      color: json['color']?.toString(),
         characterCount: json['characterCount'],
         verseCount: json['verseCount'],
         percentage: json['percentage']);
@@ -36,6 +39,7 @@ class ChartEvaluationData {
       'evaluationId': evaluationId,
       'name': name,
       'code': code,
+      'color': color,
       'characterCount': characterCount,
       'verseCount': verseCount,
       'percentage': percentage
@@ -44,6 +48,6 @@ class ChartEvaluationData {
 
   @override
   String toString() {
-    return 'ChartData(id: $evaluationId, name: $name, code: $code, verseCount: $verseCount, characterCount: $characterCount, percentage: $percentage)';
+    return 'ChartData(id: $evaluationId, name: $name, code: $code, color: $color, verseCount: $verseCount, characterCount: $characterCount, percentage: $percentage)';
   }
 }

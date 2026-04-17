@@ -19,6 +19,7 @@ import '../../core/utils/size_config.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
 
@@ -45,7 +46,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final gc = GeneralController();
   OverlayEntry? _menuEntry;
   final List<Ayat> _ayat = [];
-  final Map<int, Color> _selectedColors = {};
   int? _currentHizbQuarter;
   int? _minHizbQuarter;
   int? _maxHizbQuarter;
@@ -55,11 +55,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _isInitialLoad = true;
   bool _hasConnection = true;
   bool _isConnectivityResolved = false;
-
-  Color _onColor(Color bg) {
-    final b = ThemeData.estimateBrightnessForColor(bg);
-    return b == Brightness.dark ? Colors.white : Colors.black87;
-  }
+  bool _showMemorizationColors = true;
+  bool _showComprehensionUnderline = true;
 
   void _removeMenu() {
     _menuEntry?.remove();
@@ -79,96 +76,62 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   void _showOptionsAt(
-      Offset globalPos,
+      Offset _,
       Ayat ayah,
       EvaluationsProvider evaluationsProvider,
-      LanguageProvider languageProvider) {
+      LanguageProvider languageProvider) async {
     _removeMenu();
 
-    final overlayBox =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    final screen = overlayBox.size;
-
-    const double menuWidth = 150;
-    const double vGap = 8;
-
-    double top = globalPos.dy + vGap;
-    final approxMenuHeight =
-        evaluationsProvider.evaluations.length * 44.0 + 12.0;
-    if (top + approxMenuHeight > screen.height - 16) {
-      top = globalPos.dy - approxMenuHeight - vGap;
-    }
-
-    final double right =
-        (screen.width - globalPos.dx).clamp(0.0, screen.width - menuWidth);
-
-    _menuEntry = OverlayEntry(
-      builder: (context) => Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _removeMenu,
-              behavior: HitTestBehavior.translucent,
-              child: const SizedBox(),
-            ),
-          ),
-          Positioned(
-            top: top,
-            right: right,
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: Material(
-                elevation: 6,
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.transparent,
-                child: ConstrainedBox(
-                  constraints:
-                      const BoxConstraints(minWidth: 150, maxWidth: 150),
-                  child: Column(
-                    children: evaluationsProvider.evaluations.map((evaluation) {
-                      final color = gc.getColorFromCategory(evaluation.id!);
-
-                      return InkWell(
-                        onTap: () async {
-                          final savedScrollOffset = _scrollController.offset;
-                          setState(() {
-                            _selectedColors[ayah.id!] = color;
-                          });
-
-                          _removeMenu();
-                          await EvaluationsController().sendEvaluation(
-                              ayah, evaluation, evaluationsProvider, null);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (_scrollController.hasClients) {
-                              _scrollController.jumpTo(savedScrollOffset);
-                            }
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          height: SizeConfig.getProportionalHeight(50),
-                          color: color,
-                          child: Center(
-                            child: Text(
-                              '${evaluation.name[languageProvider.langCode]}',
-                              style: TextStyle(
-                                  color: _onColor(color),
-                                  fontFamily: AppFonts.versesFont),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    final savedScrollOffset = _scrollController.offset;
+    final selection = await showAssessmentInputDialog(
+      context: context,
+      evaluationsProvider: evaluationsProvider,
+      languageProvider: languageProvider,
+      initialMemoId: ayah.userEvaluation?.memoId,
+      initialCompreId: ayah.userEvaluation?.compreId,
+      title: ((Get.locale?.languageCode ?? 'ar') == 'ar')
+          ? 'تقييم الآية ${ayah.ayahNo}'
+          : 'Evaluate Ayah ${ayah.ayahNo}',
     );
 
-    Overlay.of(context).insert(_menuEntry!);
+    if (selection == null || !mounted) {
+      return;
+    }
+
+    await EvaluationsController().sendEvaluationSelection(
+      ayah,
+      evaluationsProvider,
+      null,
+      memoId: selection.memoId,
+      compreId: selection.compreId,
+      memoChanged: selection.memoChanged,
+      compreChanged: selection.compreChanged,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final merged = EvaluationsController().mergeUserEvaluation(
+      existing: ayah.userEvaluation,
+      ayah: ayah,
+      evaluationsProvider: evaluationsProvider,
+      memoId: selection.memoId,
+      compreId: selection.compreId,
+      memoChanged: selection.memoChanged,
+      compreChanged: selection.compreChanged,
+    );
+
+    evaluationsProvider.upsertUserEvaluation(merged);
+    setState(() {
+      ayah.userEvaluation = merged;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(savedScrollOffset);
+      }
+    });
   }
 
   Future<void> _loadAyat(
@@ -250,6 +213,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       await evaluationsProvider.getAllEvaluations();
     }
     await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
+
+    for (final ayah in ayat) {
+      ayah.userEvaluation =
+          evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+    }
 
     setState(() {
       _ayat
@@ -408,6 +376,46 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 20),
+                                child: Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    FilterChip(
+                                      label: Text(
+                                        (Get.locale?.languageCode ?? 'ar') ==
+                                                'ar'
+                                            ? 'إظهار ألوان الحفظ'
+                                            : 'Show memorization colors',
+                                      ),
+                                      selected: _showMemorizationColors,
+                                      onSelected: (value) {
+                                        setState(() {
+                                          _showMemorizationColors = value;
+                                        });
+                                      },
+                                    ),
+                                    FilterChip(
+                                      label: Text(
+                                        (Get.locale?.languageCode ?? 'ar') ==
+                                                'ar'
+                                            ? 'إظهار خط الفهم'
+                                            : 'Show comprehension underline',
+                                      ),
+                                      selected:
+                                          _showComprehensionUnderline,
+                                      onSelected: (value) {
+                                        setState(() {
+                                          _showComprehensionUnderline = value;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
                               ..._buildAyatWidgets(
                                   languageProvider,
                                   evaluationProvider,
@@ -567,19 +575,28 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         Text.rich(
           TextSpan(
             children: group.map((ayah) {
-              final userEvaluation = evaluationProvider.userEvaluations
-                  .firstWhereOrNull((e) => e.ayah!.id == ayah.id);
+              final userEvaluation = ayah.userEvaluation ??
+                evaluationProvider.getUserEvaluationForAyah(ayah.id);
 
               final defaultColor =
                   isDarkMode ? Colors.white : AppColors.blackFontColor;
 
-              Color color = hasConnection
-                  ? _selectedColors[ayah.id!] ??
-                      (userEvaluation?.evaluation != null
-                          ? gc.getColorFromCategory(
-                              userEvaluation!.evaluation!.id!)
-                          : defaultColor)
-                  : defaultColor;
+              final memoEvaluation = userEvaluation?.memoEvaluation ??
+                evaluationProvider.findEvaluationById(userEvaluation?.memoId);
+              final compreEvaluation = userEvaluation?.compreEvaluation ??
+                evaluationProvider.findEvaluationById(
+                  userEvaluation?.compreId);
+
+              final color = _showMemorizationColors
+                ? (memoEvaluation != null
+                  ? EvaluationsController()
+                    .getColorForEvaluationModel(memoEvaluation)
+                  : defaultColor)
+                : defaultColor;
+
+              final showUnderline = _showComprehensionUnderline &&
+                EvaluationsController()
+                  .isPositiveComprehension(compreEvaluation);
 
               return TextSpan(
                 text: '${ayah.text} ',
@@ -588,6 +605,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   height: 2,
                   color: color,
                   fontFamily: AppFonts.versesFont,
+                decoration: showUnderline
+                  ? TextDecoration.underline
+                  : TextDecoration.none,
+                decorationColor: color,
                 ),
                 recognizer: hasConnection
                     ? (TapGestureRecognizer()

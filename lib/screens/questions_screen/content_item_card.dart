@@ -6,7 +6,6 @@ import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/controllers/surahs_controller.dart';
 import 'package:sahifaty/models/ayat.dart';
-import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
@@ -15,6 +14,7 @@ import 'package:sahifaty/models/user_evaluation.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
+import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 
@@ -83,49 +83,157 @@ class _ContentItemCardState extends State<ContentItemCard> {
     return ayahs;
   }
 
+  Color _cardColorForEvaluation(UserEvaluation? userEvaluation) {
+    return EvaluationsController()
+        .getColorForEvaluationModel(userEvaluation?.memoEvaluation);
+  }
+
+  bool _isUnderlined(UserEvaluation? userEvaluation) {
+    return EvaluationsController()
+        .isPositiveComprehension(userEvaluation?.compreEvaluation);
+  }
+
+  Future<AssessmentSelection?> _openAssessmentDialog(
+    BuildContext context,
+    LanguageProvider languageProvider, {
+    UserEvaluation? currentEvaluation,
+    String? title,
+  }) async {
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
+    if (evaluationsProvider.evaluations.isEmpty) {
+      await evaluationsProvider.getAllEvaluations();
+    }
+
+    if (!context.mounted) {
+      return null;
+    }
+
+    return showAssessmentInputDialog(
+      context: context,
+      evaluationsProvider: evaluationsProvider,
+      languageProvider: languageProvider,
+      initialMemoId: currentEvaluation?.memoId,
+      initialCompreId: currentEvaluation?.compreId,
+      title: title,
+    );
+  }
+
+  Future<void> _applySingleAssessment({
+    required BuildContext context,
+    required Ayat ayah,
+    required List<Ayat> visibleAyahs,
+    required EvaluationsProvider evaluationsProvider,
+    required AssessmentSelection selection,
+    StateSetter? setModalState,
+  }) async {
+    if (!selection.hasChanges) {
+      return;
+    }
+
+    await EvaluationsController().sendEvaluationSelection(
+      ayah,
+      evaluationsProvider,
+      null,
+      memoId: selection.memoId,
+      compreId: selection.compreId,
+      memoChanged: selection.memoChanged,
+      compreChanged: selection.compreChanged,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    final merged = EvaluationsController().mergeUserEvaluation(
+      existing: ayah.userEvaluation,
+      ayah: ayah,
+      evaluationsProvider: evaluationsProvider,
+      memoId: selection.memoId,
+      compreId: selection.compreId,
+      memoChanged: selection.memoChanged,
+      compreChanged: selection.compreChanged,
+    );
+
+    if (setModalState != null) {
+      setModalState(() {
+        ayah.userEvaluation = merged;
+      });
+    } else {
+      setState(() {
+        ayah.userEvaluation = merged;
+      });
+    }
+
+    evaluationsProvider.upsertUserEvaluation(merged);
+
+    final refreshedAyahs = await _fetchAyahs(withEvaluations: true);
+    if (!mounted) {
+      return;
+    }
+
+    evaluationsProvider.syncQuestionContentAyahs(
+      widget.content,
+      refreshedAyahs.isNotEmpty ? refreshedAyahs : visibleAyahs,
+    );
+  }
+
+  Future<void> _applyBulkAssessment({
+    required List<Ayat> ayahs,
+    required EvaluationsProvider evaluationsProvider,
+    required AssessmentSelection selection,
+    required String unitLabel,
+  }) async {
+    if (!selection.hasChanges) {
+      return;
+    }
+
+    await EvaluationsController().sendMultipleEvaluationSelection(
+      ayahs,
+      evaluationsProvider,
+      null,
+      unitLabel,
+      memoId: selection.memoId,
+      compreId: selection.compreId,
+      memoChanged: selection.memoChanged,
+      compreChanged: selection.compreChanged,
+    );
+
+    for (final ayah in ayahs) {
+      final merged = EvaluationsController().mergeUserEvaluation(
+        existing: ayah.userEvaluation,
+        ayah: ayah,
+        evaluationsProvider: evaluationsProvider,
+        memoId: selection.memoId,
+        compreId: selection.compreId,
+        memoChanged: selection.memoChanged,
+        compreChanged: selection.compreChanged,
+      );
+      ayah.userEvaluation = merged;
+      evaluationsProvider.upsertUserEvaluation(merged);
+    }
+
+    final refreshedAyahs = await _fetchAyahs(withEvaluations: true);
+    if (!mounted) {
+      return;
+    }
+
+    evaluationsProvider.syncQuestionContentAyahs(
+      widget.content,
+      refreshedAyahs.isNotEmpty ? refreshedAyahs : ayahs,
+    );
+  }
+
   Future<void> _evaluateUnit(
       BuildContext context, LanguageProvider languageProvider) async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
-
-    // Show dialog to select evaluation
-    final selectedEvaluation = await showDialog<Evaluation>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('choose_evaluation'.tr, textAlign: TextAlign.center),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: evaluationsProvider.evaluations.map((evaluation) {
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  color: EvaluationsController()
-                      .getColorForEvaluation(evaluation.id),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: EvaluationsController()
-                        .getColorForEvaluation(evaluation.id),
-                  ),
-                ),
-                child: ListTile(
-                  title: Text(
-                    '${evaluation.name[languageProvider.langCode]}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  onTap: () => Navigator.pop(context, evaluation),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ),
+    final selection = await _openAssessmentDialog(
+      context,
+      languageProvider,
+      title: 'تقييم $unitName',
     );
 
-    if (selectedEvaluation == null) return;
+    if (selection == null) return;
 
     setState(() {
       isEvaluating = true;
@@ -143,19 +251,12 @@ class _ContentItemCardState extends State<ContentItemCard> {
         return;
       }
 
-      await EvaluationsController().sendMultipleEvaluations(
-          ayahs, selectedEvaluation, evaluationsProvider, null, unitName);
-
-      // Immediately update local state for UI feedback
-      for (var ayah in ayahs) {
-        ayah.userEvaluation = UserEvaluation(
-          evaluation: selectedEvaluation,
-          evaluationId: selectedEvaluation.id,
-          ayahId: ayah.id,
-        );
-      }
-
-      evaluationsProvider.syncQuestionContentAyahs(widget.content, ayahs);
+      await _applyBulkAssessment(
+        ayahs: ayahs,
+        evaluationsProvider: evaluationsProvider,
+        selection: selection,
+        unitLabel: unitName,
+      );
     } catch (e) {
       if (!context.mounted) return;
 
@@ -217,15 +318,11 @@ class _ContentItemCardState extends State<ContentItemCard> {
                           itemCount: ayahs.length,
                           itemBuilder: (context, index) {
                             final ayah = ayahs[index];
-                            Color? cardColor;
-                            if (ayah.userEvaluation?.evaluation != null) {
-                              cardColor = EvaluationsController()
-                                  .getColorForEvaluation(
-                                      ayah.userEvaluation!.evaluation!.id);
-                            }
+                            final cardColor =
+                                _cardColorForEvaluation(ayah.userEvaluation);
 
                             return Card(
-                              color: cardColor ?? AppColors.uncategorizedColor,
+                              color: cardColor,
                               margin: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 8),
                               child: Column(
@@ -234,10 +331,16 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                   Text(
                                     ayah.text,
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: AppColors.whiteFontColor,
                                       fontSize: 18,
                                       fontFamily: 'UthmanicHafs',
+                                      decoration: _isUnderlined(
+                                              ayah.userEvaluation)
+                                          ? TextDecoration.underline
+                                          : TextDecoration.none,
+                                      decorationColor:
+                                          AppColors.whiteFontColor,
                                     ),
                                   ),
                                   const SizedBox(height: 10),
@@ -254,88 +357,33 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                       ),
                                       ElevatedButton(
                                         onPressed: () async {
-                                          final selectedEvaluation =
-                                              await showDialog<Evaluation>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: CustomText(
-                                                  text: 'choose_evaluation'.tr,
-                                                  color:
-                                                      AppColors.blackFontColor,
-                                                  withBackground: false,
-                                                  textAlign: TextAlign.center),
-                                              content: SingleChildScrollView(
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: evaluationsProvider
-                                                      .evaluations
-                                                      .map((evaluation) {
-                                                    return Container(
-                                                      margin: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: EvaluationsController()
-                                                            .getColorForEvaluation(
-                                                                evaluation.id),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(8),
-                                                        border: Border.all(
-                                                          color: EvaluationsController()
-                                                              .getColorForEvaluation(
-                                                                  evaluation
-                                                                      .id),
-                                                        ),
-                                                      ),
-                                                      child: ListTile(
-                                                        title: Text(
-                                                          '${evaluation.name[languageProvider.langCode]}',
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          style:
-                                                              const TextStyle(
-                                                            color: Colors.white,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                        onTap: () =>
-                                                            Navigator.pop(
-                                                                context,
-                                                                evaluation),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                                ),
-                                              ),
-                                            ),
+                                          final selection =
+                                              await _openAssessmentDialog(
+                                            context,
+                                            languageProvider,
+                                            currentEvaluation:
+                                                ayah.userEvaluation,
+                                            title:
+                                                'تقييم الآية ${ayah.ayahNo}',
                                           );
 
-                                          if (selectedEvaluation != null) {
-                                            await EvaluationsController()
-                                                .sendEvaluation(
-                                              ayah,
-                                              selectedEvaluation,
-                                              evaluationsProvider,
-                                              null,
-                                            );
-
-                                            setModalState(() {
-                                              ayah.userEvaluation =
-                                                  UserEvaluation(
-                                                evaluation: selectedEvaluation,
-                                                evaluationId:
-                                                    selectedEvaluation.id,
-                                                ayahId: ayah.id,
-                                              );
-                                            });
-
-                                            evaluationsProvider
-                                                .syncQuestionContentAyahs(
-                                                    widget.content, ayahs);
+                                          if (selection == null) {
+                                            return;
                                           }
+
+                                          if (!context.mounted) {
+                                            return;
+                                          }
+
+                                          await _applySingleAssessment(
+                                            context: context,
+                                            ayah: ayah,
+                                            visibleAyahs: ayahs,
+                                            evaluationsProvider:
+                                                evaluationsProvider,
+                                            selection: selection,
+                                            setModalState: setModalState,
+                                          );
                                         },
                                         child: CustomText(
                                           text: 'evaluate'.tr,
@@ -431,70 +479,15 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                         ),
                                         trailing: ElevatedButton(
                                           onPressed: () async {
-                                            // Show evaluation selection dialog
-                                            final selectedEvaluation =
-                                                await showDialog<Evaluation>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                  'اختر التقييم',
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                                content: SingleChildScrollView(
-                                                  child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children:
-                                                        evaluationsProvider
-                                                            .evaluations
-                                                            .map((evaluation) {
-                                                      final color =
-                                                          EvaluationsController()
-                                                              .getColorForEvaluation(
-                                                                  evaluation
-                                                                      .id);
-                                                      return Container(
-                                                        margin: const EdgeInsets
-                                                            .symmetric(
-                                                            vertical: 4),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: color,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
-                                                          border: Border.all(
-                                                              color: color),
-                                                        ),
-                                                        child: ListTile(
-                                                          title: Text(
-                                                            evaluation.name[
-                                                                languageProvider
-                                                                    .langCode]!,
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                            style:
-                                                                const TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                          onTap: () =>
-                                                              Navigator.pop(
-                                                                  context,
-                                                                  evaluation),
-                                                        ),
-                                                      );
-                                                    }).toList(),
-                                                  ),
-                                                ),
-                                              ),
+                                            final selection =
+                                                await _openAssessmentDialog(
+                                              context,
+                                              languageProvider,
+                                              title:
+                                                  'تقييم ${surah.nameAr}',
                                             );
 
-                                            if (selectedEvaluation != null) {
+                                            if (selection != null) {
                                               // Load ayahs for the surah
                                               final ayatController =
                                                   AyatController();
@@ -511,33 +504,29 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                   .toList();
 
                                               if (surahAyahs.isNotEmpty) {
-                                                // Send evaluation
-                                                await EvaluationsController()
-                                                    .sendMultipleEvaluations(
-                                                  surahAyahs,
-                                                  selectedEvaluation,
-                                                  evaluationsProvider,
-                                                  null,
-                                                  "${'surah_label'.tr} ${surah.nameAr}",
+                                                await _applyBulkAssessment(
+                                                  ayahs: surahAyahs,
+                                                  evaluationsProvider:
+                                                      evaluationsProvider,
+                                                  selection: selection,
+                                                  unitLabel:
+                                                      "${'surah_label'.tr} ${surah.nameAr}",
                                                 );
 
                                                 // Update card color in StatefulBuilder
                                                 setModalState(() {
-                                                  surahColors[surah.id] =
-                                                      EvaluationsController()
-                                                          .getColorForEvaluation(
-                                                              selectedEvaluation
-                                                                  .id);
+                                                  if (selection.memoChanged) {
+                                                    surahColors[surah.id] =
+                                                        selection.memoId == null
+                                                            ? AppColors
+                                                                .uncategorizedColor
+                                                            : EvaluationsController()
+                                                                .getColorForEvaluationModel(
+                                                                    selection
+                                                                        .memoEvaluation);
+                                                  }
                                                 });
 
-                                                        final refreshedAyahs =
-                                                          await _fetchAyahs(
-                                                            withEvaluations: true);
-                                                        if (!context.mounted) return;
-                                                        evaluationsProvider
-                                                          .syncQuestionContentAyahs(
-                                                            widget.content,
-                                                            refreshedAyahs);
                                               } else {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -638,12 +627,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                           itemCount: ayahs.length,
                           itemBuilder: (context, index) {
                             final ayah = ayahs[index];
-                            Color? cardColor;
-                            if (ayah.userEvaluation?.evaluation != null) {
-                              cardColor = EvaluationsController()
-                                  .getColorForEvaluation(
-                                      ayah.userEvaluation!.evaluation!.id);
-                            }
+                            final cardColor =
+                                _cardColorForEvaluation(ayah.userEvaluation);
 
                             return Card(
                               color: cardColor,
@@ -658,9 +643,13 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                     Text(
                                       ayah.text,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 18,
                                         fontFamily: 'UthmanicHafs',
+                                        decoration:
+                                            _isUnderlined(ayah.userEvaluation)
+                                                ? TextDecoration.underline
+                                                : TextDecoration.none,
                                       ),
                                     ),
                                     const SizedBox(height: 10),
@@ -671,94 +660,33 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                         Text('آية ${ayah.ayahNo}'),
                                         ElevatedButton(
                                           onPressed: () async {
-                                            final selectedEvaluation =
-                                                await showDialog<Evaluation>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                    'اختر التقييم',
-                                                    textAlign:
-                                                        TextAlign.center),
-                                                content: SingleChildScrollView(
-                                                  child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children:
-                                                        evaluationsProvider
-                                                            .evaluations
-                                                            .map((evaluation) {
-                                                      return Container(
-                                                        margin: const EdgeInsets
-                                                            .symmetric(
-                                                            vertical: 4),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: EvaluationsController()
-                                                              .getColorForEvaluation(
-                                                                  evaluation
-                                                                      .id),
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
-                                                          border: Border.all(
-                                                            color: EvaluationsController()
-                                                                .getColorForEvaluation(
-                                                                    evaluation
-                                                                        .id),
-                                                          ),
-                                                        ),
-                                                        child: ListTile(
-                                                          title: Text(
-                                                            evaluation.name[
-                                                                languageProvider
-                                                                    .langCode]!,
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                            style:
-                                                                const TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                          onTap: () =>
-                                                              Navigator.pop(
-                                                                  context,
-                                                                  evaluation),
-                                                        ),
-                                                      );
-                                                    }).toList(),
-                                                  ),
-                                                ),
-                                              ),
+                                            final selection =
+                                                await _openAssessmentDialog(
+                                              context,
+                                              languageProvider,
+                                              currentEvaluation:
+                                                  ayah.userEvaluation,
+                                              title:
+                                                  'تقييم الآية ${ayah.ayahNo}',
                                             );
 
-                                            if (selectedEvaluation != null) {
-                                              await EvaluationsController()
-                                                  .sendEvaluation(
-                                                ayah,
-                                                selectedEvaluation,
-                                                evaluationsProvider,
-                                                null,
-                                              );
-
-                                              setModalState(() {
-                                                ayah.userEvaluation =
-                                                    UserEvaluation(
-                                                  evaluation:
-                                                      selectedEvaluation,
-                                                  evaluationId:
-                                                      selectedEvaluation.id,
-                                                  ayahId: ayah.id,
-                                                );
-                                              });
-
-                                              evaluationsProvider
-                                                  .syncQuestionContentAyahs(
-                                                      widget.content, ayahs);
+                                            if (selection == null) {
+                                              return;
                                             }
+
+                                            if (!context.mounted) {
+                                              return;
+                                            }
+
+                                            await _applySingleAssessment(
+                                              context: context,
+                                              ayah: ayah,
+                                              visibleAyahs: ayahs,
+                                              evaluationsProvider:
+                                                  evaluationsProvider,
+                                              selection: selection,
+                                              setModalState: setModalState,
+                                            );
                                           },
                                           child: const Text('تقييم'),
                                         ),
