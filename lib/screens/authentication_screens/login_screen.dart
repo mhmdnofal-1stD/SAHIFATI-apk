@@ -21,6 +21,37 @@ import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
 import 'widgets/custom_auth_textfield_header.dart';
 
+typedef LoginRouteReplacer = void Function(Widget page);
+typedef LoginDestinationBuilder = Widget Function();
+
+Widget _buildDefaultWelcomeScreen() => const WelcomeScreen();
+
+Widget _buildDefaultSahifaScreen() => const SahifaScreen(firstScreen: false);
+
+void _replaceLoginRoute(Widget page) {
+  Get.offAll(() => page);
+}
+
+@visibleForTesting
+Future<void> navigateAfterSuccessfulLogin({
+  required int userId,
+  required bool isFirstLogin,
+  required Future<void> Function(int userId) loadChartData,
+  LoginRouteReplacer? replaceRoute,
+  LoginDestinationBuilder? buildWelcomeScreen,
+  LoginDestinationBuilder? buildSahifaScreen,
+}) async {
+  final replace = replaceRoute ?? _replaceLoginRoute;
+
+  if (!isFirstLogin) {
+    await loadChartData(userId);
+    replace((buildSahifaScreen ?? _buildDefaultSahifaScreen)());
+    return;
+  }
+
+  replace((buildWelcomeScreen ?? _buildDefaultWelcomeScreen)());
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.firstScreen});
 
@@ -103,6 +134,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   CustomAuthenticationTextField(
                                     hintText: 'email_hint'.tr,
                                     obscureText: false,
+                                    semanticLabel: 'email_label'.tr,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [
+                                      AutofillHints.username,
+                                      AutofillHints.email,
+                                    ],
                                     textEditingController:
                                         _userController.loginEmailController,
                                     borderColor: _userController
@@ -114,6 +152,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                   CustomAuthenticationTextField(
                                     hintText: 'password_hint'.tr,
                                     obscureText: true,
+                                    semanticLabel: 'password_label'.tr,
+                                    keyboardType: TextInputType.visiblePassword,
+                                    textInputAction: TextInputAction.done,
+                                    autofillHints: const [
+                                      AutofillHints.password,
+                                    ],
                                     textEditingController:
                                         _userController.loginPasswordController,
                                     borderColor: _userController
@@ -274,16 +318,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                           );
                                         }
 
-                                        if (!usersProvider.isFirstLogin) {
-                                          await evaluationsProvider
-                                              .getQuranChartData(usersProvider
-                                                  .selectedUser!.id);
-                                          Get.to(() => const SahifaScreen(
-                                                firstScreen: false,
-                                              ));
-                                        } else {
-                                          Get.to(() => const WelcomeScreen());
-                                        }
+                                        FocusManager.instance.primaryFocus
+                                            ?.unfocus();
+                                        _userController
+                                            .loginPasswordController.clear();
+
+                                        await navigateAfterSuccessfulLogin(
+                                          userId:
+                                              usersProvider.selectedUser!.id,
+                                          isFirstLogin:
+                                              usersProvider.isFirstLogin,
+                                          loadChartData: (userId) =>
+                                              evaluationsProvider
+                                                  .getQuranChartData(userId),
+                                        );
                                       } catch (e) {
                                         String message;
                                         if (e
