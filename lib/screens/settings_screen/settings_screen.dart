@@ -77,7 +77,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(25.0),
           child: Column(
               children: [
@@ -244,6 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
           ),
         ),
+      ),
       ),
     );
   }

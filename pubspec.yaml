@@ -52,12 +52,9 @@ flutter:
     - assets/json/intl_en.json
 
   fonts:
-    - family: Roboto
-      fonts:
-        - asset: assets/fonts/Roboto-Bold.ttf
     - family: Amiri
       fonts:
-        - asset: assets/fonts/Amiri.ttf
+        - asset: fonts/Amiri.ttf
     - family: KFGQPC
       fonts:
-        - asset: assets/fonts/KFGQPCDotFont.otf
+        - asset: fonts/KFGQPCDotFont.otf
