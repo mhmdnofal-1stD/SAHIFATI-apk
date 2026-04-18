@@ -9,8 +9,10 @@ import 'package:sahifaty/controllers/ayat_controller.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/models/ayat.dart';
+import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/services/teacher_recommendations_service.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
@@ -22,6 +24,7 @@ import '../widgets/global_drawer.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
+import '../widgets/teacher_recommendation_badge.dart';
 
 class IndexPage extends StatefulWidget {
   const IndexPage(
@@ -57,6 +60,73 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _isConnectivityResolved = false;
   bool _showMemorizationColors = true;
   bool _showComprehensionUnderline = true;
+  final TeacherRecommendationsService _teacherRecommendationsService =
+      TeacherRecommendationsService();
+
+  Future<void> _loadReadingDisplayPreferences(
+      UsersProvider usersProvider) async {
+    await usersProvider.ensureReadingDisplayPreferencesLoaded();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _showMemorizationColors = usersProvider.showMemorizationColors;
+      _showComprehensionUnderline =
+          usersProvider.showComprehensionUnderline;
+    });
+  }
+
+  Future<void> _updateReadingDisplayPreferences({
+    bool? showMemorizationColors,
+    bool? showComprehensionUnderline,
+  }) async {
+    final usersProvider = context.read<UsersProvider>();
+
+    setState(() {
+      _showMemorizationColors =
+          showMemorizationColors ?? _showMemorizationColors;
+      _showComprehensionUnderline =
+          showComprehensionUnderline ?? _showComprehensionUnderline;
+    });
+
+    try {
+      await usersProvider.updateReadingDisplayPreferences(
+        showMemorizationColors: showMemorizationColors,
+        showComprehensionUnderline: showComprehensionUnderline,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _showMemorizationColors = usersProvider.showMemorizationColors;
+        _showComprehensionUnderline =
+            usersProvider.showComprehensionUnderline;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _showMemorizationColors = usersProvider.showMemorizationColors;
+        _showComprehensionUnderline =
+            usersProvider.showComprehensionUnderline;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (Get.locale?.languageCode ?? 'ar') == 'ar'
+                ? 'تعذر حفظ تفضيلات العرض حالياً.'
+                : 'Unable to save reading display preferences right now.',
+          ),
+        ),
+      );
+    }
+  }
 
   void _removeMenu() {
     _menuEntry?.remove();
@@ -219,11 +289,99 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           evaluationsProvider.getUserEvaluationForAyah(ayah.id);
     }
 
+    await _loadTeacherRecommendations(userId, ayat);
+
     setState(() {
       _ayat
         ..clear()
         ..addAll(ayat);
     });
+  }
+
+  Future<void> _loadTeacherRecommendations(int userId, List<Ayat> ayat) async {
+    final ayahIds =
+        ayat.where((item) => item.id != null).map((item) => item.id!).toList();
+    if (ayahIds.isEmpty) {
+      return;
+    }
+
+    try {
+      final recommendations =
+          await _teacherRecommendationsService.getStudentRecommendations(
+        userId,
+        ayahIds: ayahIds,
+      );
+      _applyTeacherRecommendations(ayat, recommendations);
+    } catch (_) {
+      for (final item in ayat) {
+        item.teacherRecommendations = [];
+      }
+    }
+  }
+
+  void _applyTeacherRecommendations(
+    List<Ayat> ayat,
+    List<TeacherRecommendation> recommendations,
+  ) {
+    final recommendationsByAyah = <int, List<TeacherRecommendation>>{};
+    for (final recommendation in recommendations) {
+      recommendationsByAyah
+          .putIfAbsent(recommendation.ayahId, () => <TeacherRecommendation>[])
+          .add(recommendation);
+    }
+
+    for (final item in ayat) {
+      item.teacherRecommendations =
+          recommendationsByAyah[item.id] ?? <TeacherRecommendation>[];
+    }
+  }
+
+  Future<bool> _deleteRecommendation(
+    Ayat ayah,
+    TeacherRecommendation recommendation,
+  ) async {
+    try {
+      final response = await _teacherRecommendationsService
+          .deleteRecommendation(recommendation.id);
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        return false;
+      }
+
+      if (!mounted) {
+        return true;
+      }
+
+      setState(() {
+        ayah.teacherRecommendations.removeWhere(
+          (item) => item.id == recommendation.id,
+        );
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (Get.locale?.languageCode ?? 'ar') == 'ar'
+                ? 'تم حذف التوصية.'
+                : 'Recommendation deleted.',
+          ),
+        ),
+      );
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? 'تعذر حذف التوصية حالياً.'
+                  : 'Unable to delete the recommendation right now.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
   }
 
   @override
@@ -257,10 +415,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WakelockPlus.enable();
-      int userId = context.read<UsersProvider>().selectedUser!.id;
+      final usersProvider = context.read<UsersProvider>();
       EvaluationsProvider evaluationsProvider =
           context.read<EvaluationsProvider>();
-      _loadAyat(userId, evaluationsProvider);
+
+      () async {
+        await _loadReadingDisplayPreferences(usersProvider);
+        if (!mounted || usersProvider.selectedUser == null) {
+          return;
+        }
+
+        await _loadAyat(usersProvider.selectedUser!.id, evaluationsProvider);
+      }();
     });
   }
 
@@ -290,217 +456,201 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
 
         return Theme(
-                data: isDarkMode
-                    ? ThemeData(
-                        scaffoldBackgroundColor: const Color(0xFF121212),
-                        brightness: Brightness.dark,
-                        textTheme: const TextTheme(
-                          bodyLarge: TextStyle(color: Colors.white),
-                        ),
-                        colorScheme: const ColorScheme.dark(
-                          surface: Color(0xFF1E1E1E),
-                          primary: Color(0xFF121212),
-                          secondary: AppColors.buttonColor,
-                        ),
-                        appBarTheme: const AppBarTheme(
-                          backgroundColor: Color(0xFF121212),
-                          foregroundColor: Colors.white,
-                        ),
-                      )
-                    : ThemeData(
-                        scaffoldBackgroundColor: AppColors.backgroundColor,
-                        brightness: Brightness.light,
-                        textTheme: const TextTheme(
-                          bodyLarge: TextStyle(color: AppColors.blackFontColor),
-                        ),
-                        colorScheme: const ColorScheme.light(
-                          surface: AppColors.backgroundColor,
-                          primary: AppColors.backgroundColor,
-                          secondary: AppColors.buttonColor,
-                        ),
-                        appBarTheme: const AppBarTheme(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: Colors.black,
+          data: isDarkMode
+              ? ThemeData(
+                  scaffoldBackgroundColor: const Color(0xFF121212),
+                  brightness: Brightness.dark,
+                  textTheme: const TextTheme(
+                    bodyLarge: TextStyle(color: Colors.white),
+                  ),
+                  colorScheme: const ColorScheme.dark(
+                    surface: Color(0xFF1E1E1E),
+                    primary: Color(0xFF121212),
+                    secondary: AppColors.buttonColor,
+                  ),
+                  appBarTheme: const AppBarTheme(
+                    backgroundColor: Color(0xFF121212),
+                    foregroundColor: Colors.white,
+                  ),
+                )
+              : ThemeData(
+                  scaffoldBackgroundColor: AppColors.backgroundColor,
+                  brightness: Brightness.light,
+                  textTheme: const TextTheme(
+                    bodyLarge: TextStyle(color: AppColors.blackFontColor),
+                  ),
+                  colorScheme: const ColorScheme.light(
+                    surface: AppColors.backgroundColor,
+                    primary: AppColors.backgroundColor,
+                    secondary: AppColors.buttonColor,
+                  ),
+                  appBarTheme: const AppBarTheme(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.black,
+                  ),
+                ),
+          child: NoPopScope(
+            child: Scaffold(
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(kToolbarHeight),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: AppBar(
+                    leading: CustomBackButton(
+                      onPressed: () => Get.off(const MainScreen()),
+                    ),
+                    actions: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                              Scaffold.of(context).openDrawer();
+                            } else {
+                              Scaffold.of(context).openEndDrawer();
+                            }
+                          },
                         ),
                       ),
-                child: NoPopScope(
-                  child: Scaffold(
-                    appBar: PreferredSize(
-                      preferredSize: const Size.fromHeight(kToolbarHeight),
-                      child: Directionality(
-                        textDirection: TextDirection.ltr,
-                        child: AppBar(
-                          leading: CustomBackButton(
-                            onPressed: () => Get.off(const MainScreen()),
-                          ),
-                          actions: [
-                            Builder(
-                              builder: (context) => IconButton(
-                                icon: const Icon(Icons.menu),
-                                onPressed: () {
-                                  if ((Get.locale?.languageCode ?? 'ar') ==
-                                      'ar') {
-                                    Scaffold.of(context).openDrawer();
-                                  } else {
-                                    Scaffold.of(context).openEndDrawer();
-                                  }
+                    ],
+                  ),
+                ),
+              ),
+              drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? const GlobalDrawer()
+                  : null,
+              endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? null
+                  : const GlobalDrawer(),
+              body: Container(
+                margin: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: AppColors.blackFontColor,
+                    width: 8.0,
+                  ),
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: SizeConfig.getProportionalHeight(5),
+                    horizontal: SizeConfig.getProportionalWidth(10),
+                  ),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              FilterChip(
+                                label: Text(
+                                  (Get.locale?.languageCode ?? 'ar') == 'ar'
+                                      ? 'إظهار ألوان الحفظ'
+                                      : 'Show memorization colors',
+                                ),
+                                selected: _showMemorizationColors,
+                                onSelected: (value) async {
+                                  await _updateReadingDisplayPreferences(
+                                    showMemorizationColors: value,
+                                  );
                                 },
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                        ? const GlobalDrawer()
-                        : null,
-                    endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                        ? null
-                        : const GlobalDrawer(),
-                    body: Container(
-                      margin: const EdgeInsets.all(8.0),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: AppColors.blackFontColor,
-                          width: 8.0,
-                        ),
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: SizeConfig.getProportionalHeight(5),
-                          horizontal: SizeConfig.getProportionalWidth(10),
-                        ),
-                        child: SingleChildScrollView(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 20),
-                                child: Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    FilterChip(
-                                      label: Text(
-                                        (Get.locale?.languageCode ?? 'ar') ==
-                                                'ar'
-                                            ? 'إظهار ألوان الحفظ'
-                                            : 'Show memorization colors',
-                                      ),
-                                      selected: _showMemorizationColors,
-                                      onSelected: (value) {
-                                        setState(() {
-                                          _showMemorizationColors = value;
-                                        });
-                                      },
-                                    ),
-                                    FilterChip(
-                                      label: Text(
-                                        (Get.locale?.languageCode ?? 'ar') ==
-                                                'ar'
-                                            ? 'إظهار خط الفهم'
-                                            : 'Show comprehension underline',
-                                      ),
-                                      selected:
-                                          _showComprehensionUnderline,
-                                      onSelected: (value) {
-                                        setState(() {
-                                          _showComprehensionUnderline = value;
-                                        });
-                                      },
-                                    ),
-                                  ],
+                              FilterChip(
+                                label: Text(
+                                  (Get.locale?.languageCode ?? 'ar') == 'ar'
+                                      ? 'إظهار خط الفهم'
+                                      : 'Show comprehension underline',
                                 ),
+                                selected: _showComprehensionUnderline,
+                                onSelected: (value) async {
+                                  await _updateReadingDisplayPreferences(
+                                    showComprehensionUnderline: value,
+                                  );
+                                },
                               ),
-                              ..._buildAyatWidgets(
-                                  languageProvider,
-                                  evaluationProvider,
-                                  _hasConnection,
-                                  isDarkMode),
-
-                              // ORIGINAL PAGINATION BUTTONS (UNCHANGED)
-                              if (_currentHizbQuarter != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      top: 20, bottom: 20),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      if (_currentHizbQuarter! >
-                                          (_initialHizbQuarter ??
-                                              _minHizbQuarter!))
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppColors.primaryPurple,
-                                            foregroundColor: Colors.white,
-                                            shape: const CircleBorder(),
-                                            padding: const EdgeInsets.all(12),
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _currentHizbQuarter =
-                                                  _currentHizbQuarter! - 1;
-                                            });
-                                            final userId = context
-                                                .read<UsersProvider>()
-                                                .selectedUser!
-                                                .id;
-                                            final evalProvider = context
-                                                .read<EvaluationsProvider>();
-                                            _loadAyat(userId, evalProvider);
-                                          },
-                                          child: const Icon(
-                                              Icons.arrow_back_ios_new,
-                                              size: 20),
-                                        )
-                                      else
-                                        const SizedBox(width: 48),
-                                      if (_currentHizbQuarter! <
-                                          _maxHizbQuarter!)
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppColors.primaryPurple,
-                                            foregroundColor: Colors.white,
-                                            shape: const CircleBorder(),
-                                            padding: const EdgeInsets.all(12),
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _currentHizbQuarter =
-                                                  _currentHizbQuarter! + 1;
-                                            });
-                                            final userId = context
-                                                .read<UsersProvider>()
-                                                .selectedUser!
-                                                .id;
-                                            final evalProvider = context
-                                                .read<EvaluationsProvider>();
-                                            _loadAyat(userId, evalProvider);
-                                          },
-                                          child: const Icon(
-                                              Icons.arrow_forward_ios,
-                                              size: 20),
-                                        )
-                                      else
-                                        const SizedBox(width: 48),
-                                    ],
-                                  ),
-                                )
                             ],
                           ),
                         ),
-                      ),
+                        ..._buildAyatWidgets(languageProvider,
+                            evaluationProvider, _hasConnection, isDarkMode),
+
+                        // ORIGINAL PAGINATION BUTTONS (UNCHANGED)
+                        if (_currentHizbQuarter != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 20, bottom: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (_currentHizbQuarter! >
+                                    (_initialHizbQuarter ?? _minHizbQuarter!))
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryPurple,
+                                      foregroundColor: Colors.white,
+                                      shape: const CircleBorder(),
+                                      padding: const EdgeInsets.all(12),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _currentHizbQuarter =
+                                            _currentHizbQuarter! - 1;
+                                      });
+                                      final userId = context
+                                          .read<UsersProvider>()
+                                          .selectedUser!
+                                          .id;
+                                      final evalProvider =
+                                          context.read<EvaluationsProvider>();
+                                      _loadAyat(userId, evalProvider);
+                                    },
+                                    child: const Icon(Icons.arrow_back_ios_new,
+                                        size: 20),
+                                  )
+                                else
+                                  const SizedBox(width: 48),
+                                if (_currentHizbQuarter! < _maxHizbQuarter!)
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryPurple,
+                                      foregroundColor: Colors.white,
+                                      shape: const CircleBorder(),
+                                      padding: const EdgeInsets.all(12),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _currentHizbQuarter =
+                                            _currentHizbQuarter! + 1;
+                                      });
+                                      final userId = context
+                                          .read<UsersProvider>()
+                                          .selectedUser!
+                                          .id;
+                                      final evalProvider =
+                                          context.read<EvaluationsProvider>();
+                                      _loadAyat(userId, evalProvider);
+                                    },
+                                    child: const Icon(Icons.arrow_forward_ios,
+                                        size: 20),
+                                  )
+                                else
+                                  const SizedBox(width: 48),
+                              ],
+                            ),
+                          )
+                      ],
                     ),
                   ),
                 ),
-              );
+              ),
+            ),
+          ),
+        );
       },
     );
   }
@@ -576,27 +726,27 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           TextSpan(
             children: group.map((ayah) {
               final userEvaluation = ayah.userEvaluation ??
-                evaluationProvider.getUserEvaluationForAyah(ayah.id);
+                  evaluationProvider.getUserEvaluationForAyah(ayah.id);
 
               final defaultColor =
                   isDarkMode ? Colors.white : AppColors.blackFontColor;
 
               final memoEvaluation = userEvaluation?.memoEvaluation ??
-                evaluationProvider.findEvaluationById(userEvaluation?.memoId);
+                  evaluationProvider.findEvaluationById(userEvaluation?.memoId);
               final compreEvaluation = userEvaluation?.compreEvaluation ??
-                evaluationProvider.findEvaluationById(
-                  userEvaluation?.compreId);
+                  evaluationProvider
+                      .findEvaluationById(userEvaluation?.compreId);
 
               final color = _showMemorizationColors
-                ? (memoEvaluation != null
-                  ? EvaluationsController()
-                    .getColorForEvaluationModel(memoEvaluation)
-                  : defaultColor)
-                : defaultColor;
+                  ? (memoEvaluation != null
+                      ? EvaluationsController()
+                          .getColorForEvaluationModel(memoEvaluation)
+                      : defaultColor)
+                  : defaultColor;
 
               final showUnderline = _showComprehensionUnderline &&
-                EvaluationsController()
-                  .isPositiveComprehension(compreEvaluation);
+                  EvaluationsController()
+                      .isPositiveComprehension(compreEvaluation);
 
               return TextSpan(
                 text: '${ayah.text} ',
@@ -605,10 +755,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   height: 2,
                   color: color,
                   fontFamily: AppFonts.versesFont,
-                decoration: showUnderline
-                  ? TextDecoration.underline
-                  : TextDecoration.none,
-                decorationColor: color,
+                  decoration: showUnderline
+                      ? TextDecoration.underline
+                      : TextDecoration.none,
+                  decorationColor: color,
                 ),
                 recognizer: hasConnection
                     ? (TapGestureRecognizer()
@@ -626,6 +776,23 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                       height: 2,
                       color: color,
                       fontFamily: AppFonts.versesFont,
+                    ),
+                  ),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: 4,
+                        end: 6,
+                      ),
+                      child: TeacherRecommendationBadge(
+                        recommendations: ayah.teacherRecommendations,
+                        compact: true,
+                        onDelete: (recommendation) => _deleteRecommendation(
+                          ayah,
+                          recommendation,
+                        ),
+                      ),
                     ),
                   ),
                 ],

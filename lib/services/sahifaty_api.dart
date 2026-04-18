@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:async';
+import '../core/constants/api.dart';
 import 'app_exception.dart';
 import 'secure_session_storage.dart';
 
 class SahifatyApi {
-  final String _baseURL = 'https://sahifati.org/';
+  final String _baseURL = '${ApiConfig.baseUrl}/';
   final Duration _timeout = const Duration(seconds: 30);
 
   // Get headers with token
@@ -59,7 +59,7 @@ class SahifatyApi {
       }
 
       return response;
-    } on SocketException {
+    } on http.ClientException {
       throw FetchDataException('No Internet connection');
     } catch (e) {
       rethrow;
@@ -75,7 +75,7 @@ class SahifatyApi {
           .get(uri, headers: await _getHeaders(auth: false))
           .timeout(_timeout);
       return processedResponse(response);
-    } on SocketException {
+    } on http.ClientException {
       throw FetchDataException('No Internet connection');
     } catch (e) {
       rethrow;

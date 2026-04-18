@@ -7,16 +7,19 @@ import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/controllers/surahs_controller.dart';
 import 'package:sahifaty/models/ayat.dart';
 import 'package:sahifaty/models/surah.dart';
+import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
+import 'package:sahifaty/services/teacher_recommendations_service.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
+import '../widgets/teacher_recommendation_badge.dart';
 
 class ContentItemCard extends StatefulWidget {
   final SchoolLevelContent content;
@@ -39,6 +42,8 @@ class ContentItemCard extends StatefulWidget {
 class _ContentItemCardState extends State<ContentItemCard> {
   bool isEvaluating = false;
   String unitName = "الوحدة";
+  final TeacherRecommendationsService _teacherRecommendationsService =
+      TeacherRecommendationsService();
 
   @override
   void initState() {
@@ -61,22 +66,24 @@ class _ContentItemCardState extends State<ContentItemCard> {
       final usersProvider = context.read<UsersProvider>();
 
       if (usersProvider.selectedUser != null) {
+        final userId = usersProvider.selectedUser!.id;
+        final ayatIds =
+            ayahs.where((ayah) => ayah.id != null).map((e) => e.id!).toList();
         final needsEvaluations =
             ayahs.any((ayah) => ayah.userEvaluation == null && ayah.id != null);
         if (needsEvaluations) {
-          final userId = usersProvider.selectedUser!.id;
-          final ayatIds = ayahs.where((ayah) => ayah.id != null).map((e) => e.id!).toList();
-
           await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
 
           for (var ayah in ayahs) {
-            final userEval = evaluationsProvider.userEvaluations.firstWhereOrNull(
-                (e) => e.ayah?.id == ayah.id || e.ayahId == ayah.id);
+            final userEval = evaluationsProvider.userEvaluations
+                .firstWhereOrNull(
+                    (e) => e.ayah?.id == ayah.id || e.ayahId == ayah.id);
             ayah.userEvaluation = userEval;
           }
-
-          evaluationsProvider.syncQuestionContentAyahs(widget.content, ayahs);
         }
+
+        await _loadTeacherRecommendations(userId, ayahs);
+        evaluationsProvider.syncQuestionContentAyahs(widget.content, ayahs);
       }
     }
 
@@ -91,6 +98,100 @@ class _ContentItemCardState extends State<ContentItemCard> {
   bool _isUnderlined(UserEvaluation? userEvaluation) {
     return EvaluationsController()
         .isPositiveComprehension(userEvaluation?.compreEvaluation);
+  }
+
+  Future<void> _loadTeacherRecommendations(int userId, List<Ayat> ayahs) async {
+    final ayahIds =
+        ayahs.where((ayah) => ayah.id != null).map((ayah) => ayah.id!).toList();
+    if (ayahIds.isEmpty) {
+      return;
+    }
+
+    try {
+      final recommendations =
+          await _teacherRecommendationsService.getStudentRecommendations(
+        userId,
+        ayahIds: ayahIds,
+      );
+      _applyTeacherRecommendations(ayahs, recommendations);
+    } catch (_) {
+      for (final ayah in ayahs) {
+        ayah.teacherRecommendations = [];
+      }
+    }
+  }
+
+  void _applyTeacherRecommendations(
+    List<Ayat> ayahs,
+    List<TeacherRecommendation> recommendations,
+  ) {
+    final grouped = <int, List<TeacherRecommendation>>{};
+    for (final recommendation in recommendations) {
+      grouped
+          .putIfAbsent(recommendation.ayahId, () => <TeacherRecommendation>[])
+          .add(recommendation);
+    }
+
+    for (final ayah in ayahs) {
+      ayah.teacherRecommendations =
+          grouped[ayah.id] ?? <TeacherRecommendation>[];
+    }
+  }
+
+  Future<bool> _deleteRecommendation(
+    Ayat ayah,
+    TeacherRecommendation recommendation,
+  ) async {
+    try {
+      final response = await _teacherRecommendationsService
+          .deleteRecommendation(recommendation.id);
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        return false;
+      }
+
+      if (!mounted) {
+        return true;
+      }
+
+      setState(() {
+        ayah.teacherRecommendations.removeWhere(
+          (item) => item.id == recommendation.id,
+        );
+      });
+      context
+          .read<EvaluationsProvider>()
+          .syncQuestionContentAyahs(widget.content, _fetchCachedAyahs());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            (Get.locale?.languageCode ?? 'ar') == 'ar'
+                ? 'تم حذف التوصية.'
+                : 'Recommendation deleted.',
+          ),
+        ),
+      );
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? 'تعذر حذف التوصية حالياً.'
+                  : 'Unable to delete the recommendation right now.',
+            ),
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+  List<Ayat> _fetchCachedAyahs() {
+    return context.read<EvaluationsProvider>().getQuestionContentAyahs(
+          widget.content,
+        );
   }
 
   Future<AssessmentSelection?> _openAssessmentDialog(
@@ -335,12 +436,11 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                       color: AppColors.whiteFontColor,
                                       fontSize: 18,
                                       fontFamily: 'UthmanicHafs',
-                                      decoration: _isUnderlined(
-                                              ayah.userEvaluation)
-                                          ? TextDecoration.underline
-                                          : TextDecoration.none,
-                                      decorationColor:
-                                          AppColors.whiteFontColor,
+                                      decoration:
+                                          _isUnderlined(ayah.userEvaluation)
+                                              ? TextDecoration.underline
+                                              : TextDecoration.none,
+                                      decorationColor: AppColors.whiteFontColor,
                                     ),
                                   ),
                                   const SizedBox(height: 10),
@@ -348,12 +448,30 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
                                     children: [
-                                      CustomText(
-                                        text:
-                                            '${'ayah_label'.tr} ${ayah.ayahNo}',
-                                        withBackground: false,
-                                        fontSize: 18,
-                                        color: AppColors.whiteFontColor,
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          TeacherRecommendationBadge(
+                                            recommendations:
+                                                ayah.teacherRecommendations,
+                                            compact: true,
+                                            onDelete: (recommendation) =>
+                                                _deleteRecommendation(
+                                              ayah,
+                                              recommendation,
+                                            ),
+                                          ),
+                                          if (ayah.teacherRecommendations
+                                              .isNotEmpty)
+                                            const SizedBox(width: 8),
+                                          CustomText(
+                                            text:
+                                                '${'ayah_label'.tr} ${ayah.ayahNo}',
+                                            withBackground: false,
+                                            fontSize: 18,
+                                            color: AppColors.whiteFontColor,
+                                          ),
+                                        ],
                                       ),
                                       ElevatedButton(
                                         onPressed: () async {
@@ -363,8 +481,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                             languageProvider,
                                             currentEvaluation:
                                                 ayah.userEvaluation,
-                                            title:
-                                                'تقييم الآية ${ayah.ayahNo}',
+                                            title: 'تقييم الآية ${ayah.ayahNo}',
                                           );
 
                                           if (selection == null) {
@@ -483,8 +600,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 await _openAssessmentDialog(
                                               context,
                                               languageProvider,
-                                              title:
-                                                  'تقييم ${surah.nameAr}',
+                                              title: 'تقييم ${surah.nameAr}',
                                             );
 
                                             if (selection != null) {
@@ -516,17 +632,18 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 // Update card color in StatefulBuilder
                                                 setModalState(() {
                                                   if (selection.memoChanged) {
-                                                    surahColors[surah.id] =
-                                                        selection.memoId == null
-                                                            ? AppColors
-                                                                .uncategorizedColor
-                                                            : EvaluationsController()
-                                                                .getColorForEvaluationModel(
-                                                                    selection
-                                                                        .memoEvaluation);
+                                                    surahColors[
+                                                        surah.id] = selection
+                                                                .memoId ==
+                                                            null
+                                                        ? AppColors
+                                                            .uncategorizedColor
+                                                        : EvaluationsController()
+                                                            .getColorForEvaluationModel(
+                                                                selection
+                                                                    .memoEvaluation);
                                                   }
                                                 });
-
                                               } else {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -583,6 +700,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
           final userId = usersProvider.selectedUser!.id;
           final ayatIds = ayahs.map((e) => e.id!).toList();
           await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
+          await _loadTeacherRecommendations(userId, ayahs);
           for (var ayah in ayahs) {
             final userEval = evaluationsProvider.userEvaluations
                 .firstWhereOrNull(
@@ -657,7 +775,25 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text('آية ${ayah.ayahNo}'),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            TeacherRecommendationBadge(
+                                              recommendations:
+                                                  ayah.teacherRecommendations,
+                                              compact: true,
+                                              onDelete: (recommendation) =>
+                                                  _deleteRecommendation(
+                                                ayah,
+                                                recommendation,
+                                              ),
+                                            ),
+                                            if (ayah.teacherRecommendations
+                                                .isNotEmpty)
+                                              const SizedBox(width: 8),
+                                            Text('آية ${ayah.ayahNo}'),
+                                          ],
+                                        ),
                                         ElevatedButton(
                                           onPressed: () async {
                                             final selection =
@@ -717,19 +853,19 @@ class _ContentItemCardState extends State<ContentItemCard> {
   Widget build(BuildContext context) {
     final languageProvider = context.read<LanguageProvider>();
     final completionIcon = widget.isLoadingStatus
-      ? const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      : Icon(
-        widget.isCompleted == true
-          ? Icons.check_circle_rounded
-          : Icons.pending_outlined,
-        color: widget.isCompleted == true
-          ? Colors.green
-          : AppColors.primaryPurple,
-        );
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(
+            widget.isCompleted == true
+                ? Icons.check_circle_rounded
+                : Icons.pending_outlined,
+            color: widget.isCompleted == true
+                ? Colors.green
+                : AppColors.primaryPurple,
+          );
 
     return GestureDetector(
         onTap: () {

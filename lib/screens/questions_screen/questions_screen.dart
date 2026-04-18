@@ -114,7 +114,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
         right: false,
         bottom: true,
         child: ResponsiveContentShell(
-          child: Padding(
+          builder: (context) => Padding(
             padding: EdgeInsets.symmetric(
               vertical: SizeConfig.getProportionalHeight(0),
               horizontal: SizeConfig.getProportionalWidth(16),

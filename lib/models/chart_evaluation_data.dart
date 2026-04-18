@@ -21,14 +21,15 @@ class ChartEvaluationData {
     if (json['name'] != null) {
       parsedName = Map<String, String>.from(json['name']);
     } else if (json['nameAr'] != null) {
-      parsedName = {'ar': json['nameAr'], 'en': json['nameAr']};
+      final localizedName = json['nameAr'].toString();
+      parsedName = {'ar': localizedName, 'en': localizedName};
     }
 
     return ChartEvaluationData(
         evaluationId: json['evaluationId'],
-        name: parsedName!,
-        code: json['code'],
-      color: json['color']?.toString(),
+        name: parsedName ?? const {'ar': '', 'en': ''},
+        code: json['code']?.toString() ?? '',
+        color: json['color']?.toString(),
         characterCount: json['characterCount'],
         verseCount: json['verseCount'],
         percentage: json['percentage']);

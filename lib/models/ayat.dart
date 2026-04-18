@@ -1,5 +1,6 @@
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/surah.dart';
+import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 
 class Ayat {
@@ -17,6 +18,7 @@ class Ayat {
   List<int>? subjects;
   Surah surah;
   UserEvaluation? userEvaluation;
+  List<TeacherRecommendation> teacherRecommendations;
 
   Ayat({
     int? id,
@@ -33,7 +35,9 @@ class Ayat {
     this.subjects,
     required this.surah,
     this.userEvaluation,
-  }) : _id = id;
+    List<TeacherRecommendation>? teacherRecommendations,
+  })  : teacherRecommendations = teacherRecommendations ?? const [],
+        _id = id;
 
   int? get id => _id;
 
@@ -60,6 +64,11 @@ class Ayat {
       userEvaluation: json['userEvaluation'] == null
           ? null
           : UserEvaluation.fromJson(json['userEvaluation']),
+      teacherRecommendations: json['teacherRecommendations'] != null
+          ? (json['teacherRecommendations'] as List)
+              .map((e) => TeacherRecommendation.fromJson(e))
+              .toList()
+          : [],
     );
   }
 
@@ -83,4 +92,6 @@ class Ayat {
   String toString() {
     return 'Ayat(text: $text)';
   }
+
+  bool get hasTeacherRecommendations => teacherRecommendations.isNotEmpty;
 }

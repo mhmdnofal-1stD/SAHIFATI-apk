@@ -22,6 +22,74 @@ class UsersProvider with ChangeNotifier {
   final UsersServices _usersService = UsersServices();
   bool isLoading = false;
   bool isFirstLogin = false;
+  bool showMemorizationColors = true;
+  bool showComprehensionUnderline = true;
+  bool _readingDisplayPreferencesLoaded = false;
+
+  void _applyReadingDisplayPreferencesFromProfile(
+      Map<String, dynamic> profile) {
+    showMemorizationColors =
+        profile['showMemorizationColors'] as bool? ?? true;
+    showComprehensionUnderline =
+        profile['showComprehensionUnderline'] as bool? ?? true;
+  }
+
+  void _resetReadingDisplayPreferencesState() {
+    showMemorizationColors = true;
+    showComprehensionUnderline = true;
+    _readingDisplayPreferencesLoaded = false;
+  }
+
+  Future<void> ensureReadingDisplayPreferencesLoaded(
+      {bool forceRefresh = false}) async {
+    if (_readingDisplayPreferencesLoaded && !forceRefresh) {
+      return;
+    }
+
+    try {
+      final profile = await _usersService.getCurrentUserProfile();
+      _applyReadingDisplayPreferencesFromProfile(profile);
+    } catch (_) {
+      showMemorizationColors = true;
+      showComprehensionUnderline = true;
+    }
+
+    _readingDisplayPreferencesLoaded = true;
+    notifyListeners();
+  }
+
+  Future<void> updateReadingDisplayPreferences({
+    bool? showMemorizationColors,
+    bool? showComprehensionUnderline,
+  }) async {
+    final previousShowMemorizationColors = this.showMemorizationColors;
+    final previousShowComprehensionUnderline =
+        this.showComprehensionUnderline;
+
+    if (showMemorizationColors != null) {
+      this.showMemorizationColors = showMemorizationColors;
+    }
+    if (showComprehensionUnderline != null) {
+      this.showComprehensionUnderline = showComprehensionUnderline;
+    }
+    notifyListeners();
+
+    try {
+      final profile = await _usersService.updateCurrentUserProfile(
+        showMemorizationColors: showMemorizationColors,
+        showComprehensionUnderline: showComprehensionUnderline,
+      );
+      _applyReadingDisplayPreferencesFromProfile(profile);
+      _readingDisplayPreferencesLoaded = true;
+      notifyListeners();
+    } catch (ex) {
+      this.showMemorizationColors = previousShowMemorizationColors;
+      this.showComprehensionUnderline =
+          previousShowComprehensionUnderline;
+      notifyListeners();
+      rethrow;
+    }
+  }
 
   Future<AuthData> register(
       String username, String email, String password) async {
@@ -138,6 +206,7 @@ class UsersProvider with ChangeNotifier {
     await prefs.remove('password');
     await SecureSessionStorage.clearSessionTokens();
     selectedUser = null;
+    _resetReadingDisplayPreferencesState();
     notifyListeners();
   }
 
@@ -175,6 +244,7 @@ class UsersProvider with ChangeNotifier {
 
   void setSelectedUser(User user) {
     selectedUser = user;
+    _resetReadingDisplayPreferencesState();
     notifyListeners();
   }
 
@@ -215,6 +285,7 @@ class UsersProvider with ChangeNotifier {
       accessToken: accessToken,
       refreshToken: refreshToken,
     );
+    _resetReadingDisplayPreferencesState();
   }
 
   Future<void> checkFirstLogin() async {

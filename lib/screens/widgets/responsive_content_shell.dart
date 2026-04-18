@@ -5,11 +5,13 @@ import '../../core/utils/size_config.dart';
 class ResponsiveContentShell extends StatelessWidget {
   const ResponsiveContentShell({
     super.key,
-    required this.child,
+    this.child,
+    this.builder,
     this.maxContentWidth = 1120,
-  });
+  }) : assert(child != null || builder != null);
 
-  final Widget child;
+  final Widget? child;
+  final WidgetBuilder? builder;
   final double maxContentWidth;
 
   double _horizontalGutter(double viewportWidth) {
@@ -45,7 +47,7 @@ class ResponsiveContentShell extends StatelessWidget {
               child: LayoutBuilder(
                 builder: (context, contentConstraints) {
                   SizeConfig().initWithConstraints(context, contentConstraints);
-                  return child;
+                  return builder?.call(context) ?? child!;
                 },
               ),
             ),

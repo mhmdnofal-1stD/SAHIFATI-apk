@@ -76,7 +76,7 @@ class SahifaScreen extends StatelessWidget {
             ? null
             : const GlobalDrawer(),
         body: ResponsiveContentShell(
-          child: SingleChildScrollView(
+          builder: (context) => SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.only(
                 left: SizeConfig.getProportionalWidth(16),

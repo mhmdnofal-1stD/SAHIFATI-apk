@@ -96,7 +96,7 @@ class _MainScreenState extends State<MainScreen> {
             drawer: (Get.locale?.languageCode ?? 'ar') == 'ar' ? const GlobalDrawer() : null,
             endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar' ? null : const GlobalDrawer(),
             body: ResponsiveContentShell(
-              child: SingleChildScrollView(
+              builder: (context) => SingleChildScrollView(
                 padding: EdgeInsets.only(
                   left: SizeConfig.getProportionalWidth(16),
                   right: SizeConfig.getProportionalWidth(16),

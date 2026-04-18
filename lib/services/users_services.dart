@@ -3,9 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/constants/api.dart';
+import 'sahifaty_api.dart';
 
 class UsersServices with ChangeNotifier {
-  final String _baseURL = 'https://sahifati.org';
+  final String _baseURL = ApiConfig.baseUrl;
   final Duration _timeout = const Duration(seconds: 30);
   final Map<String, String> _authHeaders = {
     'Content-Type': 'application/json',
@@ -132,6 +134,47 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<void> logout() async {}
+
+  Future<Map<String, dynamic>> getCurrentUserProfile() async {
+    try {
+      final response = await SahifatyApi().get('users/me');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _extractErrorMessage(responseData, 'Failed to load user profile');
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateCurrentUserProfile({
+    bool? showMemorizationColors,
+    bool? showComprehensionUnderline,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (showMemorizationColors != null) {
+        body['showMemorizationColors'] = showMemorizationColors;
+      }
+      if (showComprehensionUnderline != null) {
+        body['showComprehensionUnderline'] = showComprehensionUnderline;
+      }
+
+      final response = await SahifatyApi().put(url: 'users/me', body: body);
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _extractErrorMessage(responseData, 'Failed to update profile');
+    } catch (ex) {
+      rethrow;
+    }
+  }
 
   Future<void> sendPasswordResetEmail(email) async {
     try {} catch (e) {

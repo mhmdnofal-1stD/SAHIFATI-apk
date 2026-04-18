@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
-import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
@@ -16,12 +15,16 @@ class GlobalDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final drawerWidth = screenSize.width < 480 ? screenSize.width * 0.78 : 280.0;
+    final topPadding = screenSize.height < 700 ? 72.0 : 100.0;
+
     return SizedBox(
-      width: SizeConfig.getProportionalWidth(280),
+      width: drawerWidth,
       child: Drawer(
         child: Padding(
           padding: EdgeInsets.only(
-            top: SizeConfig.getProportionalHeight(100),
+            top: topPadding,
           ),
           child: ListView(
             padding: EdgeInsets.zero,
@@ -37,9 +40,7 @@ class GlobalDrawer extends StatelessWidget {
                       Icons.settings,
                       size: 30,
                     ),
-                    SizedBox(
-                      width: SizeConfig.getProportionalWidth(10),
-                    ),
+                    const SizedBox(width: 10),
                     CustomText(
                       text: "settings".tr,
                       withBackground: false,
@@ -62,9 +63,7 @@ class GlobalDrawer extends StatelessWidget {
                       Icons.question_answer_sharp,
                       size: 30,
                     ),
-                    SizedBox(
-                      width: SizeConfig.getProportionalWidth(10),
-                    ),
+                    const SizedBox(width: 10),
                     CustomText(
                       text: "quick_questions".tr,
                       withBackground: false,
@@ -94,9 +93,7 @@ class GlobalDrawer extends StatelessWidget {
                       Icons.people,
                       size: 30,
                     ),
-                    SizedBox(
-                      width: SizeConfig.getProportionalWidth(10),
-                    ),
+                    const SizedBox(width: 10),
                     CustomText(
                       text: "switch_user".tr,
                       withBackground: false,
@@ -117,9 +114,7 @@ class GlobalDrawer extends StatelessWidget {
                       color: Colors.red,
                       size: 30,
                     ),
-                    SizedBox(
-                      width: SizeConfig.getProportionalWidth(10),
-                    ),
+                    const SizedBox(width: 10),
                     Text(
                       'logout'.tr,
                       style: const TextStyle(

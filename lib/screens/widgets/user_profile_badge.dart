@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'custom_text.dart';
 
@@ -27,7 +26,7 @@ class UserProfileBadge extends StatelessWidget {
             size: 20,
           ),
         ),
-        SizedBox(width: SizeConfig.getProportionalWidth(8)),
+        const SizedBox(width: 8),
         Flexible(
           child: CustomText(
             text: user.fullName,
