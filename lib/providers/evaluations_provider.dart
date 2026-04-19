@@ -245,8 +245,6 @@ class EvaluationsProvider with ChangeNotifier {
         userEvaluation.memoEvaluation ?? findEvaluationById(userEvaluation.memoId);
     userEvaluation.compreEvaluation =
         userEvaluation.compreEvaluation ?? findEvaluationById(userEvaluation.compreId);
-    userEvaluation.evaluation = userEvaluation.memoEvaluation;
-    userEvaluation.evaluationId = userEvaluation.memoId;
   }
 
 

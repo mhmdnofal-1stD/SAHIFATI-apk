@@ -8,51 +8,36 @@ class UserEvaluation {
   List<int>? ayahIds;
   int? memoId;
   int? compreId;
-  int? evaluationId;
   String? comment;
   Evaluation? memoEvaluation;
   Evaluation? compreEvaluation;
-  Evaluation? evaluation;
   Ayat? ayah;
 
   UserEvaluation(
       {int? id,
       this.ayahId,
       this.ayahIds,
-      int? memoId,
+      this.memoId,
       this.compreId,
-      int? evaluationId,
       this.comment,
-      Evaluation? memoEvaluation,
-      Evaluation? compreEvaluation,
-      Evaluation? evaluation,
+      this.memoEvaluation,
+      this.compreEvaluation,
       this.ayah})
-      : memoId = memoId ?? evaluationId,
-        evaluationId = evaluationId ?? memoId,
-        memoEvaluation = memoEvaluation ?? evaluation,
-        evaluation = evaluation ?? memoEvaluation,
-        _id = id;
+      : _id = id;
 
   int? get id => _id;
 
   bool get hasAnyAssessment => memoId != null || compreId != null;
 
   factory UserEvaluation.fromJson(Map<String, dynamic> json) {
-    final memoEvaluation = json['evaluation'] != null
-        ? Evaluation.fromJson(json['evaluation'])
-        : null;
-
     return UserEvaluation(
       id: json['_id'],
       comment: json['comment'] ?? '',
       ayah: json['ayah'] != null ? Ayat.fromJson(json['ayah']) : null,
       ayahId: json['ayah'] != null ? json['ayah']['_id'] : null,
       ayahIds: json['ayahIds'] != null ? List<int>.from(json['ayahIds']) : null,
-      memoId: json['memo_id'] ?? json['evaluation']?['_id'],
+      memoId: json['memo_id'],
       compreId: json['compre_id'],
-      evaluationId: json['memo_id'] ?? json['evaluation']?['_id'],
-      memoEvaluation: memoEvaluation,
-      evaluation: memoEvaluation,
     );
   }
 
