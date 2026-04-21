@@ -11,6 +11,7 @@ Widget buildGoogleWebButton({
       theme: google_web.GSIButtonTheme.outline,
       size: google_web.GSIButtonSize.large,
       shape: google_web.GSIButtonShape.pill,
+      minimumWidth: 40,
       locale: locale,
     ),
   );

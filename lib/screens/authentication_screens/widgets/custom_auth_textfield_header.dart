@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/colors.dart';
 import '../../../core/constants/fonts.dart';
 
 class CustomAuthTextFieldHeader extends StatelessWidget {
@@ -16,9 +15,10 @@ class CustomAuthTextFieldHeader extends StatelessWidget {
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontFamily: AppFonts.primaryFont,
-            color: AppColors.hintTextColor,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF5D6777),
           ),
         ),
       ),

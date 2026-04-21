@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
-import '../../../core/constants/colors.dart';
 
 class CustomAuthenticationTextField extends StatefulWidget {
   const CustomAuthenticationTextField({
@@ -49,15 +48,22 @@ class _CustomAuthenticationTextFieldState
           : const EdgeInsets.only(bottom: 12, top: 6),
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 48),
+        constraints: const BoxConstraints(minHeight: 56),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
               width: widget.borderWidth ?? 1.0, color: widget.borderColor),
-          color: Colors.white,
+          color: const Color(0xFFFCFBF8),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x080F172A),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
         ),
         child: Padding(
-          padding: const EdgeInsets.only(right: 10),
+          padding: const EdgeInsets.only(right: 12),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: Semantics(
@@ -76,14 +82,14 @@ class _CustomAuthenticationTextFieldState
                   obscureText: widget.obscureText && !showPassword,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
+                      horizontal: 12,
+                      vertical: 14,
                     ),
                     suffixIcon: widget.obscureText
                         ? IconButton(
                             icon: !showPassword
-                                ? const Icon(Icons.visibility)
-                                : const Icon(Icons.visibility_off),
+                                ? const Icon(Icons.visibility, color: Color(0xFF7B8494))
+                                : const Icon(Icons.visibility_off, color: Color(0xFF7B8494)),
                             onPressed: () {
                               setState(() {
                                 showPassword = !showPassword;
@@ -93,7 +99,7 @@ class _CustomAuthenticationTextFieldState
                         : null,
                     hintText: widget.hintText ?? "",
                     hintStyle: TextStyle(
-                      color: AppColors.hintTextColor,
+                      color: const Color(0xFF9AA2AE),
                       fontFamily: AppFonts.primaryFont,
                     ),
                     border: InputBorder.none,

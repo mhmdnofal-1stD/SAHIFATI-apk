@@ -142,5 +142,15 @@
     "social_facebook_card_title": "Facebook",
     "social_facebook_card_subtitle": "تابع بحساب Facebook الموجود لديك.",
     "social_provider_google": "Google",
-    "social_provider_facebook": "Facebook"
+    "social_provider_facebook": "Facebook",
+    "auth_shell_badge": "تجربة مختصرة وجاهزة",
+    "auth_login_title": "الدخول إلى صحيفتي",
+    "auth_login_subtitle_compact": "سطح هادئ وسريع يوصلك مباشرة إلى حسابك دون ازدحام بصري.",
+    "auth_signup_title": "أنشئ حسابك بثقة",
+    "auth_signup_subtitle_compact": "واجهة أخف وأوضح تضع إنشاء الحساب والمتابعة السريعة في مكان واحد.",
+    "auth_methods_label": "طرق سريعة",
+    "auth_methods_caption": "أيقونات صغيرة للوصول المباشر",
+    "auth_method_email": "البريد",
+    "auth_mode_login": "دخول",
+    "auth_mode_signup": "حساب جديد"
 }

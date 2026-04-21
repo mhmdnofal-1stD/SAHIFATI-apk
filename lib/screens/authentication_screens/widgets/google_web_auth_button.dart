@@ -92,37 +92,42 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       return const SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2.4),
+        width: 56,
+        height: 56,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2.4),
+          ),
+        ),
       );
     }
 
-    return AbsorbPointer(
-      absorbing: widget.isBusy || _isSubmitting,
-      child: Opacity(
-        opacity: widget.isBusy || _isSubmitting ? 0.7 : 1,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            buildGoogleWebButton(
-              isSignupContext: widget.isSignupContext,
-              locale: Get.locale?.languageCode,
-            ),
-            if (_isSubmitting)
-              const Positioned.fill(
-                child: ColoredBox(
-                  color: Color(0x88FFFFFF),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
-                    ),
-                  ),
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: AbsorbPointer(
+        absorbing: widget.isBusy || _isSubmitting,
+        child: Opacity(
+          opacity: widget.isBusy || _isSubmitting ? 0.7 : 1,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Center(
+                child: buildGoogleWebButton(
+                  isSignupContext: widget.isSignupContext,
+                  locale: Get.locale?.languageCode,
                 ),
               ),
-          ],
+              if (_isSubmitting)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.4),
+                ),
+            ],
+          ),
         ),
       ),
     );

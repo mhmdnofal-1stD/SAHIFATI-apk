@@ -1,17 +1,18 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/auth/social_auth_config.dart';
+import 'package:sahifaty/core/constants/assets.dart';
+import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/constants/fonts.dart';
 import '../../controllers/users_controller.dart';
-import '../../core/constants/assets.dart';
-import '../../core/constants/colors.dart';
-import '../../core/constants/fonts.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
+import 'widgets/auth_screen_shell.dart';
 import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
@@ -27,12 +28,7 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   late UsersController _userController;
-
-  /// Local flag to block double-submit during validation (before the
-  /// provider's isLoading kicks in from the async call).
   bool _isProcessing = false;
-
-  /// Inline error shown below the form — replaces full-screen snackbars.
   String? _inlineError;
   String? _socialStatusMessage;
   bool _socialStatusIsError = true;
@@ -51,8 +47,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    // The singleton's controllers must NOT be disposed from the screen.
-    // Reset signup-only state so revisiting the screen starts clean.
     _userController.resetSignUpState();
     _emailFocus.dispose();
     _usernameFocus.dispose();
@@ -72,14 +66,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      // ── Empty-fields check ────────────────────────────────────────────
       _userController.checkEmptyFields(false);
       if (!_userController.noneIsEmpty) {
         setState(() => _userController.changeTextFieldsColors(false));
         throw Exception('all_fields_required'.tr);
       }
 
-      // ── Email format ──────────────────────────────────────────────────
       if (!_userController.isEmailValid(
         _userController.signUpEmailController.text.trim(),
       )) {
@@ -90,19 +82,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
         throw Exception('invalid_email'.tr);
       }
 
-      // ── Password strength ─────────────────────────────────────────────
       _userController.checkValidPassword();
-
-      // ── Password match ────────────────────────────────────────────────
       _userController.checkMatchedPassword();
       if (!_userController.isMatched) {
         setState(() => _userController.changeTextFieldsColors(false));
         throw Exception('passwords_no_match'.tr);
       }
 
-      // ── Register ──────────────────────────────────────────────────────
-      final submittedEmail =
-          _userController.signUpEmailController.text.trim();
+      final submittedEmail = _userController.signUpEmailController.text.trim();
       await usersProvider.register(
         _userController.signUpUsernameController.text.trim(),
         submittedEmail,
@@ -234,6 +221,89 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  Widget _buildInlineErrorBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.errorColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.errorColor.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.errorColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 13,
+                color: AppColors.errorColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (kIsWeb && SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
+      return GoogleWebAuthButton(
+        initialize: usersProvider.ensureGoogleInitialized,
+        isBusy: usersProvider.isLoading,
+        isSignupContext: true,
+        onIdToken: (idToken) async {
+          await _completeSocialSignup(
+            () => usersProvider.signInWithGoogleIdToken(idToken),
+            usersProvider,
+            evaluationsProvider,
+          );
+        },
+        onError: (error) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _socialStatusMessage = _resolveSocialErrorMessage(
+              error,
+              usersProvider,
+            );
+            _socialStatusIsError = true;
+          });
+        },
+      );
+    }
+
+    return AuthCompactSocialButton(
+      semanticLabel: 'social_provider_google'.tr,
+      onPressed: (!kIsWeb && !usersProvider.isLoading)
+          ? () => _completeSocialSignup(
+                usersProvider.signInWithGoogle,
+                usersProvider,
+                evaluationsProvider,
+              )
+          : null,
+      isBusy: usersProvider.isLoading,
+      icon: Image.asset(
+        Assets.googleIcon,
+        width: 24,
+        height: 24,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usersProvider = Provider.of<UsersProvider>(context);
@@ -241,326 +311,191 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final bool isBusy = _isProcessing || usersProvider.isLoading;
 
     return NoPopScope(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        resizeToAvoidBottomInset: true,
-        body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => FocusScope.of(context).unfocus(),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Center(
-                child: ConstrainedBox(
-                  // Keeps the form compact and centred on wide web screens
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // ── Hero ────────────────────────────────────────
-                      Center(
-                        child: Image.asset(
-                          Assets.logo,
-                          width: 80,
-                          height: 80,
+      child: AuthScreenShell(
+        title: 'auth_signup_title'.tr,
+        subtitle: 'auth_signup_subtitle_compact'.tr,
+        isSignup: true,
+        onSelectLogin: isBusy
+            ? null
+            : () {
+                usersProvider.resetSignUpErrorText();
+                Get.to(() => const LoginScreen(firstScreen: false));
+              },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CustomAuthTextFieldHeader(text: 'email_label'.tr),
+            const SizedBox(height: 6),
+            CustomAuthenticationTextField(
+              hintText: 'enter_email_hint'.tr,
+              semanticLabel: 'email_label'.tr,
+              obscureText: false,
+              focusNode: _emailFocus,
+              textEditingController: _userController.signUpEmailController,
+              borderColor: _userController.signUpEmailTextFieldBorderColor,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _usernameFocus.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            CustomAuthTextFieldHeader(text: 'username_label'.tr),
+            const SizedBox(height: 6),
+            CustomAuthenticationTextField(
+              hintText: 'username_hint'.tr,
+              semanticLabel: 'username_label'.tr,
+              obscureText: false,
+              focusNode: _usernameFocus,
+              textEditingController: _userController.signUpUsernameController,
+              borderColor: _userController.signUpUsernameTextFieldBorderColor,
+              keyboardType: TextInputType.text,
+              autofillHints: const [AutofillHints.username],
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _passwordFocus.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            CustomAuthTextFieldHeader(text: 'password_label'.tr),
+            const SizedBox(height: 6),
+            CustomAuthenticationTextField(
+              hintText: 'password_hint'.tr,
+              semanticLabel: 'password_label'.tr,
+              obscureText: true,
+              focusNode: _passwordFocus,
+              textEditingController: _userController.signUpPasswordController,
+              borderColor: _userController.signUpPasswordTextFieldBorderColor,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _confirmFocus.requestFocus(),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F1EA),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE6DED1)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.verified_user_outlined,
+                    color: Color(0xFF8A6742),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'password_helper'.tr,
+                      textDirection: TextDirection.rtl,
+                      style: TextStyle(
+                        fontFamily: AppFonts.primaryFont,
+                        fontSize: 12,
+                        color: const Color(0xFF6C7280),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            CustomAuthTextFieldHeader(text: 'confirm_password_label'.tr),
+            const SizedBox(height: 6),
+            CustomAuthenticationTextField(
+              hintText: 'confirm_password_hint'.tr,
+              semanticLabel: 'confirm_password_label'.tr,
+              obscureText: true,
+              focusNode: _confirmFocus,
+              textEditingController:
+                  _userController.signUpConfirmedPasswordController,
+              borderColor: _userController.confirmPasswordTextFieldBorderColor,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _handleSubmit(usersProvider),
+            ),
+            if (_inlineError != null) ...[
+              const SizedBox(height: 12),
+              _buildInlineErrorBanner(_inlineError!),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: isBusy ? null : () => _handleSubmit(usersProvider),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF132A4A),
+                  disabledBackgroundColor:
+                      const Color(0xFF132A4A).withValues(alpha: 0.45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 0,
+                ),
+                icon: isBusy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.2,
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'create_account'.tr,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.blackFontColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'signup_subtitle'.tr,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontSize: 14,
-                          color: AppColors.hintTextColor,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // ── Email ────────────────────────────────────────
-                      CustomAuthTextFieldHeader(text: 'email_label'.tr),
-                      const SizedBox(height: 6),
-                      CustomAuthenticationTextField(
-                        hintText: 'enter_email_hint'.tr,
-                        semanticLabel: 'email_label'.tr,
-                        obscureText: false,
-                        focusNode: _emailFocus,
-                        textEditingController:
-                            _userController.signUpEmailController,
-                        borderColor:
-                            _userController.signUpEmailTextFieldBorderColor,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _usernameFocus.requestFocus(),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Username ─────────────────────────────────────
-                      CustomAuthTextFieldHeader(text: 'username_label'.tr),
-                      const SizedBox(height: 6),
-                      CustomAuthenticationTextField(
-                        hintText: 'username_hint'.tr,
-                        semanticLabel: 'username_label'.tr,
-                        obscureText: false,
-                        focusNode: _usernameFocus,
-                        textEditingController:
-                            _userController.signUpUsernameController,
-                        borderColor:
-                            _userController.signUpUsernameTextFieldBorderColor,
-                        keyboardType: TextInputType.text,
-                        autofillHints: const [AutofillHints.username],
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _passwordFocus.requestFocus(),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Password ─────────────────────────────────────
-                      CustomAuthTextFieldHeader(text: 'password_label'.tr),
-                      const SizedBox(height: 6),
-                      CustomAuthenticationTextField(
-                        hintText: 'password_hint'.tr,
-                        semanticLabel: 'password_label'.tr,
-                        obscureText: true,
-                        focusNode: _passwordFocus,
-                        textEditingController:
-                            _userController.signUpPasswordController,
-                        borderColor:
-                            _userController.signUpPasswordTextFieldBorderColor,
-                        autofillHints: const [AutofillHints.newPassword],
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _confirmFocus.requestFocus(),
-                      ),
-                      const SizedBox(height: 5),
-                      // Password helper copy (requirements guide)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Text(
-                          'password_helper'.tr,
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontSize: 12,
-                            color: AppColors.hintTextColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // ── Confirm Password ─────────────────────────────
-                      CustomAuthTextFieldHeader(
-                          text: 'confirm_password_label'.tr),
-                      const SizedBox(height: 6),
-                      CustomAuthenticationTextField(
-                        hintText: 'confirm_password_hint'.tr,
-                        semanticLabel: 'confirm_password_label'.tr,
-                        obscureText: true,
-                        focusNode: _confirmFocus,
-                        textEditingController: _userController
-                            .signUpConfirmedPasswordController,
-                        borderColor:
-                            _userController.confirmPasswordTextFieldBorderColor,
-                        autofillHints: const [AutofillHints.newPassword],
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _handleSubmit(usersProvider),
-                      ),
-
-                      // ── Inline error banner ──────────────────────────
-                      if (_inlineError != null) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.errorColor.withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: AppColors.errorColor.withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: AppColors.errorColor,
-                                size: 17,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _inlineError!,
-                                  textDirection: TextDirection.rtl,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.primaryFont,
-                                    fontSize: 13,
-                                    color: AppColors.errorColor,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 24),
-
-                      // ── Submit CTA ───────────────────────────────────
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed:
-                              isBusy ? null : () => _handleSubmit(usersProvider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryPurple,
-                            disabledBackgroundColor:
-                                AppColors.primaryPurple.withValues(alpha: 0.5),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: isBusy
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : Text(
-                                  'create_account'.tr,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.primaryFont,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      AuthSocialSection(
-                        googleControl: kIsWeb &&
-                                SocialAuthConfig
-                                    .isGoogleConfiguredForCurrentPlatform
-                            ? GoogleWebAuthButton(
-                                initialize: usersProvider.ensureGoogleInitialized,
-                                isBusy: usersProvider.isLoading,
-                                isSignupContext: true,
-                                onIdToken: (idToken) async {
-                                  await _completeSocialSignup(
-                                    () => usersProvider.signInWithGoogleIdToken(
-                                      idToken,
-                                    ),
-                                    usersProvider,
-                                    evaluationsProvider,
-                                  );
-                                },
-                                onError: (error) {
-                                  if (!mounted) {
-                                    return;
-                                  }
-                                  setState(() {
-                                    _socialStatusMessage =
-                                        _resolveSocialErrorMessage(
-                                      error,
-                                      usersProvider,
-                                    );
-                                    _socialStatusIsError = true;
-                                  });
-                                },
-                              )
-                            : _GoogleNativeIconButton(
-                                isBusy: usersProvider.isLoading,
-                                onPressed: () => _completeSocialSignup(
-                                  usersProvider.signInWithGoogle,
-                                  usersProvider,
-                                  evaluationsProvider,
-                                ),
-                              ),
-                              showFacebook: SocialAuthConfig.facebookAuthEnabled,
-                        onFacebookPressed: usersProvider.isLoading
-                            ? null
-                            : () => _completeSocialSignup(
-                                  usersProvider.signInWithFacebook,
-                                  usersProvider,
-                                  evaluationsProvider,
-                                ),
-                        isBusy: usersProvider.isLoading,
-                        statusMessage: _socialStatusMessage,
-                        statusTone: _socialStatusIsError
-                            ? AuthSocialStatusTone.error
-                            : AuthSocialStatusTone.info,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ── Footer ───────────────────────────────────────
-                      Center(
-                        child: CustomAuthFooter(
-                          headingText: 'already_have_account'.tr,
-                          tailText: 'login_action'.tr,
-                          onTap: isBusy
-                              ? null
-                              : () {
-                                  usersProvider.resetSignUpErrorText();
-                                  Get.to(() => const LoginScreen(
-                                        firstScreen: false,
-                                      ));
-                                },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                      )
+                    : const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                label: Text(
+                  'create_account'.tr,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Compact Google icon button for non-web platforms.
-class _GoogleNativeIconButton extends StatelessWidget {
-  const _GoogleNativeIconButton({
-    required this.isBusy,
-    required this.onPressed,
-  });
-
-  final bool isBusy;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isBusy ? null : onPressed,
-        customBorder: const CircleBorder(),
-        child: Center(
-          child: Image.asset(Assets.googleIcon, width: 22, height: 22),
+            const SizedBox(height: 22),
+            AuthSocialSection(
+              googleControl: _buildGoogleControl(
+                usersProvider,
+                evaluationsProvider,
+              ),
+              showFacebook: SocialAuthConfig.facebookAuthEnabled,
+              onFacebookPressed: usersProvider.isLoading
+                  ? null
+                  : () => _completeSocialSignup(
+                        usersProvider.signInWithFacebook,
+                        usersProvider,
+                        evaluationsProvider,
+                      ),
+              isBusy: usersProvider.isLoading,
+              googleHint: kIsWeb &&
+                      !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform
+                  ? 'social_google_requires_client_id'.tr
+                  : (!kIsWeb &&
+                          !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform)
+                      ? 'social_google_requires_mobile_config'.tr
+                      : null,
+              facebookHint: kIsWeb &&
+                      !SocialAuthConfig.isFacebookConfiguredForCurrentPlatform
+                  ? 'social_facebook_requires_app_id'.tr
+                  : null,
+              statusMessage: _socialStatusMessage,
+              statusTone: _socialStatusIsError
+                  ? AuthSocialStatusTone.error
+                  : AuthSocialStatusTone.info,
+            ),
+            const SizedBox(height: 22),
+            Center(
+              child: CustomAuthFooter(
+                headingText: 'already_have_account'.tr,
+                tailText: 'login_action'.tr,
+                onTap: isBusy
+                    ? null
+                    : () {
+                        usersProvider.resetSignUpErrorText();
+                        Get.to(() => const LoginScreen(firstScreen: false));
+                      },
+              ),
+            ),
+          ],
         ),
       ),
     );

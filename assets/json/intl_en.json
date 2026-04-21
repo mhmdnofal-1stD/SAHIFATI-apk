@@ -142,5 +142,15 @@
     "social_facebook_card_title": "Facebook",
     "social_facebook_card_subtitle": "Continue with the Facebook account you already use.",
     "social_provider_google": "Google",
-    "social_provider_facebook": "Facebook"
+    "social_provider_facebook": "Facebook",
+    "auth_shell_badge": "Compact product-ready flow",
+    "auth_login_title": "Sign in to Sahifati",
+    "auth_login_subtitle_compact": "A calmer, faster surface that gets you into your account without visual noise.",
+    "auth_signup_title": "Create your account with confidence",
+    "auth_signup_subtitle_compact": "A lighter, clearer surface that keeps sign-up and quick continuation in one place.",
+    "auth_methods_label": "Quick methods",
+    "auth_methods_caption": "Small icons. Direct access.",
+    "auth_method_email": "Email",
+    "auth_mode_login": "Sign in",
+    "auth_mode_signup": "New account"
 }
