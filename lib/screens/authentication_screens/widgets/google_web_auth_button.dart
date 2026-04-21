@@ -91,20 +91,10 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      return Container(
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E5EC)),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2.4),
-          ),
-        ),
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2.4),
       );
     }
 

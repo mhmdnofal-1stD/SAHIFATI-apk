@@ -490,45 +490,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   });
                                                 },
                                               )
-                                            : SizedBox(
-                                                width: double.infinity,
-                                                child: OutlinedButton(
-                                                  onPressed: (!kIsWeb &&
-                                                          !usersProvider
-                                                              .isLoading)
-                                                      ? () =>
-                                                          _completeSocialLogin(
-                                                            usersProvider
-                                                                .signInWithGoogle,
-                                                            usersProvider,
-                                                            evaluationsProvider,
-                                                          )
-                                                      : null,
-                                                  style:
-                                                      OutlinedButton.styleFrom(
-                                                    minimumSize:
-                                                        const Size.fromHeight(
-                                                      48,
+                                            : _GoogleNativeIconButton(
+                                                isBusy: usersProvider.isLoading,
+                                                onPressed: () =>
+                                                    _completeSocialLogin(
+                                                      usersProvider
+                                                          .signInWithGoogle,
+                                                      usersProvider,
+                                                      evaluationsProvider,
                                                     ),
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                        14,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    'google_continue'.tr,
-                                                    style: TextStyle(
-                                                      fontFamily:
-                                                          AppFonts.primaryFont,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                    ),
-                                                  ),
-                                                ),
                                               ),
+
                                           showFacebook:
                                             SocialAuthConfig.facebookAuthEnabled,
                                     onFacebookPressed:
@@ -540,25 +512,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   evaluationsProvider,
                                                 ),
                                     isBusy: usersProvider.isLoading,
-                                    googleHint:
-                                        kIsWeb &&
-                                                !SocialAuthConfig
-                                                    .isGoogleConfiguredForCurrentPlatform
-                                            ? 'social_google_requires_client_id'
-                                                .tr
-                                            : (!kIsWeb &&
-                                                    !SocialAuthConfig
-                                                        .isGoogleConfiguredForCurrentPlatform)
-                                                ? 'social_google_requires_mobile_config'
-                                                    .tr
-                                                : null,
-                                    facebookHint:
-                                        kIsWeb &&
-                                                !SocialAuthConfig
-                                                    .isFacebookConfiguredForCurrentPlatform
-                                            ? 'social_facebook_requires_app_id'
-                                                .tr
-                                            : null,
                                     statusMessage: _socialStatusMessage,
                                     statusTone: _socialStatusIsError
                                         ? AuthSocialStatusTone.error
@@ -608,5 +561,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   );
                 }))));
+  }
+}
+
+/// Compact Google icon button for non-web platforms.
+class _GoogleNativeIconButton extends StatelessWidget {
+  const _GoogleNativeIconButton({
+    required this.isBusy,
+    required this.onPressed,
+  });
+
+  final bool isBusy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isBusy ? null : onPressed,
+        customBorder: const CircleBorder(),
+        child: Center(
+          child: Image.asset(Assets.googleIcon, width: 22, height: 22),
+        ),
+      ),
+    );
   }
 }

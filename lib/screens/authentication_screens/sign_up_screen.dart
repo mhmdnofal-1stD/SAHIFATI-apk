@@ -489,29 +489,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   });
                                 },
                               )
-                            : SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton(
-                                  onPressed: (!kIsWeb && !usersProvider.isLoading)
-                                      ? () => _completeSocialSignup(
-                                            usersProvider.signInWithGoogle,
-                                            usersProvider,
-                                            evaluationsProvider,
-                                          )
-                                      : null,
-                                  style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(48),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'google_continue'.tr,
-                                    style: TextStyle(
-                                      fontFamily: AppFonts.primaryFont,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                            : _GoogleNativeIconButton(
+                                isBusy: usersProvider.isLoading,
+                                onPressed: () => _completeSocialSignup(
+                                  usersProvider.signInWithGoogle,
+                                  usersProvider,
+                                  evaluationsProvider,
                                 ),
                               ),
                               showFacebook: SocialAuthConfig.facebookAuthEnabled,
@@ -523,20 +506,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                   evaluationsProvider,
                                 ),
                         isBusy: usersProvider.isLoading,
-                        googleHint: kIsWeb &&
-                                !SocialAuthConfig
-                                    .isGoogleConfiguredForCurrentPlatform
-                            ? 'social_google_requires_client_id'.tr
-                            : (!kIsWeb &&
-                                    !SocialAuthConfig
-                                        .isGoogleConfiguredForCurrentPlatform)
-                                ? 'social_google_requires_mobile_config'.tr
-                                : null,
-                        facebookHint: kIsWeb &&
-                                !SocialAuthConfig
-                                    .isFacebookConfiguredForCurrentPlatform
-                            ? 'social_facebook_requires_app_id'.tr
-                            : null,
                         statusMessage: _socialStatusMessage,
                         statusTone: _socialStatusIsError
                             ? AuthSocialStatusTone.error
@@ -567,6 +536,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact Google icon button for non-web platforms.
+class _GoogleNativeIconButton extends StatelessWidget {
+  const _GoogleNativeIconButton({
+    required this.isBusy,
+    required this.onPressed,
+  });
+
+  final bool isBusy;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isBusy ? null : onPressed,
+        customBorder: const CircleBorder(),
+        child: Center(
+          child: Image.asset(Assets.googleIcon, width: 22, height: 22),
         ),
       ),
     );
