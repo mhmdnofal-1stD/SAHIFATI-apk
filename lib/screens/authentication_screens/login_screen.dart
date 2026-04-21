@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/assets.dart';
+import 'package:sahifaty/core/auth/post_auth_navigation.dart';
+import 'package:sahifaty/core/auth/social_auth_config.dart';
 import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import '../../controllers/users_controller.dart';
@@ -10,47 +13,16 @@ import '../../core/constants/fonts.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/auth_data.dart';
 import '../../providers/users_provider.dart';
-import '../sahifa_screen/sahifa_screen.dart';
-import '../welcome_screen/welcome_screen.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/no_pop_scope.dart';
 import 'forget_password_screen.dart';
 import 'sign_up_screen.dart';
+import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
 import 'widgets/custom_auth_textfield_header.dart';
-
-typedef LoginRouteReplacer = void Function(Widget page);
-typedef LoginDestinationBuilder = Widget Function();
-
-Widget _buildDefaultWelcomeScreen() => const WelcomeScreen();
-
-Widget _buildDefaultSahifaScreen() => const SahifaScreen(firstScreen: false);
-
-void _replaceLoginRoute(Widget page) {
-  Get.offAll(() => page);
-}
-
-@visibleForTesting
-Future<void> navigateAfterSuccessfulLogin({
-  required int userId,
-  required bool isFirstLogin,
-  required Future<void> Function(int userId) loadChartData,
-  LoginRouteReplacer? replaceRoute,
-  LoginDestinationBuilder? buildWelcomeScreen,
-  LoginDestinationBuilder? buildSahifaScreen,
-}) async {
-  final replace = replaceRoute ?? _replaceLoginRoute;
-
-  if (!isFirstLogin) {
-    await loadChartData(userId);
-    replace((buildSahifaScreen ?? _buildDefaultSahifaScreen)());
-    return;
-  }
-
-  replace((buildWelcomeScreen ?? _buildDefaultWelcomeScreen)());
-}
+import 'widgets/google_web_auth_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.firstScreen});
@@ -63,6 +35,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   late UsersController _userController;
+  String? _socialStatusMessage;
+  bool _socialStatusIsError = true;
 
   @override
   void initState() {
@@ -74,6 +48,98 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  String _providerLabel(String provider) {
+    switch (provider) {
+      case 'google':
+        return 'social_provider_google'.tr;
+      case 'facebook':
+        return 'social_provider_facebook'.tr;
+      default:
+        return provider;
+    }
+  }
+
+  String _resolveSocialErrorMessage(
+    Object error,
+    UsersProvider usersProvider,
+  ) {
+    if (error is Map) {
+      final code = error['errorCode'];
+      final provider = error['existingProvider'];
+      if (code == 'SOCIAL_LOGIN_CANCELLED') {
+        return 'social_cancelled'.tr;
+      }
+      if (code == 'SOCIAL_CONFIG_MISSING') {
+        final socialProvider = error['provider'];
+        if (socialProvider == 'google') {
+          return kIsWeb
+              ? 'social_google_requires_client_id'.tr
+              : 'social_google_requires_mobile_config'.tr;
+        }
+        if (socialProvider == 'facebook') {
+          return 'social_facebook_requires_app_id'.tr;
+        }
+      }
+      if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
+        return 'social_provider_temporarily_unavailable'.trParams({
+          'provider': _providerLabel((error['provider'] ?? 'provider').toString()),
+        });
+      }
+      if (code == 'SOCIAL_ID_TOKEN_MISSING' ||
+          code == 'SOCIAL_ACCESS_TOKEN_MISSING') {
+        return 'social_missing_id_token'.tr;
+      }
+      if (code == 'ACCOUNT_EXISTS_WITH_PASSWORD') {
+        return 'social_account_exists_with_password'.tr;
+      }
+      if (code == 'ACCOUNT_EXISTS_WITH_DIFFERENT_PROVIDER') {
+        return 'social_account_exists_with_different_provider'.trParams({
+          'provider': _providerLabel((provider ?? 'provider').toString()),
+        });
+      }
+    }
+
+    final message = usersProvider.extractErrorMessage(error);
+    if (message.toLowerCase().contains('cancel')) {
+      return 'social_cancelled'.tr;
+    }
+    return message;
+  }
+
+  Future<void> _completeSocialLogin(
+    Future<dynamic> Function() action,
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _socialStatusMessage = null;
+      _socialStatusIsError = true;
+    });
+
+    try {
+      await action();
+      if (!mounted || usersProvider.selectedUser == null) {
+        return;
+      }
+
+      await navigateAfterSuccessfulLogin(
+        userId: usersProvider.selectedUser!.id,
+        isFirstLogin: usersProvider.isFirstLogin,
+        loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _socialStatusMessage = _resolveSocialErrorMessage(error, usersProvider);
+        _socialStatusIsError = true;
+      });
+    }
   }
 
   @override
@@ -333,15 +399,43 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   .getQuranChartData(userId),
                                         );
                                       } catch (e) {
+                                        final messageText =
+                                            usersProvider.extractErrorMessage(e);
+                                        final errorCode = e is Map
+                                          ? (e['errorCode'] ??
+                                            (e['message'] is Map
+                                              ? e['message']['errorCode']
+                                              : null))
+                                          : null;
+
+                                        if (errorCode ==
+                                          'ACCOUNT_NOT_VERIFIED') {
+                                          await usersProvider
+                                              .setPendingVerificationState(
+                                            _userController
+                                                .loginEmailController.text
+                                                .trim(),
+                                            sentAt: usersProvider
+                                                .pendingVerificationSentAt,
+                                          );
+                                          if (!context.mounted) return;
+                                          Get.offAllNamed(
+                                            '/verification-pending',
+                                            parameters: {
+                                              'email': _userController
+                                                  .loginEmailController.text
+                                                  .trim(),
+                                            },
+                                          );
+                                          return;
+                                        }
+
                                         String message;
-                                        if (e
-                                            .toString()
+                                        if (messageText
                                             .contains("invalid credentials")) {
                                           message = "invalid_credentials".tr;
                                         } else {
-                                          message = e
-                                              .toString()
-                                              .replaceFirst('Exception: ', '');
+                                          message = messageText;
                                         }
 
                                         if (!context.mounted) return;
@@ -360,6 +454,115 @@ class _LoginScreenState extends State<LoginScreen> {
                                         });
                                       }
                                     },
+                                  ),
+                                  const SizedBox(height: 30),
+                                  AuthSocialSection(
+                                    googleControl:
+                                        kIsWeb &&
+                                                SocialAuthConfig
+                                                    .isGoogleConfiguredForCurrentPlatform
+                                            ? GoogleWebAuthButton(
+                                                initialize: usersProvider
+                                                    .ensureGoogleInitialized,
+                                                isBusy: usersProvider.isLoading,
+                                                isSignupContext: false,
+                                                onIdToken: (idToken) async {
+                                                  await _completeSocialLogin(
+                                                    () => usersProvider
+                                                        .signInWithGoogleIdToken(
+                                                      idToken,
+                                                    ),
+                                                    usersProvider,
+                                                    evaluationsProvider,
+                                                  );
+                                                },
+                                                onError: (error) {
+                                                  if (!mounted) {
+                                                    return;
+                                                  }
+                                                  setState(() {
+                                                    _socialStatusMessage =
+                                                        _resolveSocialErrorMessage(
+                                                      error,
+                                                      usersProvider,
+                                                    );
+                                                    _socialStatusIsError = true;
+                                                  });
+                                                },
+                                              )
+                                            : SizedBox(
+                                                width: double.infinity,
+                                                child: OutlinedButton(
+                                                  onPressed: (!kIsWeb &&
+                                                          !usersProvider
+                                                              .isLoading)
+                                                      ? () =>
+                                                          _completeSocialLogin(
+                                                            usersProvider
+                                                                .signInWithGoogle,
+                                                            usersProvider,
+                                                            evaluationsProvider,
+                                                          )
+                                                      : null,
+                                                  style:
+                                                      OutlinedButton.styleFrom(
+                                                    minimumSize:
+                                                        const Size.fromHeight(
+                                                      48,
+                                                    ),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                        14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    'google_continue'.tr,
+                                                    style: TextStyle(
+                                                      fontFamily:
+                                                          AppFonts.primaryFont,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          showFacebook:
+                                            SocialAuthConfig.facebookAuthEnabled,
+                                    onFacebookPressed:
+                                        usersProvider.isLoading
+                                            ? null
+                                            : () => _completeSocialLogin(
+                                                  usersProvider.signInWithFacebook,
+                                                  usersProvider,
+                                                  evaluationsProvider,
+                                                ),
+                                    isBusy: usersProvider.isLoading,
+                                    googleHint:
+                                        kIsWeb &&
+                                                !SocialAuthConfig
+                                                    .isGoogleConfiguredForCurrentPlatform
+                                            ? 'social_google_requires_client_id'
+                                                .tr
+                                            : (!kIsWeb &&
+                                                    !SocialAuthConfig
+                                                        .isGoogleConfiguredForCurrentPlatform)
+                                                ? 'social_google_requires_mobile_config'
+                                                    .tr
+                                                : null,
+                                    facebookHint:
+                                        kIsWeb &&
+                                                !SocialAuthConfig
+                                                    .isFacebookConfiguredForCurrentPlatform
+                                            ? 'social_facebook_requires_app_id'
+                                                .tr
+                                            : null,
+                                    statusMessage: _socialStatusMessage,
+                                    statusTone: _socialStatusIsError
+                                        ? AuthSocialStatusTone.error
+                                        : AuthSocialStatusTone.info,
                                   ),
                                   const SizedBox(height: 30),
                                   CustomAuthFooter(

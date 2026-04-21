@@ -14,7 +14,36 @@ class UsersServices with ChangeNotifier {
     'accept': 'application/json',
   };
 
+  Map<String, dynamic>? _extractStructuredMessage(dynamic responseData) {
+    if (responseData is! Map<String, dynamic>) {
+      return null;
+    }
+
+    final message = responseData['message'];
+    if (message is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(message);
+    }
+
+    if (message is Map) {
+      return message.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+    }
+
+    return null;
+  }
+
   String _extractErrorMessage(dynamic responseData, String fallback) {
+    final structuredMessage = _extractStructuredMessage(responseData);
+    final nestedMessage = structuredMessage?['message'];
+    if (nestedMessage is String && nestedMessage.isNotEmpty) {
+      return nestedMessage;
+    }
+
+    if (nestedMessage is List && nestedMessage.isNotEmpty) {
+      return nestedMessage.join(', ');
+    }
+
     final message = responseData['message'];
 
     if (message is String && message.isNotEmpty) {
@@ -28,7 +57,28 @@ class UsersServices with ChangeNotifier {
     return fallback;
   }
 
-  Future<dynamic> register({
+  Map<String, dynamic> _normalizeErrorResponse(
+    int statusCode,
+    dynamic responseData,
+    String fallback,
+  ) {
+    final normalized = responseData is Map<String, dynamic>
+        ? Map<String, dynamic>.from(responseData)
+        : <String, dynamic>{};
+
+    final structuredMessage = _extractStructuredMessage(normalized);
+    if (structuredMessage != null) {
+      for (final entry in structuredMessage.entries) {
+        normalized.putIfAbsent(entry.key, () => entry.value);
+      }
+    }
+
+    normalized['statusCode'] ??= statusCode;
+    normalized['message'] = _extractErrorMessage(normalized, fallback);
+    return normalized;
+  }
+
+  Future<Map<String, dynamic>> register({
     required String username,
     required String email,
     required String password,
@@ -48,10 +98,14 @@ class UsersServices with ChangeNotifier {
 
       final responseData = json.decode(response.body);
       if (response.statusCode == 201) {
-        return AuthData.fromJson(responseData);
-      } else {
-        return responseData['message'] ?? 'Unknown error';
+        return Map<String, dynamic>.from(responseData as Map);
       }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر إنشاء الحساب',
+      );
     } catch (ex) {
       rethrow;
     }
@@ -77,9 +131,63 @@ class UsersServices with ChangeNotifier {
 
       if (response.statusCode == 200) {
         return AuthData.fromJson(responseData);
-      } else {
-        return responseData['message'] ?? 'Unknown error';
       }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر تسجيل الدخول',
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<dynamic> verifyEmail({required String token}) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/verify-email'),
+            headers: _authHeaders,
+            body: json.encode({'token': token}),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return AuthData.fromJson(responseData);
+      }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر تفعيل الحساب',
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> resendVerification({required String email}) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/resend-verification'),
+            headers: _authHeaders,
+            body: json.encode({'email': email}),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر إعادة إرسال رابط التفعيل',
+      );
     } catch (ex) {
       rethrow;
     }
@@ -98,12 +206,13 @@ class UsersServices with ChangeNotifier {
       final responseData = json.decode(response.body);
       if (response.statusCode == 200) {
         return AuthData.fromJson(responseData);
-      } else {
-        return _extractErrorMessage(
-          responseData,
-          'Google login failed',
-        );
       }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر تسجيل الدخول عبر Google',
+      );
     } catch (ex) {
       rethrow;
     }
@@ -122,12 +231,13 @@ class UsersServices with ChangeNotifier {
       final responseData = json.decode(response.body);
       if (response.statusCode == 200) {
         return AuthData.fromJson(responseData);
-      } else {
-        return _extractErrorMessage(
-          responseData,
-          'Facebook login failed',
-        );
       }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر تسجيل الدخول عبر Facebook',
+      );
     } catch (ex) {
       rethrow;
     }

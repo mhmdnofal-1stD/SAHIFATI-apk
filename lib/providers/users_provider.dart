@@ -1,9 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../controllers/users_controller.dart';
+import '../core/auth/social_auth_config.dart';
 import '../core/constants/colors.dart';
 import '../models/user.dart';
 import '../services/sahifaty_api.dart';
@@ -12,19 +14,117 @@ import '../services/users_services.dart';
 
 class UsersProvider with ChangeNotifier {
   static final UsersProvider _instance = UsersProvider._internal();
+  static const String _pendingVerificationEmailKey =
+      'pending_verification_email';
+  static const String _pendingVerificationSentAtKey =
+      'pending_verification_sent_at_ms';
 
   factory UsersProvider() => _instance;
 
   UsersProvider._internal();
 
   User? selectedUser;
+  String? pendingVerificationEmail;
+  DateTime? pendingVerificationSentAt;
 
   final UsersServices _usersService = UsersServices();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool isLoading = false;
   bool isFirstLogin = false;
   bool showMemorizationColors = true;
   bool showComprehensionUnderline = true;
   bool _readingDisplayPreferencesLoaded = false;
+  bool _googleInitialized = false;
+  bool _facebookWebInitialized = false;
+
+  String extractErrorMessage(Object error) {
+    if (error is Map) {
+      final message = error['message'];
+      if (message is String && message.isNotEmpty) {
+        return message;
+      }
+
+      if (message is List && message.isNotEmpty) {
+        return message.join(', ');
+      }
+
+      if (message is Map) {
+        final nestedMessage = message['message'];
+        if (nestedMessage is String && nestedMessage.isNotEmpty) {
+          return nestedMessage;
+        }
+
+        if (nestedMessage is List && nestedMessage.isNotEmpty) {
+          return nestedMessage.join(', ');
+        }
+      }
+    }
+
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  bool get hasPendingVerification =>
+      pendingVerificationEmail != null && pendingVerificationEmail!.isNotEmpty;
+
+  Map<String, dynamic> _buildSocialAuthError(
+    String code,
+    String message, {
+    String? provider,
+    Map<String, dynamic>? extra,
+  }) {
+    return {
+      'errorCode': code,
+      'message': message,
+      if (provider != null) 'provider': provider,
+      ...?extra,
+    };
+  }
+
+  Future<void> ensureGoogleInitialized() async {
+    if (_googleInitialized) {
+      return;
+    }
+
+    if (!SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
+      throw _buildSocialAuthError(
+        'SOCIAL_CONFIG_MISSING',
+        kIsWeb
+            ? 'Google web client ID is missing.'
+            : 'Google Sign-In mobile configuration is missing.',
+        provider: 'google',
+      );
+    }
+
+    await _googleSignIn.initialize(
+      clientId: SocialAuthConfig.googleClientIdOrNull,
+      serverClientId: SocialAuthConfig.googleServerClientIdOrNull,
+    );
+
+    _googleInitialized = true;
+  }
+
+  Future<void> ensureFacebookInitialized() async {
+    if (!kIsWeb || _facebookWebInitialized) {
+      return;
+    }
+
+    if (!SocialAuthConfig.isFacebookConfiguredForCurrentPlatform) {
+      throw _buildSocialAuthError(
+        'SOCIAL_CONFIG_MISSING',
+        'Facebook app ID is missing.',
+        provider: 'facebook',
+      );
+    }
+
+    await FacebookAuth.instance.webAndDesktopInitialize(
+      appId: SocialAuthConfig.facebookAppId,
+      cookie: true,
+      xfbml: true,
+      version: SocialAuthConfig.facebookApiVersion,
+    );
+
+    _facebookWebInitialized = true;
+  }
 
   void _applyReadingDisplayPreferencesFromProfile(
       Map<String, dynamic> profile) {
@@ -91,7 +191,7 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
-  Future<AuthData> register(
+  Future<Map<String, dynamic>> register(
       String username, String email, String password) async {
     setLoading();
     try {
@@ -101,16 +201,9 @@ class UsersProvider with ChangeNotifier {
         password: password,
       );
 
-      // result can be User or String error
-      if (result is AuthData) {
-        if (result.user != null) {
-            await saveUserToDevice(result.user!);
-        }
-        return result;
-      } else {
-        // throw error to be caught in UI
-        throw result;
-      }
+      await clearPersistedSession();
+      await setPendingVerificationState(email, sentAt: DateTime.now());
+      return result;
     } finally {
       resetLoading();
     }
@@ -123,9 +216,9 @@ class UsersProvider with ChangeNotifier {
         email: email,
         password: password,
       );
-      // result can be User or String error
+
       if (result is AuthData) {
-         if (result.user != null) {
+        if (result.user != null) {
           await saveUserToDevice(result.user!);
         }
         return result;
@@ -139,57 +232,155 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
+  Future<AuthData> finalizeAuthenticatedUser(AuthData authData) async {
+    if (authData.user == null || authData.accessToken == null) {
+      throw _buildSocialAuthError(
+        'SOCIAL_AUTH_INVALID_RESPONSE',
+        'Authentication response is incomplete.',
+      );
+    }
 
-//   Future<AuthData> signInWithGoogle() async {
-//     setLoading();
-//     try {
-//       final google_sign_in.GoogleSignIn googleSignIn =
-//       google_sign_in.GoogleSignIn(scopes: ['email']);
-//
-//       final google_sign_in.GoogleSignInAccount? googleUser =
-//       await googleSignIn.signIn();
-// `
-//       if (googleUser == null) throw 'Google Sign In aborted';
-//
-//       final google_sign_in.GoogleSignInAuthentication googleAuth =
-//       await googleUser.authentication;
-//
-//       final String? idToken = googleAuth.idToken;
-//
-//       if (idToken == null) throw 'Could not retrieve ID Token';
-//
-//       final result = await _usersService.loginWithGoogle(idToken);
-//       if (result is AuthData) return result;
-//
-//       throw result;
-//     } finally {
-//       resetLoading();
-//     }
-//   }
+    final user = User(
+      id: authData.user!.id,
+      fullName: authData.user!.fullName,
+      email: authData.user!.email,
+      userRoleId: authData.user!.userRoleId,
+    );
+
+    setSelectedUser(user);
+    await saveUserToDevice(user);
+    await saveUserSession(
+      user,
+      authData.accessToken!,
+      refreshToken: authData.refreshToken,
+    );
+    await clearPendingVerificationState();
+    await checkFirstLogin();
+    return authData;
+  }
+
+  Future<AuthData> signInWithGoogle() async {
+    setLoading();
+    try {
+      await ensureGoogleInitialized();
+      if (!_googleSignIn.supportsAuthenticate()) {
+        throw _buildSocialAuthError(
+          'SOCIAL_PROVIDER_UNSUPPORTED',
+          'Google interactive authentication is not supported on this platform.',
+          provider: 'google',
+        );
+      }
+
+      final GoogleSignInAccount account = await _googleSignIn.authenticate();
+      final String? idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw _buildSocialAuthError(
+          'SOCIAL_ID_TOKEN_MISSING',
+          'Could not retrieve Google identity token.',
+          provider: 'google',
+        );
+      }
+
+      return await signInWithGoogleIdToken(idToken, manageLoading: false);
+    } on GoogleSignInException catch (error) {
+      final code = switch (error.code) {
+        GoogleSignInExceptionCode.canceled => 'SOCIAL_LOGIN_CANCELLED',
+        GoogleSignInExceptionCode.uiUnavailable =>
+          'SOCIAL_PROVIDER_UNSUPPORTED',
+        _ => 'SOCIAL_LOGIN_FAILED',
+      };
+
+      throw _buildSocialAuthError(
+        code,
+        error.description ?? 'Google sign-in failed.',
+        provider: 'google',
+      );
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<AuthData> signInWithGoogleIdToken(
+    String idToken, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      setLoading();
+    }
+
+    try {
+      final result = await _usersService.loginWithGoogle(idToken);
+      if (result is! AuthData) {
+        throw result;
+      }
+
+      return await finalizeAuthenticatedUser(result);
+    } finally {
+      if (manageLoading) {
+        resetLoading();
+      }
+    }
+  }
 
   Future<AuthData> signInWithFacebook() async {
     setLoading();
     try {
+      await ensureFacebookInitialized();
       final LoginResult loginResult = await FacebookAuth.instance.login();
       if (loginResult.status == LoginStatus.success) {
         final AccessToken? accessToken = loginResult.accessToken;
         if (accessToken == null) {
-          throw 'Could not retrieve Access Token';
+          throw _buildSocialAuthError(
+            'SOCIAL_ACCESS_TOKEN_MISSING',
+            'Could not retrieve Facebook access token.',
+            provider: 'facebook',
+          );
         }
-        final result =
-            await _usersService.loginWithFacebook(accessToken.tokenString);
-        if (result is AuthData) {
-          return result;
-        } else {
-          throw result;
-        }
-      } else {
-        throw 'Facebook Sign In failed: ${loginResult.message}';
+        return await signInWithFacebookAccessToken(
+          accessToken.tokenString,
+          manageLoading: false,
+        );
       }
+
+      if (loginResult.status == LoginStatus.cancelled) {
+        throw _buildSocialAuthError(
+          'SOCIAL_LOGIN_CANCELLED',
+          'Facebook sign-in was cancelled.',
+          provider: 'facebook',
+        );
+      }
+
+      throw _buildSocialAuthError(
+        'SOCIAL_LOGIN_FAILED',
+        loginResult.message ?? 'Facebook sign-in failed.',
+        provider: 'facebook',
+      );
     } catch (ex) {
       rethrow;
     } finally {
       resetLoading();
+    }
+  }
+
+  Future<AuthData> signInWithFacebookAccessToken(
+    String accessToken, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      setLoading();
+    }
+
+    try {
+      final result = await _usersService.loginWithFacebook(accessToken);
+      if (result is! AuthData) {
+        throw result;
+      }
+
+      return await finalizeAuthenticatedUser(result);
+    } finally {
+      if (manageLoading) {
+        resetLoading();
+      }
     }
   }
 
@@ -208,6 +399,101 @@ class UsersProvider with ChangeNotifier {
     selectedUser = null;
     _resetReadingDisplayPreferencesState();
     notifyListeners();
+  }
+
+  Future<void> loadPendingVerificationState() async {
+    final prefs = await SharedPreferences.getInstance();
+    pendingVerificationEmail = prefs.getString(_pendingVerificationEmailKey);
+    final sentAtMs = prefs.getInt(_pendingVerificationSentAtKey);
+    pendingVerificationSentAt =
+        sentAtMs == null ? null : DateTime.fromMillisecondsSinceEpoch(sentAtMs);
+    notifyListeners();
+  }
+
+  Future<void> setPendingVerificationState(
+    String email, {
+    DateTime? sentAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    pendingVerificationEmail = email;
+    pendingVerificationSentAt = sentAt;
+    await prefs.setString(_pendingVerificationEmailKey, email);
+    if (sentAt == null) {
+      await prefs.remove(_pendingVerificationSentAtKey);
+    } else {
+      await prefs.setInt(
+        _pendingVerificationSentAtKey,
+        sentAt.millisecondsSinceEpoch,
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<void> clearPendingVerificationState() async {
+    final prefs = await SharedPreferences.getInstance();
+    pendingVerificationEmail = null;
+    pendingVerificationSentAt = null;
+    await prefs.remove(_pendingVerificationEmailKey);
+    await prefs.remove(_pendingVerificationSentAtKey);
+    notifyListeners();
+  }
+
+  Future<Map<String, dynamic>> resendVerificationEmail({String? email}) async {
+    final targetEmail = email ?? pendingVerificationEmail;
+    if (targetEmail == null || targetEmail.isEmpty) {
+      throw Exception('لا يوجد بريد محفوظ لإعادة الإرسال');
+    }
+
+    setLoading();
+    try {
+      final result = await _usersService.resendVerification(email: targetEmail);
+      await setPendingVerificationState(targetEmail, sentAt: DateTime.now());
+      return result;
+    } catch (error) {
+      if (error is Map) {
+        final retryAfter = error['retryAfterSeconds'];
+        if (retryAfter is int) {
+          final adjustedSentAt =
+              DateTime.now().subtract(Duration(seconds: 60 - retryAfter));
+          await setPendingVerificationState(
+            targetEmail,
+            sentAt: adjustedSentAt,
+          );
+        }
+      }
+      rethrow;
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<AuthData> verifyEmailToken(String token) async {
+    setLoading();
+    try {
+      final result = await _usersService.verifyEmail(token: token);
+      if (result is! AuthData || result.user == null) {
+        throw result;
+      }
+
+      final user = User(
+        id: result.user!.id,
+        fullName: result.user!.fullName,
+        email: result.user!.email,
+        userRoleId: result.user!.userRoleId,
+      );
+
+      setSelectedUser(user);
+      await saveUserToDevice(user);
+      await saveUserSession(
+        user,
+        result.accessToken!,
+        refreshToken: result.refreshToken,
+      );
+      await clearPendingVerificationState();
+      return result;
+    } finally {
+      resetLoading();
+    }
   }
 
   Future<void> sendPasswordResetEmail(email) async {

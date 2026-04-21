@@ -15,6 +15,8 @@ class CustomAuthenticationTextField extends StatefulWidget {
     this.keyboardType,
     this.autofillHints,
     this.textInputAction,
+    this.focusNode,
+    this.onSubmitted,
   });
 
   final String? hintText;
@@ -27,6 +29,8 @@ class CustomAuthenticationTextField extends StatefulWidget {
   final TextInputType? keyboardType;
   final Iterable<String>? autofillHints;
   final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   State<CustomAuthenticationTextField> createState() =>
@@ -62,9 +66,11 @@ class _CustomAuthenticationTextFieldState
               child: TextField(
                   textAlign: TextAlign.left,
                   controller: widget.textEditingController,
+                  focusNode: widget.focusNode,
                   keyboardType: widget.keyboardType,
                   autofillHints: widget.autofillHints,
                   textInputAction: widget.textInputAction,
+                  onSubmitted: widget.onSubmitted,
                   enableSuggestions: !widget.obscureText,
                   autocorrect: !widget.obscureText,
                   obscureText: widget.obscureText && !showPassword,
