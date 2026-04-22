@@ -1,11 +1,17 @@
 class ApiConfig {
   static const String _compileTimeBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://sahifati.org/api',
   );
 
-  static String get baseUrl =>
-      _compileTimeBaseUrl.isNotEmpty ? _compileTimeBaseUrl : 'http://127.0.0.1:3067';
+  static String get baseUrl {
+    final normalized = _compileTimeBaseUrl.trim().replaceAll(RegExp(r'/+$'), '');
+    if (normalized.endsWith('/api')) {
+      return normalized;
+    }
+
+    return '$normalized/api';
+  }
 
   static String endpoint(String path) {
     final normalizedPath = path.startsWith('/') ? path.substring(1) : path;

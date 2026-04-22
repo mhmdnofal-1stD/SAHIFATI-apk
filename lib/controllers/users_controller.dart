@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/colors.dart';
 import '../providers/users_provider.dart';
 import '../screens/authentication_screens/login_screen.dart';
+import '../screens/authentication_screens/select_user_screen.dart';
 
 class UsersController {
   static final UsersController _instance = UsersController._internal();
@@ -47,35 +48,30 @@ class UsersController {
   }
 
   void checkMatchedPassword() {
-    isMatched = signUpPasswordController.text.trim() ==
-        signUpConfirmedPasswordController.text.trim();
+    isMatched = signUpPasswordController.text ==
+        signUpConfirmedPasswordController.text;
   }
 
   void checkValidPassword() {
-    String password = signUpPasswordController.text.trim();
+    String password = signUpPasswordController.text;
 
     if (password.isEmpty) {
       throw Exception('أدخل كلمة المرور');
-    } else if (password.length < 6) {
-      throw Exception('يجب أن تحتوي كلمة المرور على ستة أحرف على الأقل');
+    } else if (password.length < 8) {
+      throw Exception('يجب أن تحتوي كلمة المرور على ثمانية أحرف على الأقل');
     } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
       throw Exception('يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل');
     } else if (!RegExp(r'[a-z]').hasMatch(password)) {
       throw Exception('يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل');
     } else if (!RegExp(r'\d').hasMatch(password)) {
       throw Exception('يجب أن تحتوي كلمة المرور على رقم واحد على الأقل');
-    } else if (!RegExp(r'[!@#\$&*~]').hasMatch(password)) {
-      throw Exception(
-          'يجب أن تحتوي كلمة المرور على رمز واحد على الأقل (! @ # \$ & * ~)');
+    } else if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+      throw Exception('يجب أن تحتوي كلمة المرور على رمز واحد على الأقل');
     }
   }
 
   bool isEmailValid(String email) {
-    final RegExp emailRegex = RegExp(
-      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-    );
-
-    return emailRegex.hasMatch(email);
+    return GetUtils.isEmail(email);
   }
 
   void changeTextFieldsColors(bool login) {
@@ -141,10 +137,26 @@ class UsersController {
 
   Future<void> saveLoginInfo(String email) async {
     final prefs = await SharedPreferences.getInstance();
+    final previousEmail = prefs.getString('email');
 
+    if (previousEmail != null && previousEmail.isNotEmpty && previousEmail != email) {
+      await prefs.remove('saved for $previousEmail');
+    }
     await prefs.setString('email', email);
     await prefs.remove('password');
     await prefs.setBool('saved for $email', true);
+  }
+
+  Future<void> clearLoginInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final previousEmail = prefs.getString('email');
+
+    if (previousEmail != null && previousEmail.isNotEmpty) {
+      await prefs.remove('saved for $previousEmail');
+    }
+
+    await prefs.remove('email');
+    await prefs.remove('password');
   }
 
   Future<void> getLoginInfo() async {
@@ -152,6 +164,7 @@ class UsersController {
     final email = prefs.getString('email') ?? '';
     loginEmailController.text = email;
     loginPasswordController.clear();
+    rememberMe = email.isNotEmpty;
   }
 
 
@@ -161,8 +174,14 @@ class UsersController {
     await prefs.setBool('onboarding_complete', true);
   }
 
-  void logout(UsersProvider usersProvider) {
-    usersProvider.logout();
+  Future<void> logout(UsersProvider usersProvider) async {
+    await usersProvider.logout();
+
+    final storedUsers = await usersProvider.getStoredDeviceUsers();
+    if (storedUsers.isNotEmpty) {
+      Get.offAll(() => const SelectUserScreen(firstScreen: false));
+      return;
+    }
 
     Get.offAll(() => const LoginScreen(firstScreen: false));
   }
@@ -172,5 +191,16 @@ class UsersController {
     signUpUsernameController.clear();
     signUpPasswordController.clear();
     signUpConfirmedPasswordController.clear();
+  }
+
+  void resetSignUpState() {
+    clearTextFields();
+    signUpEmailTextFieldBorderColor = AppColors.textFieldBorderColor;
+    signUpPasswordTextFieldBorderColor = AppColors.textFieldBorderColor;
+    signUpUsernameTextFieldBorderColor = AppColors.textFieldBorderColor;
+    confirmPasswordTextFieldBorderColor = AppColors.textFieldBorderColor;
+    noneIsEmpty = true;
+    isMatched = true;
+    passwordIsValid = true;
   }
 }

@@ -247,6 +247,19 @@ class EvaluationsProvider with ChangeNotifier {
         userEvaluation.compreEvaluation ?? findEvaluationById(userEvaluation.compreId);
   }
 
+  void resetForAccountSwitch() {
+    userEvaluations.clear();
+    chartEvaluationData.clear();
+    totalCount = 0;
+    chartDimension = 'memorization';
+    _loadedQuestionsLevelKey = null;
+    _questionContentAyahs = {};
+    _questionContentCompletion = {};
+    isQuestionsLevelLoading = false;
+    isLoading = false;
+    notifyListeners();
+  }
+
 
   void setLoading() {
     isLoading = true;

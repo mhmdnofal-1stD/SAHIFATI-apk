@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'core/auth/authenticated_route_gate.dart';
+import 'core/auth/verification_flow.dart';
 import 'controllers/general_controller.dart';
 import 'core/constants/colors.dart';
 import 'providers/ayat_provider.dart';
@@ -12,9 +14,13 @@ import 'providers/school_provider.dart';
 import 'providers/surahs_provider.dart';
 import 'providers/users_provider.dart';
 import 'providers/language_provider.dart';
+import 'screens/authentication_screens/email_verification_pending_screen.dart';
+import 'screens/authentication_screens/email_verification_result_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
+import 'screens/authentication_screens/sign_up_screen.dart';
 import 'screens/sahifa_screen/sahifa_screen.dart';
+import 'screens/welcome_screen/welcome_screen.dart';
 import 'services/localization_service.dart';
 
 Future<void> main() async {
@@ -85,9 +91,89 @@ class MyApp extends StatelessWidget {
           secondary: AppColors.buttonColor,
         ),
       ),
-      home: const InitialScreen(),
+      initialRoute: '/',
+      getPages: [
+        GetPage(name: '/', page: () => const InitialScreen()),
+        GetPage(
+          name: '/login',
+          page: () => const LoginScreen(firstScreen: true),
+        ),
+        GetPage(
+          name: '/select-user',
+          page: () => const SelectUserScreen(firstScreen: true),
+        ),
+        GetPage(
+          name: '/signup',
+          page: () => const SignUpScreen(),
+        ),
+        GetPage(
+          name: '/welcome',
+          page: () => const AuthenticatedRouteGate(
+            child: WelcomeScreen(),
+          ),
+        ),
+        GetPage(
+          name: '/sahifa',
+          page: () => AuthenticatedRouteGate(
+            loader: _ensureSahifaChartData,
+            child: SahifaScreen(
+              firstScreen: (Get.parameters['firstScreen'] ?? 'false') == 'true',
+            ),
+          ),
+        ),
+        GetPage(
+          name: '/verification-pending',
+          page: () => EmailVerificationPendingScreen(
+            initialEmail: Get.parameters['email'],
+          ),
+        ),
+        GetPage(
+          name: '/verify-email',
+          page: () => EmailVerificationHandlerScreen(
+            token: Get.parameters['token'],
+            email: Get.parameters['email'],
+          ),
+        ),
+        GetPage(
+          name: '/verification-success',
+          page: () => EmailVerificationResultScreen(
+            state: VerificationResultState.success,
+            email: Get.parameters['email'],
+          ),
+        ),
+        GetPage(
+          name: '/verification-failed',
+          page: () => EmailVerificationResultScreen(
+            state: VerificationResultState.failed,
+            email: Get.parameters['email'],
+          ),
+        ),
+        GetPage(
+          name: '/verification-expired',
+          page: () => EmailVerificationResultScreen(
+            state: VerificationResultState.expired,
+            email: Get.parameters['email'],
+          ),
+        ),
+      ],
     );
   }
+}
+
+Future<void> _ensureSahifaChartData(
+  UsersProvider usersProvider,
+  EvaluationsProvider evaluationsProvider,
+) async {
+  final user = usersProvider.selectedUser;
+  if (user == null) {
+    return;
+  }
+
+  if (evaluationsProvider.chartEvaluationData.isNotEmpty) {
+    return;
+  }
+
+  await evaluationsProvider.getQuranChartData(user.id);
 }
 
 class InitialScreen extends StatefulWidget {
@@ -108,6 +194,70 @@ class _InitialScreenState extends State<InitialScreen> {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
+    await usersProvider.loadPendingVerificationState();
+
+    final verificationIntent = resolveVerificationRoute(Uri.base);
+    if (!mounted) {
+      return;
+    }
+
+    if (verificationIntent.kind == VerificationRouteKind.verifyToken) {
+      Get.offAllNamed(
+        '/verify-email',
+        parameters: {
+          if (verificationIntent.token != null)
+            'token': verificationIntent.token!,
+          if (verificationIntent.email != null)
+            'email': verificationIntent.email!,
+        },
+      );
+      return;
+    }
+
+    if (verificationIntent.kind == VerificationRouteKind.pending) {
+      Get.offAllNamed(
+        '/verification-pending',
+        parameters: {
+          if (verificationIntent.email != null)
+            'email': verificationIntent.email!,
+        },
+      );
+      return;
+    }
+
+    if (verificationIntent.kind == VerificationRouteKind.success) {
+      Get.offAllNamed(
+        '/verification-success',
+        parameters: {
+          if (verificationIntent.email != null)
+            'email': verificationIntent.email!,
+        },
+      );
+      return;
+    }
+
+    if (verificationIntent.kind == VerificationRouteKind.failed) {
+      Get.offAllNamed(
+        '/verification-failed',
+        parameters: {
+          if (verificationIntent.email != null)
+            'email': verificationIntent.email!,
+        },
+      );
+      return;
+    }
+
+    if (verificationIntent.kind == VerificationRouteKind.expired) {
+      Get.offAllNamed(
+        '/verification-expired',
+        parameters: {
+          if (verificationIntent.email != null)
+            'email': verificationIntent.email!,
+        },
+      );
+      return;
+    }
+
     final hasConnection = await GeneralController().checkConnectivity();
 
     if (!mounted) {
@@ -133,7 +283,10 @@ class _InitialScreenState extends State<InitialScreen> {
         if (!mounted) {
           return;
         }
-        Get.off(() => const SahifaScreen(firstScreen: true,));
+        Get.offAllNamed(
+          '/sahifa',
+          parameters: const {'firstScreen': 'true'},
+        );
       } catch (e) {
         await usersProvider.clearPersistedSession();
         _routeToLoginOrSelectUser(usersProvider);
@@ -147,9 +300,9 @@ class _InitialScreenState extends State<InitialScreen> {
   Future<void> _routeToLoginOrSelectUser(UsersProvider usersProvider) async {
     final storedUsers = await usersProvider.getStoredDeviceUsers();
     if (storedUsers.isNotEmpty) {
-      Get.off(() => const SelectUserScreen(firstScreen: true,));
+      Get.offAllNamed('/select-user');
     } else {
-      Get.off(() => const LoginScreen(firstScreen: true));
+      Get.offAllNamed('/login');
     }
   }
 

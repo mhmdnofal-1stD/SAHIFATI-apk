@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
+import '../../core/auth/post_auth_navigation.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
+import '../../providers/ayat_provider.dart';
+import '../../providers/evaluations_provider.dart';
+import '../../providers/surahs_provider.dart';
 import '../../providers/users_provider.dart';
 import 'login_screen.dart';
 
@@ -28,6 +32,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   Future<void> _loadStoredUsers() async {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final users = await usersProvider.getStoredDeviceUsers();
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _storedUsers = users;
       _isLoading = false;
@@ -39,7 +47,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     }
   }
 
-  Future<void> _continueWithUser(Map<String, dynamic> userData) async {
+  void _prepareLoginForUser(Map<String, dynamic> userData) {
     final email = userData['email'];
 
     if (email == null) {
@@ -55,6 +63,66 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     UsersController().loginEmailController.text = email.toString();
     UsersController().loginPasswordController.clear();
     Get.to(() => const LoginScreen(firstScreen: false));
+  }
+
+  Future<void> _resetUserScopedState() async {
+    context.read<EvaluationsProvider>().resetForAccountSwitch();
+    context.read<AyatProvider>().resetForAccountSwitch();
+    context.read<SurahsProvider>().resetForAccountSwitch();
+  }
+
+  Future<void> _continueWithUser(Map<String, dynamic> userData) async {
+    if (userData['isCurrent'] == true) {
+      Get.back();
+      return;
+    }
+
+    final usersProvider = Provider.of<UsersProvider>(context, listen: false);
+    final evaluationsProvider =
+        Provider.of<EvaluationsProvider>(context, listen: false);
+
+    if (userData['hasActiveSession'] == true) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final switched = await usersProvider.switchToStoredUser(userData);
+      if (switched && usersProvider.selectedUser != null) {
+        await _resetUserScopedState();
+        await usersProvider.ensureReadingDisplayPreferencesLoaded(
+          forceRefresh: true,
+        );
+
+        if (!mounted) {
+          return;
+        }
+
+        await navigateAfterSuccessfulLogin(
+          userId: usersProvider.selectedUser!.id,
+          isFirstLogin: usersProvider.isFirstLogin,
+          loadChartData: (userId) =>
+              evaluationsProvider.getQuranChartData(userId),
+        );
+      return;
+    }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      Get.snackbar(
+        'switch_user'.tr,
+        'انتهت جلسة هذا الحساب، يرجى تسجيل الدخول مرة أخرى.',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+    }
+
+    _prepareLoginForUser(userData);
   }
 
   Future<void> _removeUser(String email) async {
@@ -119,10 +187,14 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                               horizontal: 16,
                               vertical: 8,
                             ),
-                            leading: const CircleAvatar(
-                              backgroundColor: AppColors.uncategorizedColor,
+                            leading: CircleAvatar(
+                              backgroundColor: user['isCurrent'] == true
+                                  ? AppColors.buttonColor.withValues(alpha: 0.15)
+                                  : AppColors.uncategorizedColor,
                               child: Icon(
-                                Icons.person,
+                                user['hasActiveSession'] == true
+                                    ? Icons.bolt
+                                    : Icons.person,
                                 color: AppColors.primaryPurple,
                               ),
                             ),
@@ -131,10 +203,45 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text(user['email'] ?? ''),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(user['email'] ?? ''),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    if (user['isCurrent'] == true)
+                                      const Icon(
+                                        Icons.check_circle,
+                                        size: 16,
+                                        color: Colors.green,
+                                      ),
+                                    if (user['isCurrent'] == true)
+                                      const SizedBox(width: 4),
+                                    Text(
+                                      user['isCurrent'] == true
+                                          ? 'الحساب الحالي'
+                                          : user['hasActiveSession'] == true
+                                              ? 'تبديل فوري متاح'
+                                              : 'يتطلب تسجيل دخول',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: user['hasActiveSession'] == true
+                                            ? Colors.green.shade700
+                                            : Colors.orange.shade700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                             trailing: IconButton(
                               icon: const Icon(Icons.close, color: Colors.grey),
-                              onPressed: () => _removeUser(user['email']),
+                              onPressed: user['email'] == null
+                                  ? null
+                                  : () => _removeUser(user['email']),
                             ),
                             onTap: () => _continueWithUser(user),
                           ),

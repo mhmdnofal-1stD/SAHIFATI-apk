@@ -100,6 +100,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   // }
 
   Widget build(BuildContext context) {
+    SizeConfig().init(context);
+
     return NoPopScope(
       child: Scaffold(
         appBar: PreferredSize(

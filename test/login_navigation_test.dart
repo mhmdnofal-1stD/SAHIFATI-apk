@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/login_screen.dart';
@@ -32,8 +33,26 @@ void main() {
             value: EvaluationsProvider(),
           ),
         ],
-        child: const GetMaterialApp(
-          home: LoginScreen(firstScreen: false),
+        child: GetMaterialApp(
+          initialRoute: '/login',
+          getPages: [
+            GetPage(
+              name: '/login',
+              page: () => const LoginScreen(firstScreen: false),
+            ),
+            GetPage(
+              name: '/sahifa',
+              page: () => const Scaffold(
+                body: Text('sahifa-destination'),
+              ),
+            ),
+            GetPage(
+              name: '/welcome',
+              page: () => const Scaffold(
+                body: Text('welcome-destination'),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -45,13 +64,6 @@ void main() {
       userId: 99,
       isFirstLogin: false,
       loadChartData: (_) async {},
-      replaceRoute: (page) => Get.offAll(() => page),
-      buildSahifaScreen: () => const Scaffold(
-        body: Text('sahifa-destination'),
-      ),
-      buildWelcomeScreen: () => const Scaffold(
-        body: Text('welcome-destination'),
-      ),
     );
 
     await tester.pumpAndSettle();

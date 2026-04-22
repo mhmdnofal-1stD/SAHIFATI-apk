@@ -64,5 +64,13 @@ class SurahsProvider with ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
+
+  void resetForAccountSwitch() {
+    surahsByJuz = [];
+    totalSurahs = 1;
+    hizbSurahs.clear();
+    isLoading = false;
+    notifyListeners();
+  }
 }
 

@@ -102,9 +102,9 @@ class GlobalDrawer extends StatelessWidget {
                 ),
               ),
               ListTile(
-                onTap: () {
+                onTap: () async {
                   final usersProvider = context.read<UsersProvider>();
-                  UsersController().logout(usersProvider);
+                  await UsersController().logout(usersProvider);
                 },
                 title: Row(
                   textDirection: TextDirection.rtl,

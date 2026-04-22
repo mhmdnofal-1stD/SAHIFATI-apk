@@ -1,20 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import 'package:sahifaty/models/auth_data.dart';
-import 'package:sahifaty/models/user.dart';
-import 'package:sahifaty/screens/welcome_screen/welcome_screen.dart';
-import 'package:sahifaty/screens/widgets/custom_button.dart';
+import 'package:sahifaty/core/auth/post_auth_navigation.dart';
+import 'package:sahifaty/core/auth/social_auth_config.dart';
+import 'package:sahifaty/core/constants/assets.dart';
+import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/constants/fonts.dart';
 import '../../controllers/users_controller.dart';
-import '../../core/constants/assets.dart';
-import '../../core/constants/colors.dart';
-import '../../core/utils/size_config.dart';
+import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
-import '../widgets/custom_text.dart';
 import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
+import 'widgets/auth_screen_shell.dart';
+import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
+import 'widgets/google_web_auth_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -25,227 +27,426 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   late UsersController _userController;
+  bool _isProcessing = false;
+  String? _inlineError;
+  String? _socialStatusMessage;
+  bool _socialStatusIsError = true;
 
-  @override
-  void dispose() {
-    _userController.signUpConfirmedPasswordController.dispose();
-    super.dispose();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmFocus = FocusNode();
+
+  String _deriveUsernameFromEmail(String email) {
+    final localPart = email.split('@').first.trim().toLowerCase();
+    final normalized = localPart
+        .replaceAll(RegExp(r'[^a-z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'^[_\-.]+|[_\-.]+$'), '')
+        .replaceAll(RegExp(r'_{2,}'), '_');
+
+    return normalized.isEmpty ? 'user' : normalized;
   }
 
   @override
   void initState() {
     super.initState();
     _userController = UsersController();
+    _userController.resetSignUpState();
+  }
+
+  @override
+  void dispose() {
+    _userController.resetSignUpState();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSubmit(UsersProvider usersProvider) async {
+    if (_isProcessing || usersProvider.isLoading) return;
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _inlineError = null;
+      _isProcessing = true;
+    });
+
+    try {
+      final submittedEmail = _userController.signUpEmailController.text.trim();
+      _userController.signUpUsernameController.text =
+          _deriveUsernameFromEmail(submittedEmail);
+
+      _userController.checkEmptyFields(false);
+      if (!_userController.noneIsEmpty) {
+        setState(() => _userController.changeTextFieldsColors(false));
+        throw Exception('all_fields_required'.tr);
+      }
+
+      if (!_userController.isEmailValid(
+        submittedEmail,
+      )) {
+        setState(
+          () => _userController.signUpEmailTextFieldBorderColor =
+              AppColors.errorColor,
+        );
+        throw Exception('invalid_email'.tr);
+      }
+
+      _userController.checkValidPassword();
+      _userController.checkMatchedPassword();
+      if (!_userController.isMatched) {
+        setState(() => _userController.changeTextFieldsColors(false));
+        throw Exception('passwords_no_match'.tr);
+      }
+
+      await usersProvider.register(
+        submittedEmail,
+        _userController.signUpPasswordController.text,
+        username: _userController.signUpUsernameController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      setState(() => _userController.changeTextFieldsColors(false));
+      UsersController().clearTextFields();
+
+      if (!mounted) return;
+      Get.offAllNamed(
+        '/verification-pending',
+        parameters: {
+          'email': submittedEmail,
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      String message;
+      final raw = usersProvider.extractErrorMessage(e);
+      if (raw.contains('email already in use')) {
+        message = 'email_taken'.tr;
+      } else {
+        message = raw;
+      }
+      setState(() {
+        _inlineError = message;
+        _isProcessing = false;
+      });
+    }
+  }
+
+  String _providerLabel(String provider) {
+    switch (provider) {
+      case 'google':
+        return 'social_provider_google'.tr;
+      case 'facebook':
+        return 'social_provider_facebook'.tr;
+      default:
+        return provider;
+    }
+  }
+
+  String _resolveSocialErrorMessage(
+    Object error,
+    UsersProvider usersProvider,
+  ) {
+    if (error is Map) {
+      final code = error['errorCode'];
+      final provider = error['existingProvider'];
+      if (code == 'SOCIAL_LOGIN_CANCELLED') {
+        return 'social_cancelled'.tr;
+      }
+      if (code == 'SOCIAL_CONFIG_MISSING') {
+        final socialProvider = error['provider'];
+        if (socialProvider == 'google') {
+          return kIsWeb
+              ? 'social_google_requires_client_id'.tr
+              : 'social_google_requires_mobile_config'.tr;
+        }
+        if (socialProvider == 'facebook') {
+          return 'social_facebook_requires_app_id'.tr;
+        }
+      }
+      if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
+        return 'social_provider_temporarily_unavailable'.trParams({
+          'provider': _providerLabel((error['provider'] ?? 'provider').toString()),
+        });
+      }
+      if (code == 'SOCIAL_ID_TOKEN_MISSING' ||
+          code == 'SOCIAL_ACCESS_TOKEN_MISSING') {
+        return 'social_missing_id_token'.tr;
+      }
+      if (code == 'ACCOUNT_EXISTS_WITH_PASSWORD') {
+        return 'social_account_exists_with_password'.tr;
+      }
+      if (code == 'ACCOUNT_EXISTS_WITH_DIFFERENT_PROVIDER') {
+        return 'social_account_exists_with_different_provider'.trParams({
+          'provider': _providerLabel((provider ?? 'provider').toString()),
+        });
+      }
+    }
+
+    final message = usersProvider.extractErrorMessage(error);
+    if (message.toLowerCase().contains('cancel')) {
+      return 'social_cancelled'.tr;
+    }
+    return message;
+  }
+
+  Future<void> _completeSocialSignup(
+    Future<dynamic> Function() action,
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    if (_isProcessing || usersProvider.isLoading) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _inlineError = null;
+      _socialStatusMessage = null;
+      _socialStatusIsError = true;
+    });
+
+    try {
+      await action();
+      if (!mounted || usersProvider.selectedUser == null) {
+        return;
+      }
+
+      await navigateAfterSuccessfulLogin(
+        userId: usersProvider.selectedUser!.id,
+        isFirstLogin: usersProvider.isFirstLogin,
+        loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _socialStatusMessage = _resolveSocialErrorMessage(error, usersProvider);
+        _socialStatusIsError = true;
+      });
+    }
+  }
+
+  Widget _buildInlineErrorBanner(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.errorColor.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.errorColor.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.errorColor,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 13,
+                color: AppColors.errorColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (kIsWeb && SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
+      return GoogleWebAuthButton(
+        initialize: usersProvider.ensureGoogleInitialized,
+        isBusy: usersProvider.isLoading,
+        isSignupContext: true,
+        onIdToken: (idToken) async {
+          await _completeSocialSignup(
+            () => usersProvider.signInWithGoogleIdToken(idToken),
+            usersProvider,
+            evaluationsProvider,
+          );
+        },
+        onError: (error) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _socialStatusMessage = _resolveSocialErrorMessage(
+              error,
+              usersProvider,
+            );
+            _socialStatusIsError = true;
+          });
+        },
+      );
+    }
+
+    return AuthCompactSocialButton(
+      semanticLabel: 'social_provider_google'.tr,
+      onPressed: (!kIsWeb && !usersProvider.isLoading)
+          ? () => _completeSocialSignup(
+                usersProvider.signInWithGoogle,
+                usersProvider,
+                evaluationsProvider,
+              )
+          : null,
+      isBusy: usersProvider.isLoading,
+      icon: Image.asset(
+        Assets.googleIcon,
+        width: 24,
+        height: 24,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    UsersProvider usersProvider = Provider.of<UsersProvider>(context);
-    final Size size = MediaQuery.of(context).size;
+    final usersProvider = Provider.of<UsersProvider>(context);
+    final evaluationsProvider = Provider.of<EvaluationsProvider>(context);
+    final bool isBusy = _isProcessing || usersProvider.isLoading;
+
     return NoPopScope(
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        resizeToAvoidBottomInset: false,
-        body: SingleChildScrollView(
-          child: SizedBox(
-            height: size.height,
-            width: size.width,
-            child: Stack(
-              children: [
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => FocusScope.of(context).unfocus(),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: SizeConfig.getProportionalWidth(25),
-                        vertical: SizeConfig.getProportionalWidth(45)),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          SizeConfig.customSizedBox(
-                              1.5,
-                              3.5,
-                              Image.asset(
-                                Assets.logo,
-                                width: 100,
-                                height: 100,
-                              )),
-                          SizeConfig.customSizedBox(null, 100, null),
-                          Padding(
-                              padding: EdgeInsets.only(
-                                  top: SizeConfig.getProportionalHeight(10),
-                                  bottom: SizeConfig.getProportionalHeight(13)),
-                              child: CustomText(
-                                text: "create_account".tr,
-                                fontSize: 24,
-                                fontWeight: FontWeight.normal,
-                                color: AppColors.blackFontColor,
-                                withBackground: false,
-                              )),
-                          CustomAuthenticationTextField(
-                            hintText: 'enter_email_hint'.tr,
-                            obscureText: false,
-                            textEditingController:
-                                _userController.signUpEmailController,
-                            borderColor:
-                                _userController.signUpEmailTextFieldBorderColor,
-                          ),
-                          SizeConfig.customSizedBox(null, 50, null),
-                          CustomAuthenticationTextField(
-                            hintText: 'username_hint'.tr,
-                            obscureText: false,
-                            textEditingController:
-                                _userController.signUpUsernameController,
-                            borderColor:
-                                _userController.signUpEmailTextFieldBorderColor,
-                          ),
-                          SizeConfig.customSizedBox(null, 50, null),
-                          CustomAuthenticationTextField(
-                            hintText: 'password_hint'.tr,
-                            obscureText: true,
-                            textEditingController:
-                                _userController.signUpPasswordController,
-                            borderColor: _userController
-                                .signUpPasswordTextFieldBorderColor,
-                          ),
-                          SizeConfig.customSizedBox(null, 50, null),
-                          CustomAuthenticationTextField(
-                            hintText: 'confirm_password_hint'.tr,
-                            obscureText: true,
-                            textEditingController: _userController
-                                .signUpConfirmedPasswordController,
-                            borderColor: _userController
-                                .confirmPasswordTextFieldBorderColor,
-                          ),
-                          SizeConfig.customSizedBox(null, 20, null),
-                          CustomButton(
-                            onPressed: () async {
-                              try {
-                                _userController.checkEmptyFields(false);
-                                // ✅ Check for empty fields
-                                if (!_userController.noneIsEmpty) {
-                                  setState(() {
-                                    _userController
-                                        .changeTextFieldsColors(false);
-                                  });
-                                  throw Exception("all_fields_required".tr);
-                                }
-                                // ✅ Validate email format
-                                if (!_userController.isEmailValid(
-                                  _userController.signUpEmailController.text
-                                      .trim(),
-                                )) {
-                                  setState(() {
-                                    _userController
-                                            .signUpEmailTextFieldBorderColor =
-                                        AppColors.errorColor;
-                                  });
-                                  throw Exception("invalid_email".tr);
-                                }
-                                // ✅ Check password validity
-                                _userController.checkValidPassword();
-                                if (!_userController.passwordIsValid) {
-                                  setState(() {
-                                    _userController
-                                        .changeTextFieldsColors(false);
-                                  });
-                                  throw Exception("invalid_password".tr);
-                                }
-                                // ✅ Check password match
-                                _userController.checkMatchedPassword();
-                                if (!_userController.isMatched) {
-                                  setState(() {
-                                    _userController
-                                        .changeTextFieldsColors(false);
-                                  });
-                                  throw Exception("passwords_no_match".tr);
-                                }
-
-                                // ✅ If all good → register user
-                                AuthData authData =
-                                    await UsersProvider().register(
-                                  _userController.signUpUsernameController.text
-                                      .trim(),
-                                  _userController.signUpEmailController.text
-                                      .trim(),
-                                  _userController.signUpPasswordController.text,
-                                );
-
-                                if (!mounted) return;
-
-                                setState(() {
-                                  _userController.changeTextFieldsColors(false);
-                                });
-
-                                UsersController().clearTextFields();
-
-                                User user = User(
-                                    id: authData.user!.id,
-                                    fullName: authData.user!.fullName,
-                                    email: authData.user!.email);
-                                usersProvider.setSelectedUser(user);
-
-                                await usersProvider.saveUserSession(
-                                    user, authData.accessToken!);
-
-                                if (!mounted) return;
-
-                                Get.to(() => const WelcomeScreen());
-                              } catch (e) {
-                                // ✅ All validation & register errors handled here
-                                String message;
-
-                                if (e
-                                    .toString()
-                                    .contains("email already in use")) {
-                                  message = "email_taken".tr;
-                                } else {
-                                  message = e
-                                      .toString()
-                                      .replaceFirst('Exception: ', '');
-                                }
-
-                                if (!context.mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      message,
-                                      textDirection: TextDirection.rtl,
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            width: SizeConfig.getProportionalWidth(150),
-                            height: SizeConfig.getProportionalHeight(50),
-                            text: "create_account".tr,
-                          ),
-                          SizeConfig.customSizedBox(null, 20, null),
-                          CustomAuthFooter(
-                            headingText: "already_have_account".tr,
-                            tailText: "login_action".tr,
-                            onTap: () {
-                              UsersProvider().resetSignUpErrorText();
-                              Get.to(() => const LoginScreen(
-                                    firstScreen: false,
-                                  ));
-                            },
-                          )
-                        ],
-                      ),
-                    ),
+      child: AuthScreenShell(
+        title: 'auth_signup_title'.tr,
+        subtitle: '',
+        isSignup: true,
+        onSelectLogin: isBusy
+            ? null
+            : () {
+                usersProvider.resetSignUpErrorText();
+                Get.to(() => const LoginScreen(firstScreen: false));
+              },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CustomAuthenticationTextField(
+              hintText: 'enter_email_hint'.tr,
+              semanticLabel: 'email_label'.tr,
+              obscureText: false,
+              leadingIcon: Icons.alternate_email_rounded,
+              focusNode: _emailFocus,
+              textEditingController: _userController.signUpEmailController,
+              borderColor: _userController.signUpEmailTextFieldBorderColor,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _passwordFocus.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            CustomAuthenticationTextField(
+              hintText: 'password_hint'.tr,
+              semanticLabel: 'password_label'.tr,
+              obscureText: true,
+              leadingIcon: Icons.lock_outline_rounded,
+              focusNode: _passwordFocus,
+              textEditingController: _userController.signUpPasswordController,
+              borderColor: _userController.signUpPasswordTextFieldBorderColor,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => _confirmFocus.requestFocus(),
+            ),
+            const SizedBox(height: 14),
+            CustomAuthenticationTextField(
+              hintText: 'confirm_password_hint'.tr,
+              semanticLabel: 'confirm_password_label'.tr,
+              obscureText: true,
+              leadingIcon: Icons.verified_user_outlined,
+              focusNode: _confirmFocus,
+              textEditingController:
+                  _userController.signUpConfirmedPasswordController,
+              borderColor: _userController.confirmPasswordTextFieldBorderColor,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _handleSubmit(usersProvider),
+            ),
+            if (_inlineError != null) ...[
+              const SizedBox(height: 12),
+              _buildInlineErrorBanner(_inlineError!),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: isBusy ? null : () => _handleSubmit(usersProvider),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF132A4A),
+                  disabledBackgroundColor:
+                      const Color(0xFF132A4A).withValues(alpha: 0.45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 0,
+                ),
+                icon: isBusy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.2,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                label: Text(
+                  'create_account'.tr,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
-                if (usersProvider.isLoading)
-                  const Positioned.fill(
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 22),
+            AuthSocialSection(
+              googleControl: _buildGoogleControl(
+                usersProvider,
+                evaluationsProvider,
+              ),
+              showFacebook: SocialAuthConfig.facebookAuthEnabled,
+              onFacebookPressed: usersProvider.isLoading
+                  ? null
+                  : () => _completeSocialSignup(
+                        usersProvider.signInWithFacebook,
+                        usersProvider,
+                        evaluationsProvider,
+                      ),
+              isBusy: usersProvider.isLoading,
+              statusMessage: _socialStatusMessage,
+              statusTone: _socialStatusIsError
+                  ? AuthSocialStatusTone.error
+                  : AuthSocialStatusTone.info,
+            ),
+            const SizedBox(height: 22),
+            Center(
+              child: CustomAuthFooter(
+                actionText: 'login_action'.tr,
+                icon: Icons.login_rounded,
+                onTap: isBusy
+                    ? null
+                    : () {
+                        usersProvider.resetSignUpErrorText();
+                        Get.to(() => const LoginScreen(firstScreen: false));
+                      },
+              ),
+            ),
+          ],
         ),
       ),
     );
