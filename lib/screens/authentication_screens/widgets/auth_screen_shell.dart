@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
@@ -13,6 +14,7 @@ class AuthScreenShell extends StatelessWidget {
     required this.child,
     this.onSelectLogin,
     this.onSelectSignup,
+    this.maxWidth = 440,
   });
 
   final String title;
@@ -21,6 +23,7 @@ class AuthScreenShell extends StatelessWidget {
   final Widget child;
   final VoidCallback? onSelectLogin;
   final VoidCallback? onSelectSignup;
+  final double maxWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +51,7 @@ class AuthScreenShell extends StatelessWidget {
                 ),
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 440),
+                    constraints: BoxConstraints(maxWidth: maxWidth),
                     child: Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFFCFBF8),
@@ -141,7 +144,7 @@ class _BrandHeader extends StatelessWidget {
           ),
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Image.asset(Assets.logo),
+            child: SvgPicture.asset(Assets.logoSvg),
           ),
         ),
         const SizedBox(width: 14),

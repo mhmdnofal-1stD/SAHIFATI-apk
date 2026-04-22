@@ -369,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
-        subtitle: '',
+        subtitle: 'auth_login_subtitle_compact'.tr,
         isSignup: false,
         onSelectSignup: usersProvider.isLoading
             ? null

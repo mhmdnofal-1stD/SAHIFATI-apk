@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/verification_flow.dart';
@@ -245,8 +246,8 @@ class _EmailVerificationPendingScreenState
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Center(
-                                child: Image.asset(
-                                  Assets.logo,
+                                child: SvgPicture.asset(
+                                  Assets.logoSvg,
                                   width: 64,
                                   height: 64,
                                 ),

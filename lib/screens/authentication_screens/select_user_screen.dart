@@ -4,12 +4,17 @@ import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
 import '../../core/auth/post_auth_navigation.dart';
 import '../../core/constants/colors.dart';
+import '../../core/constants/fonts.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/ayat_provider.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/surahs_provider.dart';
 import '../../providers/users_provider.dart';
+import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
+import 'sign_up_screen.dart';
+import 'widgets/auth_screen_shell.dart';
+import 'widgets/custom_auth_footer.dart';
 
 class SelectUserScreen extends StatefulWidget {
   const SelectUserScreen({super.key, required this.firstScreen});
@@ -40,11 +45,6 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
       _storedUsers = users;
       _isLoading = false;
     });
-
-    // If no users, go straight to login
-    if (_storedUsers.isEmpty) {
-      Get.offAll(() => const LoginScreen(firstScreen: false));
-    }
   }
 
   void _prepareLoginForUser(Map<String, dynamic> userData) {
@@ -131,145 +131,400 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     await _loadStoredUsers(); // Refresh the list
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    SizeConfig().init(context);
+  void _openManualLogin() {
+    Get.to(() => const LoginScreen(firstScreen: false));
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('select_account'.tr), // Select Account
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+  void _openSignup() {
+    Get.to(() => const SignUpScreen());
+  }
+
+  String _statusText(Map<String, dynamic> user) {
+    if (user['isCurrent'] == true) {
+      return 'auth_saved_accounts_current'.tr;
+    }
+
+    if (user['hasActiveSession'] == true) {
+      return 'auth_saved_accounts_instant'.tr;
+    }
+
+    return 'auth_saved_accounts_requires_login'.tr;
+  }
+
+  Color _statusColor(Map<String, dynamic> user) {
+    if (user['isCurrent'] == true) {
+      return const Color(0xFF175CD3);
+    }
+
+    if (user['hasActiveSession'] == true) {
+      return AppColors.successColor;
+    }
+
+    return const Color(0xFFB54708);
+  }
+
+  Color _cardBackground(Map<String, dynamic> user) {
+    if (user['isCurrent'] == true) {
+      return const Color(0xFFF5F8FF);
+    }
+
+    if (user['hasActiveSession'] == true) {
+      return const Color(0xFFF4FBF7);
+    }
+
+    return const Color(0xFFFFFBF5);
+  }
+
+  Color _cardBorder(Map<String, dynamic> user) {
+    if (user['isCurrent'] == true) {
+      return const Color(0xFFD0DFFF);
+    }
+
+    if (user['hasActiveSession'] == true) {
+      return const Color(0xFFCFE9D8);
+    }
+
+    return const Color(0xFFF3D6A8);
+  }
+
+  Widget _buildSummaryBlock() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F1EA),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE8DECF)),
       ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'auth_saved_accounts_label'.tr,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF132A4A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'auth_saved_accounts_count'.trParams({
+              'count': _storedUsers.length.toString(),
+            }),
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 13,
+              color: const Color(0xFF6C7280),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(
+                Icons.verified_user_outlined,
+                size: 16,
+                color: Color(0xFF7A808A),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'auth_saved_accounts_caption'.tr,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontSize: 12,
+                    color: const Color(0xFF7A808A),
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F5EF),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE9E0D2)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 36,
+            height: 36,
+            child: CircularProgressIndicator(strokeWidth: 2.8),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'auth_saved_accounts_loading'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF132A4A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F5EF),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE9E0D2)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.person_search_rounded,
+              color: Color(0xFF132A4A),
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'auth_saved_accounts_empty_title'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF132A4A),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'auth_saved_accounts_empty_body'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 13,
+              color: const Color(0xFF6C7280),
+              height: 1.55,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoredUserCard(Map<String, dynamic> user) {
+    final statusColor = _statusColor(user);
+    final hasEmail = user['email'] != null;
+
+    return Material(
+      color: _cardBackground(user),
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: _isLoading ? null : () => _continueWithUser(user),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _cardBorder(user)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'choose_account_continue'.tr,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.blackFontColor,
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x120F172A),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    textAlign: TextAlign.center,
+                    child: Icon(
+                      user['hasActiveSession'] == true
+                          ? Icons.bolt_rounded
+                          : Icons.person_outline_rounded,
+                      color: const Color(0xFF132A4A),
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: ListView.separated(
-                      itemCount: _storedUsers.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final user = _storedUsers[index];
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: const BorderSide(
-                              color: AppColors.uncategorizedColor,
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (user['fullName'] ?? 'مستخدم').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primaryFont,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF132A4A),
                           ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            leading: CircleAvatar(
-                              backgroundColor: user['isCurrent'] == true
-                                  ? AppColors.buttonColor.withValues(alpha: 0.15)
-                                  : AppColors.uncategorizedColor,
-                              child: Icon(
-                                user['hasActiveSession'] == true
-                                    ? Icons.bolt
-                                    : Icons.person,
-                                color: AppColors.primaryPurple,
-                              ),
-                            ),
-                            title: Text(
-                              user['fullName'] ?? 'مستخدم',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(user['email'] ?? ''),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    if (user['isCurrent'] == true)
-                                      const Icon(
-                                        Icons.check_circle,
-                                        size: 16,
-                                        color: Colors.green,
-                                      ),
-                                    if (user['isCurrent'] == true)
-                                      const SizedBox(width: 4),
-                                    Text(
-                                      user['isCurrent'] == true
-                                          ? 'الحساب الحالي'
-                                          : user['hasActiveSession'] == true
-                                              ? 'تبديل فوري متاح'
-                                              : 'يتطلب تسجيل دخول',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: user['hasActiveSession'] == true
-                                            ? Colors.green.shade700
-                                            : Colors.orange.shade700,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.grey),
-                              onPressed: user['email'] == null
-                                  ? null
-                                  : () => _removeUser(user['email']),
-                            ),
-                            onTap: () => _continueWithUser(user),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          (user['email'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: AppFonts.primaryFont,
+                            fontSize: 13,
+                            color: const Color(0xFF6C7280),
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Get.to(() => const LoginScreen(firstScreen: false));
-                    },
-                    icon: const Icon(Icons.add),
-                    label: Text('login_another_account'.tr),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.blackFontColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  IconButton(
+                    tooltip: 'auth_saved_accounts_remove'.tr,
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF7A808A)),
+                    onPressed: hasEmail
+                        ? () => _removeUser(user['email'].toString())
+                        : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      _statusText(user),
+                      style: TextStyle(
+                        fontFamily: AppFonts.primaryFont,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: statusColor,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const Spacer(),
+                  Text(
+                    'auth_saved_accounts_continue'.tr,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primaryFont,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF132A4A),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: Color(0xFF132A4A),
+                  ),
                 ],
               ),
-            ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SizeConfig().init(context);
+
+    return NoPopScope(
+      child: AuthScreenShell(
+        title: 'auth_account_selector_title'.tr,
+        subtitle: 'auth_account_selector_subtitle'.tr,
+        isSignup: false,
+        maxWidth: 560,
+        onSelectSignup: _isLoading ? null : _openSignup,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_isLoading)
+              _buildLoadingState()
+            else ...[
+              _buildSummaryBlock(),
+              const SizedBox(height: 16),
+              if (_storedUsers.isEmpty)
+                _buildEmptyState()
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _storedUsers.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _buildStoredUserCard(_storedUsers[index]),
+                ),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _openManualLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF132A4A),
+                  disabledBackgroundColor:
+                      const Color(0xFF132A4A).withValues(alpha: 0.45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.login_rounded, color: Colors.white),
+                label: Text(
+                  'auth_saved_accounts_manual_login'.tr,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Center(
+              child: CustomAuthFooter(
+                actionText: 'auth_saved_accounts_create_account'.tr,
+                icon: Icons.person_add_alt_1_rounded,
+                onTap: _isLoading ? null : _openSignup,
+              ),
+            ),
+          ],
         ),
       ),
     );
