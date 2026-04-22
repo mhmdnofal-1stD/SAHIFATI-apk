@@ -21,6 +21,7 @@ class UsersProvider with ChangeNotifier {
 
   final UsersServices _usersService = UsersServices();
   bool isLoading = false;
+  bool isProfileLoading = false;
   bool isFirstLogin = false;
   bool showMemorizationColors = true;
   bool showComprehensionUnderline = true;
@@ -246,6 +247,84 @@ class UsersProvider with ChangeNotifier {
     selectedUser = user;
     _resetReadingDisplayPreferencesState();
     notifyListeners();
+  }
+
+  Future<void> _persistSelectedUser(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    selectedUser = user;
+    await prefs.setString('userData', json.encode(user.toMap()));
+    await saveUserToDevice(user);
+  }
+
+  Future<User?> loadCurrentUserProfile() async {
+    isProfileLoading = true;
+    notifyListeners();
+
+    try {
+      final profile = await _usersService.getCurrentUserProfile();
+      final normalizedProfile = <String, dynamic>{
+        ...profile,
+        'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
+        'email': profile['email'] ?? selectedUser?.email ?? '',
+        'fullName': profile['fullName'] ?? selectedUser?.fullName ?? '',
+        'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
+      };
+      final user = User.fromJson(normalizedProfile);
+      await _persistSelectedUser(user);
+      _applyReadingDisplayPreferencesFromProfile(profile);
+      _readingDisplayPreferencesLoaded = true;
+      notifyListeners();
+      return user;
+    } finally {
+      isProfileLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<User> updateStructuredProfile({
+    required String fullName,
+    required String gender,
+    required int birthYear,
+    required String country,
+    required int countryCode,
+    required String city,
+    String? mobile,
+    String? educationLevel,
+    String? workType,
+  }) async {
+    isProfileLoading = true;
+    notifyListeners();
+
+    try {
+      final profile = await _usersService.updateCurrentUserProfile(
+        fullName: fullName,
+        gender: gender,
+        birthYear: birthYear,
+        country: country,
+        countryCode: countryCode,
+        city: city,
+        mobile: mobile,
+        educationLevel: educationLevel,
+        workType: workType,
+      );
+
+      final normalizedProfile = <String, dynamic>{
+        ...profile,
+        'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
+        'email': profile['email'] ?? selectedUser?.email ?? '',
+        'fullName': profile['fullName'] ?? fullName,
+        'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
+      };
+      final user = User.fromJson(normalizedProfile);
+      await _persistSelectedUser(user);
+      _applyReadingDisplayPreferencesFromProfile(profile);
+      _readingDisplayPreferencesLoaded = true;
+      notifyListeners();
+      return user;
+    } finally {
+      isProfileLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> tryAutoLogin() async {

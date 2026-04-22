@@ -151,11 +151,51 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> updateCurrentUserProfile({
+    String? fullName,
+    String? gender,
+    int? birthYear,
+    int? countryCode,
+    String? country,
+    String? city,
+    String? mobile,
+    String? educationLevel,
+    String? workType,
+    String? specializationType,
     bool? showMemorizationColors,
     bool? showComprehensionUnderline,
   }) async {
     try {
       final body = <String, dynamic>{};
+      if (fullName != null) {
+        body['fullName'] = fullName;
+      }
+      if (gender != null) {
+        body['gender'] = gender;
+      }
+      if (birthYear != null) {
+        body['birthYear'] = birthYear;
+      }
+      if (countryCode != null) {
+        body['countryCode'] = countryCode;
+      }
+      if (country != null) {
+        body['country'] = country;
+      }
+      if (city != null) {
+        body['city'] = city;
+      }
+      if (mobile != null) {
+        body['mobile'] = mobile;
+      }
+      if (educationLevel != null) {
+        body['educationLevel'] = educationLevel;
+      }
+      if (workType != null) {
+        body['workType'] = workType;
+      }
+      if (specializationType != null) {
+        body['specializationType'] = specializationType;
+      }
       if (showMemorizationColors != null) {
         body['showMemorizationColors'] = showMemorizationColors;
       }

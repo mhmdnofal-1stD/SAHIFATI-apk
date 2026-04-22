@@ -50,6 +50,7 @@ flutter:
     - assets/json/data.json
     - assets/json/intl_ar.json
     - assets/json/intl_en.json
+    - assets/json/profile_location_lookup.json
 
   fonts:
     - family: Amiri
