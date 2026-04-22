@@ -153,6 +153,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final code = error['errorCode'];
       final provider = error['existingProvider'];
       if (code == 'SOCIAL_LOGIN_CANCELLED') {
+        final socialProvider = (error['provider'] ?? '').toString();
+        if (!kIsWeb && socialProvider == 'google') {
+          return 'social_google_mobile_interrupted'.tr;
+        }
         return 'social_cancelled'.tr;
       }
       if (code == 'SOCIAL_CONFIG_MISSING') {
