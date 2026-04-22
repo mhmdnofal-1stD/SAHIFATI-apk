@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'core/auth/authenticated_route_gate.dart';
 import 'core/auth/verification_flow.dart';
 import 'controllers/general_controller.dart';
 import 'core/constants/colors.dart';
@@ -19,6 +20,7 @@ import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
 import 'screens/sahifa_screen/sahifa_screen.dart';
+import 'screens/welcome_screen/welcome_screen.dart';
 import 'services/localization_service.dart';
 
 Future<void> main() async {
@@ -105,6 +107,21 @@ class MyApp extends StatelessWidget {
           page: () => const SignUpScreen(),
         ),
         GetPage(
+          name: '/welcome',
+          page: () => const AuthenticatedRouteGate(
+            child: WelcomeScreen(),
+          ),
+        ),
+        GetPage(
+          name: '/sahifa',
+          page: () => AuthenticatedRouteGate(
+            loader: _ensureSahifaChartData,
+            child: SahifaScreen(
+              firstScreen: (Get.parameters['firstScreen'] ?? 'false') == 'true',
+            ),
+          ),
+        ),
+        GetPage(
           name: '/verification-pending',
           page: () => EmailVerificationPendingScreen(
             initialEmail: Get.parameters['email'],
@@ -141,6 +158,22 @@ class MyApp extends StatelessWidget {
       ],
     );
   }
+}
+
+Future<void> _ensureSahifaChartData(
+  UsersProvider usersProvider,
+  EvaluationsProvider evaluationsProvider,
+) async {
+  final user = usersProvider.selectedUser;
+  if (user == null) {
+    return;
+  }
+
+  if (evaluationsProvider.chartEvaluationData.isNotEmpty) {
+    return;
+  }
+
+  await evaluationsProvider.getQuranChartData(user.id);
 }
 
 class InitialScreen extends StatefulWidget {
@@ -225,16 +258,6 @@ class _InitialScreenState extends State<InitialScreen> {
       return;
     }
 
-    if (usersProvider.hasPendingVerification) {
-      Get.offAllNamed(
-        '/verification-pending',
-        parameters: {
-          'email': usersProvider.pendingVerificationEmail!,
-        },
-      );
-      return;
-    }
-
     final hasConnection = await GeneralController().checkConnectivity();
 
     if (!mounted) {
@@ -260,7 +283,10 @@ class _InitialScreenState extends State<InitialScreen> {
         if (!mounted) {
           return;
         }
-        Get.off(() => const SahifaScreen(firstScreen: true,));
+        Get.offAllNamed(
+          '/sahifa',
+          parameters: const {'firstScreen': 'true'},
+        );
       } catch (e) {
         await usersProvider.clearPersistedSession();
         _routeToLoginOrSelectUser(usersProvider);

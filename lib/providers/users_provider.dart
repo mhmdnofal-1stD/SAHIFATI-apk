@@ -18,6 +18,10 @@ class UsersProvider with ChangeNotifier {
       'pending_verification_email';
   static const String _pendingVerificationSentAtKey =
       'pending_verification_sent_at_ms';
+  static const String _legacyHasLoggedInBeforeKey = 'has_logged_in_before';
+  static const String _storedDeviceUsersKey = 'stored_device_users';
+  static const String _storedAccountSessionsKey = 'stored_account_sessions';
+  static const String _activeUserDataKey = 'userData';
 
   factory UsersProvider() => _instance;
 
@@ -36,6 +40,131 @@ class UsersProvider with ChangeNotifier {
   bool _readingDisplayPreferencesLoaded = false;
   bool _googleInitialized = false;
   bool _facebookWebInitialized = false;
+
+  String _accountKeyForUser(User user) => user.id.toString();
+
+  String? _accountKeyFromUserMap(Map<String, dynamic> userMap) {
+    final id = userMap['id'];
+    if (id == null) {
+      return null;
+    }
+
+    return id.toString();
+  }
+
+  Map<String, dynamic> _buildStoredSessionRecord(User user) {
+    return {
+      'user': user.toMap(),
+      'lastUsedAt': DateTime.now().toIso8601String(),
+    };
+  }
+
+  Future<Map<String, dynamic>> _readStoredAccountSessions(
+    SharedPreferences prefs,
+  ) async {
+    final storedSessionsStr = prefs.getString(_storedAccountSessionsKey);
+    if (storedSessionsStr == null || storedSessionsStr.isEmpty) {
+      return <String, dynamic>{};
+    }
+
+    final decoded = json.decode(storedSessionsStr);
+    if (decoded is! Map<String, dynamic>) {
+      return <String, dynamic>{};
+    }
+
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  Future<void> _writeStoredAccountSessions(
+    SharedPreferences prefs,
+    Map<String, dynamic> sessions,
+  ) async {
+    if (sessions.isEmpty) {
+      await prefs.remove(_storedAccountSessionsKey);
+      return;
+    }
+
+    await prefs.setString(_storedAccountSessionsKey, json.encode(sessions));
+  }
+
+  Future<void> _setActiveUserSnapshot(User user) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_activeUserDataKey, json.encode(user.toMap()));
+  }
+
+  Future<void> _removeActiveUserSnapshot() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_activeUserDataKey);
+  }
+
+  Future<void> _migrateLegacySessionIfNeeded(SharedPreferences prefs) async {
+    final legacyUserData = prefs.getString(_activeUserDataKey);
+    if (legacyUserData == null || legacyUserData.isEmpty) {
+      return;
+    }
+
+    try {
+      final decodedUser = json.decode(legacyUserData) as Map<String, dynamic>;
+      final user = User.fromJson(decodedUser);
+      final accountKey = _accountKeyForUser(user);
+      final sessions = await _readStoredAccountSessions(prefs);
+
+      sessions[accountKey] ??= _buildStoredSessionRecord(user);
+      await _writeStoredAccountSessions(prefs, sessions);
+      await saveUserToDevice(user);
+      await SecureSessionStorage.migrateLegacySessionToAccount(accountKey);
+
+      final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      if (activeAccountKey == null || activeAccountKey.isEmpty) {
+        await SecureSessionStorage.setActiveAccountKey(accountKey);
+      }
+    } catch (_) {
+      await prefs.remove(_activeUserDataKey);
+      await prefs.remove('accessToken');
+      await prefs.remove('refreshToken');
+    }
+  }
+
+  Future<void> _removeStoredSessionByAccountKey(
+    String accountKey, {
+    bool notify = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessions = await _readStoredAccountSessions(prefs);
+    sessions.remove(accountKey);
+    await _writeStoredAccountSessions(prefs, sessions);
+    await SecureSessionStorage.deleteAccountSessionTokens(accountKey);
+
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (activeAccountKey == null || activeAccountKey == accountKey) {
+      await _removeActiveUserSnapshot();
+      selectedUser = null;
+      _resetReadingDisplayPreferencesState();
+      if (notify) {
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> _persistAccountSession(
+    User user,
+    String accessToken, {
+    String? refreshToken,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessions = await _readStoredAccountSessions(prefs);
+    final accountKey = _accountKeyForUser(user);
+
+    sessions[accountKey] = _buildStoredSessionRecord(user);
+    await _writeStoredAccountSessions(prefs, sessions);
+    await SecureSessionStorage.writeAccountSessionTokens(
+      accountKey: accountKey,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      setActive: true,
+    );
+    await _setActiveUserSnapshot(user);
+  }
 
   String extractErrorMessage(Object error) {
     if (error is Map) {
@@ -192,13 +321,16 @@ class UsersProvider with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> register(
-      String username, String email, String password) async {
+    String email,
+    String password, {
+    String? username,
+  }) async {
     setLoading();
     try {
       final result = await _usersService.register(
-        username: username,
         email: email,
         password: password,
+        username: username,
       );
 
       await clearPersistedSession();
@@ -391,11 +523,18 @@ class UsersProvider with ChangeNotifier {
 
   Future<void> clearPersistedSession() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userData');
+    await _migrateLegacySessionIfNeeded(prefs);
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+
+    if (activeAccountKey != null && activeAccountKey.isNotEmpty) {
+      await _removeStoredSessionByAccountKey(activeAccountKey);
+    }
+
+    await prefs.remove(_activeUserDataKey);
     await prefs.remove('accessToken');
     await prefs.remove('refreshToken');
     await prefs.remove('password');
-    await SecureSessionStorage.clearSessionTokens();
+    await SecureSessionStorage.setActiveAccountKey(null);
     selectedUser = null;
     _resetReadingDisplayPreferencesState();
     notifyListeners();
@@ -537,20 +676,38 @@ class UsersProvider with ChangeNotifier {
   Future<bool> tryAutoLogin() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (!prefs.containsKey('userData')) {
+      await _migrateLegacySessionIfNeeded(prefs);
+
+      final sessions = await _readStoredAccountSessions(prefs);
+      if (sessions.isEmpty) {
         return false;
       }
 
-      final accessToken = await SecureSessionStorage.readAccessToken();
+      String? activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      if (activeAccountKey == null || activeAccountKey.isEmpty) {
+        activeAccountKey = sessions.keys.first;
+        await SecureSessionStorage.setActiveAccountKey(activeAccountKey);
+      }
+
+      final sessionRecord = sessions[activeAccountKey];
+      if (sessionRecord is! Map<String, dynamic>) {
+        await _removeStoredSessionByAccountKey(activeAccountKey);
+        return false;
+      }
+
+      final accessToken = await SecureSessionStorage.readAccessToken(
+        accountKey: activeAccountKey,
+      );
       if (accessToken == null || accessToken.isEmpty) {
-        await clearPersistedSession();
+        await _removeStoredSessionByAccountKey(activeAccountKey, notify: true);
         return false;
       }
 
       final extractedUserData =
-      json.decode(prefs.getString('userData')!) as Map<String, dynamic>;
-      
+          Map<String, dynamic>.from(sessionRecord['user'] as Map);
+
       selectedUser = User.fromJson(extractedUserData);
+      await _setActiveUserSnapshot(selectedUser!);
       notifyListeners();
       return true;
     } catch (_) {
@@ -562,24 +719,88 @@ class UsersProvider with ChangeNotifier {
   Future<void> saveUserSession(User user, String accessToken,
       {String? refreshToken}) async {
     final prefs = await SharedPreferences.getInstance();
-    final userData = json.encode(user.toMap());
-    await prefs.setString('userData', userData);
+    await _persistAccountSession(
+      user,
+      accessToken,
+      refreshToken: refreshToken,
+    );
     await prefs.remove('accessToken');
     await prefs.remove('refreshToken');
     await prefs.remove('password');
-    await SecureSessionStorage.writeSessionTokens(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-    );
     _resetReadingDisplayPreferencesState();
   }
 
-  Future<void> checkFirstLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('email') ?? '';
+  Future<void> checkFirstLogin({User? user}) async {
+    final targetUser = user ?? selectedUser;
+    if (targetUser == null) {
+      isFirstLogin = false;
+      notifyListeners();
+      return;
+    }
 
-    isFirstLogin = email == '';
+    final prefs = await SharedPreferences.getInstance();
+    final hasLoggedInBeforeKey =
+      '${_legacyHasLoggedInBeforeKey}_${_accountKeyForUser(targetUser)}';
+    bool hasLoggedInBefore = prefs.getBool(hasLoggedInBeforeKey) ?? false;
+
+    if (!hasLoggedInBefore) {
+      final legacyHasLoggedInBefore =
+          prefs.getBool(_legacyHasLoggedInBeforeKey) ?? false;
+      if (legacyHasLoggedInBefore) {
+        hasLoggedInBefore = true;
+        await prefs.setBool(hasLoggedInBeforeKey, true);
+      }
+    }
+
+    isFirstLogin = !hasLoggedInBefore;
+    if (!hasLoggedInBefore) {
+      await prefs.setBool(hasLoggedInBeforeKey, true);
+    }
     notifyListeners();
+  }
+
+  Future<bool> switchToStoredUser(Map<String, dynamic> userData) async {
+    final accountKey = _accountKeyFromUserMap(userData);
+    if (accountKey == null) {
+      return false;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacySessionIfNeeded(prefs);
+    final sessions = await _readStoredAccountSessions(prefs);
+    final sessionRecord = sessions[accountKey];
+    if (sessionRecord is! Map<String, dynamic>) {
+      return false;
+    }
+
+    final accessToken = await SecureSessionStorage.readAccessToken(
+      accountKey: accountKey,
+    );
+    if (accessToken == null || accessToken.isEmpty) {
+      await _removeStoredSessionByAccountKey(accountKey, notify: true);
+      return false;
+    }
+
+    final user = User.fromJson(Map<String, dynamic>.from(sessionRecord['user'] as Map));
+    await SecureSessionStorage.setActiveAccountKey(accountKey);
+    await _setActiveUserSnapshot(user);
+    selectedUser = user;
+    _resetReadingDisplayPreferencesState();
+    await checkFirstLogin(user: user);
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> hasStoredSessionForUser(Map<String, dynamic> userData) async {
+    final accountKey = _accountKeyFromUserMap(userData);
+    if (accountKey == null) {
+      return false;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await _migrateLegacySessionIfNeeded(prefs);
+    final sessions = await _readStoredAccountSessions(prefs);
+    return sessions.containsKey(accountKey);
   }
 
   Future<void> deleteAccount() async {
@@ -606,7 +827,7 @@ class UsersProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     
     // Fetch existing users
-    final String? storedUsersStr = prefs.getString('stored_device_users');
+    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
     List<dynamic> storedUsersList = [];
     if (storedUsersStr != null) {
       storedUsersList = json.decode(storedUsersStr);
@@ -625,29 +846,74 @@ class UsersProvider with ChangeNotifier {
       storedUsersList.add(userMap);
     }
 
-    await prefs.setString('stored_device_users', json.encode(storedUsersList));
+    await prefs.setString(_storedDeviceUsersKey, json.encode(storedUsersList));
   }
 
   Future<List<Map<String, dynamic>>> getStoredDeviceUsers() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? storedUsersStr = prefs.getString('stored_device_users');
+    await _migrateLegacySessionIfNeeded(prefs);
+    final sessions = await _readStoredAccountSessions(prefs);
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
     if (storedUsersStr != null) {
       List<dynamic> decodedList = json.decode(storedUsersStr);
-      return decodedList.cast<Map<String, dynamic>>().toList();
+      final users = decodedList.map<Map<String, dynamic>>((rawUser) {
+        final userMap = Map<String, dynamic>.from(rawUser as Map);
+        final accountKey = _accountKeyFromUserMap(userMap);
+        return {
+          ...userMap,
+          'hasActiveSession':
+              accountKey != null && sessions.containsKey(accountKey),
+          'isCurrent': accountKey != null && accountKey == activeAccountKey,
+        };
+      }).toList();
+
+      users.sort((a, b) {
+        final currentA = a['isCurrent'] == true ? 1 : 0;
+        final currentB = b['isCurrent'] == true ? 1 : 0;
+        if (currentA != currentB) {
+          return currentB.compareTo(currentA);
+        }
+
+        final activeA = a['hasActiveSession'] == true ? 1 : 0;
+        final activeB = b['hasActiveSession'] == true ? 1 : 0;
+        if (activeA != activeB) {
+          return activeB.compareTo(activeA);
+        }
+
+        return (a['fullName'] ?? '').toString().compareTo(
+              (b['fullName'] ?? '').toString(),
+            );
+      });
+
+      return users;
     }
     return [];
   }
 
   Future<void> removeUserFromDevice(String email) async {
     final prefs = await SharedPreferences.getInstance();
-    final String? storedUsersStr = prefs.getString('stored_device_users');
+    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
     
     if (storedUsersStr != null) {
       List<dynamic> storedUsersList = json.decode(storedUsersStr);
+      final dynamic removedUser = storedUsersList.cast<dynamic>().firstWhere(
+            (element) => element['email'] == email,
+            orElse: () => null,
+          );
       storedUsersList.removeWhere((element) => element['email'] == email);
-      
+
       // Save updated list back
-      await prefs.setString('stored_device_users', json.encode(storedUsersList));
+      await prefs.setString(_storedDeviceUsersKey, json.encode(storedUsersList));
+
+      if (removedUser is Map) {
+        final accountKey = _accountKeyFromUserMap(
+          Map<String, dynamic>.from(removedUser),
+        );
+        if (accountKey != null) {
+          await _removeStoredSessionByAccountKey(accountKey, notify: true);
+        }
+      }
     }
   }
 }

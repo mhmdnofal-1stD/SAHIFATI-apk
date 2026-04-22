@@ -5,7 +5,6 @@ import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/providers/users_provider.dart';
-import 'package:sahifaty/screens/welcome_screen/welcome_screen.dart';
 
 enum VerificationResultState {
   success,
@@ -126,7 +125,7 @@ class EmailVerificationResultScreen extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () async {
                           if (state == VerificationResultState.success) {
-                            Get.offAll(() => const WelcomeScreen());
+                            Get.offAllNamed('/welcome');
                             return;
                           }
 

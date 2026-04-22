@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/colors.dart';
 import '../providers/users_provider.dart';
 import '../screens/authentication_screens/login_screen.dart';
+import '../screens/authentication_screens/select_user_screen.dart';
 
 class UsersController {
   static final UsersController _instance = UsersController._internal();
@@ -136,10 +137,26 @@ class UsersController {
 
   Future<void> saveLoginInfo(String email) async {
     final prefs = await SharedPreferences.getInstance();
+    final previousEmail = prefs.getString('email');
 
+    if (previousEmail != null && previousEmail.isNotEmpty && previousEmail != email) {
+      await prefs.remove('saved for $previousEmail');
+    }
     await prefs.setString('email', email);
     await prefs.remove('password');
     await prefs.setBool('saved for $email', true);
+  }
+
+  Future<void> clearLoginInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final previousEmail = prefs.getString('email');
+
+    if (previousEmail != null && previousEmail.isNotEmpty) {
+      await prefs.remove('saved for $previousEmail');
+    }
+
+    await prefs.remove('email');
+    await prefs.remove('password');
   }
 
   Future<void> getLoginInfo() async {
@@ -147,6 +164,7 @@ class UsersController {
     final email = prefs.getString('email') ?? '';
     loginEmailController.text = email;
     loginPasswordController.clear();
+    rememberMe = email.isNotEmpty;
   }
 
 
@@ -156,8 +174,14 @@ class UsersController {
     await prefs.setBool('onboarding_complete', true);
   }
 
-  void logout(UsersProvider usersProvider) {
-    usersProvider.logout();
+  Future<void> logout(UsersProvider usersProvider) async {
+    await usersProvider.logout();
+
+    final storedUsers = await usersProvider.getStoredDeviceUsers();
+    if (storedUsers.isNotEmpty) {
+      Get.offAll(() => const SelectUserScreen(firstScreen: false));
+      return;
+    }
 
     Get.offAll(() => const LoginScreen(firstScreen: false));
   }

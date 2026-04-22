@@ -6,6 +6,7 @@ class CustomAuthenticationTextField extends StatefulWidget {
     super.key,
     this.hintText,
     this.semanticLabel,
+    this.leadingIcon,
     required this.obscureText,
     required this.textEditingController,
     required this.borderColor,
@@ -20,6 +21,7 @@ class CustomAuthenticationTextField extends StatefulWidget {
 
   final String? hintText;
   final String? semanticLabel;
+  final IconData? leadingIcon;
   final bool obscureText;
   final TextEditingController textEditingController;
   final Color borderColor;
@@ -85,6 +87,13 @@ class _CustomAuthenticationTextFieldState
                       horizontal: 12,
                       vertical: 14,
                     ),
+                    prefixIcon: widget.leadingIcon == null
+                        ? null
+                        : Icon(
+                            widget.leadingIcon,
+                            color: const Color(0xFF7B8494),
+                            size: 20,
+                          ),
                     suffixIcon: widget.obscureText
                         ? IconButton(
                             icon: !showPassword

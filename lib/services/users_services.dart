@@ -79,9 +79,9 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> register({
-    required String username,
     required String email,
     required String password,
+    String? username,
   }) async {
     try {
       final response = await http
@@ -89,7 +89,8 @@ class UsersServices with ChangeNotifier {
             Uri.parse('$_baseURL/auth/register'),
             headers: _authHeaders,
             body: json.encode({
-              'username': username,
+              if (username != null && username.trim().isNotEmpty)
+                'username': username,
               'email': email,
               'password': password,
             }),

@@ -119,4 +119,12 @@ class AyatProvider with ChangeNotifier {
       return [];
     }
   }
+
+  void resetForAccountSwitch() {
+    surahAyat = [];
+    surahAyatTotalPages = 1;
+    surahAyatTotalCount = 1;
+    isLoading = false;
+    notifyListeners();
+  }
 }

@@ -25,6 +25,7 @@ class AuthScreenShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final hasSubtitle = subtitle.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0E8),
@@ -75,42 +76,32 @@ class AuthScreenShell extends StatelessWidget {
                               onSelectLogin: onSelectLogin,
                               onSelectSignup: onSelectSignup,
                             ),
-                            const SizedBox(height: 24),
-                            Text(
-                              'auth_shell_badge'.tr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
-                                color: const Color(0xFF8A6742),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 20),
                             Text(
                               title,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontFamily: AppFonts.primaryFont,
-                                fontSize: 28,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w800,
                                 color: const Color(0xFF132A4A),
                                 height: 1.15,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              subtitle,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 14,
-                                color: const Color(0xFF6C7280),
-                                height: 1.5,
+                            if (hasSubtitle) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                subtitle,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontFamily: AppFonts.primaryFont,
+                                  fontSize: 14,
+                                  color: const Color(0xFF6C7280),
+                                  height: 1.5,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 26),
+                            ],
+                            const SizedBox(height: 24),
                             child,
                           ],
                         ),
@@ -155,29 +146,15 @@ class _BrandHeader extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'SAHIFATI',
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                  color: const Color(0xFF132A4A),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'auth_methods_caption'.tr,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 12,
-                  color: const Color(0xFF7C8698),
-                ),
-              ),
-            ],
+          child: Text(
+            'SAHIFATI',
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.4,
+              color: const Color(0xFF132A4A),
+            ),
           ),
         ),
         Container(

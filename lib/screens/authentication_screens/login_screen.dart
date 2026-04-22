@@ -19,7 +19,6 @@ import 'widgets/auth_screen_shell.dart';
 import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
-import 'widgets/custom_auth_textfield_header.dart';
 import 'widgets/google_web_auth_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,6 +35,34 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _inlineError;
   String? _socialStatusMessage;
   bool _socialStatusIsError = true;
+
+  Widget _buildUtilityIconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onTap,
+    Color foreground = const Color(0xFF132A4A),
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: onTap == null ? const Color(0xFFF1ECE3) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFD9DEE5)),
+            ),
+            child: Icon(icon, color: foreground, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -266,15 +293,18 @@ class _LoginScreenState extends State<LoginScreen> {
       usersProvider.setSelectedUser(user);
       await usersProvider.checkFirstLogin();
 
+      await usersProvider.saveUserSession(
+        user,
+        authData.accessToken!,
+        refreshToken: authData.refreshToken,
+      );
+
       if (_userController.rememberMe) {
         _userController.saveLoginInfo(
           _userController.loginEmailController.text.trim(),
         );
-        await usersProvider.saveUserSession(
-          user,
-          authData.accessToken!,
-          refreshToken: authData.refreshToken,
-        );
+      } else {
+        await _userController.clearLoginInfo();
       }
 
       FocusManager.instance.primaryFocus?.unfocus();
@@ -335,7 +365,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
-        subtitle: 'auth_login_subtitle_compact'.tr,
+        subtitle: '',
         isSignup: false,
         onSelectSignup: usersProvider.isLoading
             ? null
@@ -345,12 +375,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CustomAuthTextFieldHeader(text: 'email_label'.tr),
-            const SizedBox(height: 6),
             CustomAuthenticationTextField(
               hintText: 'email_hint'.tr,
               obscureText: false,
               semanticLabel: 'email_label'.tr,
+              leadingIcon: Icons.alternate_email_rounded,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
               autofillHints: const [
@@ -361,12 +390,11 @@ class _LoginScreenState extends State<LoginScreen> {
               borderColor: _userController.loginEmailTextFieldBorderColor,
             ),
             const SizedBox(height: 14),
-            CustomAuthTextFieldHeader(text: 'password_label'.tr),
-            const SizedBox(height: 6),
             CustomAuthenticationTextField(
               hintText: 'password_hint'.tr,
               obscureText: true,
               semanticLabel: 'password_label'.tr,
+              leadingIcon: Icons.lock_outline_rounded,
               keyboardType: TextInputType.visiblePassword,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.password],
@@ -377,57 +405,19 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                InkWell(
-                  borderRadius: BorderRadius.circular(10),
+                _buildUtilityIconButton(
+                  icon: _userController.rememberMe
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  tooltip: 'remember_me'.tr,
                   onTap: () => setState(() => _userController.toggleRememberMe()),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: _userController.rememberMe
-                              ? const Color(0xFF132A4A)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(7),
-                          border: Border.all(
-                            color: _userController.rememberMe
-                                ? const Color(0xFF132A4A)
-                                : const Color(0xFFD5DADF),
-                          ),
-                        ),
-                        child: _userController.rememberMe
-                            ? const Icon(
-                                Icons.check_rounded,
-                                color: Colors.white,
-                                size: 15,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'remember_me'.tr,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontSize: 13,
-                          color: const Color(0xFF5D6777),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 const Spacer(),
-                TextButton(
-                  onPressed: () => Get.to(() => const ForgotPasswordScreen()),
-                  child: Text(
-                    'forgot_password'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primaryFont,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFFB13030),
-                    ),
-                  ),
+                _buildUtilityIconButton(
+                  icon: Icons.lock_reset_rounded,
+                  tooltip: 'forgot_password'.tr,
+                  onTap: () => Get.to(() => const ForgotPasswordScreen()),
+                  foreground: const Color(0xFFB13030),
                 ),
               ],
             ),
@@ -487,17 +477,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         evaluationsProvider,
                       ),
               isBusy: usersProvider.isLoading,
-              googleHint: kIsWeb &&
-                      !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform
-                  ? 'social_google_requires_client_id'.tr
-                  : (!kIsWeb &&
-                          !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform)
-                      ? 'social_google_requires_mobile_config'.tr
-                      : null,
-              facebookHint: kIsWeb &&
-                      !SocialAuthConfig.isFacebookConfiguredForCurrentPlatform
-                  ? 'social_facebook_requires_app_id'.tr
-                  : null,
               statusMessage: _socialStatusMessage,
               statusTone: _socialStatusIsError
                   ? AuthSocialStatusTone.error
@@ -506,8 +485,8 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 22),
             Center(
               child: CustomAuthFooter(
-                headingText: 'dont_have_account'.tr,
-                tailText: 'create_account_action'.tr,
+                actionText: 'create_account_action'.tr,
+                icon: Icons.arrow_forward_rounded,
                 onTap: usersProvider.isLoading
                     ? null
                     : () {

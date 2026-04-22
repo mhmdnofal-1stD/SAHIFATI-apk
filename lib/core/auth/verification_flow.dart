@@ -33,9 +33,7 @@ VerificationRouteIntent resolveVerificationRoute(Uri uri) {
     query.addAll(fragmentUri.queryParameters);
   }
 
-  final normalizedPath = path.endsWith('/') && path.length > 1
-      ? path.substring(0, path.length - 1)
-      : path;
+  final normalizedPath = _normalizeVerificationPath(path);
 
   switch (normalizedPath) {
     case '/verification-pending':
@@ -67,6 +65,22 @@ VerificationRouteIntent resolveVerificationRoute(Uri uri) {
     default:
       return const VerificationRouteIntent(kind: VerificationRouteKind.none);
   }
+}
+
+String _normalizeVerificationPath(String path) {
+  final trimmedPath = path.endsWith('/') && path.length > 1
+      ? path.substring(0, path.length - 1)
+      : path;
+
+  if (trimmedPath == '/app') {
+    return '/';
+  }
+
+  if (trimmedPath.startsWith('/app/')) {
+    return trimmedPath.substring(4);
+  }
+
+  return trimmedPath;
 }
 
 String maskEmailAddress(String email) {

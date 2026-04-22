@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 
@@ -30,36 +29,11 @@ class AuthSocialSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasHints = googleHint != null || (showFacebook && facebookHint != null);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'auth_methods_label'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF132A4A),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              'continue_with_social'.tr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 12,
-                color: AppColors.hintTextColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
             color: const Color(0xFFF5F1EA),
             borderRadius: BorderRadius.circular(22),
@@ -95,33 +69,6 @@ class AuthSocialSection extends StatelessWidget {
             ],
           ),
         ),
-        if (hasHints) ...[
-          const SizedBox(height: 12),
-          Column(
-            children: [
-              if (googleHint != null)
-                _HintChip(
-                  message: googleHint!,
-                  icon: Image.asset(
-                    Assets.googleIcon,
-                    width: 14,
-                    height: 14,
-                  ),
-                ),
-              if (showFacebook && facebookHint != null) ...[
-                if (googleHint != null) const SizedBox(height: 8),
-                _HintChip(
-                  message: facebookHint!,
-                  icon: const Icon(
-                    Icons.facebook_rounded,
-                    color: Color(0xFF1877F2),
-                    size: 16,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
         if (statusMessage != null) ...[
           const SizedBox(height: 14),
           _SocialStatusBanner(
@@ -208,27 +155,12 @@ class _MethodSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 74,
-      child: Column(
-        children: [
-          SizedBox(
-            width: 56,
-            height: 56,
-            child: Center(child: child),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF536070),
-            ),
-          ),
-        ],
+    return Semantics(
+      label: label,
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: Center(child: child),
       ),
     );
   }
@@ -245,76 +177,20 @@ class _StaticMethodIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 74,
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFF132A4A),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            labelKey.tr,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF132A4A),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HintChip extends StatelessWidget {
-  const _HintChip({
-    this.message,
-    required this.icon,
-  });
-
-  final String? message;
-  final Widget icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = message ?? '';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3DED6)),
-      ),
-      child: Row(
-        children: [
+    return Semantics(
+      label: labelKey.tr,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFF132A4A),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Icon(
           icon,
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 11,
-                color: const Color(0xFF6D7684),
-              ),
-            ),
-          ),
-        ],
+          color: Colors.white,
+          size: 24,
+        ),
       ),
     );
   }

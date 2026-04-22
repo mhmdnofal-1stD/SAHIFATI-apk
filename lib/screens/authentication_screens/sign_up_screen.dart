@@ -16,7 +16,6 @@ import 'widgets/auth_screen_shell.dart';
 import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
-import 'widgets/custom_auth_textfield_header.dart';
 import 'widgets/google_web_auth_button.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -34,9 +33,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _socialStatusIsError = true;
 
   final FocusNode _emailFocus = FocusNode();
-  final FocusNode _usernameFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
+
+  String _deriveUsernameFromEmail(String email) {
+    final localPart = email.split('@').first.trim().toLowerCase();
+    final normalized = localPart
+        .replaceAll(RegExp(r'[^a-z0-9._-]+'), '_')
+        .replaceAll(RegExp(r'^[_\-.]+|[_\-.]+$'), '')
+        .replaceAll(RegExp(r'_{2,}'), '_');
+
+    return normalized.isEmpty ? 'user' : normalized;
+  }
 
   @override
   void initState() {
@@ -49,7 +57,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   void dispose() {
     _userController.resetSignUpState();
     _emailFocus.dispose();
-    _usernameFocus.dispose();
     _passwordFocus.dispose();
     _confirmFocus.dispose();
     super.dispose();
@@ -66,6 +73,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
+      final submittedEmail = _userController.signUpEmailController.text.trim();
+      _userController.signUpUsernameController.text =
+          _deriveUsernameFromEmail(submittedEmail);
+
       _userController.checkEmptyFields(false);
       if (!_userController.noneIsEmpty) {
         setState(() => _userController.changeTextFieldsColors(false));
@@ -73,7 +84,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
 
       if (!_userController.isEmailValid(
-        _userController.signUpEmailController.text.trim(),
+        submittedEmail,
       )) {
         setState(
           () => _userController.signUpEmailTextFieldBorderColor =
@@ -89,11 +100,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         throw Exception('passwords_no_match'.tr);
       }
 
-      final submittedEmail = _userController.signUpEmailController.text.trim();
       await usersProvider.register(
-        _userController.signUpUsernameController.text.trim(),
         submittedEmail,
         _userController.signUpPasswordController.text,
+        username: _userController.signUpUsernameController.text.trim(),
       );
 
       if (!mounted) return;
@@ -313,7 +323,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_signup_title'.tr,
-        subtitle: 'auth_signup_subtitle_compact'.tr,
+        subtitle: '',
         isSignup: true,
         onSelectLogin: isBusy
             ? null
@@ -324,42 +334,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CustomAuthTextFieldHeader(text: 'email_label'.tr),
-            const SizedBox(height: 6),
             CustomAuthenticationTextField(
               hintText: 'enter_email_hint'.tr,
               semanticLabel: 'email_label'.tr,
               obscureText: false,
+              leadingIcon: Icons.alternate_email_rounded,
               focusNode: _emailFocus,
               textEditingController: _userController.signUpEmailController,
               borderColor: _userController.signUpEmailTextFieldBorderColor,
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.next,
-              onSubmitted: (_) => _usernameFocus.requestFocus(),
-            ),
-            const SizedBox(height: 14),
-            CustomAuthTextFieldHeader(text: 'username_label'.tr),
-            const SizedBox(height: 6),
-            CustomAuthenticationTextField(
-              hintText: 'username_hint'.tr,
-              semanticLabel: 'username_label'.tr,
-              obscureText: false,
-              focusNode: _usernameFocus,
-              textEditingController: _userController.signUpUsernameController,
-              borderColor: _userController.signUpUsernameTextFieldBorderColor,
-              keyboardType: TextInputType.text,
-              autofillHints: const [AutofillHints.username],
-              textInputAction: TextInputAction.next,
               onSubmitted: (_) => _passwordFocus.requestFocus(),
             ),
             const SizedBox(height: 14),
-            CustomAuthTextFieldHeader(text: 'password_label'.tr),
-            const SizedBox(height: 6),
             CustomAuthenticationTextField(
               hintText: 'password_hint'.tr,
               semanticLabel: 'password_label'.tr,
               obscureText: true,
+              leadingIcon: Icons.lock_outline_rounded,
               focusNode: _passwordFocus,
               textEditingController: _userController.signUpPasswordController,
               borderColor: _userController.signUpPasswordTextFieldBorderColor,
@@ -367,43 +360,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
               textInputAction: TextInputAction.next,
               onSubmitted: (_) => _confirmFocus.requestFocus(),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F1EA),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE6DED1)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.verified_user_outlined,
-                    color: Color(0xFF8A6742),
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'password_helper'.tr,
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 12,
-                        color: const Color(0xFF6C7280),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             const SizedBox(height: 14),
-            CustomAuthTextFieldHeader(text: 'confirm_password_label'.tr),
-            const SizedBox(height: 6),
             CustomAuthenticationTextField(
               hintText: 'confirm_password_hint'.tr,
               semanticLabel: 'confirm_password_label'.tr,
               obscureText: true,
+              leadingIcon: Icons.verified_user_outlined,
               focusNode: _confirmFocus,
               textEditingController:
                   _userController.signUpConfirmedPasswordController,
@@ -466,17 +428,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         evaluationsProvider,
                       ),
               isBusy: usersProvider.isLoading,
-              googleHint: kIsWeb &&
-                      !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform
-                  ? 'social_google_requires_client_id'.tr
-                  : (!kIsWeb &&
-                          !SocialAuthConfig.isGoogleConfiguredForCurrentPlatform)
-                      ? 'social_google_requires_mobile_config'.tr
-                      : null,
-              facebookHint: kIsWeb &&
-                      !SocialAuthConfig.isFacebookConfiguredForCurrentPlatform
-                  ? 'social_facebook_requires_app_id'.tr
-                  : null,
               statusMessage: _socialStatusMessage,
               statusTone: _socialStatusIsError
                   ? AuthSocialStatusTone.error
@@ -485,8 +436,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(height: 22),
             Center(
               child: CustomAuthFooter(
-                headingText: 'already_have_account'.tr,
-                tailText: 'login_action'.tr,
+                actionText: 'login_action'.tr,
+                icon: Icons.login_rounded,
                 onTap: isBusy
                     ? null
                     : () {
