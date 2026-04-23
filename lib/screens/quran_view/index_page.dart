@@ -1,4 +1,4 @@
-import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -17,6 +17,7 @@ import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
+import '../../core/reading/reading_session.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
@@ -33,13 +34,25 @@ class IndexPage extends StatefulWidget {
       required this.filterTypeId,
       this.hizb,
       this.hizbQuarter,
-      this.juz});
+      this.juz,
+      this.restoredHizbQuarter});
+
+  factory IndexPage.fromReadingSession(ReadingSession session) {
+    return IndexPage(
+      surah: session.surah,
+      filterTypeId: session.filterTypeId,
+      juz: session.juz,
+      hizb: session.hizb,
+      restoredHizbQuarter: session.currentHizbQuarter,
+    );
+  }
 
   final Surah surah;
   final int filterTypeId;
   final int? hizb;
   final int? hizbQuarter;
   final int? juz;
+  final int? restoredHizbQuarter;
 
   @override
   State<IndexPage> createState() => _IndexPageState();
@@ -47,6 +60,7 @@ class IndexPage extends StatefulWidget {
 
 class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final gc = GeneralController();
+  final ReadingSessionStore _readingSessionStore = ReadingSessionStore();
   OverlayEntry? _menuEntry;
   final List<Ayat> _ayat = [];
   int? _currentHizbQuarter;
@@ -60,8 +74,45 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _isConnectivityResolved = false;
   bool _showMemorizationColors = true;
   bool _showComprehensionUnderline = true;
+  bool _canOpenAssessment = true;
+  String? _readingNotice;
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
+
+  bool get _isArabic => (Get.locale?.languageCode ?? 'ar') == 'ar';
+
+  String _copy(String arabic, String english) => _isArabic ? arabic : english;
+
+  String _entryPathLabel() {
+    switch (widget.filterTypeId) {
+      case FilterTypes.parts:
+        return _copy('الأجزاء', 'parts');
+      case FilterTypes.hizbs:
+        return _copy('الأحزاب', 'hizbs');
+      default:
+        return _copy('الأثلاث', 'thirds');
+    }
+  }
+
+  String _entryPathBody() {
+    switch (widget.filterTypeId) {
+      case FilterTypes.parts:
+        return _copy(
+          'أنت داخل القراءة من مسار الأجزاء. النص هو المركز هنا، والتقييم يبقى فعلًا مساعدًا يظهر فقط عندما تحتاجه.',
+          'You entered reading through the parts path. The text stays central here, while assessment remains a supporting action only when you need it.',
+        );
+      case FilterTypes.hizbs:
+        return _copy(
+          'أنت داخل القراءة من مسار الأحزاب. حافظنا على هدوء السطح، وأبقينا التقييم واضحًا من دون تحميله على النص نفسه.',
+          'You entered reading through the hizbs path. The surface stays calm, and assessment remains clear without being loaded directly onto the text itself.',
+        );
+      default:
+        return _copy(
+          'أنت داخل القراءة من مسار الأثلاث. استخدم زر تقييم الآية عند الحاجة، ودع النص يبقى هو الفعل الأساسي في هذه الصفحة.',
+          'You entered reading through the thirds path. Use the verse assessment action when needed, and let the text remain the primary action on this page.',
+        );
+    }
+  }
 
   Future<void> _loadReadingDisplayPreferences(
       UsersProvider usersProvider) async {
@@ -145,11 +196,29 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     });
   }
 
-  void _showOptionsAt(
-      Offset _,
-      Ayat ayah,
-      EvaluationsProvider evaluationsProvider,
-      LanguageProvider languageProvider) async {
+  Future<void> _openAssessmentDialogForAyah(
+    Ayat ayah,
+    EvaluationsProvider evaluationsProvider,
+    LanguageProvider languageProvider,
+  ) async {
+    if (!_canOpenAssessment) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _copy(
+              'التقييم غير متاح الآن، لكن يمكنك متابعة القراءة والمحاولة لاحقًا.',
+              'Assessment is not available right now, but you can keep reading and try again later.',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
     _removeMenu();
 
     final savedScrollOffset = _scrollController.offset;
@@ -204,6 +273,60 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     });
   }
 
+  Future<void> _persistReadingSession({bool shouldAutoResume = true}) async {
+    final selectedUser = context.read<UsersProvider>().selectedUser;
+    if (selectedUser == null) {
+      return;
+    }
+
+    await _readingSessionStore.save(
+      ReadingSession(
+        userId: selectedUser.id,
+        surah: widget.surah,
+        filterTypeId: widget.filterTypeId,
+        juz: widget.juz,
+        hizb: widget.hizb,
+        currentHizbQuarter: _currentHizbQuarter,
+        shouldAutoResume: shouldAutoResume,
+      ),
+    );
+  }
+
+  Future<void> _handleExitReading() async {
+    final selectedUser = context.read<UsersProvider>().selectedUser;
+    await _readingSessionStore.updateAutoResumeForUser(
+      selectedUser?.id,
+      false,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (Navigator.of(context).canPop()) {
+      Get.back();
+      return;
+    }
+
+    Get.off(const MainScreen());
+  }
+
+  Future<void> _setWakelockEnabled(bool enabled) async {
+    if (kIsWeb) {
+      return;
+    }
+
+    try {
+      if (enabled) {
+        await WakelockPlus.enable();
+      } else {
+        await WakelockPlus.disable();
+      }
+    } catch (_) {
+      // Keep web and unsupported environments quiet; reading can proceed without wake lock.
+    }
+  }
+
   Future<void> _loadAyat(
       int userId, EvaluationsProvider evaluationsProvider) async {
     await _refreshConnectivity();
@@ -227,10 +350,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             await AyatController().loadAyatBySurah(widget.surah.id);
         if (surahAyat.isNotEmpty) {
           int surahStart = surahAyat.first.hizbQuarter!;
-          _currentHizbQuarter =
-              surahStart.clamp(_minHizbQuarter!, _maxHizbQuarter!);
+          _currentHizbQuarter = (widget.restoredHizbQuarter ?? surahStart)
+              .clamp(_minHizbQuarter!, _maxHizbQuarter!);
         } else {
-          _currentHizbQuarter = _minHizbQuarter;
+          _currentHizbQuarter = widget.restoredHizbQuarter != null
+              ? widget.restoredHizbQuarter!.clamp(
+                  _minHizbQuarter!,
+                  _maxHizbQuarter!,
+                )
+              : _minHizbQuarter;
         }
       } else {
         List<Ayat> initialAyat;
@@ -248,7 +376,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           quarters.sort();
           _minHizbQuarter = quarters.first;
           _maxHizbQuarter = quarters.last;
-          _currentHizbQuarter = _minHizbQuarter;
+          _currentHizbQuarter = widget.restoredHizbQuarter != null
+              ? widget.restoredHizbQuarter!.clamp(
+                  _minHizbQuarter!,
+                  _maxHizbQuarter!,
+                )
+              : _minHizbQuarter;
         }
         _initialHizbQuarter = _currentHizbQuarter;
       }
@@ -278,31 +411,76 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
     // ---------------------------------------------
 
-    List<int> ayatIds = ayat.map((ayah) => ayah.id!).toList();
-    if (evaluationsProvider.evaluations.isEmpty) {
-      await evaluationsProvider.getAllEvaluations();
-    }
-    await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
+    final ayatIds = ayat.map((ayah) => ayah.id!).toList();
+    var canOpenAssessment = _hasConnection;
+    String? readingNotice = _hasConnection
+        ? null
+        : _copy(
+            'القراءة ما تزال متاحة، لكن التقييم والتوصيات يحتاجان إلى اتصال فعّال.',
+            'Reading is still available, but assessment and recommendations need an active connection.',
+          );
 
-    for (final ayah in ayat) {
-      ayah.userEvaluation =
-          evaluationsProvider.getUserEvaluationForAyah(ayah.id);
-    }
+    if (_hasConnection) {
+      if (evaluationsProvider.evaluations.isEmpty) {
+        try {
+          await evaluationsProvider.getAllEvaluations();
+        } catch (_) {
+          canOpenAssessment = false;
+          readingNotice ??= _copy(
+            'تعذر تجهيز خيارات التقييم الآن. يمكنك متابعة القراءة والمحاولة لاحقًا.',
+            'Assessment options could not be prepared right now. You can keep reading and try again later.',
+          );
+        }
+      }
 
-    await _loadTeacherRecommendations(userId, ayat);
+      if (canOpenAssessment) {
+        try {
+          await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
+        } catch (_) {
+          readingNotice ??= _copy(
+            'تعذر تحميل تقييماتك السابقة الآن. يمكنك متابعة القراءة وإضافة تقييم جديد عند الحاجة.',
+            'We could not load your previous assessments right now. You can keep reading and submit a fresh assessment when needed.',
+          );
+        }
+      }
+
+      for (final ayah in ayat) {
+        ayah.userEvaluation =
+            evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+      }
+
+      final loadedRecommendations =
+          await _loadTeacherRecommendations(userId, ayat);
+      if (!loadedRecommendations) {
+        readingNotice ??= _copy(
+          'تعذر تحميل توصيات المعلم الآن، لذلك ستبقى القراءة متاحة من دون هذه الطبقة مؤقتًا.',
+          'Teacher recommendations could not be loaded right now, so reading stays available without that layer for now.',
+        );
+      }
+    } else {
+      for (final ayah in ayat) {
+        ayah.userEvaluation =
+            evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+        ayah.teacherRecommendations = [];
+      }
+    }
 
     setState(() {
+      _canOpenAssessment = canOpenAssessment;
+      _readingNotice = readingNotice;
       _ayat
         ..clear()
         ..addAll(ayat);
     });
+
+    await _persistReadingSession();
   }
 
-  Future<void> _loadTeacherRecommendations(int userId, List<Ayat> ayat) async {
+  Future<bool> _loadTeacherRecommendations(int userId, List<Ayat> ayat) async {
     final ayahIds =
         ayat.where((item) => item.id != null).map((item) => item.id!).toList();
     if (ayahIds.isEmpty) {
-      return;
+      return true;
     }
 
     try {
@@ -312,10 +490,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         ayahIds: ayahIds,
       );
       _applyTeacherRecommendations(ayat, recommendations);
+      return true;
     } catch (_) {
       for (final item in ayat) {
         item.teacherRecommendations = [];
       }
+      return false;
     }
   }
 
@@ -387,7 +567,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      WakelockPlus.enable();
+      _setWakelockEnabled(true);
     }
   }
 
@@ -398,7 +578,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       DeviceOrientation.portraitDown,
     ]);
     _removeMenu();
-    WakelockPlus.disable();
+    _setWakelockEnabled(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -414,7 +594,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     ]);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      WakelockPlus.enable();
+      _setWakelockEnabled(true);
       final usersProvider = context.read<UsersProvider>();
       EvaluationsProvider evaluationsProvider =
           context.read<EvaluationsProvider>();
@@ -497,7 +677,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   textDirection: TextDirection.ltr,
                   child: AppBar(
                     leading: CustomBackButton(
-                      onPressed: () => Get.off(const MainScreen()),
+                      onPressed: _handleExitReading,
                     ),
                     actions: [
                       Builder(
@@ -541,41 +721,170 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
+                        Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxWidth: 980),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isDarkMode
+                                  ? const [Color(0xFF1F2430), Color(0xFF18202C)]
+                                  : const [Color(0xFFF6F0E6), Color(0xFFE8F1E6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? const Color(0xFF2C3442)
+                                  : const Color(0xFFD9E1D5),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              FilterChip(
-                                label: Text(
-                                  (Get.locale?.languageCode ?? 'ar') == 'ar'
-                                      ? 'إظهار ألوان الحفظ'
-                                      : 'Show memorization colors',
+                              Text(
+                                _copy('القراءة أولًا', 'Reading first'),
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? const Color(0xFFE8E6E1)
+                                      : AppColors.buttonColor,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                                selected: _showMemorizationColors,
-                                onSelected: (value) async {
-                                  await _updateReadingDisplayPreferences(
-                                    showMemorizationColors: value,
-                                  );
-                                },
                               ),
-                              FilterChip(
-                                label: Text(
-                                  (Get.locale?.languageCode ?? 'ar') == 'ar'
-                                      ? 'إظهار خط الفهم'
-                                      : 'Show comprehension underline',
+                              const SizedBox(height: 8),
+                              Text(
+                                _copy(
+                                  'سورة ${widget.surah.nameAr}',
+                                  'Surah ${widget.surah.nameAr}',
                                 ),
-                                selected: _showComprehensionUnderline,
-                                onSelected: (value) async {
-                                  await _updateReadingDisplayPreferences(
-                                    showComprehensionUnderline: value,
-                                  );
-                                },
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _entryPathBody(),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.55,
+                                  color: isDarkMode
+                                      ? const Color(0xFFD2D5DB)
+                                      : const Color(0xFF43504A),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _ReadingMetaChip(
+                                    label: _copy('مسار الدخول', 'Entry path'),
+                                    value: _entryPathLabel(),
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                  _ReadingMetaChip(
+                                    label: _copy('التقييم', 'Assessment'),
+                                    value: _copy(
+                                      'زر واضح بعد رقم الآية',
+                                      'Explicit action after each verse marker',
+                                    ),
+                                    isDarkMode: isDarkMode,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          constraints: const BoxConstraints(maxWidth: 980),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? const Color(0xFF171C24)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? const Color(0xFF2C3442)
+                                  : const Color(0xFFDDE3DA),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _copy('طبقة المراجعة', 'Reading display layer'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _copy(
+                                  'يمكنك إظهار ألوان الحفظ أو خط الفهم، لكن النص نفسه يبقى هو المركز. استخدم زر تقييم الآية عندما تريد المراجعة أو التعديل.',
+                                  'You can show memorization colors or the comprehension underline, while keeping the text itself central. Use the verse action only when you want to review or edit.',
+                                ),
+                                style: TextStyle(
+                                  height: 1.5,
+                                  color: isDarkMode
+                                      ? const Color(0xFFD2D5DB)
+                                      : const Color(0xFF566173),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  FilterChip(
+                                    label: Text(
+                                      _copy(
+                                        'إظهار ألوان الحفظ',
+                                        'Show memorization colors',
+                                      ),
+                                    ),
+                                    selected: _showMemorizationColors,
+                                    onSelected: (value) async {
+                                      await _updateReadingDisplayPreferences(
+                                        showMemorizationColors: value,
+                                      );
+                                    },
+                                  ),
+                                  FilterChip(
+                                    label: Text(
+                                      _copy(
+                                        'إظهار خط الفهم',
+                                        'Show comprehension underline',
+                                      ),
+                                    ),
+                                    selected: _showComprehensionUnderline,
+                                    onSelected: (value) async {
+                                      await _updateReadingDisplayPreferences(
+                                        showComprehensionUnderline: value,
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20, top: 12),
+                          child: _readingNotice == null
+                              ? const SizedBox.shrink()
+                              : _ReadingNoticeBanner(
+                                  message: _readingNotice!,
+                                  isDarkMode: isDarkMode,
+                                ),
                         ),
                         ..._buildAyatWidgets(languageProvider,
                             evaluationProvider, _hasConnection, isDarkMode),
@@ -747,6 +1056,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               final showUnderline = _showComprehensionUnderline &&
                   EvaluationsController()
                       .isPositiveComprehension(compreEvaluation);
+                final hasAnyAssessment =
+                  ayah.userEvaluation?.hasAnyAssessment == true;
 
               return TextSpan(
                 text: '${ayah.text} ',
@@ -760,14 +1071,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                       : TextDecoration.none,
                   decorationColor: color,
                 ),
-                recognizer: hasConnection
-                    ? (TapGestureRecognizer()
-                      ..onTapDown = (details) => _showOptionsAt(
-                          details.globalPosition,
-                          ayah,
-                          evaluationProvider,
-                          languageProvider))
-                    : null,
                 children: [
                   TextSpan(
                     text: '${gc.ayahMarker(ayah.ayahNo)} ',
@@ -782,16 +1085,45 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     alignment: PlaceholderAlignment.middle,
                     child: Padding(
                       padding: const EdgeInsetsDirectional.only(
-                        start: 4,
+                        start: 6,
                         end: 6,
                       ),
-                      child: TeacherRecommendationBadge(
-                        recommendations: ayah.teacherRecommendations,
-                        compact: true,
-                        onDelete: (recommendation) => _deleteRecommendation(
-                          ayah,
-                          recommendation,
-                        ),
+                      child: Wrap(
+                        spacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _AyahActionPill(
+                            label: hasAnyAssessment
+                                ? _copy('عدّل التقييم', 'Edit assessment')
+                                : _copy('قيّم الآية', 'Assess verse'),
+                            tooltip: hasConnection
+                                ? _copy(
+                                    'افتح تقييم الآية ${ayah.ayahNo}',
+                                    'Open assessment for verse ${ayah.ayahNo}',
+                                  )
+                                : _copy(
+                                    'التقييم يحتاج اتصالاً فعّالاً',
+                                    'Assessment needs an active connection',
+                                  ),
+                            enabled: hasConnection && _canOpenAssessment,
+                            emphasized: hasAnyAssessment,
+                            onTap: () => _openAssessmentDialogForAyah(
+                              ayah,
+                              evaluationProvider,
+                              languageProvider,
+                            ),
+                          ),
+                          if (ayah.teacherRecommendations.isNotEmpty)
+                            TeacherRecommendationBadge(
+                              recommendations: ayah.teacherRecommendations,
+                              compact: true,
+                              onDelete: (recommendation) =>
+                                  _deleteRecommendation(
+                                ayah,
+                                recommendation,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -806,5 +1138,176 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     return widgets;
+  }
+}
+
+class _ReadingMetaChip extends StatelessWidget {
+  const _ReadingMetaChip({
+    required this.label,
+    required this.value,
+    required this.isDarkMode,
+  });
+
+  final String label;
+  final String value;
+  final bool isDarkMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF202734) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDarkMode ? const Color(0xFF2F3847) : const Color(0xFFDDE3DA),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isDarkMode
+                  ? const Color(0xFFB9C0CB)
+                  : const Color(0xFF61706B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadingNoticeBanner extends StatelessWidget {
+  const _ReadingNoticeBanner({
+    required this.message,
+    required this.isDarkMode,
+  });
+
+  final String message;
+  final bool isDarkMode;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxWidth: 980),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2A211B) : const Color(0xFFFFF5E8),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDarkMode ? const Color(0xFF6E5130) : const Color(0xFFE0BC7A),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: Color(0xFFAF7E22),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                height: 1.45,
+                color: isDarkMode ? const Color(0xFFF3E2C3) : const Color(0xFF7A5B18),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AyahActionPill extends StatelessWidget {
+  const _AyahActionPill({
+    required this.label,
+    required this.tooltip,
+    required this.enabled,
+    required this.emphasized,
+    required this.onTap,
+  });
+
+  final String label;
+  final String tooltip;
+  final bool enabled;
+  final bool emphasized;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = !enabled
+        ? const Color(0xFFF1F3F5)
+        : emphasized
+            ? AppColors.buttonColor
+            : Colors.white;
+    final foregroundColor = !enabled
+        ? const Color(0xFF89919B)
+        : emphasized
+            ? Colors.white
+            : AppColors.buttonColor;
+
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: Material(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(999),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: enabled ? onTap : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: emphasized
+                      ? AppColors.buttonColor
+                      : const Color(0xFFD6DCE2),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    emphasized
+                        ? Icons.edit_outlined
+                        : Icons.add_comment_outlined,
+                    size: 14,
+                    color: foregroundColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: foregroundColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

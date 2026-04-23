@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
+import 'package:sahifaty/core/reading/reading_session.dart';
+import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/login_screen.dart';
@@ -133,6 +135,50 @@ void main() {
 
     expect(find.byType(LoginScreen), findsNothing);
     expect(find.text('sahifa-destination'), findsOneWidget);
+  });
+
+  test('successful login can resume a pending reading session first',
+      () async {
+    final readingSessionStore = ReadingSessionStore();
+    await readingSessionStore.save(
+      const ReadingSession(
+        userId: 99,
+        surah: Surah(id: 2, nameAr: 'البقرة', ayahCount: 286),
+        filterTypeId: 2,
+        juz: 1,
+        currentHizbQuarter: 3,
+        shouldAutoResume: true,
+      ),
+    );
+
+    int? loadedChartUserId;
+    String? replacedRoute;
+    ReadingSession? resumedSession;
+
+    await navigateAfterSuccessfulLogin(
+      userId: 99,
+      isFirstLogin: false,
+      loadChartData: (userId) async {
+        loadedChartUserId = userId;
+      },
+      replaceRoute: (routeName, {parameters}) {
+        replacedRoute = routeName;
+      },
+      resumeReadingSession: (session) {
+        resumedSession = session;
+      },
+      readingSessionStore: readingSessionStore,
+    );
+
+    expect(loadedChartUserId, isNull);
+    expect(replacedRoute, isNull);
+    expect(resumedSession, isNotNull);
+    expect(resumedSession!.surah.id, 2);
+    expect(resumedSession!.currentHizbQuarter, 3);
+
+    final storedSession = await readingSessionStore.loadForUser(99);
+    expect(storedSession, isNotNull);
+    expect(storedSession!.shouldAutoResume, isFalse);
   });
 
   testWidgets('authentication text field exposes an explicit semantics label',

@@ -4,6 +4,25 @@ import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
+String buildTeacherRecommendationsPath(
+  int studentId, {
+  List<int>? ayahIds,
+}) {
+  final queryParametersAll = <String, List<String>>{
+    'studentId': [studentId.toString()],
+  };
+
+  if (ayahIds != null && ayahIds.isNotEmpty) {
+    queryParametersAll['ayahIds'] =
+        ayahIds.map((ayahId) => ayahId.toString()).toList();
+  }
+
+  return Uri(
+    path: 'teacher-recommendations',
+    queryParameters: queryParametersAll,
+  ).toString();
+}
+
 class TeacherRecommendationsService {
   final SahifatyApi _sahifatyApi = SahifatyApi();
 
@@ -11,13 +30,12 @@ class TeacherRecommendationsService {
     int studentId, {
     List<int>? ayahIds,
   }) async {
-    final queryParts = <String>['studentId=$studentId'];
-    if (ayahIds != null && ayahIds.isNotEmpty) {
-      queryParts.add('ayahIds=${ayahIds.join(',')}');
-    }
-
-    final res = await _sahifatyApi
-        .get('teacher-recommendations?${queryParts.join('&')}');
+    final res = await _sahifatyApi.get(
+      buildTeacherRecommendationsPath(
+        studentId,
+        ayahIds: ayahIds,
+      ),
+    );
 
     if (res.statusCode != 200) {
       throw Exception('Failed to load teacher recommendations');

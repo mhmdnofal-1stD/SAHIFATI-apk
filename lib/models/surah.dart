@@ -3,7 +3,7 @@ class Surah {
   final String nameAr;
   final int ayahCount;
 
-  Surah({
+  const Surah({
     required this.id,
     required this.nameAr,
     required this.ayahCount,

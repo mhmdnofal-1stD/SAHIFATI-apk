@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
+import 'package:sahifaty/core/reading/reading_session.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
+import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/general_provider.dart';
@@ -82,6 +85,7 @@ void main() {
   setUp(() {
     Get.testMode = true;
     GeneralProvider().setView(FilterTypes.thirds);
+    SharedPreferences.setMockInitialValues({});
   });
 
   tearDown(() {
@@ -107,6 +111,39 @@ void main() {
     expect(find.text('There is not enough assessment signal yet'), findsOneWidget);
     expect(find.byType(AssessmentDimensionToggle), findsNothing);
     expect(find.text('Browse Verses'), findsOneWidget);
+  });
+
+  testWidgets('sahifa screen exposes a saved reading resume path',
+      (tester) async {
+    await ReadingSessionStore().save(
+      const ReadingSession(
+        userId: 1,
+        surah: Surah(id: 2, nameAr: 'البقرة', ayahCount: 286),
+        filterTypeId: FilterTypes.parts,
+        juz: 1,
+        currentHizbQuarter: 3,
+        shouldAutoResume: false,
+      ),
+    );
+
+    final usersProvider = UsersProvider()
+      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+    final evaluationsProvider = EvaluationsProvider()
+      ..isLoading = false
+      ..totalCount = 0
+      ..chartEvaluationData = [];
+
+    await _pumpSurface(
+      tester,
+      child: const SahifaScreen(firstScreen: false),
+      usersProvider: usersProvider,
+      evaluationsProvider: evaluationsProvider,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('A saved reading session is waiting'), findsOneWidget);
+    expect(find.text('Resume reading'), findsWidgets);
   });
 
   testWidgets('sahifa screen shows chart summary when data exists', (tester) async {
@@ -162,6 +199,38 @@ void main() {
 
     expect(find.text('Your reading and exploration gateway'), findsOneWidget);
     expect(find.text('Start through parts'), findsOneWidget);
+  });
+
+  testWidgets('main screen exposes a saved reading resume path',
+      (tester) async {
+    await ReadingSessionStore().save(
+      const ReadingSession(
+        userId: 1,
+        surah: Surah(id: 36, nameAr: 'يس', ayahCount: 83),
+        filterTypeId: FilterTypes.thirds,
+        juz: 3,
+        currentHizbQuarter: 18,
+        shouldAutoResume: false,
+      ),
+    );
+
+    final usersProvider = UsersProvider()
+      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+    final evaluationsProvider = EvaluationsProvider()..isLoading = false;
+    final generalProvider = GeneralProvider()..setView(FilterTypes.parts);
+
+    await _pumpSurface(
+      tester,
+      child: const MainScreen(),
+      usersProvider: usersProvider,
+      evaluationsProvider: evaluationsProvider,
+      generalProvider: generalProvider,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Resume your last reading'), findsOneWidget);
+    expect(find.text('Resume reading'), findsOneWidget);
   });
 
   testWidgets('hizb button stays safe when its surahs are unavailable', (tester) async {

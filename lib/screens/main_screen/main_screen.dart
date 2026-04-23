@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
+import 'package:sahifaty/core/reading/reading_session.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/screens/sahifa_screen/sahifa_screen.dart';
+import 'package:sahifaty/screens/quran_view/index_page.dart';
 import 'package:sahifaty/screens/widgets/custom_hizbs_dropdown.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
@@ -205,6 +207,81 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     SizedBox(height: SizeConfig.getProportionalHeight(20)),
+                      FutureBuilder<ReadingSession?>(
+                        future: ReadingSessionStore()
+                            .loadForUser(usersProvider.selectedUser?.id),
+                        builder: (context, snapshot) {
+                          final session = snapshot.data;
+                          if (session == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 980),
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8F8F4),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(color: const Color(0xFFDCE2DA)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _copy(
+                                      isArabic,
+                                      'العودة إلى آخر قراءة',
+                                      'Resume your last reading',
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _copy(
+                                      isArabic,
+                                      'آخر سياق محفوظ كان في سورة ${session.surah.nameAr} عبر مسار ${session.pathLabel(true)}. يمكنك العودة مباشرة إلى نفس موضع القراءة بدل البدء من جديد.',
+                                      'Your last saved reading context was in Surah ${session.surah.nameAr} through the ${session.pathLabel(false)} path. You can return directly to the same reading position instead of starting over.',
+                                    ),
+                                    style: const TextStyle(height: 1.5),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  FilledButton.icon(
+                                    onPressed: () async {
+                                      await ReadingSessionStore()
+                                          .updateAutoResumeForUser(
+                                        usersProvider.selectedUser?.id,
+                                        false,
+                                      );
+                                      if (!context.mounted) {
+                                        return;
+                                      }
+
+                                      Get.to(() => IndexPage.fromReadingSession(session));
+                                    },
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.buttonColor,
+                                    ),
+                                    icon: const Icon(Icons.menu_book_rounded),
+                                    label: Text(
+                                      _copy(
+                                        isArabic,
+                                        'استئناف القراءة',
+                                        'Resume reading',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     Container(
                       constraints: const BoxConstraints(maxWidth: 980),
                       width: double.infinity,
