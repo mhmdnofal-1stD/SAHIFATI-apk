@@ -2,6 +2,21 @@
 
 A new Flutter project.
 
+## API routing for experiments
+
+- Web builds now use `https://sahifati.org/api` by default, including when served from `localhost` or `127.0.0.1`.
+- If you intentionally want the web app to talk to a locally running API on `http://127.0.0.1:3077/api`, start or build with:
+
+```bash
+flutter run -d chrome --dart-define=USE_LOCAL_API_ON_WEB=true
+```
+
+- You can still override the full API target explicitly with:
+
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=https://example.com/api
+```
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

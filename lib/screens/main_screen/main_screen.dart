@@ -38,38 +38,6 @@ class _MainScreenState extends State<MainScreen> {
     return isArabic ? arabic : english;
   }
 
-  String _pathTitle(bool isArabic, int view) {
-    if (view == FilterTypes.parts) {
-      return _copy(isArabic, 'ابدأ عبر الأجزاء', 'Start through parts');
-    }
-    if (view == FilterTypes.hizbs) {
-      return _copy(isArabic, 'ابدأ عبر الأحزاب', 'Start through hizbs');
-    }
-    return _copy(isArabic, 'ابدأ عبر الأثلاث', 'Start through thirds');
-  }
-
-  String _pathBody(bool isArabic, int view) {
-    if (view == FilterTypes.parts) {
-      return _copy(
-        isArabic,
-        'افتح جزءًا واحدًا ثم اختر السورة التي تريد الدخول منها إلى القراءة.',
-        'Open one part first, then choose the surah you want to use as your reading entry.',
-      );
-    }
-    if (view == FilterTypes.hizbs) {
-      return _copy(
-        isArabic,
-        'هذا المسار مناسب إذا كنت تريد دخولًا أسرع عبر الحزب، لكننا لا نفتحه إلا عندما تكون بياناته جاهزة فعلاً.',
-        'This path is useful when you want a faster entry through a hizb, but we only open it when its surah data is actually ready.',
-      );
-    }
-    return _copy(
-      isArabic,
-      'اختر الثلث المناسب أولاً، ثم افتح السورة من داخله للوصول إلى القراءة بسرعة أكبر.',
-      'Choose the relevant third first, then open the surah inside it for a faster reading entry.',
-    );
-  }
-
   bool _hasChartData(EvaluationsProvider provider) {
     return provider.totalCount > 0 && provider.chartEvaluationData.isNotEmpty;
   }
@@ -190,19 +158,6 @@ class _MainScreenState extends State<MainScreen> {
                               fontWeight: FontWeight.w800,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            _copy(
-                              isArabic,
-                              'اختر الطريق الأقرب لك إلى القراءة: الأثلاث أو الأجزاء أو الأحزاب. هذه الشاشة ليست وجهة مستقلة، بل مدخل مرتب وسريع إلى المصحف.',
-                              'Choose the path that gets you into reading fastest: thirds, parts, or hizbs. This screen is not a destination of its own; it is a tidy gateway into the Qur’an view.',
-                            ),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              height: 1.55,
-                              color: Color(0xFF39433D),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -282,33 +237,6 @@ class _MainScreenState extends State<MainScreen> {
                           );
                         },
                       ),
-                    Container(
-                      constraints: const BoxConstraints(maxWidth: 980),
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFDCE2DA)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _pathTitle(isArabic, generalProvider.mainScreenView),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _pathBody(isArabic, generalProvider.mainScreenView),
-                            style: const TextStyle(height: 1.5),
-                          ),
-                        ],
-                      ),
-                    ),
                     SizedBox(height: SizeConfig.getProportionalHeight(16)),
                     Container(
                       constraints: const BoxConstraints(maxWidth: 720),

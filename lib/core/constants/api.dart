@@ -5,6 +5,10 @@ class ApiConfig {
     'API_BASE_URL',
     defaultValue: 'https://sahifati.org/api',
   );
+  static const bool _preferLocalApiOnWeb = bool.fromEnvironment(
+    'USE_LOCAL_API_ON_WEB',
+    defaultValue: false,
+  );
 
   static String _resolveDefaultBaseUrl() {
     if (!kIsWeb) {
@@ -12,7 +16,10 @@ class ApiConfig {
     }
 
     final host = Uri.base.host.trim().toLowerCase();
-    if (host == 'localhost' || host == '127.0.0.1') {
+    if (
+      _preferLocalApiOnWeb &&
+      (host == 'localhost' || host == '127.0.0.1')
+    ) {
       return 'http://127.0.0.1:3077/api';
     }
 
