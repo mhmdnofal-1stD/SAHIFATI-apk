@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
-import 'custom_text.dart';
 
 class CustomButton extends StatelessWidget {
   const CustomButton({
@@ -26,6 +25,7 @@ class CustomButton extends StatelessWidget {
     final labelFontSize = height >= 48 ? 16.0 : 14.0;
     final Color backgroundColor =
     isDisabled ? Colors.grey : AppColors.primaryPurple;
+    final Color foregroundColor = isDisabled ? Colors.black38 : Colors.white;
 
     return SizedBox(
       width: width,
@@ -48,15 +48,22 @@ class CustomButton extends StatelessWidget {
               ? Icon(
             icon,
             size: 20,
-            color: isDisabled ? Colors.black38 : Colors.white,
+            color: foregroundColor,
           )
               : text != null
-              ? CustomText(
-            text: text!,
-            withBackground: false,
-            fontSize: labelFontSize,
-            fontWeight:  FontWeight.bold ,
-            color: isDisabled ? Colors.black38 : Colors.white,
+              ? FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              text!,
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: labelFontSize,
+                fontWeight: FontWeight.bold,
+                color: foregroundColor,
+              ),
+            ),
           )
               : null,
         ),

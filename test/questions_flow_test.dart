@@ -171,6 +171,41 @@ void main() {
     expect(find.text('Finish this round for now'), findsOneWidget);
   });
 
+  testWidgets('questions screen keeps action labels visible on narrow widths',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(375, 812));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final usersProvider = UsersProvider();
+    final evaluationsProvider = EvaluationsProvider();
+    final schoolProvider = SchoolProvider();
+    final content = SchoolLevelContent(
+      id: 'content-mobile-1',
+      type: 'surah',
+      surahId: 1,
+      startAyah: 1,
+      endAyah: 7,
+    );
+
+    schoolProvider.quickQuestionsSchool = _buildSchool(
+      levels: [
+        _buildLevel(englishName: 'Opening level', content: [content]),
+      ],
+    );
+
+    await _pumpFlow(
+      tester,
+      child: const QuestionsScreen(),
+      usersProvider: usersProvider,
+      evaluationsProvider: evaluationsProvider,
+      schoolProvider: schoolProvider,
+    );
+
+    expect(find.text('Rate the full unit at once'), findsOneWidget);
+    expect(find.text('Review verse by verse'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('completion summary shows honest skipped-state counts',
       (tester) async {
     await _pumpFlow(

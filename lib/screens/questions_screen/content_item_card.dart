@@ -981,21 +981,38 @@ class _ContentItemCardState extends State<ContentItemCard> {
     final subtitleColor = outlined
       ? AppColors.primaryPurple.withValues(alpha: 0.74)
       : Colors.white.withValues(alpha: 0.88);
-
-    final label = Column(
+    final buttonChild = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: titleColor,
-          ),
+        Icon(
+          icon,
+          size: 18,
+          color: titleColor,
         ),
-        const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: TextStyle(fontSize: 12, color: subtitleColor),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: titleColor,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: subtitleColor),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -1003,21 +1020,15 @@ class _ContentItemCardState extends State<ContentItemCard> {
     return SizedBox(
       width: double.infinity,
       child: outlined
-          ? OutlinedButton.icon(
+          ? OutlinedButton(
               onPressed: onPressed,
               style: buttonStyle,
-              icon: const Icon(
-                Icons.menu_book_rounded,
-                size: 18,
-                color: AppColors.primaryPurple,
-              ),
-              label: label,
+              child: buttonChild,
             )
-          : ElevatedButton.icon(
+          : ElevatedButton(
               onPressed: onPressed,
               style: buttonStyle,
-              icon: Icon(icon, size: 18),
-              label: label,
+              child: buttonChild,
             ),
     );
   }
