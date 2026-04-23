@@ -8,6 +8,8 @@ import '../screens/authentication_screens/select_user_screen.dart';
 
 class UsersController {
   static final UsersController _instance = UsersController._internal();
+  static const String _rememberedEmailKey = 'email';
+  static const String _legacySavedForPrefix = 'saved for ';
 
   factory UsersController() => _instance;
 
@@ -135,43 +137,51 @@ class UsersController {
     rememberMe = !rememberMe;
   }
 
+  bool _matchesRememberedEmail(String currentEmail, String rememberedEmail) {
+    return currentEmail.isNotEmpty &&
+        rememberedEmail.isNotEmpty &&
+        currentEmail.toLowerCase() == rememberedEmail.toLowerCase();
+  }
+
   Future<void> saveLoginInfo(String email) async {
     final prefs = await SharedPreferences.getInstance();
-    final previousEmail = prefs.getString('email');
+    final previousEmail = prefs.getString(_rememberedEmailKey);
 
     if (previousEmail != null && previousEmail.isNotEmpty && previousEmail != email) {
-      await prefs.remove('saved for $previousEmail');
+      await prefs.remove('$_legacySavedForPrefix$previousEmail');
     }
-    await prefs.setString('email', email);
+    await prefs.setString(_rememberedEmailKey, email);
     await prefs.remove('password');
-    await prefs.setBool('saved for $email', true);
+    await prefs.setBool('$_legacySavedForPrefix$email', true);
   }
 
   Future<void> clearLoginInfo() async {
     final prefs = await SharedPreferences.getInstance();
-    final previousEmail = prefs.getString('email');
+    final previousEmail = prefs.getString(_rememberedEmailKey);
 
     if (previousEmail != null && previousEmail.isNotEmpty) {
-      await prefs.remove('saved for $previousEmail');
+      await prefs.remove('$_legacySavedForPrefix$previousEmail');
     }
 
-    await prefs.remove('email');
+    await prefs.remove(_rememberedEmailKey);
     await prefs.remove('password');
   }
 
-  Future<void> getLoginInfo() async {
+  Future<void> getLoginInfo({String? preferredEmail}) async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('email') ?? '';
+    final rememberedEmail = prefs.getString(_rememberedEmailKey) ?? '';
+    final email = (preferredEmail != null && preferredEmail.isNotEmpty)
+        ? preferredEmail
+        : rememberedEmail;
     loginEmailController.text = email;
     loginPasswordController.clear();
-    rememberMe = email.isNotEmpty;
+    rememberMe = _matchesRememberedEmail(email, rememberedEmail);
   }
 
 
 
   Future<void> completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_complete', true);
+    await UsersProvider().markOnboardingCompleted();
   }
 
   Future<void> logout(UsersProvider usersProvider) async {

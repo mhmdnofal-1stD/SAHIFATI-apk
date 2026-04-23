@@ -19,6 +19,7 @@ class UsersProvider with ChangeNotifier {
   static const String _pendingVerificationSentAtKey =
       'pending_verification_sent_at_ms';
   static const String _legacyHasLoggedInBeforeKey = 'has_logged_in_before';
+  static const String _legacyOnboardingCompleteKey = 'onboarding_complete';
   static const String _storedDeviceUsersKey = 'stored_device_users';
   static const String _storedAccountSessionsKey = 'stored_account_sessions';
   static const String _activeUserDataKey = 'userData';
@@ -43,6 +44,9 @@ class UsersProvider with ChangeNotifier {
   bool _facebookWebInitialized = false;
 
   String _accountKeyForUser(User user) => user.id.toString();
+
+  String _onboardingCompletionKeyForUser(User user) =>
+      '${_legacyOnboardingCompleteKey}_${_accountKeyForUser(user)}';
 
   String? _accountKeyFromUserMap(Map<String, dynamic> userMap) {
     final id = userMap['id'];
@@ -787,6 +791,7 @@ class UsersProvider with ChangeNotifier {
 
       selectedUser = User.fromJson(extractedUserData);
       await _setActiveUserSnapshot(selectedUser!);
+        await checkFirstLogin(user: selectedUser);
       notifyListeners();
       return true;
     } catch (_) {
@@ -809,6 +814,50 @@ class UsersProvider with ChangeNotifier {
     _resetReadingDisplayPreferencesState();
   }
 
+  Future<bool> isOnboardingCompleted({User? user}) async {
+    final targetUser = user ?? selectedUser;
+    if (targetUser == null) {
+      return false;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final scopedKey = _onboardingCompletionKeyForUser(targetUser);
+    final scopedValue = prefs.getBool(scopedKey);
+    if (scopedValue != null) {
+      return scopedValue;
+    }
+
+    final legacyScopedLoginFlag =
+        prefs.getBool('${_legacyHasLoggedInBeforeKey}_${_accountKeyForUser(targetUser)}');
+    if (legacyScopedLoginFlag == true) {
+      await prefs.setBool(scopedKey, true);
+      return true;
+    }
+
+    final legacyOnboardingComplete = prefs.getBool(_legacyOnboardingCompleteKey);
+    if (legacyOnboardingComplete == true) {
+      await prefs.setBool(scopedKey, true);
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<void> markOnboardingCompleted({User? user}) async {
+    final targetUser = user ?? selectedUser;
+    if (targetUser == null) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardingCompletionKeyForUser(targetUser), true);
+
+    if (selectedUser?.id == targetUser.id) {
+      isFirstLogin = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> checkFirstLogin({User? user}) async {
     final targetUser = user ?? selectedUser;
     if (targetUser == null) {
@@ -817,24 +866,8 @@ class UsersProvider with ChangeNotifier {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final hasLoggedInBeforeKey =
-      '${_legacyHasLoggedInBeforeKey}_${_accountKeyForUser(targetUser)}';
-    bool hasLoggedInBefore = prefs.getBool(hasLoggedInBeforeKey) ?? false;
-
-    if (!hasLoggedInBefore) {
-      final legacyHasLoggedInBefore =
-          prefs.getBool(_legacyHasLoggedInBeforeKey) ?? false;
-      if (legacyHasLoggedInBefore) {
-        hasLoggedInBefore = true;
-        await prefs.setBool(hasLoggedInBeforeKey, true);
-      }
-    }
-
-    isFirstLogin = !hasLoggedInBefore;
-    if (!hasLoggedInBefore) {
-      await prefs.setBool(hasLoggedInBeforeKey, true);
-    }
+    final onboardingCompleted = await isOnboardingCompleted(user: targetUser);
+    isFirstLogin = !onboardingCompleted;
     notifyListeners();
   }
 

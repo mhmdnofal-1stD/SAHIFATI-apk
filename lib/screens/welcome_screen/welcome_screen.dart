@@ -188,7 +188,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 CustomButton(
                   onPressed: () async {
                     final schoolProvider = context.read<SchoolProvider>();
+                    final usersProvider = context.read<UsersProvider>();
 
+                    await usersProvider.markOnboardingCompleted();
                     await schoolProvider.getQuickQuestionsSchool();
 
                     Get.to(const QuestionsScreen());

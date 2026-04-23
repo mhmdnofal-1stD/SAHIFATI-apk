@@ -22,9 +22,14 @@ import 'widgets/custom_auth_textfield.dart';
 import 'widgets/google_web_auth_button.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.firstScreen});
+  const LoginScreen({
+    super.key,
+    required this.firstScreen,
+    this.initialEmail,
+  });
 
   final bool firstScreen;
+  final String? initialEmail;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -68,7 +73,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _userController = UsersController();
-    _userController.getLoginInfo();
+    _hydrateLoginInfo();
+  }
+
+  Future<void> _hydrateLoginInfo() async {
+    await _userController.getLoginInfo(preferredEmail: widget.initialEmail);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {});
   }
 
   String _providerLabel(String provider) {

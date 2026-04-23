@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/authenticated_route_gate.dart';
+import 'core/auth/post_auth_navigation.dart';
 import 'core/auth/verification_flow.dart';
 import 'controllers/general_controller.dart';
 import 'core/constants/colors.dart';
@@ -169,6 +170,12 @@ Future<void> _ensureSahifaChartData(
     return;
   }
 
+  await usersProvider.checkFirstLogin(user: user);
+  if (usersProvider.isFirstLogin) {
+    Get.offAllNamed('/welcome');
+    return;
+  }
+
   if (evaluationsProvider.chartEvaluationData.isNotEmpty) {
     return;
   }
@@ -278,15 +285,14 @@ class _InitialScreenState extends State<InitialScreen> {
 
     if (isLoggedIn && usersProvider.selectedUser != null) {
       try {
-        await evaluationsProvider
-            .getQuranChartData(usersProvider.selectedUser!.id);
+        await navigateAfterSuccessfulLogin(
+          userId: usersProvider.selectedUser!.id,
+          isFirstLogin: usersProvider.isFirstLogin,
+          loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+        );
         if (!mounted) {
           return;
         }
-        Get.offAllNamed(
-          '/sahifa',
-          parameters: const {'firstScreen': 'true'},
-        );
       } catch (e) {
         await usersProvider.clearPersistedSession();
         _routeToLoginOrSelectUser(usersProvider);

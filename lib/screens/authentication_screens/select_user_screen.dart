@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/users_controller.dart';
 import '../../core/auth/post_auth_navigation.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
@@ -60,9 +59,12 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
       return;
     }
 
-    UsersController().loginEmailController.text = email.toString();
-    UsersController().loginPasswordController.clear();
-    Get.to(() => const LoginScreen(firstScreen: false));
+    Get.to(
+      () => LoginScreen(
+        firstScreen: false,
+        initialEmail: email.toString(),
+      ),
+    );
   }
 
   Future<void> _resetUserScopedState() async {
