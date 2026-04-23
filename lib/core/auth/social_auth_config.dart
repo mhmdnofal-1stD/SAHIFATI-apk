@@ -1,10 +1,15 @@
 import 'package:flutter/foundation.dart';
 
 class SocialAuthConfig {
+  static const String _defaultGoogleClientId =
+      '605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com';
   static const String googleWebClientId =
       String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
   static const String googleServerClientId =
-      String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+      String.fromEnvironment(
+        'GOOGLE_SERVER_CLIENT_ID',
+        defaultValue: _defaultGoogleClientId,
+      );
   static const bool facebookAuthEnabled =
     bool.fromEnvironment('FACEBOOK_AUTH_ENABLED', defaultValue: false);
   static const String facebookAppId =
