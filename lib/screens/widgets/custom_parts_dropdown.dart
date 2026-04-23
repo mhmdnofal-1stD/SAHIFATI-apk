@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/controllers/surahs_controller.dart';
+import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
-import 'package:sahifaty/providers/surahs_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
@@ -45,21 +45,15 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
   }
 
   void _showOverlay(
-      SurahsProvider surahsProvider,
       EvaluationsProvider evaluationsProvider,
-      UsersProvider usersProvider) async {
+      UsersProvider usersProvider) {
     if (_overlayEntry != null) return;
-
-    // Start fetching surahs for the selected part
-    // await surahsProvider.getSurahsByJuz(widget.part['id']);
-    final surahs = await SurahsController().loadSurahsByJuz(widget.part['id']);
-
-    if (!mounted) return;
 
     final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
-// Screen height
+    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
+    String text(String arabic, String english) => isArabic ? arabic : english;
     final screenHeight = MediaQuery.of(context).size.height;
     const double maxDropdownHeight = 200.0;
 
@@ -87,51 +81,93 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
               elevation: 6,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 200),
-                child: surahsProvider.isLoading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        itemCount: surahs.length,
-                        // itemCount: surahsProvider.totalSurahs,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Colors.grey),
-                        itemBuilder: (context, index) {
-                          final surah = surahs[index];
-                          // final surah = surahsProvider.surahsByJuz[index];
-                          return InkWell(
-                            onTap: () {
-                              Get.to(IndexPage(
-                                surah: surah,
-                                filterTypeId: FilterTypes.parts,
-                                juz: widget.part['id'],
-                              ))?.then((_) {
-                                evaluationsProvider.getQuranChartData(
-                                    usersProvider.selectedUser!.id);
-                              });
-                              _removeOverlay();
-                              widget.onToggle();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 12),
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  quran.getSurahNameArabic(surah.id),
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Colors.black87),
-                                ),
+                child: FutureBuilder<List<Surah>>(
+                  future: SurahsController().loadSurahsByJuz(widget.part['id']),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 12),
+                            Text(
+                              text(
+                                'جارٍ تجهيز سور هذا الجزء...',
+                                'Preparing the surahs in this part...',
                               ),
+                              textAlign: TextAlign.center,
                             ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return _PartsOverlayState(
+                        message: text(
+                          'تعذر تحميل السور لهذا الجزء الآن.',
+                          'We could not load the surahs for this part right now.',
+                        ),
+                        actionLabel: text('إعادة المحاولة', 'Retry'),
+                        onAction: () {
+                          _removeOverlay();
+                          WidgetsBinding.instance.addPostFrameCallback(
+                            (_) => _showOverlay(evaluationsProvider, usersProvider),
                           );
                         },
-                      ),
+                      );
+                    }
+
+                    final surahs = snapshot.data ?? const <Surah>[];
+                    if (surahs.isEmpty) {
+                      return _PartsOverlayState(
+                        message: text(
+                          'لا توجد سور جاهزة لهذا الجزء حاليًا.',
+                          'No surahs are available for this part right now.',
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: surahs.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, color: Colors.grey),
+                      itemBuilder: (context, index) {
+                        final surah = surahs[index];
+                        return InkWell(
+                          onTap: () {
+                            Get.to(IndexPage(
+                              surah: surah,
+                              filterTypeId: FilterTypes.parts,
+                              juz: widget.part['id'],
+                            ))?.then((_) {
+                              evaluationsProvider.getQuranChartData(
+                                  usersProvider.selectedUser!.id);
+                            });
+                            _removeOverlay();
+                            widget.onToggle();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 12),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                quran.getSurahNameArabic(surah.id),
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.black87),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -154,17 +190,16 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
   @override
   void didUpdateWidget(covariant CustomPartsDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
-    SurahsProvider surahsProvider = Provider.of<SurahsProvider>(context);
     EvaluationsProvider evaluationsProvider =
-        Provider.of<EvaluationsProvider>(context);
-    UsersProvider usersProvider = Provider.of<UsersProvider>(context);
+        Provider.of<EvaluationsProvider>(context, listen: false);
+    UsersProvider usersProvider = Provider.of<UsersProvider>(context, listen: false);
 
     // Avoid triggering overlay changes during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
       if (widget.isOpen && _overlayEntry == null) {
-        _showOverlay(surahsProvider, evaluationsProvider, usersProvider);
+        _showOverlay(evaluationsProvider, usersProvider);
       } else if (!widget.isOpen && _overlayEntry != null) {
         _removeOverlay();
       }
@@ -205,6 +240,42 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PartsOverlayState extends StatelessWidget {
+  const _PartsOverlayState({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(height: 1.5),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onAction,
+              child: Text(actionLabel!),
+            ),
+          ],
+        ],
       ),
     );
   }

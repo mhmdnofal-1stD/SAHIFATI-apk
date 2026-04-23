@@ -17,7 +17,6 @@ import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
 import '../widgets/assessment_input_dialog.dart';
-import '../widgets/custom_button.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 
@@ -331,7 +330,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
     final selection = await _openAssessmentDialog(
       context,
       languageProvider,
-      title: 'تقييم $unitName',
+      title: text('تقييم $unitName', 'Assess $unitName'),
     );
 
     if (selection == null) return;
@@ -481,7 +480,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                             languageProvider,
                                             currentEvaluation:
                                                 ayah.userEvaluation,
-                                            title: 'تقييم الآية ${ayah.ayahNo}',
+                                            title: text(
+                                              'تقييم الآية ${ayah.ayahNo}',
+                                              'Assess verse ${ayah.ayahNo}',
+                                            ),
                                           );
 
                                           if (selection == null) {
@@ -600,7 +602,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 await _openAssessmentDialog(
                                               context,
                                               languageProvider,
-                                              title: 'تقييم ${surah.nameAr}',
+                                              title: text(
+                                                'تقييم ${surah.nameAr}',
+                                                'Assess ${surah.nameAr}',
+                                              ),
                                             );
 
                                             if (selection != null) {
@@ -656,7 +661,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               }
                                             }
                                           },
-                                          child: const Text("تقييم"),
+                                          child: Text(text('تقييم', 'Assess')),
                                         ),
                                         onTap: () {
                                           _showJuzSurahAyahs(context, surah,
@@ -791,7 +796,12 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                             if (ayah.teacherRecommendations
                                                 .isNotEmpty)
                                               const SizedBox(width: 8),
-                                            Text('آية ${ayah.ayahNo}'),
+                                            Text(
+                                              text(
+                                                'آية ${ayah.ayahNo}',
+                                                'Verse ${ayah.ayahNo}',
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         ElevatedButton(
@@ -802,8 +812,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               languageProvider,
                                               currentEvaluation:
                                                   ayah.userEvaluation,
-                                              title:
-                                                  'تقييم الآية ${ayah.ayahNo}',
+                                              title: text(
+                                                'تقييم الآية ${ayah.ayahNo}',
+                                                'Assess verse ${ayah.ayahNo}',
+                                              ),
                                             );
 
                                             if (selection == null) {
@@ -824,7 +836,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               setModalState: setModalState,
                                             );
                                           },
-                                          child: const Text('تقييم'),
+                                          child: Text(text('تقييم', 'Assess')),
                                         ),
                                       ],
                                     ),
@@ -844,9 +856,170 @@ class _ContentItemCardState extends State<ContentItemCard> {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء تحميل الآيات: $e')),
+        SnackBar(
+          content: Text(
+            text(
+              'حدث خطأ أثناء تحميل الآيات: $e',
+              'An error occurred while loading verses: $e',
+            ),
+          ),
+        ),
       );
     }
+  }
+
+  String text(String arabic, String english) {
+    return (Get.locale?.languageCode ?? 'ar') == 'ar' ? arabic : english;
+  }
+
+  String get _normalizedContentType {
+    return widget.content.type
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s_-]+'), '');
+  }
+
+  bool get _isAyahRangeType => _normalizedContentType == 'ayatrange';
+
+  bool get _isJuzType => _normalizedContentType == 'juz';
+
+  String _contentHeadline() {
+    if (widget.content.surahId != null) {
+      final surahName =
+          GeneralController().getSurahNameArabic(widget.content.surahId!);
+      if (widget.content.startAyah != null && widget.content.endAyah != null) {
+        return '$surahName ${widget.content.startAyah} - ${widget.content.endAyah}';
+      }
+      return surahName;
+    }
+
+    if (_normalizedContentType == 'juz' && widget.content.juz != null) {
+      return '${text('الجزء', 'Juz')} ${widget.content.juz}';
+    }
+
+    if (_normalizedContentType == 'hizb' && widget.content.hizb != null) {
+      return '${text('الحزب', 'Hizb')} ${widget.content.hizb}';
+    }
+
+    if (_normalizedContentType == 'hizbquarter' &&
+        widget.content.hizbQuarter != null) {
+      return '${text('ربع الحزب', 'Hizb quarter')} ${widget.content.hizbQuarter}';
+    }
+
+    return unitName;
+  }
+
+  String _contentSupportCopy() {
+    if (_isAyahRangeType) {
+      return text(
+        'هذا المقطع يحتاج تقييمًا آية بآية حتى تبقى النتائج دقيقة.',
+        'This slice is reviewed verse by verse so the result stays accurate.',
+      );
+    }
+
+    if (_isJuzType) {
+      return text(
+        'يمكنك تقييم الجزء كاملًا أو فتح السور والآيات عند الحاجة.',
+        'You can rate the full juz or drill into individual surahs and verses.',
+      );
+    }
+
+    return text(
+      'اختر بين تقييم واحد للوحدة كاملة أو مراجعة الآيات بالتفصيل.',
+      'Choose one rating for the whole unit or review each verse in detail.',
+    );
+  }
+
+  String _statusLabel() {
+    if (widget.isLoadingStatus) {
+      return text('جاري تحديث الحالة', 'Refreshing status');
+    }
+
+    if (widget.isCompleted == true) {
+      return text('تم تقييم هذه الوحدة', 'This unit has been assessed');
+    }
+
+    return text(
+      'هذه الوحدة ما زالت بانتظار التقييم',
+      'This unit is still waiting for assessment',
+    );
+  }
+
+  Color _statusColor() {
+    if (widget.isCompleted == true) {
+      return const Color(0xFFE9F8EF);
+    }
+
+    return const Color(0xFFF5EEF9);
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback? onPressed,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    bool outlined = false,
+  }) {
+    final buttonStyle = outlined
+        ? OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            side: const BorderSide(color: AppColors.primaryPurple),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          )
+        : ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            backgroundColor: AppColors.primaryPurple,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          );
+
+    final titleColor = outlined ? AppColors.primaryPurple : Colors.white;
+    final subtitleColor = outlined
+      ? AppColors.primaryPurple.withValues(alpha: 0.74)
+      : Colors.white.withValues(alpha: 0.88);
+
+    final label = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: titleColor,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: TextStyle(fontSize: 12, color: subtitleColor),
+        ),
+      ],
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: outlined
+          ? OutlinedButton.icon(
+              onPressed: onPressed,
+              style: buttonStyle,
+              icon: const Icon(
+                Icons.menu_book_rounded,
+                size: 18,
+                color: AppColors.primaryPurple,
+              ),
+              label: label,
+            )
+          : ElevatedButton.icon(
+              onPressed: onPressed,
+              style: buttonStyle,
+              icon: Icon(icon, size: 18),
+              label: label,
+            ),
+    );
   }
 
   @override
@@ -866,104 +1039,175 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 ? Colors.green
                 : AppColors.primaryPurple,
           );
+    final canInteract = !widget.isLoadingStatus && !isEvaluating;
+    final title = _contentHeadline();
 
     return GestureDetector(
-        onTap: () {
-          if (widget.content.type == 'juz' && widget.content.juz != null) {
-            _showJuzBreakdown(context, widget.content.juz!, languageProvider);
-          }
-        },
-        child: Container(
-          margin: EdgeInsets.symmetric(
-            vertical: SizeConfig.getProportionalHeight(10),
-            horizontal: SizeConfig.getProportionalWidth(2),
-          ),
-          padding: EdgeInsets.symmetric(
-              horizontal: 0, vertical: SizeConfig.getProportionalHeight(15)),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.grey,
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: SizeConfig.getProportionalWidth(8),
+      onTap: () {
+        if (_isJuzType && widget.content.juz != null) {
+          _showJuzBreakdown(context, widget.content.juz!, languageProvider);
+        }
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(
+          vertical: SizeConfig.getProportionalHeight(10),
+          horizontal: SizeConfig.getProportionalWidth(2),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: SizeConfig.getProportionalWidth(14),
+          vertical: SizeConfig.getProportionalHeight(16),
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: const Color(0xFFE8DFF1)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1A6E4B8B),
+              spreadRadius: 1,
+              blurRadius: 14,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: SizeConfig.getProportionalHeight(2),
+                    right: SizeConfig.getProportionalWidth(10),
+                    left: SizeConfig.getProportionalWidth(2),
+                  ),
+                  child: completionIcon,
                 ),
-                child: completionIcon,
-              ),
-              if (widget.content.surahId != null) ...[
-                CustomText(
-                  text:
-                      '${GeneralController().getSurahNameArabic(widget.content.surahId!)} : ${widget.content.startAyah} - ${widget.content.endAyah}',
-                  withBackground: false,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryPurple,
-                ),
-              ],
-              if (widget.content.type != "ayat range") ...[
-                isEvaluating
-                    ? const CircularProgressIndicator()
-                    : Padding(
-                        padding: EdgeInsets.only(
-                            left: SizeConfig.getProportionalWidth(3.5)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            CustomButton(
-                              onPressed: () =>
-                                  _evaluateUnit(context, languageProvider),
-                              text: "full".tr,
-                              width: 90,
-                              height: 35,
-                            ),
-                            SizedBox(
-                                width: SizeConfig.getProportionalHeight(5)),
-                            CustomButton(
-                              onPressed: () => _showIndividualEvaluation(
-                                  context, languageProvider),
-                              text: "by_ayah".tr,
-                              width: 90,
-                              height: 35,
-                            ),
-                          ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryPurple,
                         ),
                       ),
-              ] else ...[
-                SizedBox(height: SizeConfig.getProportionalHeight(15)),
-                CustomButton(
-                  onPressed: () =>
-                      _showIndividualEvaluation(context, languageProvider),
-                  text: "verses_evaluation".tr,
-                  width: 150,
-                  height: 35,
+                      const SizedBox(height: 6),
+                      Text(
+                        _contentSupportCopy(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: _statusColor(),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    widget.isCompleted == true
+                        ? Icons.verified_rounded
+                        : Icons.pending_actions_rounded,
+                    size: 18,
+                    color: AppColors.primaryPurple,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _statusLabel(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryPurple,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (isEvaluating)
+              const Center(child: CircularProgressIndicator())
+            else if (!_isAyahRangeType) ...[
+              _buildActionButton(
+                onPressed:
+                    canInteract ? () => _evaluateUnit(context, languageProvider) : null,
+                title: text('تقييم الوحدة دفعة واحدة', 'Rate the full unit at once'),
+                subtitle: text(
+                  'اختر درجة واحدة تُطبق على جميع الآيات في هذه الوحدة.',
+                  'Choose one rating to apply across every verse in this unit.',
+                ),
+                icon: Icons.auto_awesome,
+              ),
+              const SizedBox(height: 10),
+              _buildActionButton(
+                onPressed: canInteract
+                    ? () => _showIndividualEvaluation(context, languageProvider)
+                    : null,
+                title: text('مراجعة آية بآية', 'Review verse by verse'),
+                subtitle: text(
+                  'افتح الآيات الفردية عندما تحتاج تقييماً أدق أو ملاحظات مختلفة.',
+                  'Open the individual verses when you need a more precise review.',
+                ),
+                icon: Icons.menu_book_rounded,
+                outlined: true,
+              ),
+            ] else
+              _buildActionButton(
+                onPressed: canInteract
+                    ? () => _showIndividualEvaluation(context, languageProvider)
+                    : null,
+                title: text('ابدأ تقييم الآيات', 'Start verse assessment'),
+                subtitle: text(
+                  'هذا النوع لا يدعم تقييماً موحداً للوحدة كاملة.',
+                  'This content type does not support a single unit-wide rating.',
+                ),
+                icon: Icons.playlist_add_check_circle_rounded,
+              ),
+            if (_isJuzType) ...[
+              const SizedBox(height: 12),
+              Text(
+                text(
+                  'يمكنك الضغط على البطاقة نفسها لفتح السور داخل الجزء.',
+                  'Tap the card itself to open the surahs inside this juz.',
+                ),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey.shade600,
+                ),
+              ),
             ],
-          ),
-        ));
+          ],
+        ),
+      ),
+    );
   }
 
   void _setUnitName() {
-    if (widget.content.type == "ayatRange") {
+    if (_isAyahRangeType) {
       unitName = "verses_definite".tr;
-    } else if (widget.content.type == "surah") {
+    } else if (_normalizedContentType == "surah") {
       unitName = "surah_definite".tr;
-    } else if (widget.content.type == "hizb") {
+    } else if (_normalizedContentType == "hizb") {
       unitName = "hizb".tr;
-    } else if (widget.content.type == "hizbQuarter") {
+    } else if (_normalizedContentType == "hizbquarter") {
       unitName = "hizb_quarter".tr;
-    } else if (widget.content.type == "juz") {
+    } else if (_normalizedContentType == "juz") {
       unitName = "juz_prefix".tr;
     } else {
       unitName = "unit".tr;

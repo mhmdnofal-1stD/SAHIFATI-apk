@@ -328,7 +328,63 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<void> sendPasswordResetEmail(email) async {
-    try {} catch (e) {
+    await requestPasswordReset(email: email.toString());
+  }
+
+  Future<Map<String, dynamic>> requestPasswordReset({
+    required String email,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/request-password-reset'),
+            headers: _authHeaders,
+            body: json.encode({'email': email}),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر إرسال رابط إعادة التعيين',
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> completePasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/complete-password-reset'),
+            headers: _authHeaders,
+            body: json.encode({
+              'token': token,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'تعذر إكمال إعادة تعيين كلمة المرور',
+      );
+    } catch (ex) {
       rethrow;
     }
   }

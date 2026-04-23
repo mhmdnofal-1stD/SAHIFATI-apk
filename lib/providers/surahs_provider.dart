@@ -9,6 +9,7 @@ class SurahsProvider with ChangeNotifier {
   List<Surah> surahsByJuz = [];
   int totalSurahs = 1;
   bool isLoading = false;
+  String? hizbLoadError;
   final SurahsServices _surahsServices = SurahsServices();
   final Map<int, List<Surah>> hizbSurahs = {};
 
@@ -24,16 +25,26 @@ class SurahsProvider with ChangeNotifier {
     resetLoading();
   }
 
-  Future<void> loadAllHizbSurahs(List<Map<String, dynamic>> hizbs) async {
-    if (hizbSurahs.length == hizbs.length) return;
+  Future<void> loadAllHizbSurahs(
+    List<Map<String, dynamic>> hizbs, {
+    bool force = false,
+  }) async {
+    if (!force && hizbSurahs.length == hizbs.length && hizbLoadError == null) {
+      return;
+    }
 
     isLoading = true;
+    hizbLoadError = null;
+    if (force) {
+      hizbSurahs.clear();
+    }
     notifyListeners();
 
     try {
       final String response = await rootBundle.loadString('assets/json/data.json');
       final Map<String, dynamic> jsonData = json.decode(response);
       final List<dynamic> ayahs = jsonData['data'];
+      final Map<int, List<Surah>> loadedHizbs = {};
 
       for (var hizb in hizbs) {
         int hizbId = hizb['id'];
@@ -46,9 +57,15 @@ class SurahsProvider with ChangeNotifier {
           for (var surah in allSurahs) surah.id: surah,
         }.values.toList();
 
-        hizbSurahs[hizbId] = uniqueSurahs;
+        loadedHizbs[hizbId] = uniqueSurahs;
       }
+
+      hizbSurahs
+        ..clear()
+        ..addAll(loadedHizbs);
     } catch (e) {
+      hizbSurahs.clear();
+      hizbLoadError = e.toString().replaceFirst('Exception: ', '').trim();
       debugPrint('Error loading hizbs: $e');
     } finally {
       isLoading = false;
@@ -69,6 +86,7 @@ class SurahsProvider with ChangeNotifier {
     surahsByJuz = [];
     totalSurahs = 1;
     hizbSurahs.clear();
+    hizbLoadError = null;
     isLoading = false;
     notifyListeners();
   }

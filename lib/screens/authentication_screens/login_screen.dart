@@ -434,7 +434,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 _buildUtilityIconButton(
                   icon: Icons.lock_reset_rounded,
                   tooltip: 'forgot_password'.tr,
-                  onTap: () => Get.to(() => const ForgotPasswordScreen()),
+                  onTap: () => Get.to(
+                    () => ForgotPasswordScreen(
+                      initialEmail: _userController
+                              .loginEmailController
+                              .text
+                              .trim()
+                              .isEmpty
+                          ? null
+                          : _userController.loginEmailController.text.trim(),
+                    ),
+                  ),
                   foreground: const Color(0xFFB13030),
                 ),
               ],

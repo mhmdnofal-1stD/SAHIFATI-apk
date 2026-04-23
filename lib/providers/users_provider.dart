@@ -640,8 +640,32 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
-  Future<void> sendPasswordResetEmail(email) async {
-    await _usersService.sendPasswordResetEmail(email);
+  Future<Map<String, dynamic>> sendPasswordResetEmail(String email) async {
+    return requestPasswordReset(email);
+  }
+
+  Future<Map<String, dynamic>> requestPasswordReset(String email) async {
+    setLoading();
+    try {
+      return await _usersService.requestPasswordReset(email: email);
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<Map<String, dynamic>> completePasswordReset({
+    required String token,
+    required String newPassword,
+  }) async {
+    setLoading();
+    try {
+      return await _usersService.completePasswordReset(
+        token: token,
+        newPassword: newPassword,
+      );
+    } finally {
+      resetLoading();
+    }
   }
 
   Future<void> resetSignUpErrorText() async {

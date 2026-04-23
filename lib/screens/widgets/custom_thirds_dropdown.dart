@@ -107,9 +107,6 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                     final option = dropdownOptions[index];
                     return InkWell(
                       onTap: () async {
-                        final surahs = await SurahsController()
-                            .loadSurahsByJuz(option['id']);
-
                         _showSideOverlay(
                           option['name'],
                           option['id'],
@@ -119,7 +116,7 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                           surahsProvider,
                           evaluationsProvider,
                           usersProvider,
-                          surahs,
+                          SurahsController().loadSurahsByJuz(option['id']),
                         );
                       },
                       child: Padding(
@@ -158,9 +155,11 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
     SurahsProvider surahsProvider,
     EvaluationsProvider evaluationsProvider,
     UsersProvider usersProvider,
-    List<Surah> surahs,
+    Future<List<Surah>> surahsFuture,
   ) {
     _removeSideOverlay();
+    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
+    String text(String arabic, String english) => isArabic ? arabic : english;
 
     const double itemHeight = 40;
     final double topPosition =
@@ -190,43 +189,104 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
           color: Colors.white,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 200),
-            child: ListView.builder(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              physics: const BouncingScrollPhysics(),
-              itemCount: surahs.length,
-              itemBuilder: (_, i) {
-                final sura = surahs[i];
-
-                return InkWell(
-                  onTap: () {
-                    _removeSideOverlay();
-                    _removeOverlay();
-                    _controller.value = 0.0;
-                    Get.to(IndexPage(
-                      surah: sura,
-                      filterTypeId: FilterTypes.thirds,
-                      juz: juzId,
-                    ))?.then((_) {
-                      evaluationsProvider
-                          .getQuranChartData(usersProvider.selectedUser!.id);
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 10, horizontal: 12),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: CustomText(
-                        text: Get.locale?.languageCode == 'ar'
-                            ? quran.getSurahNameArabic(sura.id)
-                            : quran.getSurahName(sura.id),
-                        fontSize: 13,
-                        withBackground: false,
-                        color: Colors.black87,
-                      ),
+            child: FutureBuilder<List<Surah>>(
+              future: surahsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 12),
+                        Text(
+                          text(
+                            'جارٍ تجهيز السور داخل $optionName...',
+                            'Preparing the surahs inside $optionName...',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ),
+                  );
+                }
+
+                if (snapshot.hasError) {
+                  return _ThirdsOverlayState(
+                    message: text(
+                      'تعذر تحميل السور لهذا المسار الآن.',
+                      'We could not load the surahs for this path right now.',
+                    ),
+                    actionLabel: text('إعادة المحاولة', 'Retry'),
+                    onAction: () {
+                      _removeSideOverlay();
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (_) => _showSideOverlay(
+                          optionName,
+                          juzId,
+                          index,
+                          parentOffset,
+                          buttonSize,
+                          surahsProvider,
+                          evaluationsProvider,
+                          usersProvider,
+                          SurahsController().loadSurahsByJuz(juzId),
+                        ),
+                      );
+                    },
+                  );
+                }
+
+                final surahs = snapshot.data ?? const <Surah>[];
+                if (surahs.isEmpty) {
+                  return _ThirdsOverlayState(
+                    message: text(
+                      'لا توجد سور جاهزة لهذا المسار حاليًا.',
+                      'No surahs are available for this path right now.',
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: surahs.length,
+                  itemBuilder: (_, i) {
+                    final sura = surahs[i];
+
+                    return InkWell(
+                      onTap: () {
+                        _removeSideOverlay();
+                        _removeOverlay();
+                        _controller.value = 0.0;
+                        Get.to(IndexPage(
+                          surah: sura,
+                          filterTypeId: FilterTypes.thirds,
+                          juz: juzId,
+                        ))?.then((_) {
+                          evaluationsProvider
+                              .getQuranChartData(usersProvider.selectedUser!.id);
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: CustomText(
+                            text: Get.locale?.languageCode == 'ar'
+                                ? quran.getSurahNameArabic(sura.id)
+                                : quran.getSurahName(sura.id),
+                            fontSize: 13,
+                            withBackground: false,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -328,6 +388,42 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
           ),
         );
       },
+    );
+  }
+}
+
+class _ThirdsOverlayState extends StatelessWidget {
+  const _ThirdsOverlayState({
+    required this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(height: 1.5),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onAction,
+              child: Text(actionLabel!),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

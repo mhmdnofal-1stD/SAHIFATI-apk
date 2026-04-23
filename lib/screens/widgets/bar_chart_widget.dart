@@ -10,19 +10,26 @@ class BarChartWidget extends StatelessWidget {
     super.key,
     required this.evaluationsProvider,
     required this.languageProvider,
+    this.includeUncategorized = true,
   });
 
   final EvaluationsProvider evaluationsProvider;
   final LanguageProvider languageProvider;
+  final bool includeUncategorized;
 
   @override
   Widget build(BuildContext context) {
     final evaluationsController = EvaluationsController();
+    final visibleEntries = includeUncategorized
+        ? evaluationsProvider.chartEvaluationData
+        : evaluationsProvider.chartEvaluationData
+            .where((entry) => entry.evaluationId != 0)
+            .toList();
 
     final List<BarChartGroupData> barGroups = [];
 
-    for (int i = 0; i < evaluationsProvider.chartEvaluationData.length; i++) {
-      final evaluation = evaluationsProvider.chartEvaluationData[i];
+    for (int i = 0; i < visibleEntries.length; i++) {
+      final evaluation = visibleEntries[i];
 
       final raw = evaluation.percentage ?? 0;
       final value = (raw * 100).round() / 100;
@@ -107,15 +114,12 @@ class BarChartWidget extends StatelessWidget {
                             showTitles: true,
                             reservedSize: reservedLabelHeight,
                             getTitlesWidget: (double value, TitleMeta meta) {
-                              if (value.toInt() < 0 ||
-                                  value.toInt() >=
-                                      evaluationsProvider.chartEvaluationData
-                                          .length) {
+                                if (value.toInt() < 0 ||
+                                  value.toInt() >= visibleEntries.length) {
                                 return const SizedBox.shrink();
                               }
 
-                              final evaluation = evaluationsProvider
-                                  .chartEvaluationData[value.toInt()];
+                                final evaluation = visibleEntries[value.toInt()];
                               return SideTitleWidget(
                                 meta: meta,
                                 space: 10,

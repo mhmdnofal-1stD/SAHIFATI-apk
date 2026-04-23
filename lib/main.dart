@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/authenticated_route_gate.dart';
+import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
 import 'core/auth/verification_flow.dart';
 import 'controllers/general_controller.dart';
@@ -17,6 +18,7 @@ import 'providers/users_provider.dart';
 import 'providers/language_provider.dart';
 import 'screens/authentication_screens/email_verification_pending_screen.dart';
 import 'screens/authentication_screens/email_verification_result_screen.dart';
+import 'screens/authentication_screens/forget_password_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
@@ -106,6 +108,21 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: '/signup',
           page: () => const SignUpScreen(),
+        ),
+        GetPage(
+          name: '/forgot-password',
+          page: () => ForgotPasswordScreen(
+            initialEmail: Get.parameters['email'],
+            previewState: Get.parameters['preview'],
+          ),
+        ),
+        GetPage(
+          name: '/reset-password',
+          page: () => ForgotPasswordScreen(
+            initialEmail: Get.parameters['email'],
+            resetToken: Get.parameters['token'],
+            previewState: Get.parameters['preview'],
+          ),
         ),
         GetPage(
           name: '/welcome',
@@ -202,6 +219,39 @@ class _InitialScreenState extends State<InitialScreen> {
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
     await usersProvider.loadPendingVerificationState();
+
+    final passwordResetIntent = resolvePasswordResetRoute(Uri.base);
+    if (!mounted) {
+      return;
+    }
+
+    if (passwordResetIntent.kind == PasswordResetRouteKind.request) {
+      Get.offAllNamed(
+        '/forgot-password',
+        parameters: {
+          if (passwordResetIntent.email != null)
+            'email': passwordResetIntent.email!,
+          if (passwordResetIntent.preview != null)
+            'preview': passwordResetIntent.preview!,
+        },
+      );
+      return;
+    }
+
+    if (passwordResetIntent.kind == PasswordResetRouteKind.reset) {
+      Get.offAllNamed(
+        '/reset-password',
+        parameters: {
+          if (passwordResetIntent.token != null)
+            'token': passwordResetIntent.token!,
+          if (passwordResetIntent.email != null)
+            'email': passwordResetIntent.email!,
+          if (passwordResetIntent.preview != null)
+            'preview': passwordResetIntent.preview!,
+        },
+      );
+      return;
+    }
 
     final verificationIntent = resolveVerificationRoute(Uri.base);
     if (!mounted) {

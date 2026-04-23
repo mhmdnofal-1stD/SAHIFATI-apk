@@ -16,10 +16,12 @@ class EvaluationsProvider with ChangeNotifier {
   List<UserEvaluation> userEvaluations = [];
   List<ChartEvaluationData> chartEvaluationData = [];
   String chartDimension = 'memorization';
+  String? chartLoadError;
   bool isLoading = true;
   bool isQuestionsLevelLoading = false;
   int totalCount = 0;
   String? _loadedQuestionsLevelKey;
+  int _questionLoadRequestId = 0;
   Map<String, List<Ayat>> _questionContentAyahs = {};
   Map<String, bool> _questionContentCompletion = {};
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
@@ -76,6 +78,7 @@ class EvaluationsProvider with ChangeNotifier {
   }) async {
     try {
       setLoading();
+      chartLoadError = null;
       chartDimension = dimension;
       chartEvaluationData.clear();
       final response = await _evaluationsServices.getQuranChartData(
@@ -90,6 +93,7 @@ class EvaluationsProvider with ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
+      chartLoadError = e.toString().replaceFirst('Exception: ', '').trim();
       if (kDebugMode) {
         print("Error fetching chart data: $e");
       }
@@ -118,17 +122,29 @@ class EvaluationsProvider with ChangeNotifier {
       return;
     }
 
+    final requestId = ++_questionLoadRequestId;
     isQuestionsLevelLoading = true;
     notifyListeners();
 
     try {
       final ayatController = AyatController();
-      final Map<String, List<Ayat>> ayahsByContent = {};
       final Set<int> ayahIds = <int>{};
+      final loadedEntries = await Future.wait(
+        contents.map((content) async {
+          final ayahs = await ayatController.loadAyatForContent(content);
+          return MapEntry(content.cacheKey, ayahs);
+        }),
+      );
 
-      for (final content in contents) {
-        final ayahs = await ayatController.loadAyatForContent(content);
-        ayahsByContent[content.cacheKey] = ayahs;
+      if (requestId != _questionLoadRequestId) {
+        return;
+      }
+
+      final Map<String, List<Ayat>> ayahsByContent = {
+        for (final entry in loadedEntries) entry.key: entry.value,
+      };
+
+      for (final ayahs in ayahsByContent.values) {
         ayahIds.addAll(
           ayahs.where((ayah) => ayah.id != null).map((ayah) => ayah.id!),
         );
@@ -162,6 +178,10 @@ class EvaluationsProvider with ChangeNotifier {
             entry.value.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
       }
 
+      if (requestId != _questionLoadRequestId) {
+        return;
+      }
+
       _questionContentAyahs = ayahsByContent;
       _questionContentCompletion = completionByContent;
       _loadedQuestionsLevelKey = nextLevelKey;
@@ -171,8 +191,10 @@ class EvaluationsProvider with ChangeNotifier {
       }
       rethrow;
     } finally {
-      isQuestionsLevelLoading = false;
-      notifyListeners();
+      if (requestId == _questionLoadRequestId) {
+        isQuestionsLevelLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -252,6 +274,7 @@ class EvaluationsProvider with ChangeNotifier {
     chartEvaluationData.clear();
     totalCount = 0;
     chartDimension = 'memorization';
+    chartLoadError = null;
     _loadedQuestionsLevelKey = null;
     _questionContentAyahs = {};
     _questionContentCompletion = {};
