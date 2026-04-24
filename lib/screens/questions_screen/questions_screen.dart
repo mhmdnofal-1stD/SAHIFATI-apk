@@ -78,10 +78,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   String _cleanError(Object error) {
     final message = error.toString().replaceFirst('Exception: ', '').trim();
     return message.isEmpty
-        ? text(
-            'تعذر تجهيز هذا المستوى الآن. حاول مرة أخرى.',
-            'We could not prepare this level right now. Please try again.',
-          )
+        ? 'questions_screen_level_load_generic_error'.tr
         : message;
   }
 
@@ -193,10 +190,6 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     return _isTransitioningLevel || evaluationsProvider.isQuestionsLevelLoading;
   }
 
-  String text(String arabic, String english) {
-    return (Get.locale?.languageCode ?? 'ar') == 'ar' ? arabic : english;
-  }
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -232,10 +225,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               elevation: 0,
               centerTitle: true,
               title: Text(
-                text(
-                  'تقييم البداية',
-                  'Kickoff assessment',
-                ),
+                'questions_screen_title'.tr,
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppColors.blackFontColor,
@@ -276,26 +266,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
               child: !isSchoolReady
                   ? _QuestionsEmptyState(
                       title: schoolProvider.isLoading
-                          ? text(
-                              'جاري تجهيز أسئلة البداية',
-                              'Preparing the kickoff questions',
-                            )
-                          : text(
-                              'لا توجد مستويات متاحة الآن',
-                              'No question levels are available right now',
-                            ),
+                          ? 'questions_screen_empty_loading_title'.tr
+                          : 'questions_screen_empty_no_levels_title'.tr,
                       body: schoolProvider.isLoading
-                          ? text(
-                              'نقوم بتحميل المدرسة المختصرة التي يبدأ بها التقييم الأولي.',
-                              'We are loading the short school used for the opening assessment.',
-                            )
-                          : text(
-                              'يمكنك المحاولة مرة أخرى الآن، أو الرجوع ثم إعادة فتح الأسئلة بعد قليل.',
-                              'You can retry now, or come back and reopen the assessment in a moment.',
-                            ),
+                          ? 'questions_screen_empty_loading_body'.tr
+                          : 'questions_screen_empty_no_levels_body'.tr,
                       actionLabel: schoolProvider.isLoading
                           ? null
-                          : text('إعادة المحاولة', 'Retry'),
+                          : 'welcome_chart_retry'.tr,
                       onAction: schoolProvider.isLoading
                           ? null
                           : () async {
@@ -313,16 +291,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                             controller: _scrollController,
                             children: [
                               _QuestionsHeader(
-                                eyebrow: text(
-                                  'المستوى ${selectedIndex + 1} من $totalLevels',
-                                  'Level ${selectedIndex + 1} of $totalLevels',
-                                ),
+                                eyebrow: 'questions_screen_level_eyebrow'
+                                    .trParams({
+                                  'current': '${selectedIndex + 1}',
+                                  'total': '$totalLevels',
+                                }),
                                 title: currentLevel?.name?[Get.locale?.languageCode ?? 'ar'] ??
-                                    text('مستوى البداية', 'Kickoff level'),
-                                subtitle: text(
-                                  'قيّم كل وحدة بالطريقة الأنسب: تقييم كامل للوحدة أو مراجعة آية بآية عندما تحتاج الدقة.',
-                                  'Assess each unit with the right level of detail: one score for the full unit, or verse-by-verse review when precision matters.',
-                                ),
+                                    'questions_screen_level_fallback_title'.tr,
+                                subtitle: 'questions_screen_level_subtitle'.tr,
                                 progress: levelProgress,
                                 completedItems: currentLevelCompleted,
                                 totalItems: currentLevelTotal,
@@ -332,38 +308,23 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                               if (_isBusy)
                                 _QuestionsStatusBanner(
                                   icon: Icons.sync,
-                                  title: text(
-                                    'جاري تجهيز هذا المستوى',
-                                    'Preparing this level',
-                                  ),
-                                  body: text(
-                                    'نحمل الآيات وحالة التقييم الحالية مرة واحدة حتى تبقى البطاقات دقيقة ولا تتغير بشكل متذبذب.',
-                                    'We load the verses and their current assessment state together so the cards stay accurate and stable.',
-                                  ),
+                                  title: 'questions_screen_status_loading_title'.tr,
+                                  body: 'questions_screen_status_loading_body'.tr,
                                 ),
                               if (_levelLoadError != null)
                                 _QuestionsStatusBanner(
                                   icon: Icons.error_outline,
                                   color: const Color(0xFFFFF2F0),
                                   borderColor: const Color(0xFFE8B4AE),
-                                  title: text(
-                                    'تعذر تحميل هذا المستوى',
-                                    'This level could not be loaded',
-                                  ),
+                                  title: 'questions_screen_status_error_title'.tr,
                                   body: _levelLoadError!,
-                                  actionLabel: text('إعادة المحاولة', 'Retry'),
+                                  actionLabel: 'welcome_chart_retry'.tr,
                                   onAction: _preloadSelectedLevel,
                                 ),
                               if (currentLevelTotal == 0)
                                 _QuestionsEmptyState(
-                                  title: text(
-                                    'هذا المستوى لا يحتوي وحدات بعد',
-                                    'This level does not contain units yet',
-                                  ),
-                                  body: text(
-                                    'يمكنك الانتقال إلى المستوى التالي أو إنهاء الجولة الحالية ومتابعة الصحيفة.',
-                                    'You can move to the next level or finish this round and continue to the Sahifa.',
-                                  ),
+                                  title: 'questions_screen_empty_level_title'.tr,
+                                  body: 'questions_screen_empty_level_body'.tr,
                                 )
                               else
                                 ...currentLevel!.content.asMap().entries.map(
@@ -380,10 +341,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                                 isBusy: _isBusy,
                                 isFirstLevel: selectedIndex == 0,
                                 isLastLevel: isLastLevel,
-                                footerHint: text(
-                                  'عند إنهاء الجولة ستظهر لك صفحة ملخص قبل الانتقال إلى الصحيفة، بدل إنهاء مبهم أو snackbar عابر.',
-                                  'When you finish this round, you will see a summary page before entering the Sahifa instead of a transient snackbar.',
-                                ),
+                                footerHint: 'questions_screen_footer_hint'.tr,
                                 onPrevious: selectedIndex == 0
                                     ? null
                                     : () => _changeLevel(selectedIndex - 1),
@@ -391,11 +349,11 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                                     ? () => _openCompletionSummary(skipped: false)
                                     : () => _changeLevel(selectedIndex + 1),
                                 onFinishForNow: () => _openCompletionSummary(skipped: true),
-                                previousLabel: text('الرجوع للمستوى السابق', 'Previous level'),
+                                previousLabel: 'previous_level'.tr,
                                 nextLabel: isLastLevel
-                                    ? text('عرض ملخص التقييم', 'View assessment summary')
-                                    : text('المستوى التالي', 'Next level'),
-                                finishLabel: text('إنهاء هذه الجولة الآن', 'Finish this round for now'),
+                                    ? 'questions_screen_summary_label'.tr
+                                    : 'next_level'.tr,
+                                finishLabel: 'questions_screen_finish_now_label'.tr,
                               ),
                             ],
                           ),
@@ -491,15 +449,11 @@ class _QuestionsHeader extends StatelessWidget {
             runSpacing: 12,
             children: [
               _QuestionsMetricChip(
-                label: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                    ? 'الوحدات المكتملة في هذا المستوى'
-                    : 'Completed units in this level',
+                label: 'questions_screen_metric_completed_units'.tr,
                 value: '$completedItems / $totalItems',
               ),
               _QuestionsMetricChip(
-                label: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                    ? 'المستويات المكتملة'
-                    : 'Completed levels',
+                label: 'questions_screen_metric_completed_levels'.tr,
                 value: '$completedLevels / $totalLevels',
               ),
             ],

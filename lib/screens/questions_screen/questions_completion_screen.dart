@@ -37,10 +37,6 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
   bool _isOpeningSahifa = false;
   String? _errorMessage;
 
-  String text(String arabic, String english) {
-    return (Get.locale?.languageCode ?? 'ar') == 'ar' ? arabic : english;
-  }
-
   Future<void> _openSahifa() async {
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
@@ -69,10 +65,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
       final message = error.toString().replaceFirst('Exception: ', '').trim();
       setState(() {
         _errorMessage = message.isEmpty
-            ? text(
-                'تعذر فتح الصحيفة الآن. حاول مرة أخرى بعد لحظة.',
-                'We could not open the Sahifa right now. Please try again in a moment.',
-              )
+            ? 'questions_completion_open_sahifa_error'.tr
             : message;
       });
     } finally {
@@ -102,7 +95,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
               elevation: 0,
               centerTitle: true,
               title: Text(
-                text('ملخص التقييم', 'Assessment summary'),
+                'questions_completion_title'.tr,
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: AppColors.blackFontColor,
@@ -157,8 +150,8 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                         children: [
                           Text(
                             widget.skipped
-                                ? text('أنهيت الجولة الحالية مبكرًا', 'You ended this round early')
-                                : text('اكتمل تقييم البداية', 'The kickoff assessment is complete'),
+                                ? 'questions_completion_badge_skipped'.tr
+                                : 'questions_completion_badge_complete'.tr,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -168,14 +161,8 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                           const SizedBox(height: 8),
                           Text(
                             widget.skipped
-                                ? text(
-                                    'هذا الملخص يعرض وضعك الحالي بصدق قبل الانتقال إلى الصحيفة. يمكنك العودة للأسئلة لاحقًا لإكمال الوحدات المتبقية.',
-                                    'This summary shows your current state honestly before you continue to the Sahifa. You can come back later to finish the remaining units.',
-                                  )
-                                : text(
-                                    'أنهيت جولة التقييم الافتتاحية. قبل الانتقال إلى الصحيفة، هذه قراءة سريعة لما تم تغطيته وما بقي بدون افتراضات مضللة.',
-                                    'You completed the opening assessment round. Before entering the Sahifa, here is a quick view of what was covered and what still remains, without misleading assumptions.',
-                                  ),
+                                ? 'questions_completion_heading_skipped'.tr
+                                : 'questions_completion_heading_complete'.tr,
                             style: const TextStyle(
                               fontSize: 26,
                               height: 1.35,
@@ -203,19 +190,19 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                       runSpacing: 14,
                       children: [
                         _SummaryMetricCard(
-                          label: text('الوحدات المكتملة', 'Completed units'),
+                          label: 'questions_completion_metric_completed_units'.tr,
                           value: '${widget.completedItems} / ${widget.totalItems}',
                         ),
                         _SummaryMetricCard(
-                          label: text('المستويات المكتملة', 'Completed levels'),
+                          label: 'questions_completion_metric_completed_levels'.tr,
                           value: '${widget.completedLevels} / ${widget.totalLevels}',
                         ),
                         _SummaryMetricCard(
-                          label: text('آخر مستوى وصلت إليه', 'Last level reached'),
+                          label: 'questions_completion_metric_last_level'.tr,
                           value: '${widget.lastReachedLevel} / ${widget.totalLevels}',
                         ),
                         _SummaryMetricCard(
-                          label: text('الوحدات المتبقية', 'Remaining units'),
+                          label: 'questions_completion_metric_remaining_units'.tr,
                           value: '$remainingItems',
                         ),
                       ],
@@ -232,7 +219,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            text('ماذا يعني هذا؟', 'What does this mean?'),
+                            'questions_completion_meaning_title'.tr,
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
@@ -241,14 +228,8 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                           const SizedBox(height: 10),
                           Text(
                             widget.skipped
-                                ? text(
-                                    'الصحيفة ستفتح بناءً على ما تم تقييمه فعلاً فقط. الوحدات غير المكتملة ستبقى خارج التقدم حتى تعود إليها لاحقًا.',
-                                    'The Sahifa will open based only on what was actually assessed. Incomplete units remain outside your progress until you come back to them later.',
-                                  )
-                                : text(
-                                    'الصحيفة التالية ستعتمد على هذا التقييم الافتتاحي وما كان لديك أصلًا من بيانات تقييم حقيقية. إذا كانت هناك وحدات متبقية فهي ما تزال تحتاج تقييمًا لاحقًا.',
-                                    'The next Sahifa view will rely on this kickoff assessment plus any real evaluation data you already had. If some units remain, they still need assessment later.',
-                                  ),
+                                ? 'questions_completion_meaning_body_skipped'.tr
+                                : 'questions_completion_meaning_body_complete'.tr,
                             style: const TextStyle(height: 1.6),
                           ),
                           if (_errorMessage != null) ...[
@@ -287,8 +268,8 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                 ),
                                 label: Text(
                                   _isOpeningSahifa
-                                      ? text('جاري فتح الصحيفة...', 'Opening the Sahifa...')
-                                      : text('متابعة إلى الصحيفة', 'Continue to the Sahifa'),
+                                      ? 'questions_completion_opening_label'.tr
+                                      : 'questions_completion_continue_label'.tr,
                                 ),
                               ),
                               OutlinedButton.icon(
@@ -297,7 +278,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                     : () => Get.back<void>(),
                                 icon: const Icon(Icons.arrow_back),
                                 label: Text(
-                                  text('العودة إلى الأسئلة', 'Back to the questions'),
+                                  'questions_completion_back_label'.tr,
                                 ),
                               ),
                             ],
