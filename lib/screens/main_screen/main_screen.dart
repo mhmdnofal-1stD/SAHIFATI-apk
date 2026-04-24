@@ -34,10 +34,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int? openIndex;
 
-  String _copy(bool isArabic, String arabic, String english) {
-    return isArabic ? arabic : english;
-  }
-
   bool _hasChartData(EvaluationsProvider provider) {
     return provider.totalCount > 0 && provider.chartEvaluationData.isNotEmpty;
   }
@@ -140,11 +136,7 @@ class _MainScreenState extends State<MainScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _copy(
-                              isArabic,
-                              'بوابة القراءة والاستكشاف',
-                              'Your reading and exploration gateway',
-                            ),
+                            'main_screen_gateway_badge'.tr,
                             style: const TextStyle(
                               color: AppColors.buttonColor,
                               fontWeight: FontWeight.w700,
@@ -186,11 +178,7 @@ class _MainScreenState extends State<MainScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    _copy(
-                                      isArabic,
-                                      'العودة إلى آخر قراءة',
-                                      'Resume your last reading',
-                                    ),
+                                    'main_screen_resume_title'.tr,
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -198,11 +186,10 @@ class _MainScreenState extends State<MainScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    _copy(
-                                      isArabic,
-                                      'آخر سياق محفوظ كان في سورة ${session.surah.nameAr} عبر مسار ${session.pathLabel(true)}. يمكنك العودة مباشرة إلى نفس موضع القراءة بدل البدء من جديد.',
-                                      'Your last saved reading context was in Surah ${session.surah.nameAr} through the ${session.pathLabel(false)} path. You can return directly to the same reading position instead of starting over.',
-                                    ),
+                                    'main_screen_resume_body'.trParams({
+                                      'surah': session.surah.nameAr,
+                                      'path': session.pathLabel(isArabic),
+                                    }),
                                     style: const TextStyle(height: 1.5),
                                   ),
                                   const SizedBox(height: 12),
@@ -224,11 +211,7 @@ class _MainScreenState extends State<MainScreen> {
                                     ),
                                     icon: const Icon(Icons.menu_book_rounded),
                                     label: Text(
-                                      _copy(
-                                        isArabic,
-                                        'استئناف القراءة',
-                                        'Resume reading',
-                                      ),
+                                      'main_screen_resume_action'.tr,
                                     ),
                                   ),
                                 ],
@@ -300,11 +283,7 @@ class _MainScreenState extends State<MainScreen> {
                                 border: Border.all(color: const Color(0xFFDCE2DA)),
                               ),
                               child: Text(
-                                _copy(
-                                  isArabic,
-                                  'لا توجد قراءة تقييمية كافية لعرض مخطط هنا الآن، لذلك تبقى هذه الشاشة مركزة على إدخالك إلى القراءة أولًا.',
-                                  'There is not enough assessed reading data to show a chart here yet, so this screen stays focused on getting you into reading first.',
-                                ),
+                                'main_screen_chart_empty'.tr,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(height: 1.5),
                               ),
@@ -321,11 +300,7 @@ class _MainScreenState extends State<MainScreen> {
                           border: Border.all(color: const Color(0xFFDCE2DA)),
                         ),
                         child: Text(
-                          _copy(
-                            isArabic,
-                            'أنت هنا للدخول إلى القراءة مباشرة. بعد تراكم تقييمات حقيقية ستعود المخططات لتكون مساعدة، لا بديلًا عن القراءة.',
-                            'You are here to enter reading directly. Once real assessments accumulate, the charts return as support, not as a substitute for reading.',
-                          ),
+                          'main_screen_chart_intro_first'.tr,
                           textAlign: TextAlign.center,
                           style: const TextStyle(height: 1.5),
                         ),
@@ -336,16 +311,8 @@ class _MainScreenState extends State<MainScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 50.0),
                         child: _MainScreenStateCard(
-                          title: _copy(
-                            isArabic,
-                            'جارٍ تجهيز الأحزاب',
-                            'Preparing the hizbs',
-                          ),
-                          body: _copy(
-                            isArabic,
-                            'نحمّل السور داخل كل حزب قبل فتح هذا المسار حتى لا تصل إلى بطاقة لا تملك مدخلًا صالحًا للقراءة.',
-                            'We load the surahs inside each hizb before opening this path so you do not land on a card without a valid reading entry.',
-                          ),
+                          title: 'main_screen_hizb_loading_title'.tr,
+                          body: 'main_screen_hizb_loading_body'.tr,
                           child: const Padding(
                             padding: EdgeInsets.only(top: 12),
                             child: Center(child: CircularProgressIndicator()),
@@ -357,11 +324,7 @@ class _MainScreenState extends State<MainScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24.0),
                         child: _MainScreenStateCard(
-                          title: _copy(
-                            isArabic,
-                            'تعذر تجهيز مسار الأحزاب',
-                            'We could not prepare the hizb path',
-                          ),
+                          title: 'main_screen_hizb_error_title'.tr,
                           body: surahsProvider.hizbLoadError!,
                           child: Padding(
                             padding: const EdgeInsets.only(top: 12),
@@ -372,7 +335,7 @@ class _MainScreenState extends State<MainScreen> {
                                   force: true,
                                 );
                               },
-                              child: Text(_copy(isArabic, 'إعادة المحاولة', 'Retry')),
+                              child: Text('welcome_chart_retry'.tr),
                             ),
                           ),
                         ),

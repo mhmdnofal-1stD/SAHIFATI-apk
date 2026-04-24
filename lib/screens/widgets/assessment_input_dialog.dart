@@ -42,14 +42,12 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
     return null;
   }
 
-  final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
   final controller = EvaluationsController();
   final memorizationEvaluations = evaluationsProvider.memorizationEvaluations;
   final comprehensionEvaluations = evaluationsProvider.comprehensionEvaluations;
   final hasMemoOptions = memorizationEvaluations.isNotEmpty;
   final hasCompreOptions = comprehensionEvaluations.isNotEmpty;
 
-  String text(String arabic, String english) => isArabic ? arabic : english;
   String evaluationLabel(Evaluation evaluation) {
     final localizedName =
         evaluation.name[languageProvider.langCode]?.trim() ?? '';
@@ -57,7 +55,11 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
       return localizedName;
     }
 
-    final fallbackName = evaluation.name[isArabic ? 'ar' : 'en']?.trim() ?? '';
+    final fallbackName =
+        evaluation.name[Get.locale?.languageCode]?.trim() ??
+        evaluation.name['ar']?.trim() ??
+        evaluation.name['en']?.trim() ??
+        '';
     if (fallbackName.isNotEmpty) {
       return fallbackName;
     }
@@ -67,15 +69,12 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
 
   final effectiveTitle = title ??
       (hasMemoOptions && hasCompreOptions
-          ? text('تقييم الحفظ والفهم', 'Memorization & Comprehension')
+      ? 'assessment_dialog_title_both'.tr
           : hasMemoOptions
-              ? text('تقييم الحفظ', 'Memorization assessment')
+        ? 'assessment_dialog_title_memorization'.tr
               : hasCompreOptions
-                  ? text('تقييم الفهم', 'Comprehension assessment')
-                  : text(
-                      'لا توجد خيارات تقييم متاحة',
-                      'No assessment options are available',
-                    ));
+          ? 'assessment_dialog_title_comprehension'.tr
+          : 'assessment_dialog_title_unavailable'.tr);
 
   return showDialog<AssessmentSelection>(
     context: context,
@@ -129,16 +128,13 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                   children: [
                     if (!hasMemoOptions && !hasCompreOptions)
                       Text(
-                        text(
-                          'لا توجد أي قيم تقييم جاهزة في البيئة الحالية. لا يمكن حفظ تقييم جديد من هذه النافذة الآن.',
-                          'No assessment values are configured for the current environment, so a new evaluation cannot be saved from this dialog yet.',
-                        ),
+                        'assessment_dialog_no_values'.tr,
                         textAlign: TextAlign.center,
                       )
                     else ...[
                       if (hasMemoOptions) ...[
                         Text(
-                          text('الحفظ', 'Memorization'),
+                          'assessment_dimension_memorization'.tr,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -169,17 +165,14 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         ),
                       ] else
                         Text(
-                          text(
-                            'خيارات الحفظ غير متاحة في taxonomy الحالي، لذلك سيقتصر هذا التقييم على الفهم فقط.',
-                            'Memorization options are not available in the current taxonomy, so this dialog will save comprehension only.',
-                          ),
+                          'assessment_dialog_memorization_unavailable'.tr,
                           textAlign: TextAlign.center,
                         ),
                       if (hasMemoOptions || hasCompreOptions)
                         const SizedBox(height: 20),
                       if (hasCompreOptions) ...[
                         Text(
-                          text('الفهم', 'Comprehension'),
+                          'assessment_dimension_comprehension'.tr,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -210,19 +203,13 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         ),
                       ] else
                         Text(
-                          text(
-                            'خيارات الفهم غير متاحة في taxonomy الحالي، لذلك سيقتصر هذا التقييم على الحفظ فقط.',
-                            'Comprehension options are not available in the current taxonomy, so this dialog will save memorization only.',
-                          ),
+                          'assessment_dialog_comprehension_unavailable'.tr,
                           textAlign: TextAlign.center,
                         ),
                     ],
                     const SizedBox(height: 16),
                     Text(
-                      text(
-                        'اضغط على القيمة نفسها مرة ثانية لإزالتها. لن تُحفظ أي تغييرات حتى تختار حفظ.',
-                        'Tap the same value again to clear it. No changes are saved until you confirm.',
-                      ),
+                      'assessment_dialog_hint'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.grey.shade700,
@@ -236,7 +223,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(text('إلغاء', 'Cancel')),
+                child: Text('cancel'.tr),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -263,7 +250,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         );
                       }
                     : null,
-                child: Text(text('حفظ', 'Save')),
+                child: Text('save'.tr),
               ),
             ],
           );

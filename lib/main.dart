@@ -51,7 +51,11 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AyatProvider()),
         ChangeNotifierProvider(create: (_) => EvaluationsProvider()),
         ChangeNotifierProvider(create: (_) => SurahsProvider()),
-        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider(
+          create: (_) => LanguageProvider(
+            initialLangCode: initialLocale.languageCode,
+          ),
+        ),
       ],
       child: MyApp(initialLocale: initialLocale),
     ),

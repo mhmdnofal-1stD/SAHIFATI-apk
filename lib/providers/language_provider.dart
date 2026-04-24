@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/languages_services.dart';
+import '../services/localization_service.dart';
 
 class LanguageProvider with ChangeNotifier {
-  String langCode = 'ar';
+  LanguageProvider({String initialLangCode = 'ar'}) : langCode = initialLangCode;
+
+  String langCode;
   
   List<dynamic> languages = [
     {"code": "ar", "name": "العربية"},
@@ -13,8 +16,21 @@ class LanguageProvider with ChangeNotifier {
   final LanguageServices _services = LanguageServices();
 
   void setLangCode(String code) {
+    if (langCode == code) {
+      return;
+    }
     langCode = code;
     notifyListeners();
+  }
+
+  Future<void> hydrateFromStoredLocale() async {
+    final locale = await LocalizationService.getCurrentLocale();
+    setLangCode(locale.languageCode);
+  }
+
+  Future<void> changeLanguage(String code) async {
+    setLangCode(code);
+    await LocalizationService().changeLocaleByCode(code);
   }
 
   Future<void> fetchLanguages() async {

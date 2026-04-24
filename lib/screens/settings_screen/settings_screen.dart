@@ -14,7 +14,6 @@ import '../../models/user.dart';
 import '../../providers/general_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/users_provider.dart';
-import '../../services/localization_service.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
 import 'privacy_policy_screen.dart';
@@ -28,34 +27,37 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   static const List<Map<String, String>> _genderOptions = [
-    {'value': 'male', 'label': 'ذكر'},
-    {'value': 'female', 'label': 'أنثى'},
+    {'value': 'male', 'labelKey': 'settings_gender_male'},
+    {'value': 'female', 'labelKey': 'settings_gender_female'},
   ];
 
   static const List<Map<String, String>> _educationLevelOptions = [
-    {'value': 'illiterate', 'label': 'أمّي'},
-    {'value': 'preparatory', 'label': 'إعدادي'},
-    {'value': 'high_school', 'label': 'ثانوي'},
-    {'value': 'college_diploma', 'label': 'دبلوم كلية'},
-    {'value': 'bachelor', 'label': 'بكالوريوس'},
-    {'value': 'master', 'label': 'ماجستير'},
-    {'value': 'doctorate', 'label': 'دكتوراة'},
-    {'value': 'professor', 'label': 'بروفسور'},
+    {'value': 'illiterate', 'labelKey': 'settings_education_illiterate'},
+    {'value': 'preparatory', 'labelKey': 'settings_education_preparatory'},
+    {'value': 'high_school', 'labelKey': 'settings_education_high_school'},
+    {
+      'value': 'college_diploma',
+      'labelKey': 'settings_education_college_diploma',
+    },
+    {'value': 'bachelor', 'labelKey': 'settings_education_bachelor'},
+    {'value': 'master', 'labelKey': 'settings_education_master'},
+    {'value': 'doctorate', 'labelKey': 'settings_education_doctorate'},
+    {'value': 'professor', 'labelKey': 'settings_education_professor'},
   ];
 
   static const List<Map<String, String>> _workTypeOptions = [
-    {'value': 'commercial', 'label': 'تجاري'},
-    {'value': 'educational', 'label': 'تربوي'},
-    {'value': 'technical', 'label': 'تقني'},
-    {'value': 'craftsman', 'label': 'حرفي'},
-    {'value': 'legal', 'label': 'حقوقي'},
-    {'value': 'healthcare', 'label': 'صحي'},
-    {'value': 'logistics', 'label': 'لوجستي'},
-    {'value': 'child', 'label': 'طفل'},
-    {'value': 'student', 'label': 'طالب'},
-    {'value': 'not_working', 'label': 'غير عامل'},
-    {'value': 'housewife', 'label': 'ربة منزل'},
-    {'value': 'retired', 'label': 'متقاعد'},
+    {'value': 'commercial', 'labelKey': 'settings_work_commercial'},
+    {'value': 'educational', 'labelKey': 'settings_work_educational'},
+    {'value': 'technical', 'labelKey': 'settings_work_technical'},
+    {'value': 'craftsman', 'labelKey': 'settings_work_craftsman'},
+    {'value': 'legal', 'labelKey': 'settings_work_legal'},
+    {'value': 'healthcare', 'labelKey': 'settings_work_healthcare'},
+    {'value': 'logistics', 'labelKey': 'settings_work_logistics'},
+    {'value': 'child', 'labelKey': 'settings_work_child'},
+    {'value': 'student', 'labelKey': 'settings_work_student'},
+    {'value': 'not_working', 'labelKey': 'settings_work_not_working'},
+    {'value': 'housewife', 'labelKey': 'settings_work_housewife'},
+    {'value': 'retired', 'labelKey': 'settings_work_retired'},
   ];
 
   final GlobalKey<FormState> _profileFormKey = GlobalKey<FormState>();
@@ -118,7 +120,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _locationLookupLoaded = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل بيانات البلدان والمدن: $error')),
+        SnackBar(
+          content: Text(
+            'settings_location_lookup_load_error'.trParams({
+              'error': error.toString(),
+            }),
+          ),
+        ),
       );
     }
   }
@@ -140,7 +148,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تحميل الملف الشخصي: $error')),
+        SnackBar(
+          content: Text(
+            'settings_profile_load_error'.trParams({
+              'error': error.toString(),
+            }),
+          ),
+        ),
       );
     }
   }
@@ -195,7 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!await launchUrl(emailLaunchUri) && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not open email client'.tr),
+            content: Text('settings_email_client_error'.tr),
           ),
         );
       }
@@ -298,17 +312,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _pickCountry() async {
     final lookup = _locationLookup;
     if (lookup == null) {
-      _showValidationMessage('تعذر تحميل قائمة الدول');
+      _showValidationMessage('settings_country_list_load_error'.tr);
       return;
     }
 
     final selectedCountry = await _showSearchablePicker<ProfileCountry>(
-      title: 'اختر الدولة',
-      searchLabel: 'ابحث عن الدولة',
+      title: 'settings_picker_country_title'.tr,
+      searchLabel: 'settings_picker_country_search'.tr,
       items: lookup.countries,
       itemLabel: (country) => country.displayName,
       itemSubtitle: (country) => '+${country.phoneCode}',
-      emptyMessage: 'لا توجد دول مطابقة',
+      emptyMessage: 'settings_picker_country_empty'.tr,
     );
 
     if (selectedCountry == null) {
@@ -326,20 +340,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _pickCity() async {
     final selectedCountry = _selectedCountry;
     if (selectedCountry == null) {
-      _showValidationMessage('اختر الدولة أولًا');
+      _showValidationMessage('settings_validation_pick_country_first'.tr);
       return;
     }
     if (selectedCountry.cities.isEmpty) {
-      _showValidationMessage('لا توجد مدن متاحة لهذه الدولة في المصدر الحالي');
+      _showValidationMessage('settings_validation_no_cities'.tr);
       return;
     }
 
     final selectedCity = await _showSearchablePicker<String>(
-      title: 'اختر المدينة',
-      searchLabel: 'ابحث عن المدينة',
+      title: 'settings_picker_city_title'.tr,
+      searchLabel: 'settings_picker_city_search'.tr,
       items: selectedCountry.cities,
       itemLabel: (city) => city,
-      emptyMessage: 'لا توجد مدن مطابقة',
+      emptyMessage: 'settings_picker_city_empty'.tr,
     );
 
     if (selectedCity == null) {
@@ -407,8 +421,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : const Icon(Icons.event),
                     title: Text(
                       activeDecade == null
-                          ? 'اختر العقد'
-                          : 'اختر سنة الميلاد',
+                          ? 'settings_birth_year_pick_decade'.tr
+                          : 'settings_birth_year_pick_year'.tr,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -458,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final normalized = value.trim();
     if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(normalized)) {
-      return 'أدخل رقم هاتف صالحًا';
+      return 'settings_validation_invalid_mobile'.tr;
     }
 
     return null;
@@ -471,27 +485,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (_selectedGender == null) {
-      _showValidationMessage('اختر الجنس');
+      _showValidationMessage('settings_validation_pick_gender'.tr);
       return;
     }
     if (_selectedBirthYear == null) {
-      _showValidationMessage('اختر سنة الميلاد');
+      _showValidationMessage('settings_validation_pick_birth_year'.tr);
       return;
     }
     if (_selectedCountry == null) {
-      _showValidationMessage('اختر الدولة');
+      _showValidationMessage('settings_validation_pick_country'.tr);
       return;
     }
     if (_selectedCity == null || _selectedCity!.trim().isEmpty) {
-      _showValidationMessage('اختر المدينة');
+      _showValidationMessage('settings_validation_pick_city'.tr);
       return;
     }
     if (_selectedEducationLevel == null) {
-      _showValidationMessage('اختر المستوى التعليمي');
+      _showValidationMessage('settings_validation_pick_education_level'.tr);
       return;
     }
     if (_selectedWorkType == null) {
-      _showValidationMessage('اختر طبيعة العمل');
+      _showValidationMessage('settings_validation_pick_work_type'.tr);
       return;
     }
 
@@ -514,14 +528,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       _applyUserProfile(user);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الملف الشخصي بنجاح')),
+        SnackBar(content: Text('settings_profile_save_success'.tr)),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر حفظ الملف الشخصي: $error')),
+        SnackBar(
+          content: Text(
+            'settings_profile_save_error'.trParams({
+              'error': error.toString(),
+            }),
+          ),
+        ),
       );
     }
   }
@@ -543,16 +563,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _optionLabel(Map<String, String> option) {
+    final labelKey = option['labelKey'];
+    if (labelKey != null && labelKey.isNotEmpty) {
+      return labelKey.tr;
+    }
+
+    return option['label'] ?? '';
+  }
+
   String _labelForOption(
     List<Map<String, String>> options,
     String? value,
-    String fallback,
+    String fallbackKey,
   ) {
     final match = options.firstWhere(
       (option) => option['value'] == value,
-      orElse: () => {'label': fallback},
+      orElse: () => {'labelKey': fallbackKey},
     );
-    return match['label'] ?? fallback;
+    return _optionLabel(match);
   }
 
   Widget _buildProfileSection(UsersProvider usersProvider) {
@@ -564,14 +593,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (_locationLookup == null) {
-      return const Card(
+      return Card(
         color: Colors.white,
         elevation: 0.5,
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Text(
-            'تعذر تحميل source البلدان والمدن الحالية. حاول إعادة فتح الشاشة.',
-            style: TextStyle(color: Colors.black54),
+            'settings_profile_location_source_error'.tr,
+            style: const TextStyle(color: Colors.black54),
           ),
         ),
       );
@@ -587,30 +616,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'الملف الشخصي',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                'settings_profile_section_title'.tr,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'عدّل بياناتك الشخصية واحفظها في ملفك مباشرة.',
-                style: TextStyle(color: Colors.black54),
+              Text(
+                'settings_profile_section_subtitle'.tr,
+                style: const TextStyle(color: Colors.black54),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _fullNameController,
-                decoration: _inputDecoration('الاسم الكامل'),
+                decoration: _inputDecoration('settings_profile_full_name'.tr),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'الاسم الكامل مطلوب';
+                    return 'settings_profile_full_name_required'.tr;
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               InputDecorator(
-                decoration: _inputDecoration('البريد الإلكتروني').copyWith(
-                  helperText: 'للعرض فقط',
+                decoration: _inputDecoration('settings_profile_email'.tr).copyWith(
+                  helperText: 'settings_profile_email_read_only'.tr,
                 ),
                 child: Text(
                   usersProvider.selectedUser?.email ?? '',
@@ -620,14 +652,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _mobileController,
-                decoration: _inputDecoration('رقم الهاتف'),
+                decoration: _inputDecoration('settings_profile_mobile'.tr),
                 keyboardType: TextInputType.phone,
                 validator: _validateMobile,
               ),
               const SizedBox(height: 16),
-              const Text(
-                'الجنس',
-                style: TextStyle(fontWeight: FontWeight.w600),
+              Text(
+                'settings_profile_gender'.tr,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               RadioGroup<String>(
                 groupValue: _selectedGender,
@@ -640,7 +672,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: _genderOptions.map((option) {
                     return RadioListTile<String>(
                       value: option['value']!,
-                      title: Text(option['label']!),
+                      title: Text(_optionLabel(option)),
                       contentPadding: EdgeInsets.zero,
                       visualDensity: VisualDensity.compact,
                     );
@@ -652,9 +684,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _pickBirthYear,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('سنة الميلاد'),
+                  decoration: _inputDecoration('settings_profile_birth_year'.tr),
                   child: Text(
-                    _selectedBirthYear?.toString() ?? 'اختر سنة الميلاد',
+                    _selectedBirthYear?.toString() ??
+                        'settings_profile_birth_year_placeholder'.tr,
                     style: TextStyle(
                       color: _selectedBirthYear == null
                           ? Colors.black54
@@ -668,10 +701,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _pickCountry,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('الدولة'),
+                  decoration: _inputDecoration('settings_profile_country'.tr),
                   child: Text(
                     _selectedCountry == null
-                        ? 'اختر الدولة'
+                        ? 'settings_profile_country_placeholder'.tr
                         : _selectedCountry!.displayName,
                     style: TextStyle(
                       color: _selectedCountry == null
@@ -683,12 +716,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 12),
               InputDecorator(
-                decoration: _inputDecoration('رمز الدولة').copyWith(
-                  helperText: 'يُشتق تلقائيًا من Phone Code للبلد المختار في نفس source المحلية',
+                decoration: _inputDecoration(
+                  'settings_profile_country_code'.tr,
+                ).copyWith(
+                  helperText: 'settings_profile_country_code_helper'.tr,
                 ),
                 child: Text(
                   _selectedCountry == null
-                      ? 'يُحدّد تلقائيًا من الدولة المختارة'
+                      ? 'settings_profile_country_code_auto'.tr
                       : '+${_selectedCountry!.phoneCode}',
                   style: TextStyle(
                     color: _selectedCountry == null
@@ -702,14 +737,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _selectedCountry == null ? null : _pickCity,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('المدينة').copyWith(
+                  decoration: _inputDecoration('settings_profile_city'.tr).copyWith(
                     helperText: _selectedCountry == null
-                        ? 'اختر الدولة أولًا لعرض المدن المتاحة'
-                        : 'المدينة هي الحقل canonical بدل state في هذا المسار',
+                        ? 'settings_profile_city_helper_pick_country'.tr
+                        : 'settings_profile_city_helper_canonical'.tr,
                   ),
                   child: Text(
                     _selectedCity == null || _selectedCity!.trim().isEmpty
-                        ? 'اختر المدينة'
+                        ? 'settings_profile_city_placeholder'.tr
                         : _selectedCity!,
                     style: TextStyle(
                       color: _selectedCity == null || _selectedCity!.trim().isEmpty
@@ -723,11 +758,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               DropdownButtonFormField<String>(
                 key: ValueKey('education-${_selectedEducationLevel ?? 'empty'}'),
                 initialValue: _selectedEducationLevel,
-                decoration: _inputDecoration('المستوى التعليمي'),
+                decoration: _inputDecoration('settings_profile_education'.tr),
                 items: _educationLevelOptions.map((option) {
                   return DropdownMenuItem<String>(
                     value: option['value'],
-                    child: Text(option['label']!),
+                    child: Text(_optionLabel(option)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -740,11 +775,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               DropdownButtonFormField<String>(
                 key: ValueKey('work-${_selectedWorkType ?? 'empty'}'),
                 initialValue: _selectedWorkType,
-                decoration: _inputDecoration('طبيعة العمل'),
+                decoration: _inputDecoration('settings_profile_work_type'.tr),
                 items: _workTypeOptions.map((option) {
                   return DropdownMenuItem<String>(
                     value: option['value'],
-                    child: Text(option['label']!),
+                    child: Text(_optionLabel(option)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -757,7 +792,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(
-                    'القيم المحفوظة داخليًا تبقى canonical لدعم الترجمة لاحقًا: ${_labelForOption(_educationLevelOptions, _selectedEducationLevel, 'غير محدد')} / ${_labelForOption(_workTypeOptions, _selectedWorkType, 'غير محدد')}',
+                    'settings_profile_canonical_note'.trParams({
+                      'education': _labelForOption(
+                        _educationLevelOptions,
+                        _selectedEducationLevel,
+                        'settings_profile_unspecified',
+                      ),
+                      'work': _labelForOption(
+                        _workTypeOptions,
+                        _selectedWorkType,
+                        'settings_profile_unspecified',
+                      ),
+                    }),
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ),
@@ -774,7 +820,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('حفظ الملف الشخصي'),
+                    : Text('settings_profile_save_button'.tr),
               ),
             ],
           ),
@@ -832,9 +878,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               value: languageProvider.languages.any(
                                 (language) =>
                                     language['code'] ==
-                                    (Get.locale?.languageCode ?? 'ar'),
+                                    languageProvider.langCode,
                               )
-                                  ? (Get.locale?.languageCode ?? 'ar')
+                                  ? languageProvider.langCode
                                   : 'ar',
                               underline: const SizedBox(),
                               items: languageProvider.languages
@@ -846,9 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               }).toList(),
                               onChanged: (String? value) async {
                                 if (value != null) {
-                                  languageProvider.setLangCode(value);
-                                  await LocalizationService()
-                                      .changeLocaleByCode(value);
+                                  await languageProvider.changeLanguage(value);
                                   if (mounted) {
                                     setState(() {});
                                   }

@@ -19,16 +19,11 @@ class PendingSyncBanner extends StatelessWidget {
         }
 
         final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-        final title = isArabic
-            ? 'تقييمات محفوظة بانتظار المزامنة'
-            : 'Saved assessments are waiting to sync';
-        final subtitle = isArabic
-            ? pendingSyncCount == 1
-                ? 'يوجد تقييم واحد محفوظ على هذا الجهاز وسيُرسل تلقائيًا عند عودة الاتصال.'
-                : 'يوجد $pendingSyncCount تقييمات محفوظة على هذا الجهاز وسيتم إرسالها تلقائيًا عند عودة الاتصال.'
-            : pendingSyncCount == 1
-                ? 'One assessment is saved on this device and will be sent automatically when the connection returns.'
-                : '$pendingSyncCount assessments are saved on this device and will be sent automatically when the connection returns.';
+        final title = 'pending_sync_title'.tr;
+        final subtitle = pendingSyncCount == 1
+            ? 'pending_sync_body_single'.tr
+            : 'pending_sync_body_plural'
+                .trParams({'count': pendingSyncCount.toString()});
 
         return Padding(
           padding: EdgeInsets.only(bottom: bottomPadding),
