@@ -34,29 +34,41 @@ class ResponsiveContentShell extends StatelessWidget {
       builder: (context, viewportConstraints) {
         final viewportWidth = viewportConstraints.maxWidth;
         final gutter = _horizontalGutter(viewportWidth);
-        final availableWidth = (viewportWidth - (gutter * 2)).clamp(0.0, double.infinity);
+        final availableWidth =
+            (viewportWidth - (gutter * 2)).clamp(0.0, double.infinity);
         final contentWidth = availableWidth > maxContentWidth
             ? maxContentWidth
             : availableWidth;
+        final boundedHeight = viewportConstraints.hasBoundedHeight
+            ? viewportConstraints.maxHeight
+            : MediaQuery.sizeOf(context).height;
 
-        return Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: gutter),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: contentWidth),
-              child: LayoutBuilder(
-                builder: (context, contentConstraints) {
-                  SizeConfig().initWithConstraints(context, contentConstraints);
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const PendingSyncBanner(),
-                      builder?.call(context) ?? child!,
-                    ],
-                  );
-                },
+        return SizedBox(
+          width: double.infinity,
+          height: boundedHeight,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: contentWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const PendingSyncBanner(),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, contentConstraints) {
+                          SizeConfig().initWithConstraints(
+                            context,
+                            contentConstraints,
+                          );
+                          return builder?.call(context) ?? child!;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

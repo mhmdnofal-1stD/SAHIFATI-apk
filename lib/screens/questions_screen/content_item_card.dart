@@ -40,7 +40,7 @@ class ContentItemCard extends StatefulWidget {
 
 class _ContentItemCardState extends State<ContentItemCard> {
   bool isEvaluating = false;
-  String unitName = "الوحدة";
+  String unitName = 'unit'.tr;
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
 
@@ -163,11 +163,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            (Get.locale?.languageCode ?? 'ar') == 'ar'
-                ? 'تم حذف التوصية.'
-                : 'Recommendation deleted.',
-          ),
+          content: Text('content_item_card_recommendation_deleted'.tr),
         ),
       );
       return true;
@@ -175,11 +171,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              (Get.locale?.languageCode ?? 'ar') == 'ar'
-                  ? 'تعذر حذف التوصية حالياً.'
-                  : 'Unable to delete the recommendation right now.',
-            ),
+            content: Text('content_item_card_recommendation_delete_error'.tr),
           ),
         );
       }
@@ -330,7 +322,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
     final selection = await _openAssessmentDialog(
       context,
       languageProvider,
-      title: text('تقييم $unitName', 'Assess $unitName'),
+      title: 'content_item_card_assess_unit_title'.trParams({'unit': unitName}),
     );
 
     if (selection == null) return;
@@ -480,10 +472,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                             languageProvider,
                                             currentEvaluation:
                                                 ayah.userEvaluation,
-                                            title: text(
-                                              'تقييم الآية ${ayah.ayahNo}',
-                                              'Assess verse ${ayah.ayahNo}',
-                                            ),
+                                            title: 'content_item_card_assess_verse_title'
+                                                .trParams({
+                                              'ayah': ayah.ayahNo.toString(),
+                                            }),
                                           );
 
                                           if (selection == null) {
@@ -602,10 +594,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 await _openAssessmentDialog(
                                               context,
                                               languageProvider,
-                                              title: text(
-                                                'تقييم ${surah.nameAr}',
-                                                'Assess ${surah.nameAr}',
-                                              ),
+                                              title: 'content_item_card_assess_surah_title'
+                                                  .trParams({
+                                                'surah': surah.nameAr,
+                                              }),
                                             );
 
                                             if (selection != null) {
@@ -661,7 +653,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               }
                                             }
                                           },
-                                          child: Text(text('تقييم', 'Assess')),
+                                          child: Text('evaluate'.tr),
                                         ),
                                         onTap: () {
                                           _showJuzSurahAyahs(context, surah,
@@ -797,10 +789,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 .isNotEmpty)
                                               const SizedBox(width: 8),
                                             Text(
-                                              text(
-                                                'آية ${ayah.ayahNo}',
-                                                'Verse ${ayah.ayahNo}',
-                                              ),
+                                              'content_item_card_verse_label'
+                                                  .trParams({
+                                                'ayah': ayah.ayahNo.toString(),
+                                              }),
                                             ),
                                           ],
                                         ),
@@ -812,10 +804,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               languageProvider,
                                               currentEvaluation:
                                                   ayah.userEvaluation,
-                                              title: text(
-                                                'تقييم الآية ${ayah.ayahNo}',
-                                                'Assess verse ${ayah.ayahNo}',
-                                              ),
+                                              title: 'content_item_card_assess_verse_title'
+                                                  .trParams({
+                                                'ayah': ayah.ayahNo.toString(),
+                                              }),
                                             );
 
                                             if (selection == null) {
@@ -836,7 +828,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               setModalState: setModalState,
                                             );
                                           },
-                                          child: Text(text('تقييم', 'Assess')),
+                                          child: Text('evaluate'.tr),
                                         ),
                                       ],
                                     ),
@@ -858,18 +850,11 @@ class _ContentItemCardState extends State<ContentItemCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            text(
-              'حدث خطأ أثناء تحميل الآيات: $e',
-              'An error occurred while loading verses: $e',
-            ),
+            'error_loading_verses'.trParams({'error': e.toString()}),
           ),
         ),
       );
     }
-  }
-
-  String text(String arabic, String english) {
-    return (Get.locale?.languageCode ?? 'ar') == 'ar' ? arabic : english;
   }
 
   String get _normalizedContentType {
@@ -894,16 +879,16 @@ class _ContentItemCardState extends State<ContentItemCard> {
     }
 
     if (_normalizedContentType == 'juz' && widget.content.juz != null) {
-      return '${text('الجزء', 'Juz')} ${widget.content.juz}';
+      return '${'juz_prefix'.tr} ${widget.content.juz}';
     }
 
     if (_normalizedContentType == 'hizb' && widget.content.hizb != null) {
-      return '${text('الحزب', 'Hizb')} ${widget.content.hizb}';
+      return '${'hizb'.tr} ${widget.content.hizb}';
     }
 
     if (_normalizedContentType == 'hizbquarter' &&
         widget.content.hizbQuarter != null) {
-      return '${text('ربع الحزب', 'Hizb quarter')} ${widget.content.hizbQuarter}';
+      return '${'hizb_quarter'.tr} ${widget.content.hizbQuarter}';
     }
 
     return unitName;
@@ -911,38 +896,26 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
   String _contentSupportCopy() {
     if (_isAyahRangeType) {
-      return text(
-        'هذا المقطع يحتاج تقييمًا آية بآية حتى تبقى النتائج دقيقة.',
-        'This slice is reviewed verse by verse so the result stays accurate.',
-      );
+      return 'content_item_card_support_ayah_range'.tr;
     }
 
     if (_isJuzType) {
-      return text(
-        'يمكنك تقييم الجزء كاملًا أو فتح السور والآيات عند الحاجة.',
-        'You can rate the full juz or drill into individual surahs and verses.',
-      );
+      return 'content_item_card_support_juz'.tr;
     }
 
-    return text(
-      'اختر بين تقييم واحد للوحدة كاملة أو مراجعة الآيات بالتفصيل.',
-      'Choose one rating for the whole unit or review each verse in detail.',
-    );
+    return 'content_item_card_support_default'.tr;
   }
 
   String _statusLabel() {
     if (widget.isLoadingStatus) {
-      return text('جاري تحديث الحالة', 'Refreshing status');
+      return 'content_item_card_status_refreshing'.tr;
     }
 
     if (widget.isCompleted == true) {
-      return text('تم تقييم هذه الوحدة', 'This unit has been assessed');
+      return 'content_item_card_status_completed'.tr;
     }
 
-    return text(
-      'هذه الوحدة ما زالت بانتظار التقييم',
-      'This unit is still waiting for assessment',
-    );
+    return 'content_item_card_status_pending'.tr;
   }
 
   Color _statusColor() {
@@ -1158,11 +1131,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
               _buildActionButton(
                 onPressed:
                     canInteract ? () => _evaluateUnit(context, languageProvider) : null,
-                title: text('تقييم الوحدة دفعة واحدة', 'Rate the full unit at once'),
-                subtitle: text(
-                  'اختر درجة واحدة تُطبق على جميع الآيات في هذه الوحدة.',
-                  'Choose one rating to apply across every verse in this unit.',
-                ),
+                title: 'content_item_card_action_rate_unit_title'.tr,
+                subtitle: 'content_item_card_action_rate_unit_subtitle'.tr,
                 icon: Icons.auto_awesome,
               ),
               const SizedBox(height: 10),
@@ -1170,11 +1140,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 onPressed: canInteract
                     ? () => _showIndividualEvaluation(context, languageProvider)
                     : null,
-                title: text('مراجعة آية بآية', 'Review verse by verse'),
-                subtitle: text(
-                  'افتح الآيات الفردية عندما تحتاج تقييماً أدق أو ملاحظات مختلفة.',
-                  'Open the individual verses when you need a more precise review.',
-                ),
+                title: 'content_item_card_action_review_verses_title'.tr,
+                subtitle: 'content_item_card_action_review_verses_subtitle'.tr,
                 icon: Icons.menu_book_rounded,
                 outlined: true,
               ),
@@ -1183,20 +1150,14 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 onPressed: canInteract
                     ? () => _showIndividualEvaluation(context, languageProvider)
                     : null,
-                title: text('ابدأ تقييم الآيات', 'Start verse assessment'),
-                subtitle: text(
-                  'هذا النوع لا يدعم تقييماً موحداً للوحدة كاملة.',
-                  'This content type does not support a single unit-wide rating.',
-                ),
+                title: 'content_item_card_action_start_verses_title'.tr,
+                subtitle: 'content_item_card_action_start_verses_subtitle'.tr,
                 icon: Icons.playlist_add_check_circle_rounded,
               ),
             if (_isJuzType) ...[
               const SizedBox(height: 12),
               Text(
-                text(
-                  'يمكنك الضغط على البطاقة نفسها لفتح السور داخل الجزء.',
-                  'Tap the card itself to open the surahs inside this juz.',
-                ),
+                'content_item_card_juz_hint'.tr,
                 style: TextStyle(
                   fontSize: 11,
                   color: Colors.grey.shade600,
