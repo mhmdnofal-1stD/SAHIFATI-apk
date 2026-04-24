@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -172,22 +173,223 @@ class UsersProvider with ChangeNotifier {
   }
 
   String extractErrorMessage(Object error) {
+    final errorCode = _extractErrorCode(error);
+    final localizedByCode = _localizedErrorMessageForCode(
+      errorCode,
+      error,
+    );
+    if (localizedByCode != null) {
+      return localizedByCode;
+    }
+
     if (error is Map) {
       final message = error['message'];
       if (message is String && message.isNotEmpty) {
-        return message;
+        return _localizeBackendMessage(message, error: error);
       }
 
       if (message is List && message.isNotEmpty) {
-        return message.join(', ');
+        return message
+            .map((item) => _localizeBackendMessage(item.toString(), error: error))
+            .join(', ');
       }
 
       if (message is Map) {
         final nestedMessage = message['message'];
         if (nestedMessage is String && nestedMessage.isNotEmpty) {
-          return nestedMessage;
+          return _localizeBackendMessage(nestedMessage, error: error);
         }
 
+        if (nestedMessage is List && nestedMessage.isNotEmpty) {
+          return nestedMessage
+              .map((item) =>
+                  _localizeBackendMessage(item.toString(), error: error))
+              .join(', ');
+        }
+      }
+    }
+
+    final fallback = error.toString().replaceFirst('Exception: ', '');
+    return _localizeBackendMessage(fallback, error: error);
+  }
+
+  String? _extractErrorCode(Object error) {
+    if (error is! Map) {
+      return null;
+    }
+
+    final directCode = error['errorCode'];
+    if (directCode is String && directCode.isNotEmpty) {
+      return directCode;
+    }
+
+    final message = error['message'];
+    if (message is Map) {
+      final nestedCode = message['errorCode'];
+      if (nestedCode is String && nestedCode.isNotEmpty) {
+        return nestedCode;
+      }
+    }
+
+    return null;
+  }
+
+  String? _localizedErrorMessageForCode(String? errorCode, Object error) {
+    if (errorCode == null || errorCode.isEmpty) {
+      return null;
+    }
+
+    switch (errorCode) {
+      case 'ACCOUNT_NOT_VERIFIED':
+        return 'auth_account_not_verified'.tr;
+      case 'VERIFICATION_EMAIL_UNAVAILABLE':
+        return 'auth_registration_verification_email_unavailable'.tr;
+      case 'ACCOUNT_EXISTS_WITH_PASSWORD':
+        return 'social_account_exists_with_password'.tr;
+      case 'ACCOUNT_EXISTS_WITH_DIFFERENT_PROVIDER':
+        final provider = error is Map ? error['existingProvider'] : null;
+        return 'social_account_exists_with_different_provider'.trParams({
+          'provider': _providerLabel((provider ?? 'provider').toString()),
+        });
+      case 'SOCIAL_ACCOUNT_ALREADY_LINKED':
+        return 'social_account_already_linked'.tr;
+      default:
+        return null;
+    }
+  }
+
+  String _localizeBackendMessage(String rawMessage, {Object? error}) {
+    final trimmed = rawMessage.trim();
+    if (trimmed.isEmpty) {
+      return trimmed;
+    }
+
+    if (trimmed == 'invalid credentials' ||
+        trimmed == 'Invalid credentials') {
+      return 'invalid_credentials'.tr;
+    }
+
+    if (trimmed == 'User with this email already exists' ||
+        trimmed.toLowerCase().contains('email already in use')) {
+      return 'email_taken'.tr;
+    }
+
+    if (trimmed == 'Please verify your email before logging in.') {
+      return 'auth_account_not_verified'.tr;
+    }
+
+    if (trimmed ==
+        'This account uses social authentication. Please use the social login option.') {
+      return 'auth_login_use_social_auth'.tr;
+    }
+
+    if (trimmed ==
+        'Registration is temporarily unavailable because the verification email could not be sent. Please try again shortly.') {
+      return 'auth_registration_verification_email_unavailable'.tr;
+    }
+
+    if (trimmed == 'This account is already verified.') {
+      return 'email_verification_pending_already_verified'.tr;
+    }
+
+    if (trimmed ==
+        'If that email exists and is unverified, a new email has been sent.') {
+      return 'email_verification_pending_resend_success'.tr;
+    }
+
+    if (trimmed ==
+        'If that email exists and can reset its password, a password reset email has been sent.') {
+      return 'forgot_password_request_accepted_body'.tr;
+    }
+
+    if (trimmed == 'Password reset completed successfully.' ||
+        trimmed == 'Password changed successfully') {
+      return 'forgot_password_reset_success_body'.tr;
+    }
+
+    if (trimmed == 'Password reset token is invalid or has expired.') {
+      return 'forgot_password_reset_expired_body'.tr;
+    }
+
+    if (trimmed == 'Verification token is invalid or has expired.') {
+      return 'email_verification_result_expired_body'.tr;
+    }
+
+    if (trimmed == 'password must contain at least one uppercase letter') {
+      return 'auth_password_validation_uppercase'.tr;
+    }
+
+    if (trimmed == 'password must contain at least one lowercase letter') {
+      return 'auth_password_validation_lowercase'.tr;
+    }
+
+    if (trimmed == 'password must contain at least one number') {
+      return 'auth_password_validation_number'.tr;
+    }
+
+    if (trimmed == 'password must contain at least one symbol') {
+      return 'auth_password_validation_symbol'.tr;
+    }
+
+    if (trimmed.startsWith('Please wait ') &&
+        trimmed.contains(' seconds before requesting another verification email.')) {
+      final seconds = RegExp(r'Please wait (\d+) seconds')
+          .firstMatch(trimmed)
+          ?.group(1);
+      if (seconds != null) {
+        return 'email_verification_pending_resend_wait'.trParams({
+          'seconds': seconds,
+        });
+      }
+    }
+
+    return trimmed;
+  }
+
+  bool isExpiredVerificationError(Object error) {
+    final raw = _extractRawMessage(error).toLowerCase();
+    return raw.contains('verification token is invalid or has expired') ||
+        raw.contains('expired');
+  }
+
+  bool isExpiredPasswordResetError(Object error) {
+    final raw = _extractRawMessage(error).toLowerCase();
+    if (raw.contains('password reset token is invalid or has expired')) {
+      return true;
+    }
+
+    if (raw.contains('already used')) {
+      return true;
+    }
+
+    if (raw.contains('invalid or has expired')) {
+      return true;
+    }
+
+    if (error is Map) {
+      final statusCode = error['statusCode'];
+      if (statusCode == 400) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  String _extractRawMessage(Object error) {
+    if (error is Map) {
+      final message = error['message'];
+      if (message is String && message.isNotEmpty) {
+        return message;
+      }
+      if (message is List && message.isNotEmpty) {
+        return message.join(', ');
+      }
+      if (message is Map) {
+        final nestedMessage = message['message'];
+        if (nestedMessage is String && nestedMessage.isNotEmpty) {
+          return nestedMessage;
+        }
         if (nestedMessage is List && nestedMessage.isNotEmpty) {
           return nestedMessage.join(', ');
         }
@@ -195,6 +397,17 @@ class UsersProvider with ChangeNotifier {
     }
 
     return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  String _providerLabel(String provider) {
+    switch (provider) {
+      case 'google':
+        return 'social_provider_google'.tr;
+      case 'facebook':
+        return 'social_provider_facebook'.tr;
+      default:
+        return provider;
+    }
   }
 
   bool get hasPendingVerification =>
@@ -223,8 +436,8 @@ class UsersProvider with ChangeNotifier {
       throw _buildSocialAuthError(
         'SOCIAL_CONFIG_MISSING',
         kIsWeb
-            ? 'Google web client ID is missing.'
-            : 'Google Sign-In mobile configuration is missing.',
+            ? 'social_google_requires_client_id'.tr
+            : 'social_google_requires_mobile_config'.tr,
         provider: 'google',
       );
     }
@@ -245,7 +458,7 @@ class UsersProvider with ChangeNotifier {
     if (!SocialAuthConfig.isFacebookConfiguredForCurrentPlatform) {
       throw _buildSocialAuthError(
         'SOCIAL_CONFIG_MISSING',
-        'Facebook app ID is missing.',
+        'social_facebook_requires_app_id'.tr,
         provider: 'facebook',
       );
     }
@@ -373,7 +586,7 @@ class UsersProvider with ChangeNotifier {
     if (authData.user == null || authData.accessToken == null) {
       throw _buildSocialAuthError(
         'SOCIAL_AUTH_INVALID_RESPONSE',
-        'Authentication response is incomplete.',
+        'social_auth_invalid_response'.tr,
       );
     }
 
@@ -403,7 +616,9 @@ class UsersProvider with ChangeNotifier {
       if (!_googleSignIn.supportsAuthenticate()) {
         throw _buildSocialAuthError(
           'SOCIAL_PROVIDER_UNSUPPORTED',
-          'Google interactive authentication is not supported on this platform.',
+          'social_provider_temporarily_unavailable'.trParams({
+            'provider': _providerLabel('google'),
+          }),
           provider: 'google',
         );
       }
@@ -413,7 +628,7 @@ class UsersProvider with ChangeNotifier {
       if (idToken == null || idToken.isEmpty) {
         throw _buildSocialAuthError(
           'SOCIAL_ID_TOKEN_MISSING',
-          'Could not retrieve Google identity token.',
+          'social_missing_id_token'.tr,
           provider: 'google',
         );
       }
@@ -427,9 +642,18 @@ class UsersProvider with ChangeNotifier {
         _ => 'SOCIAL_LOGIN_FAILED',
       };
 
+      final message = switch (code) {
+        'SOCIAL_LOGIN_CANCELLED' => 'social_cancelled'.tr,
+        'SOCIAL_PROVIDER_UNSUPPORTED' =>
+          'social_provider_temporarily_unavailable'.trParams({
+            'provider': _providerLabel('google'),
+          }),
+        _ => 'social_google_sign_in_failed'.tr,
+      };
+
       throw _buildSocialAuthError(
         code,
-        error.description ?? 'Google sign-in failed.',
+        message,
         provider: 'google',
       );
     } finally {
@@ -469,7 +693,7 @@ class UsersProvider with ChangeNotifier {
         if (accessToken == null) {
           throw _buildSocialAuthError(
             'SOCIAL_ACCESS_TOKEN_MISSING',
-            'Could not retrieve Facebook access token.',
+            'social_missing_id_token'.tr,
             provider: 'facebook',
           );
         }
@@ -482,14 +706,14 @@ class UsersProvider with ChangeNotifier {
       if (loginResult.status == LoginStatus.cancelled) {
         throw _buildSocialAuthError(
           'SOCIAL_LOGIN_CANCELLED',
-          'Facebook sign-in was cancelled.',
+          'social_cancelled'.tr,
           provider: 'facebook',
         );
       }
 
       throw _buildSocialAuthError(
         'SOCIAL_LOGIN_FAILED',
-        loginResult.message ?? 'Facebook sign-in failed.',
+        'social_facebook_sign_in_failed'.tr,
         provider: 'facebook',
       );
     } catch (ex) {
@@ -585,7 +809,7 @@ class UsersProvider with ChangeNotifier {
   Future<Map<String, dynamic>> resendVerificationEmail({String? email}) async {
     final targetEmail = email ?? pendingVerificationEmail;
     if (targetEmail == null || targetEmail.isEmpty) {
-      throw Exception('لا يوجد بريد محفوظ لإعادة الإرسال');
+      throw Exception('email_verification_pending_resend_missing_email'.tr);
     }
 
     setLoading();
@@ -948,7 +1172,7 @@ class UsersProvider with ChangeNotifier {
         await logout();
       } else {
         final responseData = json.decode(response.body);
-        throw responseData['message'] ?? 'Failed to delete account';
+        throw responseData['message'] ?? 'delete_account_error'.tr;
       }
     } catch (ex) {
       rethrow;

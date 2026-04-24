@@ -269,8 +269,7 @@ class _EmailVerificationHandlerScreenState
       );
     } catch (error) {
       if (!mounted) return;
-      final message = usersProvider.extractErrorMessage(error).toLowerCase();
-      final resultState = message.contains('expired')
+      final resultState = usersProvider.isExpiredVerificationError(error)
           ? VerificationResultState.expired
           : VerificationResultState.failed;
       Get.offAllNamed(

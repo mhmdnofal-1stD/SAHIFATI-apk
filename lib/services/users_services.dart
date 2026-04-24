@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,7 +106,7 @@ class UsersServices with ChangeNotifier {
       throw _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر إنشاء الحساب',
+        'service_users_register_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -137,7 +138,7 @@ class UsersServices with ChangeNotifier {
       return _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر تسجيل الدخول',
+        'service_users_login_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -162,7 +163,7 @@ class UsersServices with ChangeNotifier {
       return _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر تفعيل الحساب',
+        'service_users_verify_email_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -187,7 +188,7 @@ class UsersServices with ChangeNotifier {
       throw _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر إعادة إرسال رابط التفعيل',
+        'service_users_resend_verification_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -212,7 +213,7 @@ class UsersServices with ChangeNotifier {
       return _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر تسجيل الدخول عبر Google',
+        'social_google_sign_in_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -237,7 +238,7 @@ class UsersServices with ChangeNotifier {
       return _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر تسجيل الدخول عبر Facebook',
+        'social_facebook_sign_in_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -255,7 +256,10 @@ class UsersServices with ChangeNotifier {
         return Map<String, dynamic>.from(responseData as Map);
       }
 
-      throw _extractErrorMessage(responseData, 'Failed to load user profile');
+      throw _extractErrorMessage(
+        responseData,
+        'service_users_load_profile_failed'.tr,
+      );
     } catch (ex) {
       rethrow;
     }
@@ -321,7 +325,10 @@ class UsersServices with ChangeNotifier {
         return Map<String, dynamic>.from(responseData as Map);
       }
 
-      throw _extractErrorMessage(responseData, 'Failed to update profile');
+      throw _extractErrorMessage(
+        responseData,
+        'service_users_update_profile_failed'.tr,
+      );
     } catch (ex) {
       rethrow;
     }
@@ -351,7 +358,7 @@ class UsersServices with ChangeNotifier {
       throw _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر إرسال رابط إعادة التعيين',
+        'service_users_request_password_reset_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -382,7 +389,7 @@ class UsersServices with ChangeNotifier {
       throw _normalizeErrorResponse(
         response.statusCode,
         responseData,
-        'تعذر إكمال إعادة تعيين كلمة المرور',
+        'service_users_complete_password_reset_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -395,7 +402,7 @@ class UsersServices with ChangeNotifier {
       final token = prefs.getString('accessToken');
       
       if (token == null) {
-        throw 'No authentication token found';
+        throw 'service_users_missing_auth_token'.tr;
       }
 
       Map<String, String> headers = {
@@ -415,7 +422,7 @@ class UsersServices with ChangeNotifier {
         return true;
       } else {
         final responseData = json.decode(response.body);
-        return responseData['message'] ?? 'Failed to delete account';
+        return responseData['message'] ?? 'delete_account_error'.tr;
       }
     } catch (ex) {
       rethrow;

@@ -135,19 +135,6 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return null;
   }
 
-  Map<String, dynamic>? _asErrorMap(Object error) {
-    if (error is Map<String, dynamic>) {
-      return error;
-    }
-    if (error is Map) {
-      return error.map(
-        (key, value) => MapEntry(key.toString(), value),
-      );
-    }
-
-    return null;
-  }
-
   void _openLogin() {
     final email = _emailController.text.trim();
     Get.offAll(
@@ -259,12 +246,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return;
       }
 
-      final errorMap = _asErrorMap(error);
-      final statusCode = errorMap?['statusCode'];
-      final message = usersProvider.extractErrorMessage(error).toLowerCase();
-      final tokenInvalid = statusCode == 400 ||
-          message.contains('invalid or has expired') ||
-          message.contains('already used');
+      final tokenInvalid = usersProvider.isExpiredPasswordResetError(error);
 
       setState(() {
         if (tokenInvalid) {

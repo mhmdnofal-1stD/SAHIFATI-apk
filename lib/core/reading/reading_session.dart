@@ -12,6 +12,7 @@ class ReadingSession {
     required this.shouldAutoResume,
     this.juz,
     this.hizb,
+    this.currentPage,
     this.currentHizbQuarter,
   });
 
@@ -20,6 +21,7 @@ class ReadingSession {
   final int filterTypeId;
   final int? juz;
   final int? hizb;
+  final int? currentPage;
   final int? currentHizbQuarter;
   final bool shouldAutoResume;
 
@@ -29,6 +31,7 @@ class ReadingSession {
     int? filterTypeId,
     int? juz,
     int? hizb,
+    int? currentPage,
     int? currentHizbQuarter,
     bool? shouldAutoResume,
   }) {
@@ -38,6 +41,7 @@ class ReadingSession {
       filterTypeId: filterTypeId ?? this.filterTypeId,
       juz: juz ?? this.juz,
       hizb: hizb ?? this.hizb,
+      currentPage: currentPage ?? this.currentPage,
       currentHizbQuarter: currentHizbQuarter ?? this.currentHizbQuarter,
       shouldAutoResume: shouldAutoResume ?? this.shouldAutoResume,
     );
@@ -50,6 +54,7 @@ class ReadingSession {
       'filterTypeId': filterTypeId,
       'juz': juz,
       'hizb': hizb,
+      'currentPage': currentPage,
       'currentHizbQuarter': currentHizbQuarter,
       'shouldAutoResume': shouldAutoResume,
     };
@@ -64,6 +69,7 @@ class ReadingSession {
       filterTypeId: map['filterTypeId'] as int? ?? FilterTypes.thirds,
       juz: map['juz'] as int?,
       hizb: map['hizb'] as int?,
+      currentPage: map['currentPage'] as int?,
       currentHizbQuarter: map['currentHizbQuarter'] as int?,
       shouldAutoResume: map['shouldAutoResume'] as bool? ?? false,
     );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:core';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
@@ -26,7 +27,7 @@ class EvaluationsServices {
           return cachedEvaluations;
         }
 
-        throw Exception('Failed to load evaluations');
+        throw Exception('service_evaluations_load_failed'.tr);
       }
     } catch (ex) {
       final cachedEvaluations = await _loadCachedEvaluations(type: type);
@@ -60,7 +61,7 @@ class EvaluationsServices {
         // Decode the full JSON map
         return jsonDecode(res.body) as Map<String, dynamic>;
       } else {
-        throw Exception('Failed to load evaluations');
+        throw Exception('service_evaluations_load_failed'.tr);
       }
     } catch (ex) {
       rethrow;
@@ -84,7 +85,7 @@ class EvaluationsServices {
             .map<UserEvaluation>((e) => UserEvaluation.fromJson(e))
             .toList();
       } else {
-        throw Exception('Failed to load evaluations');
+        throw Exception('service_evaluations_load_failed'.tr);
       }
     } catch (ex, stackTrace) {
       if (kDebugMode) {

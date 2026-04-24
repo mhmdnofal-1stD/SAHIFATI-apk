@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
 class AyatServices {
@@ -15,7 +16,7 @@ class AyatServices {
         final Map<String, dynamic> data = jsonDecode(res.body);
         return data;
       } else {
-        throw Exception('Failed to load ayat');
+        throw Exception('service_ayat_load_failed'.tr);
       }
     } catch (ex) {
       rethrow;
@@ -31,7 +32,11 @@ class AyatServices {
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
       } else {
-        throw Exception('Failed to load ayat for hizb $hizb');
+        throw Exception(
+          'service_ayat_load_hizb_failed'.trParams({
+            'hizb': hizb.toString(),
+          }),
+        );
       }
     } catch (ex) {
       rethrow;
@@ -46,7 +51,11 @@ class AyatServices {
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
       } else {
-        throw Exception('Failed to load ayat for juz $juz');
+        throw Exception(
+          'service_ayat_load_juz_failed'.trParams({
+            'juz': juz.toString(),
+          }),
+        );
       }
     } catch (ex) {
       rethrow;
@@ -61,7 +70,7 @@ class AyatServices {
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
       } else {
-        throw Exception('Failed to load ayat for range');
+        throw Exception('service_ayat_load_range_failed'.tr);
       }
     } catch (ex) {
       rethrow;

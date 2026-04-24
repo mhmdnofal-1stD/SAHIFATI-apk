@@ -29,6 +29,8 @@ import '../widgets/no_pop_scope.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 
+enum _ReadingNavigationMode { page, hizbQuarter }
+
 class IndexPage extends StatefulWidget {
   const IndexPage(
       {super.key,
@@ -37,6 +39,8 @@ class IndexPage extends StatefulWidget {
       this.hizb,
       this.hizbQuarter,
       this.juz,
+      this.page,
+      this.restoredPage,
       this.restoredHizbQuarter});
 
   factory IndexPage.fromReadingSession(ReadingSession session) {
@@ -45,6 +49,7 @@ class IndexPage extends StatefulWidget {
       filterTypeId: session.filterTypeId,
       juz: session.juz,
       hizb: session.hizb,
+      restoredPage: session.currentPage,
       restoredHizbQuarter: session.currentHizbQuarter,
     );
   }
@@ -54,6 +59,8 @@ class IndexPage extends StatefulWidget {
   final int? hizb;
   final int? hizbQuarter;
   final int? juz;
+  final int? page;
+  final int? restoredPage;
   final int? restoredHizbQuarter;
 
   @override
@@ -64,7 +71,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final gc = GeneralController();
   final ReadingSessionStore _readingSessionStore = ReadingSessionStore();
   OverlayEntry? _menuEntry;
+  final List<Ayat> _navigationScopeAyat = [];
   final List<Ayat> _ayat = [];
+  _ReadingNavigationMode _navigationMode = _ReadingNavigationMode.hizbQuarter;
+  List<int> _pageSequence = <int>[];
+  int? _currentPage;
+  int? _initialPage;
   int? _currentHizbQuarter;
   int? _minHizbQuarter;
   int? _maxHizbQuarter;
@@ -87,6 +99,219 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   String _trParams(String key, Map<String, String> params) =>
       key.trParams(params);
+
+  bool get _isPageNavigation =>
+      _navigationMode == _ReadingNavigationMode.page &&
+      _pageSequence.isNotEmpty &&
+      _currentPage != null;
+
+  int _compareAyatOrder(Ayat left, Ayat right) {
+    if (left.id != null && right.id != null) {
+      return left.id!.compareTo(right.id!);
+    }
+
+    final surahComparison = left.surah.id.compareTo(right.surah.id);
+    if (surahComparison != 0) {
+      return surahComparison;
+    }
+
+    return left.ayahNo.compareTo(right.ayahNo);
+  }
+
+  Future<List<Ayat>> _loadNavigationScopeAyat() async {
+    if (widget.page != null) {
+      return (await AyatController().loadAyatBySurah(widget.surah.id))
+          .where((ayah) => ayah.page == widget.page)
+          .toList();
+    }
+
+    if (widget.hizbQuarter != null) {
+      return AyatController().loadAyatByHizbQuarter(widget.hizbQuarter!);
+    }
+
+    if ((widget.filterTypeId == FilterTypes.parts ||
+            widget.filterTypeId == FilterTypes.thirds) &&
+        widget.juz != null) {
+      return AyatController().loadAyatByJuz(widget.juz!);
+    }
+
+    if (widget.hizb != null) {
+      return AyatController().loadAyatByHizb(widget.hizb!);
+    }
+
+    return AyatController().loadAyatBySurah(widget.surah.id);
+  }
+
+  List<int> _extractSortedUniqueValues(
+    Iterable<Ayat> ayat,
+    int? Function(Ayat ayah) selector,
+  ) {
+    final values = ayat.map(selector).whereType<int>().toSet().toList();
+    values.sort();
+    return values;
+  }
+
+  int _resolveClosestAvailableValue(List<int> values, int? preferredValue) {
+    if (values.isEmpty) {
+      throw StateError('Cannot resolve a navigation value from an empty list.');
+    }
+
+    if (preferredValue == null) {
+      return values.first;
+    }
+
+    if (values.contains(preferredValue)) {
+      return preferredValue;
+    }
+
+    for (final value in values) {
+      if (value >= preferredValue) {
+        return value;
+      }
+    }
+
+    return values.last;
+  }
+
+  int? _firstValueForSelectedSurah(
+    Iterable<Ayat> ayat,
+    int? Function(Ayat ayah) selector,
+  ) {
+    for (final item in ayat) {
+      final value = selector(item);
+      if (item.surah.id == widget.surah.id && value != null) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _ensureNavigationInitialized() async {
+    if (_navigationScopeAyat.isEmpty) {
+      final scopeAyat = await _loadNavigationScopeAyat();
+      scopeAyat.sort(_compareAyatOrder);
+      _navigationScopeAyat
+        ..clear()
+        ..addAll(scopeAyat);
+    }
+
+    if (_navigationScopeAyat.isEmpty) {
+      return;
+    }
+
+    final pageSequence = _extractSortedUniqueValues(
+      _navigationScopeAyat,
+      (ayah) => ayah.page,
+    );
+    final hasCompletePageData =
+        pageSequence.isNotEmpty && _navigationScopeAyat.every((ayah) => ayah.page != null);
+
+    if (hasCompletePageData) {
+      _navigationMode = _ReadingNavigationMode.page;
+      _pageSequence = pageSequence;
+
+      final preferredPage = widget.restoredPage ??
+          widget.page ??
+          _firstValueForSelectedSurah(
+            _navigationScopeAyat,
+            (ayah) => ayah.page,
+          );
+
+      _currentPage = _resolveClosestAvailableValue(_pageSequence, preferredPage);
+      _initialPage ??= _currentPage;
+      return;
+    }
+
+    _navigationMode = _ReadingNavigationMode.hizbQuarter;
+
+    final quarterSequence = _extractSortedUniqueValues(
+      _navigationScopeAyat,
+      (ayah) => ayah.hizbQuarter,
+    );
+
+    if (quarterSequence.isEmpty) {
+      return;
+    }
+
+    final preferredQuarter = widget.restoredHizbQuarter ??
+        widget.hizbQuarter ??
+        _firstValueForSelectedSurah(
+          _navigationScopeAyat,
+          (ayah) => ayah.hizbQuarter,
+        );
+
+    _minHizbQuarter = quarterSequence.first;
+    _maxHizbQuarter = quarterSequence.last;
+    _currentHizbQuarter = _resolveClosestAvailableValue(
+      quarterSequence,
+      preferredQuarter,
+    );
+    if (widget.filterTypeId == FilterTypes.parts ||
+        widget.filterTypeId == FilterTypes.thirds) {
+      _initialHizbQuarter = null;
+    } else {
+      _initialHizbQuarter ??= _currentHizbQuarter;
+    }
+  }
+
+  Future<List<Ayat>> _loadCurrentNavigationAyat() async {
+    await _ensureNavigationInitialized();
+
+    if (_isPageNavigation) {
+      return _navigationScopeAyat
+          .where((ayah) => ayah.page == _currentPage)
+          .toList();
+    }
+
+    if (_currentHizbQuarter != null) {
+      return _navigationScopeAyat
+          .where((ayah) => ayah.hizbQuarter == _currentHizbQuarter)
+          .toList();
+    }
+
+    return List<Ayat>.from(_navigationScopeAyat);
+  }
+
+  Future<void> _loadAdjacentChunk({required bool forward}) async {
+    final userId = context.read<UsersProvider>().selectedUser!.id;
+    final evalProvider = context.read<EvaluationsProvider>();
+
+    if (_isPageNavigation) {
+      final currentIndex = _pageSequence.indexOf(_currentPage!);
+      if (currentIndex == -1) {
+        return;
+      }
+
+      final nextIndex = forward ? currentIndex + 1 : currentIndex - 1;
+      if (nextIndex < 0 || nextIndex >= _pageSequence.length) {
+        return;
+      }
+
+      setState(() {
+        _currentPage = _pageSequence[nextIndex];
+      });
+      await _loadAyat(userId, evalProvider);
+      return;
+    }
+
+    if (_currentHizbQuarter == null) {
+      return;
+    }
+
+    final nextQuarter = forward
+        ? _currentHizbQuarter! + 1
+        : _currentHizbQuarter! - 1;
+    if ((_minHizbQuarter != null && nextQuarter < _minHizbQuarter!) ||
+        (_maxHizbQuarter != null && nextQuarter > _maxHizbQuarter!)) {
+      return;
+    }
+
+    setState(() {
+      _currentHizbQuarter = nextQuarter;
+    });
+    await _loadAyat(userId, evalProvider);
+  }
 
   TapGestureRecognizer _getAyahTapRecognizer(
     Ayat ayah,
@@ -277,6 +502,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         filterTypeId: widget.filterTypeId,
         juz: widget.juz,
         hizb: widget.hizb,
+        currentPage: _isPageNavigation ? _currentPage : null,
         currentHizbQuarter: _currentHizbQuarter,
         shouldAutoResume: shouldAutoResume,
       ),
@@ -322,64 +548,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       int userId, EvaluationsProvider evaluationsProvider) async {
     await _refreshConnectivity();
 
-    if (_currentHizbQuarter == null ||
-        _minHizbQuarter == null ||
-        _maxHizbQuarter == null) {
-      if (widget.hizbQuarter != null) {
-        _currentHizbQuarter = widget.hizbQuarter;
-        _minHizbQuarter = 1;
-        _maxHizbQuarter = 240;
-      } else if ((widget.filterTypeId == FilterTypes.parts ||
-              widget.filterTypeId == FilterTypes.thirds) &&
-          widget.juz != null) {
-        // Start from the beginning of the Juz (Part)
-        _minHizbQuarter = (widget.juz! - 1) * 8 + 1;
-        _maxHizbQuarter = widget.juz! * 8;
-
-        // Find surah's starting quarter within this Juz
-        List<Ayat> surahAyat =
-            await AyatController().loadAyatBySurah(widget.surah.id);
-        if (surahAyat.isNotEmpty) {
-          int surahStart = surahAyat.first.hizbQuarter!;
-          _currentHizbQuarter = (widget.restoredHizbQuarter ?? surahStart)
-              .clamp(_minHizbQuarter!, _maxHizbQuarter!);
-        } else {
-          _currentHizbQuarter = widget.restoredHizbQuarter != null
-              ? widget.restoredHizbQuarter!.clamp(
-                  _minHizbQuarter!,
-                  _maxHizbQuarter!,
-                )
-              : _minHizbQuarter;
-        }
-      } else {
-        List<Ayat> initialAyat;
-        if (widget.filterTypeId == FilterTypes.parts ||
-            widget.filterTypeId == FilterTypes.thirds) {
-          initialAyat = await AyatController().loadAyatBySurah(widget.surah.id);
-        } else {
-          initialAyat = await AyatController().loadAyatByHizb(widget.hizb!);
-        }
-
-        if (initialAyat.isNotEmpty) {
-          final quarters =
-              initialAyat.map((e) => e.hizbQuarter).whereType<int>().toList();
-
-          quarters.sort();
-          _minHizbQuarter = quarters.first;
-          _maxHizbQuarter = quarters.last;
-          _currentHizbQuarter = widget.restoredHizbQuarter != null
-              ? widget.restoredHizbQuarter!.clamp(
-                  _minHizbQuarter!,
-                  _maxHizbQuarter!,
-                )
-              : _minHizbQuarter;
-        }
-        _initialHizbQuarter = _currentHizbQuarter;
-      }
-    }
-
-    List<Ayat> ayat =
-        await AyatController().loadAyatByHizbQuarter(_currentHizbQuarter!);
+    List<Ayat> ayat = await _loadCurrentNavigationAyat();
 
     // If navigating via Parts or Thirds filter, remove ayats from previous surahs in the same quarter
     // This ensures that if a quarter starts with Al-Fatihah but Al-Baqarah was selected, Al-Baqarah appears at the top.
@@ -726,14 +895,17 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           _hasConnection,
                           isDarkMode,
                         ),
-                        if (_currentHizbQuarter != null)
+                        if (_isPageNavigation || _currentHizbQuarter != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 20, bottom: 20),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                if (_currentHizbQuarter! >
-                                    (_initialHizbQuarter ?? _minHizbQuarter!))
+                                if ((_isPageNavigation &&
+                                        _pageSequence.indexOf(_currentPage!) > 0) ||
+                                    (!_isPageNavigation &&
+                                        _currentHizbQuarter! >
+                                            (_initialHizbQuarter ?? _minHizbQuarter!)))
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primaryPurple,
@@ -741,19 +913,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                       shape: const CircleBorder(),
                                       padding: const EdgeInsets.all(12),
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _currentHizbQuarter =
-                                            _currentHizbQuarter! - 1;
-                                      });
-                                      final userId = context
-                                          .read<UsersProvider>()
-                                          .selectedUser!
-                                          .id;
-                                      final evalProvider =
-                                          context.read<EvaluationsProvider>();
-                                      _loadAyat(userId, evalProvider);
-                                    },
+                                    onPressed: () =>
+                                        _loadAdjacentChunk(forward: false),
                                     child: const Icon(
                                       Icons.arrow_back_ios_new,
                                       size: 20,
@@ -761,7 +922,48 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                   )
                                 else
                                   const SizedBox(width: 48),
-                                if (_currentHizbQuarter! < _maxHizbQuarter!)
+                                if (_isPageNavigation)
+                                  Expanded(
+                                    child: Center(
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDarkMode
+                                              ? const Color(0xFF1E1E1E)
+                                              : Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                          border: Border.all(
+                                            color: isDarkMode
+                                                ? const Color(0xFF2C3442)
+                                                : const Color(0xFFDDE3DA),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _trParams(
+                                            'quran_reading_page_indicator',
+                                            {'page': _currentPage!.toString()},
+                                          ),
+                                          style: TextStyle(
+                                            color: isDarkMode
+                                                ? Colors.white
+                                                : AppColors.blackFontColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  const Spacer(),
+                                if ((_isPageNavigation &&
+                                        _pageSequence.indexOf(_currentPage!) <
+                                            _pageSequence.length - 1) ||
+                                    (!_isPageNavigation &&
+                                        _currentHizbQuarter! < _maxHizbQuarter!))
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primaryPurple,
@@ -769,19 +971,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                       shape: const CircleBorder(),
                                       padding: const EdgeInsets.all(12),
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _currentHizbQuarter =
-                                            _currentHizbQuarter! + 1;
-                                      });
-                                      final userId = context
-                                          .read<UsersProvider>()
-                                          .selectedUser!
-                                          .id;
-                                      final evalProvider =
-                                          context.read<EvaluationsProvider>();
-                                      _loadAyat(userId, evalProvider);
-                                    },
+                                    onPressed: () =>
+                                        _loadAdjacentChunk(forward: true),
                                     child: const Icon(
                                       Icons.arrow_forward_ios,
                                       size: 20,

@@ -10,6 +10,7 @@ class Ayat {
   int juz;
   int hizb;
   int? hizbQuarter;
+  int? page;
   int? wordCount;
   int? letterCount;
   double? weight;
@@ -27,6 +28,7 @@ class Ayat {
     required this.juz,
     required this.hizb,
     this.hizbQuarter,
+    this.page,
     this.wordCount,
     this.letterCount,
     this.weight,
@@ -49,6 +51,7 @@ class Ayat {
       juz: json['juz'],
       hizb: json['hizb'],
       hizbQuarter: json['hizbQuarter'],
+      page: json['page'],
       wordCount: json['wordCount'],
       letterCount: json['letterCount'],
       weight: json['weight'],
@@ -80,6 +83,7 @@ class Ayat {
       'juz': juz,
       'hizb': hizb,
       'hizbQuarter': hizbQuarter,
+      'page': page,
       'wordCount': wordCount,
       'letterCount': letterCount,
       'weight': weight,

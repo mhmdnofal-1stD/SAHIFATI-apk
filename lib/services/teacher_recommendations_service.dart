@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
@@ -38,7 +39,7 @@ class TeacherRecommendationsService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to load teacher recommendations');
+      throw Exception('service_teacher_recommendations_load_failed'.tr);
     }
 
     final List<dynamic> data = jsonDecode(res.body) as List<dynamic>;

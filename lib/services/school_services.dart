@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/services/sahifaty_api.dart';
 
@@ -22,7 +23,7 @@ class SchoolServices {
           return cachedSchool;
         }
 
-        throw Exception('Failed to load school data');
+        throw Exception('service_school_load_failed'.tr);
       }
     } catch (ex) {
       final cachedSchool = await _loadCachedSchool();

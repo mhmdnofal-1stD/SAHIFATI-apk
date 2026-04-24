@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
 class SurahsServices {
@@ -14,7 +15,7 @@ class SurahsServices {
         final Map<String, dynamic> data = jsonDecode(res.body);
         return data;
       } else {
-        throw Exception('Failed to load ayat');
+        throw Exception('service_surahs_load_failed'.tr);
       }
     } catch (ex) {
       rethrow;

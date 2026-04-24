@@ -58,17 +58,17 @@ class UsersController {
     String password = signUpPasswordController.text;
 
     if (password.isEmpty) {
-      throw Exception('أدخل كلمة المرور');
+      throw Exception('auth_password_validation_required'.tr);
     } else if (password.length < 8) {
-      throw Exception('يجب أن تحتوي كلمة المرور على ثمانية أحرف على الأقل');
+      throw Exception('auth_password_validation_length'.tr);
     } else if (!RegExp(r'[A-Z]').hasMatch(password)) {
-      throw Exception('يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل');
+      throw Exception('auth_password_validation_uppercase'.tr);
     } else if (!RegExp(r'[a-z]').hasMatch(password)) {
-      throw Exception('يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل');
+      throw Exception('auth_password_validation_lowercase'.tr);
     } else if (!RegExp(r'\d').hasMatch(password)) {
-      throw Exception('يجب أن تحتوي كلمة المرور على رقم واحد على الأقل');
+      throw Exception('auth_password_validation_number'.tr);
     } else if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
-      throw Exception('يجب أن تحتوي كلمة المرور على رمز واحد على الأقل');
+      throw Exception('auth_password_validation_symbol'.tr);
     }
   }
 
