@@ -6,8 +6,11 @@ import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
+import 'offline_assessment_store.dart';
+
 class EvaluationsServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
 
   Future<List<Evaluation>> getAllEvaluations({String? type}) async {
     try {
@@ -15,14 +18,22 @@ class EvaluationsServices {
       final http.Response res = await _sahifatyApi.get('evaluations$query');
 
       if (res.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(res.body);
-
-        // Map each item to Evaluation model
-        return data.map<Evaluation>((e) => Evaluation.fromJson(e)).toList();
+        await _offlineStore.cacheEvaluationsJson(res.body, type: type);
+        return _parseEvaluations(res.body);
       } else {
+        final cachedEvaluations = await _loadCachedEvaluations(type: type);
+        if (cachedEvaluations.isNotEmpty) {
+          return cachedEvaluations;
+        }
+
         throw Exception('Failed to load evaluations');
       }
     } catch (ex) {
+      final cachedEvaluations = await _loadCachedEvaluations(type: type);
+      if (cachedEvaluations.isNotEmpty) {
+        return cachedEvaluations;
+      }
+
       rethrow;
     }
   }
@@ -60,8 +71,8 @@ class EvaluationsServices {
       int userId, List<int> ayatIds) async {
     try {
       final ayatIdsParam = ayatIds.join(',');
-      final http.Response res = await _sahifatyApi
-          .get('user-evaluations?userId=$userId&ayatIds=$ayatIdsParam&limit=1000');
+      final http.Response res = await _sahifatyApi.get(
+          'user-evaluations?userId=$userId&ayatIds=$ayatIdsParam&limit=1000');
 
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(res.body);
@@ -88,9 +99,23 @@ class EvaluationsServices {
       http.Response response =
           await _sahifatyApi.post(url: 'user-evaluations/bulk', body: body);
 
-        return response;
+      return response;
     } catch (ex) {
       rethrow;
     }
+  }
+
+  List<Evaluation> _parseEvaluations(String rawJson) {
+    final List<dynamic> data = jsonDecode(rawJson);
+    return data.map<Evaluation>((e) => Evaluation.fromJson(e)).toList();
+  }
+
+  Future<List<Evaluation>> _loadCachedEvaluations({String? type}) async {
+    final cachedJson = await _offlineStore.getCachedEvaluationsJson(type: type);
+    if (cachedJson == null || cachedJson.isEmpty) {
+      return const [];
+    }
+
+    return _parseEvaluations(cachedJson);
   }
 }

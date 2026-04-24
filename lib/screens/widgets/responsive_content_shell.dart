@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/size_config.dart';
+import 'pending_sync_banner.dart';
 
 class ResponsiveContentShell extends StatelessWidget {
   const ResponsiveContentShell({
@@ -47,7 +48,14 @@ class ResponsiveContentShell extends StatelessWidget {
               child: LayoutBuilder(
                 builder: (context, contentConstraints) {
                   SizeConfig().initWithConstraints(context, contentConstraints);
-                  return builder?.call(context) ?? child!;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const PendingSyncBanner(),
+                      builder?.call(context) ?? child!,
+                    ],
+                  );
                 },
               ),
             ),

@@ -50,6 +50,20 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   final hasCompreOptions = comprehensionEvaluations.isNotEmpty;
 
   String text(String arabic, String english) => isArabic ? arabic : english;
+  String evaluationLabel(Evaluation evaluation) {
+    final localizedName =
+        evaluation.name[languageProvider.langCode]?.trim() ?? '';
+    if (localizedName.isNotEmpty) {
+      return localizedName;
+    }
+
+    final fallbackName = evaluation.name[isArabic ? 'ar' : 'en']?.trim() ?? '';
+    if (fallbackName.isNotEmpty) {
+      return fallbackName;
+    }
+
+    return evaluation.code;
+  }
 
   final effectiveTitle = title ??
       (hasMemoOptions && hasCompreOptions
@@ -84,7 +98,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
 
             return ChoiceChip(
               label: Text(
-                evaluation.code,
+                evaluationLabel(evaluation),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected
@@ -225,6 +239,13 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                 child: Text(text('إلغاء', 'Cancel')),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF132A4A),
+                  disabledBackgroundColor: const Color(0xFF132A4A)
+                      .withValues(alpha: 0.32),
+                  foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white70,
+                ),
                 onPressed: (memoChanged || compreChanged) &&
                         (hasMemoOptions || hasCompreOptions)
                     ? () {

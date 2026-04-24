@@ -16,8 +16,6 @@ class EvaluationsController {
   static final EvaluationsController _instance =
       EvaluationsController._internal();
 
-
-
   factory EvaluationsController() => _instance;
 
   EvaluationsController._internal();
@@ -25,11 +23,8 @@ class EvaluationsController {
   static const String memorizationDimension = 'memorization';
   static const String comprehensionDimension = 'comprehension';
 
-  Future<void> sendEvaluation(
-      Ayat verse,
-      Evaluation evaluation,
-      EvaluationsProvider evaluationsProvider,
-      AyatProvider? ayatProvider,
+  Future<void> sendEvaluation(Ayat verse, Evaluation evaluation,
+      EvaluationsProvider evaluationsProvider, AyatProvider? ayatProvider,
       {bool clearSelection = false}) async {
     final isComprehension = evaluation.type == comprehensionDimension;
 
@@ -45,10 +40,8 @@ class EvaluationsController {
     );
   }
 
-  Future<void> sendEvaluationSelection(
-      Ayat verse,
-      EvaluationsProvider evaluationsProvider,
-      AyatProvider? ayatProvider,
+  Future<void> sendEvaluationSelection(Ayat verse,
+      EvaluationsProvider evaluationsProvider, AyatProvider? ayatProvider,
       {int? memoId,
       int? compreId,
       required bool memoChanged,
@@ -72,40 +65,19 @@ class EvaluationsController {
           await evaluationsProvider.evaluateAyah(userEvaluation);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Fluttertoast.showToast(
-          msg: 'eval_success_verse'.tr,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
+        _showToast('eval_success_verse'.tr, Colors.green);
 
         // increment evaluated verses if coming from questions screen
         // if(ayatProvider != null) {
         //   ayatProvider.incrementEvaluatedVersesCount();
         // }
+      } else if (response.statusCode == 202) {
+        _showToast(_offlineQueuedMessage(), Colors.blueGrey);
       } else {
-        await evaluationsProvider.evaluateAyah(userEvaluation);
-
-        Fluttertoast.showToast(
-          msg: 'eval_error'.tr,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
+        _showToast('eval_error'.tr, Colors.red);
       }
     } catch (error) {
-      Fluttertoast.showToast(
-        msg: 'generic_error'.tr,
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
+      _showToast('generic_error'.tr, Colors.red);
     }
   }
 
@@ -160,38 +132,20 @@ class EvaluationsController {
           await evaluationsProvider.evaluateMultipleAyat(userEvaluation);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Fluttertoast.showToast(
-          msg: 'eval_success_unit'.trParams({'unit': unitName}),
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.green,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
+        _showToast(
+            'eval_success_unit'.trParams({'unit': unitName}), Colors.green);
 
         // increment evaluated verses if coming from questions screen
         // if(ayatProvider != null) {
         //   ayatProvider.incrementEvaluatedVersesCount();
         // }
+      } else if (response.statusCode == 202) {
+        _showToast(_offlineQueuedMessage(unitName: unitName), Colors.blueGrey);
       } else {
-        Fluttertoast.showToast(
-          msg: 'eval_error'.tr,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          fontSize: 16.0,
-        );
+        _showToast('eval_error'.tr, Colors.red);
       }
     } catch (error) {
-      Fluttertoast.showToast(
-        msg: 'generic_error'.tr,
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
+      _showToast('generic_error'.tr, Colors.red);
       rethrow;
     }
   }
@@ -319,7 +273,8 @@ class EvaluationsController {
   }
 
   Color getColorForChartEntry(ChartEvaluationData evaluation) {
-    return _parseColor(evaluation.color, fallback: getColorForEvaluationId(evaluation.evaluationId));
+    return _parseColor(evaluation.color,
+        fallback: getColorForEvaluationId(evaluation.evaluationId));
   }
 
   Color getColorForEvaluationModel(Evaluation? evaluation) {
@@ -369,5 +324,29 @@ class EvaluationsController {
     } catch (_) {
       return fallback;
     }
+  }
+
+  void _showToast(String message, Color backgroundColor) {
+    Fluttertoast.showToast(
+      msg: message,
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: backgroundColor,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+  }
+
+  String _offlineQueuedMessage({String? unitName}) {
+    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
+    if (unitName != null && unitName.isNotEmpty) {
+      return isArabic
+          ? 'تم حفظ تقييم $unitName على الجهاز وسيتم مزامنته عند عودة الاتصال.'
+          : 'The $unitName assessment was saved on this device and will sync when the connection returns.';
+    }
+
+    return isArabic
+        ? 'تم حفظ التقييم على الجهاز وسيتم مزامنته عند عودة الاتصال.'
+        : 'The assessment was saved on this device and will sync when the connection returns.';
   }
 }

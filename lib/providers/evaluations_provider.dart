@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -8,10 +11,16 @@ import 'package:sahifaty/models/school_level_content.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
+import 'package:sahifaty/services/offline_assessment_store.dart';
+import 'package:sahifaty/services/secure_session_storage.dart';
 
 import '../models/chart_evaluation_data.dart';
 
 class EvaluationsProvider with ChangeNotifier {
+  EvaluationsProvider() {
+    unawaited(_initializeOfflineSupport());
+  }
+
   List<Evaluation> evaluations = [];
   List<UserEvaluation> userEvaluations = [];
   List<ChartEvaluationData> chartEvaluationData = [];
@@ -25,6 +34,10 @@ class EvaluationsProvider with ChangeNotifier {
   Map<String, List<Ayat>> _questionContentAyahs = {};
   Map<String, bool> _questionContentCompletion = {};
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _isSyncingPending = false;
+  int pendingSyncCount = 0;
 
   List<Evaluation> get memorizationEvaluations => evaluations
       .where((evaluation) =>
@@ -37,20 +50,33 @@ class EvaluationsProvider with ChangeNotifier {
 
   Future<List<Evaluation?>> getAllEvaluations({String? type}) async {
     setLoading();
-    evaluations = await _evaluationsServices.getAllEvaluations(type: type);
-    _refreshUserEvaluationMetadata();
-    resetLoading();
-    return evaluations;
+    try {
+      evaluations = await _evaluationsServices.getAllEvaluations(type: type);
+      _refreshUserEvaluationMetadata();
+      await syncPendingEvaluations();
+      return evaluations;
+    } finally {
+      resetLoading();
+    }
   }
-
 
   Future<http.Response> evaluateAyah(Map<String, dynamic> body) async {
     try {
       setLoading();
+      if (!await _canUseRemoteSync()) {
+        return _queueEvaluation('single', body);
+      }
+
       http.Response response = await _evaluationsServices.evaluateAyah(body);
-      resetLoading();
+      if (_isSuccessStatus(response.statusCode)) {
+        await syncPendingEvaluations();
+      }
       return response;
     } catch (ex) {
+      if (_shouldDeferToOffline(ex)) {
+        return _queueEvaluation('single', body);
+      }
+
       rethrow;
     } finally {
       resetLoading();
@@ -59,18 +85,27 @@ class EvaluationsProvider with ChangeNotifier {
 
   Future<http.Response> evaluateMultipleAyat(Map<String, dynamic> body) async {
     try {
-
       setLoading();
-      http.Response response = await _evaluationsServices.evaluateMultipleAyat(body);
-      resetLoading();
+      if (!await _canUseRemoteSync()) {
+        return _queueEvaluation('bulk', body);
+      }
+
+      http.Response response =
+          await _evaluationsServices.evaluateMultipleAyat(body);
+      if (_isSuccessStatus(response.statusCode)) {
+        await syncPendingEvaluations();
+      }
       return response;
     } catch (ex) {
+      if (_shouldDeferToOffline(ex)) {
+        return _queueEvaluation('bulk', body);
+      }
+
       rethrow;
     } finally {
       resetLoading();
     }
   }
-
 
   Future<void> getQuranChartData(
     int userId, {
@@ -104,12 +139,17 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
   Future<void> getAllUserEvaluations(int userId, List<int> ayatIds) async {
-    userEvaluations.clear();
     setLoading();
-    userEvaluations =
-        await _evaluationsServices.getAllUserEvaluations(userId, ayatIds);
-    _refreshUserEvaluationMetadata();
-    resetLoading();
+    try {
+      final evaluationsByAyahId = await _loadUserEvaluationsByAyahId(
+        userId,
+        ayatIds,
+      );
+      userEvaluations = evaluationsByAyahId.values.toList();
+      _refreshUserEvaluationMetadata();
+    } finally {
+      resetLoading();
+    }
   }
 
   Future<void> preloadQuestionLevelData(
@@ -150,19 +190,10 @@ class EvaluationsProvider with ChangeNotifier {
         );
       }
 
-      final Map<int, UserEvaluation> evaluationsByAyahId = {};
-      if (ayahIds.isNotEmpty) {
-        final fetchedEvaluations =
-            await _evaluationsServices.getAllUserEvaluations(userId, ayahIds.toList());
-
-        for (final evaluation in fetchedEvaluations) {
-          _enrichUserEvaluation(evaluation);
-          final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
-          if (ayahId != null) {
-            evaluationsByAyahId[ayahId] = evaluation;
-          }
-        }
-      }
+      final evaluationsByAyahId = await _loadUserEvaluationsByAyahId(
+        userId,
+        ayahIds.toList(),
+      );
 
       final Map<String, bool> completionByContent = {};
 
@@ -173,9 +204,9 @@ class EvaluationsProvider with ChangeNotifier {
           }
         }
 
-        completionByContent[entry.key] =
-          entry.value.isNotEmpty &&
-            entry.value.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
+        completionByContent[entry.key] = entry.value.isNotEmpty &&
+            entry.value
+                .every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
       }
 
       if (requestId != _questionLoadRequestId) {
@@ -211,9 +242,8 @@ class EvaluationsProvider with ChangeNotifier {
     List<Ayat> ayahs,
   ) {
     _questionContentAyahs[content.cacheKey] = ayahs;
-    _questionContentCompletion[content.cacheKey] =
-        ayahs.isNotEmpty &&
-            ayahs.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
+    _questionContentCompletion[content.cacheKey] = ayahs.isNotEmpty &&
+        ayahs.every((ayah) => ayah.userEvaluation?.hasAnyAssessment == true);
     notifyListeners();
   }
 
@@ -231,7 +261,8 @@ class EvaluationsProvider with ChangeNotifier {
     }
 
     return userEvaluations.firstWhereOrNull(
-      (evaluation) => evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
+      (evaluation) =>
+          evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
     );
   }
 
@@ -244,7 +275,8 @@ class EvaluationsProvider with ChangeNotifier {
     }
 
     final index = userEvaluations.indexWhere(
-      (evaluation) => evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
+      (evaluation) =>
+          evaluation.ayah?.id == ayahId || evaluation.ayahId == ayahId,
     );
 
     if (index == -1) {
@@ -263,10 +295,195 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
   void _enrichUserEvaluation(UserEvaluation userEvaluation) {
-    userEvaluation.memoEvaluation =
-        userEvaluation.memoEvaluation ?? findEvaluationById(userEvaluation.memoId);
-    userEvaluation.compreEvaluation =
-        userEvaluation.compreEvaluation ?? findEvaluationById(userEvaluation.compreId);
+    userEvaluation.memoEvaluation = userEvaluation.memoEvaluation ??
+        findEvaluationById(userEvaluation.memoId);
+    userEvaluation.compreEvaluation = userEvaluation.compreEvaluation ??
+        findEvaluationById(userEvaluation.compreId);
+  }
+
+  Future<void> _initializeOfflineSupport() async {
+    await _refreshPendingSyncCount(notify: false);
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      if (results.contains(ConnectivityResult.none)) {
+        return;
+      }
+
+      unawaited(syncPendingEvaluations());
+    });
+
+    unawaited(syncPendingEvaluations());
+  }
+
+  Future<Map<int, UserEvaluation>> _loadUserEvaluationsByAyahId(
+    int userId,
+    List<int> ayatIds,
+  ) async {
+    final Map<int, UserEvaluation> evaluationsByAyahId = {};
+    if (ayatIds.isEmpty) {
+      return evaluationsByAyahId;
+    }
+
+    if (await _canUseRemoteSync()) {
+      try {
+        final fetchedEvaluations =
+            await _evaluationsServices.getAllUserEvaluations(
+          userId,
+          ayatIds,
+        );
+
+        for (final evaluation in fetchedEvaluations) {
+          _enrichUserEvaluation(evaluation);
+          final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
+          if (ayahId != null) {
+            evaluationsByAyahId[ayahId] = evaluation;
+          }
+        }
+      } catch (error) {
+        if (!_shouldDeferToOffline(error)) {
+          rethrow;
+        }
+      }
+    }
+
+    final pendingOverlay =
+        await _buildPendingEvaluationOverlay(ayatIds.toSet());
+    evaluationsByAyahId.addAll(pendingOverlay);
+    return evaluationsByAyahId;
+  }
+
+  Future<Map<int, UserEvaluation>> _buildPendingEvaluationOverlay(
+    Set<int> ayatIds,
+  ) async {
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    final pendingItems = await _offlineStore.getPendingEvaluationSyncItems();
+    final overlay = <int, UserEvaluation>{};
+
+    for (final item in pendingItems) {
+      if (!_matchesActiveAccount(item, activeAccountKey)) {
+        continue;
+      }
+
+      final body = item.body;
+      final singleAyahId = _asInt(body['ayahId']);
+      if (singleAyahId != null && ayatIds.contains(singleAyahId)) {
+        overlay[singleAyahId] = _mergeQueuedEvaluation(
+          overlay[singleAyahId],
+          singleAyahId,
+          body,
+        );
+      }
+
+      final bulkAyahIds = body['ayahIds'];
+      if (bulkAyahIds is List) {
+        for (final rawAyahId in bulkAyahIds) {
+          final ayahId = _asInt(rawAyahId);
+          if (ayahId == null || !ayatIds.contains(ayahId)) {
+            continue;
+          }
+
+          overlay[ayahId] = _mergeQueuedEvaluation(
+            overlay[ayahId],
+            ayahId,
+            body,
+          );
+        }
+      }
+    }
+
+    for (final userEvaluation in overlay.values) {
+      _enrichUserEvaluation(userEvaluation);
+    }
+
+    return overlay;
+  }
+
+  UserEvaluation _mergeQueuedEvaluation(
+    UserEvaluation? existing,
+    int ayahId,
+    Map<String, dynamic> body,
+  ) {
+    final hasMemo = body.containsKey('memo_id');
+    final hasCompre = body.containsKey('compre_id');
+    final nextMemoId = hasMemo ? _asInt(body['memo_id']) : existing?.memoId;
+    final nextCompreId =
+        hasCompre ? _asInt(body['compre_id']) : existing?.compreId;
+
+    return UserEvaluation(
+      id: existing?.id,
+      ayahId: ayahId,
+      comment: existing?.comment,
+      memoId: nextMemoId,
+      compreId: nextCompreId,
+      memoEvaluation: findEvaluationById(nextMemoId),
+      compreEvaluation: findEvaluationById(nextCompreId),
+      ayah: existing?.ayah,
+    );
+  }
+
+  Future<http.Response> _queueEvaluation(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    await _offlineStore.enqueuePendingEvaluation(
+      endpoint: endpoint,
+      body: Map<String, dynamic>.from(body),
+    );
+    await _refreshPendingSyncCount();
+    return http.Response('{"queued":true}', 202, headers: {
+      'content-type': 'application/json',
+    });
+  }
+
+  Future<void> syncPendingEvaluations() async {
+    if (_isSyncingPending) {
+      return;
+    }
+
+    final pendingItems = await _offlineStore.getPendingEvaluationSyncItems();
+    if (pendingItems.isEmpty) {
+      if (pendingSyncCount != 0) {
+        pendingSyncCount = 0;
+        notifyListeners();
+      }
+      return;
+    }
+
+    if (!await _canUseRemoteSync()) {
+      await _refreshPendingSyncCount();
+      return;
+    }
+
+    _isSyncingPending = true;
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    final remaining = <PendingEvaluationSyncItem>[];
+
+    try {
+      for (var index = 0; index < pendingItems.length; index++) {
+        final item = pendingItems[index];
+        if (!_matchesActiveAccount(item, activeAccountKey)) {
+          remaining.add(item);
+          continue;
+        }
+
+        try {
+          final response = await _sendPendingEvaluation(item);
+          if (!_isSuccessStatus(response.statusCode)) {
+            remaining.add(item);
+          }
+        } catch (_) {
+          remaining.add(item);
+          remaining.addAll(pendingItems.skip(index + 1));
+          break;
+        }
+      }
+
+      await _offlineStore.replacePendingEvaluationSyncItems(remaining);
+    } finally {
+      _isSyncingPending = false;
+      await _refreshPendingSyncCount();
+    }
   }
 
   void resetForAccountSwitch() {
@@ -279,10 +496,86 @@ class EvaluationsProvider with ChangeNotifier {
     _questionContentAyahs = {};
     _questionContentCompletion = {};
     isQuestionsLevelLoading = false;
+    pendingSyncCount = 0;
     isLoading = false;
     notifyListeners();
   }
 
+  Future<void> _refreshPendingSyncCount({bool notify = true}) async {
+    final nextCount =
+        (await _offlineStore.getPendingEvaluationSyncItems()).length;
+    final changed = nextCount != pendingSyncCount;
+    pendingSyncCount = nextCount;
+    if (notify && changed) {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _canUseRemoteSync() async {
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity.contains(ConnectivityResult.none)) {
+      return false;
+    }
+
+    final accessToken = await SecureSessionStorage.readAccessToken();
+    return accessToken != null && accessToken.isNotEmpty;
+  }
+
+  Future<http.Response> _sendPendingEvaluation(
+    PendingEvaluationSyncItem item,
+  ) async {
+    switch (item.endpoint) {
+      case 'bulk':
+        return _evaluationsServices.evaluateMultipleAyat(item.body);
+      case 'single':
+      default:
+        return _evaluationsServices.evaluateAyah(item.body);
+    }
+  }
+
+  bool _matchesActiveAccount(
+    PendingEvaluationSyncItem item,
+    String? activeAccountKey,
+  ) {
+    final itemAccountKey = item.accountKey;
+    if (itemAccountKey == null || itemAccountKey.isEmpty) {
+      return true;
+    }
+
+    return itemAccountKey == activeAccountKey;
+  }
+
+  bool _isSuccessStatus(int statusCode) {
+    return statusCode == 200 || statusCode == 201;
+  }
+
+  bool _shouldDeferToOffline(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('no internet') ||
+        message.contains('communication') ||
+        message.contains('socket') ||
+        message.contains('timed out') ||
+        message.contains('timeout');
+  }
+
+  int? _asInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse(value.toString());
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
 
   void setLoading() {
     isLoading = true;
@@ -293,7 +586,6 @@ class EvaluationsProvider with ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
-
 
   String getName(int? id, LanguageProvider languageProvider) {
     isLoading = true;
@@ -307,5 +599,4 @@ class EvaluationsProvider with ChangeNotifier {
       isLoading = false;
     }
   }
-
 }

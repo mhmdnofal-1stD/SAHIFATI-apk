@@ -26,6 +26,7 @@ import '../widgets/global_drawer.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
+import '../widgets/pending_sync_banner.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 
 class IndexPage extends StatefulWidget {
@@ -670,6 +671,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
+                          const PendingSyncBanner(bottomPadding: 12),
                         Container(
                           width: double.infinity,
                           constraints: const BoxConstraints(maxWidth: 980),

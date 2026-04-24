@@ -279,4 +279,117 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('assessment dialog shows localized evaluation names instead of codes',
+      (tester) async {
+    final evaluationsProvider = EvaluationsProvider()
+      ..evaluations = [
+        app_models.Evaluation(
+          id: 1,
+          code: 'g',
+          name: const {'en': 'Mastered', 'ar': 'متمكن'},
+          type: 'memorization',
+          color: '#1A7F37',
+        ),
+        app_models.Evaluation(
+          id: 2,
+          code: '1',
+          name: const {'en': 'Yes', 'ar': 'نعم'},
+          type: 'comprehension',
+          color: '#1A73E8',
+        ),
+      ];
+    final languageProvider = LanguageProvider()..setLangCode('ar');
+
+    await _pumpFlow(
+      tester,
+      evaluationsProvider: evaluationsProvider,
+      languageProvider: languageProvider,
+      child: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                showAssessmentInputDialog(
+                  context: context,
+                  evaluationsProvider: evaluationsProvider,
+                  languageProvider: context.read<LanguageProvider>(),
+                );
+              },
+              child: const Text('Open dialog'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open dialog'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('متمكن'), findsOneWidget);
+    expect(find.text('نعم'), findsOneWidget);
+    expect(find.text('g'), findsNothing);
+    expect(find.text('1'), findsNothing);
+  });
+
+  testWidgets('assessment dialog save button uses a clear enabled color after changes',
+      (tester) async {
+    final evaluationsProvider = EvaluationsProvider()
+      ..evaluations = [
+        app_models.Evaluation(
+          id: 1,
+          code: 'STRONG',
+          name: const {'en': 'Strong', 'ar': 'قوي'},
+          type: 'memorization',
+          color: '#00AA55',
+        ),
+      ];
+    final languageProvider = LanguageProvider()..setLangCode('en');
+
+    await _pumpFlow(
+      tester,
+      evaluationsProvider: evaluationsProvider,
+      languageProvider: languageProvider,
+      child: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () {
+                showAssessmentInputDialog(
+                  context: context,
+                  evaluationsProvider: evaluationsProvider,
+                  languageProvider: context.read<LanguageProvider>(),
+                );
+              },
+              child: const Text('Open dialog'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open dialog'));
+    await tester.pumpAndSettle();
+
+    final saveFinder = find.widgetWithText(FilledButton, 'Save');
+    FilledButton saveButton = tester.widget<FilledButton>(saveFinder);
+
+    expect(saveButton.onPressed, isNull);
+    expect(
+      saveButton.style?.backgroundColor?.resolve(<WidgetState>{
+        WidgetState.disabled,
+      }),
+      const Color(0xFF132A4A).withValues(alpha: 0.32),
+    );
+
+    await tester.tap(find.text('Strong'));
+    await tester.pumpAndSettle();
+
+    saveButton = tester.widget<FilledButton>(saveFinder);
+    expect(saveButton.onPressed, isNotNull);
+    expect(
+      saveButton.style?.backgroundColor?.resolve(<WidgetState>{}),
+      const Color(0xFF132A4A),
+    );
+  });
 }
