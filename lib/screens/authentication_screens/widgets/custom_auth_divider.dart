@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/utils/size_config.dart';
 
@@ -24,7 +25,7 @@ class CustomAuthDivider extends StatelessWidget {
               padding: EdgeInsets.symmetric(
                 horizontal: SizeConfig.getProportionalWidth(30),
               ),
-              child: const Text("أو")),
+              child: Text('auth_divider_or'.tr)),
           const Expanded(
             child: Divider(
               color: AppColors.authDividerColor,

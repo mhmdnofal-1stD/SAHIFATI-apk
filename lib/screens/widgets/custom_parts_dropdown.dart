@@ -16,12 +16,14 @@ class CustomPartsDropdown extends StatefulWidget {
   final Map<String, dynamic> part;
   final bool isOpen;
   final VoidCallback onToggle;
+  final Future<List<Surah>> Function(int partId)? loadSurahsByPart;
 
   const CustomPartsDropdown({
     super.key,
     required this.part,
     required this.isOpen,
     required this.onToggle,
+    this.loadSurahsByPart,
   });
 
   @override
@@ -52,8 +54,7 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
     final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
     final size = renderBox.size;
-    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-    String text(String arabic, String english) => isArabic ? arabic : english;
+    final partId = widget.part['id'] as int;
     final screenHeight = MediaQuery.of(context).size.height;
     const double maxDropdownHeight = 200.0;
 
@@ -82,7 +83,8 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 200),
                 child: FutureBuilder<List<Surah>>(
-                  future: SurahsController().loadSurahsByJuz(widget.part['id']),
+                  future: widget.loadSurahsByPart?.call(partId) ??
+                      SurahsController().loadSurahsByJuz(partId),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState != ConnectionState.done) {
                       return Padding(
@@ -93,10 +95,7 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
                             const CircularProgressIndicator(),
                             const SizedBox(height: 12),
                             Text(
-                              text(
-                                'جارٍ تجهيز سور هذا الجزء...',
-                                'Preparing the surahs in this part...',
-                              ),
+                              'custom_part_loading'.tr,
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -106,11 +105,8 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
 
                     if (snapshot.hasError) {
                       return _PartsOverlayState(
-                        message: text(
-                          'تعذر تحميل السور لهذا الجزء الآن.',
-                          'We could not load the surahs for this part right now.',
-                        ),
-                        actionLabel: text('إعادة المحاولة', 'Retry'),
+                        message: 'custom_part_error'.tr,
+                        actionLabel: 'welcome_chart_retry'.tr,
                         onAction: () {
                           _removeOverlay();
                           WidgetsBinding.instance.addPostFrameCallback(
@@ -123,10 +119,7 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
                     final surahs = snapshot.data ?? const <Surah>[];
                     if (surahs.isEmpty) {
                       return _PartsOverlayState(
-                        message: text(
-                          'لا توجد سور جاهزة لهذا الجزء حاليًا.',
-                          'No surahs are available for this part right now.',
-                        ),
+                        message: 'custom_part_empty'.tr,
                       );
                     }
 

@@ -150,11 +150,7 @@ class SahifaScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          _copy(
-                            isArabic,
-                            '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
-                            '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
-                          ),
+                          '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,

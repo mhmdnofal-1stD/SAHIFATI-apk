@@ -48,8 +48,6 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String get _resetToken => widget.resetToken?.trim() ?? '';
   String get _previewState => widget.previewState?.trim().toLowerCase() ?? '';
 
-  String _copy(String ar, String en) => _isArabic ? ar : en;
-
   _RecoveryStage _resolveInitialStage() {
     switch (_previewState) {
       case 'requestaccepted':
@@ -77,19 +75,13 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       case 'backenderror':
         _stage = _RecoveryStage.requestForm;
         _emailBorderColor = AppColors.errorColor;
-        _inlineMessage = _copy(
-          'تعذر إرسال رابط إعادة التعيين الآن. حاول مرة أخرى بعد قليل.',
-          'The reset link could not be sent right now. Please try again shortly.',
-        );
+        _inlineMessage = 'forgot_password_preview_request_error'.tr;
         _inlineIsError = true;
         return;
       case 'reseterror':
         _stage = _RecoveryStage.resetForm;
         _passwordBorderColor = AppColors.errorColor;
-        _inlineMessage = _copy(
-          'تعذر إكمال إعادة التعيين الآن رغم أن الرابط ما زال صالحًا. حاول مرة أخرى بعد قليل.',
-          'The password reset could not be completed right now even though the link is still valid. Please try again shortly.',
-        );
+        _inlineMessage = 'forgot_password_preview_reset_error'.tr;
         _inlineIsError = true;
         return;
       default:
@@ -122,37 +114,22 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   String? _validatePassword(String password) {
     if (password.isEmpty) {
-      return _copy('أدخل كلمة المرور الجديدة', 'Enter a new password');
+      return 'forgot_password_validation_password_required'.tr;
     }
     if (password.length < 8) {
-      return _copy(
-        'يجب أن تتكون كلمة المرور من ثمانية أحرف على الأقل',
-        'Password must be at least 8 characters',
-      );
+      return 'forgot_password_validation_password_length'.tr;
     }
     if (!RegExp(r'[A-Z]').hasMatch(password)) {
-      return _copy(
-        'يجب أن تحتوي كلمة المرور على حرف كبير واحد على الأقل',
-        'Password must include at least one uppercase letter',
-      );
+      return 'forgot_password_validation_password_uppercase'.tr;
     }
     if (!RegExp(r'[a-z]').hasMatch(password)) {
-      return _copy(
-        'يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل',
-        'Password must include at least one lowercase letter',
-      );
+      return 'forgot_password_validation_password_lowercase'.tr;
     }
     if (!RegExp(r'\d').hasMatch(password)) {
-      return _copy(
-        'يجب أن تحتوي كلمة المرور على رقم واحد على الأقل',
-        'Password must include at least one number',
-      );
+      return 'forgot_password_validation_password_number'.tr;
     }
     if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
-      return _copy(
-        'يجب أن تحتوي كلمة المرور على رمز واحد على الأقل',
-        'Password must include at least one symbol',
-      );
+      return 'forgot_password_validation_password_symbol'.tr;
     }
 
     return null;
@@ -192,10 +169,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (email.isEmpty) {
       setState(() {
         _emailBorderColor = AppColors.errorColor;
-        _inlineMessage = _copy(
-          'أدخل البريد الإلكتروني المرتبط بحسابك',
-          'Enter the email linked to your account',
-        );
+        _inlineMessage = 'forgot_password_validation_email_required'.tr;
         _inlineIsError = true;
       });
       return;
@@ -204,10 +178,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!GetUtils.isEmail(email)) {
       setState(() {
         _emailBorderColor = AppColors.errorColor;
-        _inlineMessage = _copy(
-          'أدخل بريدًا إلكترونيًا صحيحًا',
-          'Enter a valid email address',
-        );
+        _inlineMessage = 'forgot_password_validation_email_invalid'.tr;
         _inlineIsError = true;
       });
       return;
@@ -264,10 +235,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (confirmPassword != password) {
       setState(() {
         _confirmPasswordBorderColor = AppColors.errorColor;
-        _inlineMessage = _copy(
-          'كلمتا المرور غير متطابقتين',
-          'Passwords do not match',
-        );
+        _inlineMessage = 'forgot_password_validation_password_mismatch'.tr;
         _inlineIsError = true;
       });
       return;
@@ -474,19 +442,13 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _buildInfoCard(
           icon: Icons.mark_email_read_outlined,
           accent: const Color(0xFF0B6B57),
-          title: _copy(
-            'استعد الوصول إلى حسابك بهدوء',
-            'Recover access without guesswork',
-          ),
-          body: _copy(
-            'أدخل بريد الحساب وسنرسل رابط إعادة التعيين إذا كان الحساب مؤهلاً لذلك. لن نعرض رسالة نجاح وهمية خارج العقد الحقيقي مع الخادم.',
-            'Enter your account email and we will send a reset link if the account is eligible. The screen only shows accepted feedback when the real backend contract returns it.',
-          ),
+          title: 'forgot_password_request_card_title'.tr,
+          body: 'forgot_password_request_card_body'.tr,
         ),
         const SizedBox(height: 18),
         CustomAuthenticationTextField(
-          hintText: _copy('example@example.com', 'example@example.com'),
-          semanticLabel: _copy('البريد الإلكتروني', 'Email address'),
+          hintText: 'forgot_password_email_hint'.tr,
+          semanticLabel: 'forgot_password_email_semantic'.tr,
           obscureText: false,
           leadingIcon: Icons.alternate_email_rounded,
           keyboardType: TextInputType.emailAddress,
@@ -502,10 +464,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 10),
         Text(
-          _copy(
-            'سنحافظ على الرسالة عامة حتى لا تكشف الصفحة ما إذا كان البريد مسجلاً أم لا.',
-            'The confirmation stays generic so this surface does not disclose whether the email exists.',
-          ),
+          'forgot_password_request_caption'.tr,
           textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
           style: TextStyle(
             fontFamily: AppFonts.primaryFont,
@@ -520,7 +479,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ],
         const SizedBox(height: 20),
         _buildPrimaryButton(
-          label: _copy('إرسال رابط إعادة التعيين', 'Send reset link'),
+          label: 'forgot_password_request_submit'.tr,
           icon: Icons.send_rounded,
           isLoading: usersProvider.isLoading,
           onPressed:
@@ -529,7 +488,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 10),
         Center(
           child: _buildSecondaryAction(
-            label: _copy('العودة إلى تسجيل الدخول', 'Back to sign in'),
+            label: 'forgot_password_back_to_sign_in'.tr,
             onPressed: usersProvider.isLoading ? null : _openLogin,
           ),
         ),
@@ -544,18 +503,12 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _buildInfoCard(
           icon: Icons.mail_outline_rounded,
           accent: const Color(0xFF0B6B57),
-          title: _copy(
-            'تم تسجيل الطلب',
-            'The request was accepted',
-          ),
-          body: _copy(
-            'إذا كان هذا البريد مرتبطًا بحساب قابل لإعادة التعيين فستجد رسالة تحتوي على رابط صالح لمدة قصيرة. افتح الرسالة ثم أكمل التعيين من الرابط نفسه.',
-            'If this email is tied to an eligible account, you will receive a short-lived reset email. Open that message and continue from the link itself.',
-          ),
+          title: 'forgot_password_request_accepted_title'.tr,
+          body: 'forgot_password_request_accepted_body'.tr,
         ),
         const SizedBox(height: 18),
         _buildPrimaryButton(
-          label: _copy('العودة إلى تسجيل الدخول', 'Back to sign in'),
+          label: 'forgot_password_back_to_sign_in'.tr,
           icon: Icons.login_rounded,
           isLoading: false,
           onPressed: _openLogin,
@@ -563,7 +516,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 10),
         Center(
           child: _buildSecondaryAction(
-            label: _copy('تعديل البريد وإعادة المحاولة', 'Edit email and try again'),
+            label: 'forgot_password_edit_email'.tr,
             onPressed: () {
               setState(() {
                 _stage = _RecoveryStage.requestForm;
@@ -584,19 +537,13 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _buildInfoCard(
           icon: Icons.lock_reset_rounded,
           accent: const Color(0xFFAF7E22),
-          title: _copy(
-            'أنشئ كلمة مرور جديدة',
-            'Create a new password',
-          ),
-          body: _copy(
-            'استخدم كلمة مرور قوية ثم عد إلى صفحة الدخول. إذا كان الرابط منتهيًا أو سبق استخدامه سنحوّلك مباشرةً إلى طلب رابط جديد.',
-            'Choose a strong password, then return to sign in. If the link is expired or already used, the flow will take you back to requesting a fresh one.',
-          ),
+          title: 'forgot_password_reset_card_title'.tr,
+          body: 'forgot_password_reset_card_body'.tr,
         ),
         const SizedBox(height: 18),
         CustomAuthenticationTextField(
-          hintText: _copy('كلمة المرور الجديدة', 'New password'),
-          semanticLabel: _copy('كلمة المرور الجديدة', 'New password'),
+          hintText: 'forgot_password_new_password_hint'.tr,
+          semanticLabel: 'forgot_password_new_password_hint'.tr,
           obscureText: true,
           leadingIcon: Icons.lock_outline_rounded,
           keyboardType: TextInputType.visiblePassword,
@@ -607,11 +554,8 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         CustomAuthenticationTextField(
-          hintText: _copy('تأكيد كلمة المرور الجديدة', 'Confirm new password'),
-          semanticLabel: _copy(
-            'تأكيد كلمة المرور الجديدة',
-            'Confirm new password',
-          ),
+          hintText: 'forgot_password_confirm_password_hint'.tr,
+          semanticLabel: 'forgot_password_confirm_password_hint'.tr,
           obscureText: true,
           leadingIcon: Icons.verified_user_outlined,
           keyboardType: TextInputType.visiblePassword,
@@ -627,10 +571,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 10),
         Text(
-          _copy(
-            'ثمانية أحرف على الأقل مع حرف كبير وصغير ورقم ورمز.',
-            'At least 8 characters with uppercase, lowercase, a number, and a symbol.',
-          ),
+          'forgot_password_password_rules'.tr,
           textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
           style: TextStyle(
             fontFamily: AppFonts.primaryFont,
@@ -645,7 +586,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ],
         const SizedBox(height: 20),
         _buildPrimaryButton(
-          label: _copy('تحديث كلمة المرور', 'Update password'),
+          label: 'forgot_password_reset_submit'.tr,
           icon: Icons.check_circle_outline_rounded,
           isLoading: usersProvider.isLoading,
           onPressed:
@@ -654,7 +595,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 10),
         Center(
           child: _buildSecondaryAction(
-            label: _copy('العودة إلى تسجيل الدخول', 'Back to sign in'),
+            label: 'forgot_password_back_to_sign_in'.tr,
             onPressed: usersProvider.isLoading ? null : _openLogin,
           ),
         ),
@@ -669,18 +610,12 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _buildInfoCard(
           icon: Icons.task_alt_rounded,
           accent: const Color(0xFF0B6B57),
-          title: _copy(
-            'تم تحديث كلمة المرور',
-            'Password updated successfully',
-          ),
-          body: _copy(
-            'يمكنك الآن العودة إلى تسجيل الدخول واستخدام كلمة المرور الجديدة مباشرة. أي جلسات refresh قديمة أُبطلت من جهة الخادم.',
-            'You can now return to sign in with the new password. Older refresh sessions were invalidated by the backend.',
-          ),
+          title: 'forgot_password_reset_success_title'.tr,
+          body: 'forgot_password_reset_success_body'.tr,
         ),
         const SizedBox(height: 18),
         _buildPrimaryButton(
-          label: _copy('العودة إلى تسجيل الدخول', 'Back to sign in'),
+          label: 'forgot_password_back_to_sign_in'.tr,
           icon: Icons.login_rounded,
           isLoading: false,
           onPressed: _openLogin,
@@ -696,18 +631,12 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         _buildInfoCard(
           icon: Icons.link_off_rounded,
           accent: const Color(0xFFB13030),
-          title: _copy(
-            'الرابط لم يعد صالحًا',
-            'This reset link is no longer valid',
-          ),
-          body: _copy(
-            'قد يكون الرابط منتهي الصلاحية أو استُخدم من قبل. اطلب رابطًا جديدًا للمتابعة بدل إعادة محاولة نموذج لن ينجح.',
-            'The link may be expired or already used. Request a new one instead of retrying a form that cannot succeed anymore.',
-          ),
+          title: 'forgot_password_reset_expired_title'.tr,
+          body: 'forgot_password_reset_expired_body'.tr,
         ),
         const SizedBox(height: 18),
         _buildPrimaryButton(
-          label: _copy('طلب رابط جديد', 'Request a new link'),
+          label: 'forgot_password_request_new_link'.tr,
           icon: Icons.mark_email_unread_outlined,
           isLoading: false,
           onPressed: () {
@@ -722,7 +651,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 10),
         Center(
           child: _buildSecondaryAction(
-            label: _copy('العودة إلى تسجيل الدخول', 'Back to sign in'),
+            label: 'forgot_password_back_to_sign_in'.tr,
             onPressed: _openLogin,
           ),
         ),
@@ -735,41 +664,25 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final usersProvider = Provider.of<UsersProvider>(context);
 
     final title = switch (_stage) {
-      _RecoveryStage.requestForm || _RecoveryStage.requestAccepted => _copy(
-          'استعادة الوصول إلى الحساب',
-          'Recover access to your account',
-        ),
-      _RecoveryStage.resetForm || _RecoveryStage.resetSuccess => _copy(
-          'إعادة تعيين كلمة المرور',
-          'Reset your password',
-        ),
-      _RecoveryStage.resetExpired => _copy(
-          'رابط إعادة التعيين',
-          'Password reset link',
-        ),
+      _RecoveryStage.requestForm || _RecoveryStage.requestAccepted =>
+        'forgot_password_stage_title_request'.tr,
+      _RecoveryStage.resetForm || _RecoveryStage.resetSuccess =>
+        'forgot_password_stage_title_reset'.tr,
+      _RecoveryStage.resetExpired =>
+        'forgot_password_stage_title_link'.tr,
     };
 
     final subtitle = switch (_stage) {
-      _RecoveryStage.requestForm => _copy(
-          'جزء واضح من رحلة الدخول نفسها: اطلب الرابط، افتح البريد، ثم عد إلى الحساب من دون رسائل مضللة.',
-          'A clear part of the sign-in journey: request the link, open the email, and come back without misleading success states.',
-        ),
-      _RecoveryStage.requestAccepted => _copy(
-          'الخطوة التالية أصبحت في البريد. عندما يفتح الرابط سننقلك مباشرة إلى تحديث كلمة المرور.',
-          'The next step is now in the email. When the link opens, this flow will take you straight into the new-password step.',
-        ),
-      _RecoveryStage.resetForm => _copy(
-          'أنت الآن في الخطوة الحاسمة: غيّر كلمة المرور ثم ارجع إلى شاشة الدخول بكلمة المرور الجديدة.',
-          'You are at the decisive step now: set the new password, then return to sign in with it.',
-        ),
-      _RecoveryStage.resetSuccess => _copy(
-          'الرحلة اكتملت. لم يبقَ إلا تسجيل الدخول مجددًا بكلمة المرور الجديدة.',
-          'The recovery journey is complete. The only next step is signing in with the updated password.',
-        ),
-      _RecoveryStage.resetExpired => _copy(
-          'لا نحاول إخفاء المشكلة هنا: هذا الرابط لم يعد صالحًا ويجب استبداله بطلب جديد.',
-          'This flow does not hide the problem: the link is no longer valid and must be replaced with a fresh request.',
-        ),
+      _RecoveryStage.requestForm =>
+        'forgot_password_stage_subtitle_request'.tr,
+      _RecoveryStage.requestAccepted =>
+        'forgot_password_stage_subtitle_request_accepted'.tr,
+      _RecoveryStage.resetForm =>
+        'forgot_password_stage_subtitle_reset'.tr,
+      _RecoveryStage.resetSuccess =>
+        'forgot_password_stage_subtitle_reset_success'.tr,
+      _RecoveryStage.resetExpired =>
+        'forgot_password_stage_subtitle_reset_expired'.tr,
     };
 
     final body = switch (_stage) {

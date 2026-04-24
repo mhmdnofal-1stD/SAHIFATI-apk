@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
 
@@ -21,9 +22,9 @@ class TeacherRecommendationBadge extends StatelessWidget {
     }
 
     final badge = Tooltip(
-      message: _isArabic(context)
-          ? 'توصية معلم (${recommendations.length})'
-          : 'Teacher recommendation (${recommendations.length})',
+      message: 'teacher_recommendation_badge_tooltip'.trParams({
+        'count': '${recommendations.length}',
+      }),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 6 : 8,
@@ -83,9 +84,7 @@ class TeacherRecommendationBadge extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      _isArabic(context)
-                          ? 'توصيات المعلم'
-                          : 'Teacher recommendations',
+                      'teacher_recommendation_badge_sheet_title'.tr,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
@@ -97,9 +96,7 @@ class TeacherRecommendationBadge extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 20),
                         child: Text(
-                          _isArabic(context)
-                              ? 'لا توجد توصيات فعالة لهذه الآية.'
-                              : 'No active recommendations for this ayah.',
+                          'teacher_recommendation_badge_empty'.tr,
                           textAlign: TextAlign.center,
                         ),
                       )
@@ -142,9 +139,8 @@ class TeacherRecommendationBadge extends StatelessWidget {
                                           Text(
                                             recommendation
                                                     .teacher?.displayName ??
-                                                (_isArabic(context)
-                                                    ? 'معلّم غير معروف'
-                                                    : 'Unknown teacher'),
+                                                'teacher_recommendation_badge_unknown_teacher'
+                                                    .tr,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                             ),
@@ -165,9 +161,9 @@ class TeacherRecommendationBadge extends StatelessWidget {
                                     ),
                                     if (onDelete != null)
                                       IconButton(
-                                        tooltip: _isArabic(context)
-                                            ? 'حذف التوصية'
-                                            : 'Delete recommendation',
+                                        tooltip:
+                                            'teacher_recommendation_badge_delete'
+                                                .tr,
                                         onPressed: () async {
                                           final deleted =
                                               await onDelete!(recommendation);
@@ -204,26 +200,20 @@ class TeacherRecommendationBadge extends StatelessWidget {
     );
   }
 
-  bool _isArabic(BuildContext context) {
-    return Directionality.of(context) == TextDirection.rtl;
-  }
-
   String _statusText(
     BuildContext context,
     TeacherRecommendation recommendation,
   ) {
     final source = recommendation.source == 'teacher'
-        ? (_isArabic(context) ? 'من المعلّم' : 'From teacher')
+        ? 'teacher_recommendation_badge_source_teacher'.tr
         : recommendation.source;
     final notified = recommendation.notified == 'seen'
-        ? (_isArabic(context) ? 'تمت رؤيتها' : 'Seen')
+        ? 'teacher_recommendation_badge_status_seen'.tr
         : recommendation.notified == 'sent'
-            ? (_isArabic(context) ? 'أُرسلت' : 'Sent')
+            ? 'teacher_recommendation_badge_status_sent'.tr
             : recommendation.notified == 'failed'
-                ? (_isArabic(context) ? 'فشل الإرسال' : 'Delivery failed')
-                : (_isArabic(context)
-                    ? 'بانتظار الإشعار'
-                    : 'Pending notification');
+                ? 'teacher_recommendation_badge_status_failed'.tr
+                : 'teacher_recommendation_badge_status_pending'.tr;
 
     return '$source • $notified';
   }

@@ -51,8 +51,8 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
 
     if (email == null) {
       Get.snackbar(
-        'خطأ',
-        'بيانات المستخدم غير مكتملة',
+        'auth_saved_accounts_error_title'.tr,
+        'auth_saved_accounts_incomplete_user_error'.tr,
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -105,8 +105,8 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
           loadChartData: (userId) =>
               evaluationsProvider.getQuranChartData(userId),
         );
-      return;
-    }
+        return;
+      }
 
       if (!mounted) {
         return;
@@ -118,7 +118,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
 
       Get.snackbar(
         'switch_user'.tr,
-        'انتهت جلسة هذا الحساب، يرجى تسجيل الدخول مرة أخرى.',
+        'auth_saved_accounts_session_expired'.tr,
         backgroundColor: Colors.orange,
         colorText: Colors.white,
       );
@@ -380,7 +380,9 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          (user['fullName'] ?? 'مستخدم').toString(),
+                          (user['fullName'] ??
+                                  'auth_saved_accounts_user_fallback'.tr)
+                              .toString(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -406,7 +408,8 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                   ),
                   IconButton(
                     tooltip: 'auth_saved_accounts_remove'.tr,
-                    icon: const Icon(Icons.close_rounded, color: Color(0xFF7A808A)),
+                    icon: const Icon(Icons.close_rounded,
+                        color: Color(0xFF7A808A)),
                     onPressed: hasEmail
                         ? () => _removeUser(user['email'].toString())
                         : null,

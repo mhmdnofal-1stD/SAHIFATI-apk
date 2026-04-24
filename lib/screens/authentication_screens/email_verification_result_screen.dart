@@ -25,8 +25,9 @@ class EmailVerificationResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final usersProvider = Provider.of<UsersProvider>(context);
-    final resolvedEmail =
-        email ?? Get.parameters['email'] ?? usersProvider.pendingVerificationEmail;
+    final resolvedEmail = email ??
+        Get.parameters['email'] ??
+        usersProvider.pendingVerificationEmail;
 
     final config = _stateConfig(state);
 
@@ -72,7 +73,7 @@ class EmailVerificationResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      config.title,
+                      config.titleKey.tr,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
                       style: TextStyle(
@@ -84,7 +85,7 @@ class EmailVerificationResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      config.description,
+                      config.descriptionKey.tr,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
                       style: TextStyle(
@@ -155,7 +156,7 @@ class EmailVerificationResultScreen extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          config.primaryAction,
+                          config.primaryActionKey.tr,
                           textDirection: TextDirection.rtl,
                           style: TextStyle(
                             fontFamily: AppFonts.primaryFont,
@@ -189,8 +190,8 @@ class EmailVerificationResultScreen extends StatelessWidget {
                       ),
                       child: Text(
                         state == VerificationResultState.success
-                            ? 'العودة لتسجيل الدخول'
-                            : 'العودة إلى إنشاء الحساب',
+                            ? 'email_verification_result_back_to_login'.tr
+                            : 'email_verification_result_back_to_signup'.tr,
                         textDirection: TextDirection.rtl,
                         style: TextStyle(
                           fontFamily: AppFonts.primaryFont,
@@ -304,7 +305,7 @@ class _EmailVerificationHandlerScreenState
               ),
               const SizedBox(height: 20),
               Text(
-                'جارٍ التحقق من رابط التفعيل',
+                'email_verification_result_loading_title'.tr,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -316,7 +317,7 @@ class _EmailVerificationHandlerScreenState
               ),
               const SizedBox(height: 8),
               Text(
-                'سنحولك تلقائياً إلى حالة النجاح أو الفشل خلال لحظات.',
+                'email_verification_result_loading_body'.tr,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -338,18 +339,18 @@ class _VerificationStateConfig {
     required this.icon,
     required this.badgeColor,
     required this.iconColor,
-    required this.title,
-    required this.description,
-    required this.primaryAction,
+    required this.titleKey,
+    required this.descriptionKey,
+    required this.primaryActionKey,
     required this.primaryColor,
   });
 
   final IconData icon;
   final Color badgeColor;
   final Color iconColor;
-  final String title;
-  final String description;
-  final String primaryAction;
+  final String titleKey;
+  final String descriptionKey;
+  final String primaryActionKey;
   final Color primaryColor;
 }
 
@@ -360,10 +361,9 @@ _VerificationStateConfig _stateConfig(VerificationResultState state) {
         icon: Icons.verified_rounded,
         badgeColor: Color(0x140B503D),
         iconColor: Color(0xFF0B503D),
-        title: 'تم تفعيل الحساب بنجاح',
-        description:
-            'أصبح حسابك جاهزاً الآن. أنشأنا الجلسة فقط بعد اكتمال التحقق حتى تبقى رحلة التسجيل متماسكة وآمنة.',
-        primaryAction: 'الدخول إلى الترحيب',
+        titleKey: 'email_verification_result_success_title',
+        descriptionKey: 'email_verification_result_success_body',
+        primaryActionKey: 'email_verification_result_success_action',
         primaryColor: AppColors.buttonColor,
       );
     case VerificationResultState.expired:
@@ -371,10 +371,9 @@ _VerificationStateConfig _stateConfig(VerificationResultState state) {
         icon: Icons.schedule_rounded,
         badgeColor: Color(0x14D89B00),
         iconColor: Color(0xFFB07E00),
-        title: 'انتهت صلاحية الرابط',
-        description:
-            'رابط التفعيل هذا لم يعد صالحاً. يمكنك طلب رابط جديد من شاشة الانتظار والمتابعة من هناك.',
-        primaryAction: 'طلب رابط جديد',
+        titleKey: 'email_verification_result_expired_title',
+        descriptionKey: 'email_verification_result_expired_body',
+        primaryActionKey: 'email_verification_result_expired_action',
         primaryColor: Color(0xFFC48A00),
       );
     case VerificationResultState.failed:
@@ -382,10 +381,9 @@ _VerificationStateConfig _stateConfig(VerificationResultState state) {
         icon: Icons.error_outline_rounded,
         badgeColor: Color(0x14EA0000),
         iconColor: AppColors.errorColor,
-        title: 'تعذر تفعيل الحساب',
-        description:
-            'لم نتمكن من اعتماد هذا الرابط. قد يكون غير صحيح أو سبق استخدامه أو يحتاج إلى إعادة إصدار.',
-        primaryAction: 'العودة إلى تسجيل الدخول',
+        titleKey: 'email_verification_result_failed_title',
+        descriptionKey: 'email_verification_result_failed_body',
+        primaryActionKey: 'email_verification_result_failed_action',
         primaryColor: AppColors.primaryPurple,
       );
   }

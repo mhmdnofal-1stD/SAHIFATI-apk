@@ -78,14 +78,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _showComprehensionUnderline = true;
   bool _canOpenAssessment = true;
   String? _readingNotice;
-    final Map<int, TapGestureRecognizer> _ayahTapRecognizers =
+  final Map<int, TapGestureRecognizer> _ayahTapRecognizers =
       <int, TapGestureRecognizer>{};
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
 
-  bool get _isArabic => (Get.locale?.languageCode ?? 'ar') == 'ar';
+  String _tr(String key) => key.tr;
 
-  String _copy(String arabic, String english) => _isArabic ? arabic : english;
+  String _trParams(String key, Map<String, String> params) =>
+      key.trParams(params);
 
   TapGestureRecognizer _getAyahTapRecognizer(
     Ayat ayah,
@@ -118,8 +119,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     setState(() {
       _showMemorizationColors = usersProvider.showMemorizationColors;
-      _showComprehensionUnderline =
-          usersProvider.showComprehensionUnderline;
+      _showComprehensionUnderline = usersProvider.showComprehensionUnderline;
     });
   }
 
@@ -148,8 +148,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
       setState(() {
         _showMemorizationColors = usersProvider.showMemorizationColors;
-        _showComprehensionUnderline =
-            usersProvider.showComprehensionUnderline;
+        _showComprehensionUnderline = usersProvider.showComprehensionUnderline;
       });
     } catch (_) {
       if (!mounted) {
@@ -158,16 +157,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
       setState(() {
         _showMemorizationColors = usersProvider.showMemorizationColors;
-        _showComprehensionUnderline =
-            usersProvider.showComprehensionUnderline;
+        _showComprehensionUnderline = usersProvider.showComprehensionUnderline;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            (Get.locale?.languageCode ?? 'ar') == 'ar'
-                ? 'تعذر حفظ تفضيلات العرض حالياً.'
-                : 'Unable to save reading display preferences right now.',
+            _tr('quran_reading_display_preferences_save_error'),
           ),
         ),
       );
@@ -204,9 +200,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _copy(
-              'التقييم غير متاح الآن، لكن يمكنك متابعة القراءة والمحاولة لاحقًا.',
-              'Assessment is not available right now, but you can keep reading and try again later.',
+            _tr(
+              'quran_reading_assessment_unavailable_notice',
             ),
           ),
         ),
@@ -223,9 +218,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       languageProvider: languageProvider,
       initialMemoId: ayah.userEvaluation?.memoId,
       initialCompreId: ayah.userEvaluation?.compreId,
-      title: ((Get.locale?.languageCode ?? 'ar') == 'ar')
-          ? 'تقييم الآية ${ayah.ayahNo}'
-          : 'Evaluate Ayah ${ayah.ayahNo}',
+      title: _trParams(
+        'quran_reading_evaluate_ayah_title',
+        {'ayah': ayah.ayahNo.toString()},
+      ),
     );
 
     if (selection == null || !mounted) {
@@ -410,9 +406,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     var canOpenAssessment = _hasConnection;
     String? readingNotice = _hasConnection
         ? null
-        : _copy(
-            'القراءة ما تزال متاحة، لكن التقييم والتوصيات يحتاجان إلى اتصال فعّال.',
-            'Reading is still available, but assessment and recommendations need an active connection.',
+        : _tr(
+            'quran_reading_connection_notice',
           );
 
     if (_hasConnection) {
@@ -421,9 +416,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           await evaluationsProvider.getAllEvaluations();
         } catch (_) {
           canOpenAssessment = false;
-          readingNotice ??= _copy(
-            'تعذر تجهيز خيارات التقييم الآن. يمكنك متابعة القراءة والمحاولة لاحقًا.',
-            'Assessment options could not be prepared right now. You can keep reading and try again later.',
+          readingNotice ??= _tr(
+            'quran_reading_assessment_options_error',
           );
         }
       }
@@ -432,9 +426,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         try {
           await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
         } catch (_) {
-          readingNotice ??= _copy(
-            'تعذر تحميل تقييماتك السابقة الآن. يمكنك متابعة القراءة وإضافة تقييم جديد عند الحاجة.',
-            'We could not load your previous assessments right now. You can keep reading and submit a fresh assessment when needed.',
+          readingNotice ??= _tr(
+            'quran_reading_previous_assessments_error',
           );
         }
       }
@@ -447,9 +440,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       final loadedRecommendations =
           await _loadTeacherRecommendations(userId, ayat);
       if (!loadedRecommendations) {
-        readingNotice ??= _copy(
-          'تعذر تحميل توصيات المعلم الآن، لذلك ستبقى القراءة متاحة من دون هذه الطبقة مؤقتًا.',
-          'Teacher recommendations could not be loaded right now, so reading stays available without that layer for now.',
+        readingNotice ??= _tr(
+          'quran_reading_teacher_recommendations_error',
         );
       }
     } else {
@@ -671,7 +663,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                          const PendingSyncBanner(bottomPadding: 12),
+                        const PendingSyncBanner(bottomPadding: 12),
                         Container(
                           width: double.infinity,
                           constraints: const BoxConstraints(maxWidth: 980),
@@ -694,10 +686,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             children: [
                               FilterChip(
                                 label: Text(
-                                  _copy(
-                                    'إظهار ألوان الحفظ',
-                                    'Show memorization colors',
-                                  ),
+                                  _tr('quran_reading_show_memorization_colors'),
                                 ),
                                 selected: _showMemorizationColors,
                                 onSelected: (value) async {
@@ -708,9 +697,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               ),
                               FilterChip(
                                 label: Text(
-                                  _copy(
-                                    'إظهار خط الفهم',
-                                    'Show comprehension underline',
+                                  _tr(
+                                    'quran_reading_show_comprehension_underline',
                                   ),
                                 ),
                                 selected: _showComprehensionUnderline,
@@ -849,7 +837,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'سورة ${firstAyah.surah.nameAr}',
+              _trParams(
+                'quran_reading_surah_heading',
+                {'surah': firstAyah.surah.nameAr},
+              ),
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1002,8 +993,9 @@ class _ReadingNoticeBanner extends StatelessWidget {
               message,
               style: TextStyle(
                 height: 1.45,
-                color:
-                    isDarkMode ? const Color(0xFFF3E2C3) : const Color(0xFF7A5B18),
+                color: isDarkMode
+                    ? const Color(0xFFF3E2C3)
+                    : const Color(0xFF7A5B18),
               ),
             ),
           ),

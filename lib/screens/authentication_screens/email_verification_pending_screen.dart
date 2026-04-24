@@ -89,7 +89,7 @@ class _EmailVerificationPendingScreenState
       await usersProvider.resendVerificationEmail(email: email);
       if (!mounted) return;
       setState(() {
-        _feedbackMessage = 'تم إرسال رابط جديد إلى بريدك الإلكتروني.';
+        _feedbackMessage = 'email_verification_pending_resend_success'.tr;
       });
     } catch (error) {
       if (!mounted) return;
@@ -127,8 +127,9 @@ class _EmailVerificationPendingScreenState
         '';
     final remainingSeconds = _remainingSeconds(usersProvider);
     final resendEnabled = remainingSeconds == 0 && !_isResending;
-    final maskedEmail =
-        email.isEmpty ? 'بريدك الإلكتروني' : maskEmailAddress(email);
+    final maskedEmail = email.isEmpty
+      ? 'email_verification_pending_email_fallback'.tr
+      : maskEmailAddress(email);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
@@ -205,7 +206,7 @@ class _EmailVerificationPendingScreenState
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'بانتظار تفعيل بريدك',
+                                    'email_verification_pending_title'.tr,
                                     textDirection: TextDirection.rtl,
                                     style: TextStyle(
                                       fontFamily: AppFonts.primaryFont,
@@ -216,7 +217,7 @@ class _EmailVerificationPendingScreenState
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'أوقفنا إنشاء الجلسة حتى يكتمل تفعيل الحساب بشكل آمن.',
+                                    'email_verification_pending_subtitle'.tr,
                                     textDirection: TextDirection.rtl,
                                     style: TextStyle(
                                       fontFamily: AppFonts.primaryFont,
@@ -254,7 +255,7 @@ class _EmailVerificationPendingScreenState
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'أرسلنا رابط التفعيل إلى',
+                                'email_verification_pending_sent_to'.tr,
                                 textAlign: TextAlign.center,
                                 textDirection: TextDirection.rtl,
                                 style: TextStyle(
@@ -292,20 +293,23 @@ class _EmailVerificationPendingScreenState
                               const SizedBox(height: 18),
                               const _StepLine(
                                 icon: Icons.mark_email_read_outlined,
-                                title: '1. افتح البريد الوارد',
-                                subtitle: 'ابحث عن رسالة التفعيل القادمة من صحيفتي.',
+                                titleKey: 'email_verification_pending_step_1_title',
+                                subtitleKey:
+                                    'email_verification_pending_step_1_subtitle',
                               ),
                               const SizedBox(height: 12),
                               const _StepLine(
                                 icon: Icons.verified_outlined,
-                                title: '2. اضغط على رابط التفعيل',
-                                subtitle: 'سينقلك الرابط إلى صفحة نجاح أو فشل واضحة داخل التطبيق.',
+                                titleKey: 'email_verification_pending_step_2_title',
+                                subtitleKey:
+                                    'email_verification_pending_step_2_subtitle',
                               ),
                               const SizedBox(height: 12),
                               const _StepLine(
                                 icon: Icons.rocket_launch_outlined,
-                                title: '3. أكمل بداية رحلتك',
-                                subtitle: 'لن ندخلك إلى الترحيب أو onboarding قبل اكتمال التفعيل.',
+                                titleKey: 'email_verification_pending_step_3_title',
+                                subtitleKey:
+                                    'email_verification_pending_step_3_subtitle',
                               ),
                             ],
                           ),
@@ -360,8 +364,13 @@ class _EmailVerificationPendingScreenState
                                   )
                                 : Text(
                                     resendEnabled
-                                        ? 'إعادة إرسال رابط التفعيل'
-                                        : 'يمكنك إعادة الإرسال بعد $remainingSeconds ثانية',
+                                    ? 'email_verification_pending_resend_action'
+                                      .tr
+                                    : 'email_verification_pending_resend_wait'
+                                      .trParams({
+                                      'seconds':
+                                        remainingSeconds.toString(),
+                                      }),
                                     textDirection: TextDirection.rtl,
                                     style: TextStyle(
                                       fontFamily: AppFonts.primaryFont,
@@ -383,7 +392,7 @@ class _EmailVerificationPendingScreenState
                             ),
                           ),
                           child: Text(
-                            'تعديل البريد أو إنشاء حساب جديد',
+                            'email_verification_pending_change_email'.tr,
                             textDirection: TextDirection.rtl,
                             style: TextStyle(
                               fontFamily: AppFonts.primaryFont,
@@ -397,7 +406,7 @@ class _EmailVerificationPendingScreenState
                         TextButton(
                           onPressed: () => _goToLogin(usersProvider),
                           child: Text(
-                            'العودة إلى تسجيل الدخول',
+                            'email_verification_pending_back_to_login'.tr,
                             textDirection: TextDirection.rtl,
                             style: TextStyle(
                               fontFamily: AppFonts.primaryFont,
@@ -422,13 +431,13 @@ class _EmailVerificationPendingScreenState
 class _StepLine extends StatelessWidget {
   const _StepLine({
     required this.icon,
-    required this.title,
-    required this.subtitle,
+    required this.titleKey,
+    required this.subtitleKey,
   });
 
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String titleKey;
+  final String subtitleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -450,7 +459,7 @@ class _StepLine extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                titleKey.tr,
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
                   fontFamily: AppFonts.primaryFont,
@@ -461,7 +470,7 @@ class _StepLine extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                subtitle,
+                subtitleKey.tr,
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
                   fontFamily: AppFonts.primaryFont,

@@ -35,7 +35,15 @@ class _SurfaceTranslations extends Translations {
           'logout': 'Logout',
           'assessment_dimension_memorization': 'Memorization',
           'assessment_dimension_comprehension': 'Comprehension',
+          'main_screen_gateway_badge': 'Your reading and exploration gateway',
+          'main_screen_resume_title': 'Resume your last reading',
+          'main_screen_resume_body': 'Your last saved reading context was in Surah @surah through the @path path. You can return directly to the same reading position instead of starting over.',
           'main_screen_resume_action': 'Resume reading',
+          'main_screen_chart_empty': 'Your Sahifa will start drawing a clearer reading summary here once real verse assessments are available.',
+          'main_screen_chart_intro_first': 'Once your first assessments are recorded, this area will start showing a real summary of your reading path.',
+          'main_screen_hizb_loading_title': 'Preparing the hizb paths',
+          'main_screen_hizb_loading_body': 'We are loading the surahs behind each hizb so you only open paths that already have data.',
+          'main_screen_hizb_error_title': 'The hizb paths are temporarily unavailable',
           'sahifa_screen_header_badge_first': 'This is the start of your Sahifa',
           'sahifa_screen_header_badge_returning': 'This Sahifa reads your current state',
           'sahifa_screen_header_body': 'This screen is not a separate dashboard. It is a quick summary that helps you understand your current state, then move into reading from a clearer starting point.',
@@ -229,7 +237,7 @@ void main() {
     );
 
     expect(find.text('Your reading and exploration gateway'), findsOneWidget);
-    expect(find.text('Start through parts'), findsOneWidget);
+    expect(find.text('Parts'), findsOneWidget);
   });
 
   testWidgets('main screen exposes a saved reading resume path',

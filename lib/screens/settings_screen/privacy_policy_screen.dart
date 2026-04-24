@@ -39,7 +39,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Could not open email client'.tr),
+              content: Text('privacy_policy_open_email_error'.tr),
             ),
           );
         }

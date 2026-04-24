@@ -15,13 +15,11 @@ class AssessmentDimensionToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-
     String label(String dimension) {
       if (dimension == EvaluationsController.comprehensionDimension) {
-        return isArabic ? 'الفهم' : 'Comprehension';
+        return 'assessment_dimension_comprehension'.tr;
       }
-      return isArabic ? 'الحفظ' : 'Memorization';
+      return 'assessment_dimension_memorization'.tr;
     }
 
     Widget buildChip(String dimension) {

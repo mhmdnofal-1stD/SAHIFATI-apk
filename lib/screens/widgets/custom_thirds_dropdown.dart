@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/models/surah.dart';
-import 'package:sahifaty/providers/surahs_provider.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
 import '../../controllers/surahs_controller.dart';
 import '../../core/constants/colors.dart';
@@ -20,11 +19,13 @@ class CustomThirdsDropdown extends StatefulWidget {
     required this.third,
     required this.isOpen,
     required this.onToggle,
+    this.loadSurahsByJuz,
   });
 
   final int third;
   final bool isOpen;
   final VoidCallback onToggle;
+  final Future<List<Surah>> Function(int juzId)? loadSurahsByJuz;
 
   @override
   State<CustomThirdsDropdown> createState() => _CustomThirdsDropdownState();
@@ -44,6 +45,15 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
           ? GeneralController().secondThird
           : GeneralController().thirdThird;
 
+  Future<List<Surah>> _loadSurahs(int juzId) {
+    try {
+      return widget.loadSurahsByJuz?.call(juzId) ??
+          SurahsController().loadSurahsByJuz(juzId);
+    } catch (error, stackTrace) {
+      return Future<List<Surah>>.error(error, stackTrace);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,7 +63,10 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
     );
   }
 
-  void _showOverlay(SurahsProvider surahsProvider, EvaluationsProvider evaluationsProvider, UsersProvider usersProvider) {
+  void _showOverlay(
+    EvaluationsProvider evaluationsProvider,
+    UsersProvider usersProvider,
+  ) {
     if (_overlayEntry != null) return;
 
     final renderBox = context.findRenderObject() as RenderBox;
@@ -113,10 +126,9 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                           index,
                           offset,
                           size,
-                          surahsProvider,
                           evaluationsProvider,
                           usersProvider,
-                          SurahsController().loadSurahsByJuz(option['id']),
+                          _loadSurahs(option['id']),
                         );
                       },
                       child: Padding(
@@ -152,14 +164,11 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
     int index,
     Offset parentOffset,
     Size buttonSize,
-    SurahsProvider surahsProvider,
     EvaluationsProvider evaluationsProvider,
     UsersProvider usersProvider,
     Future<List<Surah>> surahsFuture,
   ) {
     _removeSideOverlay();
-    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-    String text(String arabic, String english) => isArabic ? arabic : english;
 
     const double itemHeight = 40;
     final double topPosition =
@@ -193,7 +202,7 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
               future: surahsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return Padding(
+                  return SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -201,10 +210,9 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                         const CircularProgressIndicator(),
                         const SizedBox(height: 12),
                         Text(
-                          text(
-                            'جارٍ تجهيز السور داخل $optionName...',
-                            'Preparing the surahs inside $optionName...',
-                          ),
+                          'custom_third_loading'.trParams({
+                            'path': optionName,
+                          }),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -214,11 +222,8 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
 
                 if (snapshot.hasError) {
                   return _ThirdsOverlayState(
-                    message: text(
-                      'تعذر تحميل السور لهذا المسار الآن.',
-                      'We could not load the surahs for this path right now.',
-                    ),
-                    actionLabel: text('إعادة المحاولة', 'Retry'),
+                    message: 'custom_third_error'.tr,
+                    actionLabel: 'welcome_chart_retry'.tr,
                     onAction: () {
                       _removeSideOverlay();
                       WidgetsBinding.instance.addPostFrameCallback(
@@ -228,10 +233,9 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                           index,
                           parentOffset,
                           buttonSize,
-                          surahsProvider,
                           evaluationsProvider,
                           usersProvider,
-                          SurahsController().loadSurahsByJuz(juzId),
+                          _loadSurahs(juzId),
                         ),
                       );
                     },
@@ -241,10 +245,7 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                 final surahs = snapshot.data ?? const <Surah>[];
                 if (surahs.isEmpty) {
                   return _ThirdsOverlayState(
-                    message: text(
-                      'لا توجد سور جاهزة لهذا المسار حاليًا.',
-                      'No surahs are available for this path right now.',
-                    ),
+                    message: 'custom_third_empty'.tr,
                   );
                 }
 
@@ -325,15 +326,16 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
     super.didUpdateWidget(oldWidget);
     if (!mounted) return;
 
-    final surahsProvider = Provider.of<SurahsProvider>(context, listen: false);
-    EvaluationsProvider evaluationsProvider = Provider.of<EvaluationsProvider>(context);
-    UsersProvider usersProvider = Provider.of<UsersProvider>(context);
+    final evaluationsProvider =
+        Provider.of<EvaluationsProvider>(context, listen: false);
+    final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     if (_overlayEntry != null) return;
 
     if (widget.isOpen) {
       _toggleAnimation();
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _showOverlay(surahsProvider, evaluationsProvider, usersProvider));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _showOverlay(evaluationsProvider, usersProvider),
+      );
     } else {
       _toggleAnimation();
       _removeOverlay();
@@ -405,7 +407,7 @@ class _ThirdsOverlayState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,

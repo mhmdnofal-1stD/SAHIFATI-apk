@@ -208,6 +208,7 @@ class _SocialStatusBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isError = tone == AuthSocialStatusTone.error;
+    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
     final borderColor =
         isError ? AppColors.errorColor : const Color(0xFF0F766E);
     final backgroundColor = isError
@@ -232,7 +233,7 @@ class _SocialStatusBanner extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              textDirection: TextDirection.rtl,
+              textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
               style: TextStyle(
                 fontFamily: AppFonts.primaryFont,
                 fontSize: 13,

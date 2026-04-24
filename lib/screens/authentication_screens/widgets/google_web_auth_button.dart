@@ -51,7 +51,7 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
             widget.onError({
               'errorCode': 'SOCIAL_ID_TOKEN_MISSING',
               'provider': 'google',
-              'message': 'Could not retrieve Google identity token.',
+              'message': 'social_missing_id_token'.tr,
             });
             return;
           }
