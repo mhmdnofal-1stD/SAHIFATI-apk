@@ -25,10 +25,6 @@ class SahifaScreen extends StatelessWidget {
 
   final bool firstScreen;
 
-  String _copy(bool isArabic, String arabic, String english) {
-    return isArabic ? arabic : english;
-  }
-
   int _evaluatedVerses(EvaluationsProvider provider) {
     final categorizedVerses = provider.chartEvaluationData
         .where((entry) => entry.evaluationId != 0)
@@ -76,11 +72,9 @@ class SahifaScreen extends StatelessWidget {
         evaluatedVerses > 0 && evaluationsProvider.chartEvaluationData.isNotEmpty;
     final topSignal = _topSignal(evaluationsProvider);
     final remainingVerses = _remainingVerses(evaluationsProvider);
-    final currentDimensionLabel = _copy(
-      isArabic,
-      isComprehension ? 'الفهم' : 'الحفظ',
-      isComprehension ? 'Comprehension' : 'Memorization',
-    );
+    final currentDimensionLabel = isComprehension
+      ? 'assessment_dimension_comprehension'.tr
+      : 'assessment_dimension_memorization'.tr;
 
     return NoPopScope(
       child: Scaffold(
@@ -145,15 +139,10 @@ class SahifaScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _copy(
-                            isArabic,
-                            firstScreen
-                                ? 'هذه هي بداية صحيفتك'
-                                : 'هذه الصحيفة تقرأ وضعك الحالي',
-                            firstScreen
-                                ? 'This is the start of your Sahifa'
-                                : 'This Sahifa reads your current state',
-                          ),
+                          (firstScreen
+                                  ? 'sahifa_screen_header_badge_first'
+                                  : 'sahifa_screen_header_badge_returning')
+                              .tr,
                           style: const TextStyle(
                             color: AppColors.buttonColor,
                             fontWeight: FontWeight.w700,
@@ -174,11 +163,7 @@ class SahifaScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _copy(
-                            isArabic,
-                            'هذه الشاشة ليست dashboard منفصلًا، بل ملخصًا سريعًا يساعدك على فهم وضعك ثم الانتقال إلى القراءة من نقطة أوضح.',
-                            'This screen is not a separate dashboard. It is a quick summary that helps you understand your current state, then move into reading from a clearer starting point.',
-                          ),
+                          'sahifa_screen_header_body'.tr,
                           style: const TextStyle(
                             fontSize: 16,
                             height: 1.55,
@@ -191,27 +176,15 @@ class SahifaScreen extends StatelessWidget {
                           runSpacing: 12,
                           children: [
                             _SahifaMetricChip(
-                              label: _copy(
-                                isArabic,
-                                'الآيات ذات الإشارة الفعلية',
-                                'Verses with real signal',
-                              ),
+                              label: 'sahifa_screen_metric_real_signal'.tr,
                               value: '$evaluatedVerses',
                             ),
                             _SahifaMetricChip(
-                              label: _copy(
-                                isArabic,
-                                'البعد المعروض الآن',
-                                'Current dimension',
-                              ),
+                              label: 'sahifa_screen_metric_current_dimension'.tr,
                               value: currentDimensionLabel,
                             ),
                             _SahifaMetricChip(
-                              label: _copy(
-                                isArabic,
-                                'الآيات غير المقيمة بعد',
-                                'Verses still without assessment',
-                              ),
+                              label: 'sahifa_screen_metric_remaining'.tr,
                               value: '$remainingVerses',
                             ),
                           ],
@@ -243,11 +216,7 @@ class SahifaScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _copy(
-                                  isArabic,
-                                  'قراءة محفوظة بانتظارك',
-                                  'A saved reading session is waiting',
-                                ),
+                                'sahifa_screen_resume_title'.tr,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -255,11 +224,10 @@ class SahifaScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _copy(
-                                  isArabic,
-                                  'إذا كنت خرجت من القراءة أو عدت بعد refresh، يمكنك استئناف القراءة مباشرة من سورة ${session.surah.nameAr} عبر مسار ${session.pathLabel(true)}.',
-                                  'If you left reading or came back after a refresh, you can resume directly from Surah ${session.surah.nameAr} through the ${session.pathLabel(false)} path.',
-                                ),
+                                'sahifa_screen_resume_body'.trParams({
+                                  'surah': session.surah.nameAr,
+                                  'path': session.pathLabel(isArabic),
+                                }),
                                 style: const TextStyle(height: 1.55),
                               ),
                               const SizedBox(height: 12),
@@ -280,13 +248,7 @@ class SahifaScreen extends StatelessWidget {
                                   backgroundColor: AppColors.buttonColor,
                                 ),
                                 icon: const Icon(Icons.menu_book_rounded),
-                                label: Text(
-                                  _copy(
-                                    isArabic,
-                                    'استئناف القراءة',
-                                    'Resume reading',
-                                  ),
-                                ),
+                                label: Text('main_screen_resume_action'.tr),
                               ),
                             ],
                           ),
@@ -310,11 +272,7 @@ class SahifaScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _copy(
-                            isArabic,
-                            'ملخص الصحيفة الآن',
-                            'Your Sahifa summary right now',
-                          ),
+                          'sahifa_screen_summary_title'.tr,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
@@ -322,11 +280,7 @@ class SahifaScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          _copy(
-                            isArabic,
-                            'نستخدم هذا الملخص لتوضيح حالتك الحالية فقط: ما الذي تم تقييمه فعلاً، وأي بعد تراه الآن، وأين يمكنك المتابعة إلى القراءة.',
-                            'This summary only explains your current state: what has actually been assessed, which dimension you are looking at now, and where you can continue into reading.',
-                          ),
+                          'sahifa_screen_summary_body'.tr,
                           style: const TextStyle(
                             fontSize: 15,
                             height: 1.55,
@@ -337,16 +291,8 @@ class SahifaScreen extends StatelessWidget {
                         if (evaluationsProvider.isLoading && !hasChartData)
                           _SahifaStateCard(
                             icon: Icons.sync,
-                            title: _copy(
-                              isArabic,
-                              'جارٍ تجهيز الملخص',
-                              'Preparing your summary',
-                            ),
-                            body: _copy(
-                              isArabic,
-                              'نحمّل قراءة الحالة الحالية قبل عرض أي مخطط حتى لا نعطيك انطباعًا مضللًا.',
-                              'We are loading your current state before showing any chart so the screen does not imply progress that is not real.',
-                            ),
+                            title: 'sahifa_screen_loading_title'.tr,
+                            body: 'sahifa_screen_loading_body'.tr,
                           )
                         else if (!hasChartData)
                           _SahifaStateCard(
@@ -354,26 +300,14 @@ class SahifaScreen extends StatelessWidget {
                                 ? Icons.info_outline
                                 : Icons.error_outline,
                             title: evaluationsProvider.chartLoadError == null
-                                ? _copy(
-                                    isArabic,
-                                    'لا توجد إشارة تقييم كافية بعد',
-                                    'There is not enough assessment signal yet',
-                                  )
-                                : _copy(
-                                    isArabic,
-                                    'تعذر تحميل الملخص الآن',
-                                    'We could not load the summary right now',
-                                  ),
+                                ? 'sahifa_screen_empty_title'.tr
+                                : 'sahifa_screen_error_title'.tr,
                             body: evaluationsProvider.chartLoadError == null
-                                ? _copy(
-                                    isArabic,
-                                    'عندما تبدأ التقييم أو تكمل القراءة المقيمة سيظهر هنا ملخص فعلي بدل مخطط يوحي ببيانات غير موجودة.',
-                                    'Once you start assessing or build real reading data, this area will show an actual summary instead of a chart that implies missing data exists.',
-                                  )
+                                ? 'sahifa_screen_empty_body'.tr
                                 : evaluationsProvider.chartLoadError!,
                             actionLabel: usersProvider.selectedUser == null
                                 ? null
-                                : _copy(isArabic, 'إعادة المحاولة', 'Retry'),
+                                : 'welcome_chart_retry'.tr,
                             onAction: usersProvider.selectedUser == null
                                 ? null
                                 : () async {
@@ -413,32 +347,28 @@ class SahifaScreen extends StatelessWidget {
                           if (topSignal != null)
                             _SahifaStateCard(
                               icon: Icons.auto_graph,
-                              title: _copy(
-                                isArabic,
-                                'أوضح نتيجة حالية',
-                                'Strongest current signal',
-                              ),
-                              body: _copy(
-                                isArabic,
-                                '${topSignal.name[languageProvider.langCode] ?? ''} تغطي ${topSignal.verseCount ?? 0} آية ضمن هذا العرض.',
-                                '${topSignal.name[languageProvider.langCode] ?? ''} currently covers ${topSignal.verseCount ?? 0} verses in this view.',
-                              ),
+                              title: 'sahifa_screen_top_signal_title'.tr,
+                              body: 'sahifa_screen_top_signal_body'.trParams({
+                                'name': topSignal.name[languageProvider.langCode] ??
+                                    topSignal.name['ar'] ??
+                                    topSignal.name['en'] ??
+                                    '',
+                                'count': '${topSignal.verseCount ?? 0}',
+                              }),
                             ),
                           const SizedBox(height: 16),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 720),
                             child: Text(
                               isComprehension
-                                  ? _copy(
-                                      isArabic,
-                                      'هذا العرض يحسب فقط الآيات التي تحمل تقييم فهم فعلي الآن. عددها الحالي: $evaluatedVerses آية.',
-                                      'This view counts only verses that currently carry a real comprehension assessment. Current total: $evaluatedVerses verses, with $remainingVerses still outside this summary.',
-                                    )
-                                  : _copy(
-                                      isArabic,
-                                      'هذا الملخص مبني على $evaluatedVerses آية صُنفت فعلاً داخل الصحيفة، بينما تبقى $remainingVerses آية خارج هذا الملخص إلى أن تُقيّم لاحقًا.',
-                                      'This summary is built from $evaluatedVerses verses that were actually categorized inside the Sahifa, while $remainingVerses verses still remain outside this summary until they are assessed later.',
-                                    ),
+                                  ? 'sahifa_screen_comprehension_summary'.trParams({
+                                      'evaluated': '$evaluatedVerses',
+                                      'remaining': '$remainingVerses',
+                                    })
+                                  : 'sahifa_screen_memorization_summary'.trParams({
+                                      'evaluated': '$evaluatedVerses',
+                                      'remaining': '$remainingVerses',
+                                    }),
                               textAlign: TextAlign.center,
                               strutStyle: const StrutStyle(
                                 forceStrutHeight: true,
@@ -470,11 +400,7 @@ class SahifaScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             Text(
-                              _copy(
-                                isArabic,
-                                'الخطوة التالية: افتح القراءة من المسار الذي يناسبك',
-                                'Next step: open reading from the path that fits you best',
-                              ),
+                              'sahifa_screen_next_step_title'.tr,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 20,
@@ -483,11 +409,7 @@ class SahifaScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              _copy(
-                                isArabic,
-                                'الصحيفة هنا لتوضح الصورة، ثم تتركك تنتقل سريعًا إلى التصفح والقراءة من دون التفاف زائد.',
-                                'The Sahifa clarifies the picture here, then lets you move quickly into exploration and reading without unnecessary detours.',
-                              ),
+                              'sahifa_screen_next_step_body'.tr,
                               textAlign: TextAlign.center,
                               style: const TextStyle(height: 1.5),
                             ),

@@ -21,15 +21,10 @@ class CustomHizbsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surahsProvider = context.watch<SurahsProvider>();
-    final evaluationsProvider =
-    context.read<EvaluationsProvider>();
+    final evaluationsProvider = context.read<EvaluationsProvider>();
 
-    final usersProvider =
-    context.read<UsersProvider>();
-    final surahs =
-        surahsProvider.hizbSurahs[hizb['id']] ?? [];
-    final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-    String text(String arabic, String english) => isArabic ? arabic : english;
+    final usersProvider = context.read<UsersProvider>();
+    final surahs = surahsProvider.hizbSurahs[hizb['id']] ?? [];
     final isLoading = surahsProvider.isLoading && surahs.isEmpty;
     final hasError = surahsProvider.hizbLoadError != null && surahs.isEmpty;
 
@@ -37,17 +32,11 @@ class CustomHizbsButton extends StatelessWidget {
         .map((e) => quran.getSurahNameArabic(e.id))
         .join('، ');
     final subtitle = isLoading
-        ? text('جارٍ تجهيز سور هذا الحزب...', 'Preparing this hizb...')
+      ? 'custom_hizb_preparing'.tr
         : hasError
-            ? text(
-                'تعذر تجهيز هذا المسار الآن. حاول مرة أخرى بعد اكتمال التحميل.',
-                'This path is not ready right now. Try again after loading completes.',
-              )
+        ? 'custom_hizb_error_subtitle'.tr
             : surahs.isEmpty
-                ? text(
-                    'لا توجد سور جاهزة لهذا الحزب حاليًا.',
-                    'No surahs are available for this hizb right now.',
-                  )
+          ? 'custom_hizb_empty_subtitle'.tr
                 : surahNames;
 
     return GestureDetector(
@@ -57,19 +46,10 @@ class CustomHizbsButton extends StatelessWidget {
             SnackBar(
               content: Text(
                 isLoading
-                    ? text(
-                        'ما زلنا نجهز سور هذا الحزب. أعد المحاولة بعد لحظة.',
-                        'We are still preparing this hizb. Please try again in a moment.',
-                      )
+                    ? 'custom_hizb_loading_snackbar'.tr
                     : hasError
-                        ? text(
-                            'تعذر تجهيز هذا الحزب الآن. جرّب إعادة فتح تبويب الأحزاب.',
-                            'This hizb could not be prepared right now. Try reopening the hizbs tab.',
-                          )
-                        : text(
-                            'لا توجد سور جاهزة لهذا الحزب الآن.',
-                            'No surahs are ready for this hizb right now.',
-                          ),
+                        ? 'custom_hizb_error_snackbar'.tr
+                        : 'custom_hizb_empty_snackbar'.tr,
               ),
             ),
           );
