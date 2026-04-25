@@ -25,6 +25,7 @@ void _replaceWithReadingSession(ReadingSession session) {
 Future<void> navigateAfterSuccessfulLogin({
   required int userId,
   required bool isFirstLogin,
+  required bool hasActiveLicense,
   required Future<void> Function(int userId) loadChartData,
   LoginRouteReplacer? replaceRoute,
   ResumeReadingSessionReplacer? resumeReadingSession,
@@ -33,6 +34,11 @@ Future<void> navigateAfterSuccessfulLogin({
   final replace = replaceRoute ?? _replaceLoginRoute;
   final resume = resumeReadingSession ?? _replaceWithReadingSession;
   final sessionStore = readingSessionStore ?? ReadingSessionStore();
+
+  if (!hasActiveLicense) {
+    replace('/license-activation');
+    return;
+  }
 
   if (!isFirstLogin) {
     final pendingReadingSession =

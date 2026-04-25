@@ -3,6 +3,7 @@ class User {
   String fullName;
   String email;
   int? userRoleId;
+  String? licenseStatus;
   String? gender;
   int? birthYear;
   int? countryCode;
@@ -14,12 +15,12 @@ class User {
   String? workType;
   String? specializationType;
 
-
   User({
     required this.id,
     required this.fullName,
     required this.email,
     this.userRoleId,
+    this.licenseStatus,
     this.gender,
     this.birthYear,
     this.countryCode,
@@ -32,7 +33,6 @@ class User {
     this.specializationType,
   });
 
-
   // from JSON
   factory User.fromJson(Map<String, dynamic> json) {
     final rawId = json['id'] ?? json['_id'];
@@ -42,6 +42,7 @@ class User {
       fullName: json['fullName'],
       email: json['email'],
       userRoleId: json['userRoleId'],
+      licenseStatus: json['licenseStatus'] as String?,
       gender: json['gender'] as String?,
       birthYear: json['birthYear'] as int?,
       countryCode: json['countryCode'] as int?,
@@ -61,6 +62,7 @@ class User {
       'fullName': fullName,
       'email': email,
       'userRoleId': userRoleId,
+      'licenseStatus': licenseStatus,
       'gender': gender,
       'birthYear': birthYear,
       'countryCode': countryCode,
@@ -76,6 +78,6 @@ class User {
 
   @override
   String toString() {
-    return 'User(id: $id, fullName: $fullName, email: $email, userRoleId: $userRoleId, gender: $gender, birthYear: $birthYear, countryCode: $countryCode, country: $country, city: $city, state: $state, mobile: $mobile, educationLevel: $educationLevel, workType: $workType, specializationType: $specializationType)';
+    return 'User(id: $id, fullName: $fullName, email: $email, userRoleId: $userRoleId, licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, countryCode: $countryCode, country: $country, city: $city, state: $state, mobile: $mobile, educationLevel: $educationLevel, workType: $workType, specializationType: $specializationType)';
   }
 }

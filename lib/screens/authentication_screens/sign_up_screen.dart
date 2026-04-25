@@ -172,7 +172,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
         return 'social_provider_temporarily_unavailable'.trParams({
-          'provider': _providerLabel((error['provider'] ?? 'provider').toString()),
+          'provider':
+              _providerLabel((error['provider'] ?? 'provider').toString()),
         });
       }
       if (code == 'SOCIAL_ID_TOKEN_MISSING' ||
@@ -221,7 +222,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await navigateAfterSuccessfulLogin(
         userId: usersProvider.selectedUser!.id,
         isFirstLogin: usersProvider.isFirstLogin,
-        loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+        hasActiveLicense: usersProvider.hasActiveLicense,
+        loadChartData: (userId) =>
+            evaluationsProvider.getQuranChartData(userId),
       );
     } catch (error) {
       if (!mounted) {
@@ -405,7 +408,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           strokeWidth: 2.2,
                         ),
                       )
-                    : const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                    : const Icon(Icons.arrow_forward_rounded,
+                        color: Colors.white),
                 label: Text(
                   'create_account'.tr,
                   style: TextStyle(

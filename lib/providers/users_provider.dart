@@ -37,12 +37,16 @@ class UsersProvider with ChangeNotifier {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   bool isLoading = false;
   bool isProfileLoading = false;
+  bool isLicenseLoading = false;
+  bool isPromoCodesLoading = false;
   bool isFirstLogin = false;
   bool showMemorizationColors = true;
   bool showComprehensionUnderline = true;
   bool _readingDisplayPreferencesLoaded = false;
   bool _googleInitialized = false;
   bool _facebookWebInitialized = false;
+  Map<String, dynamic>? licenseBalanceSummary;
+  List<Map<String, dynamic>> myPromoCodes = <Map<String, dynamic>>[];
 
   String _accountKeyForUser(User user) => user.id.toString();
 
@@ -121,6 +125,18 @@ class UsersProvider with ChangeNotifier {
   Future<void> _setActiveUserSnapshot(User user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeUserDataKey, json.encode(user.toMap()));
+
+    final sessions = await _readStoredAccountSessions(prefs);
+    final accountKey = _accountKeyForUser(user);
+    final sessionRecord = sessions[accountKey];
+    if (sessionRecord is Map<String, dynamic>) {
+      sessions[accountKey] = {
+        ...sessionRecord,
+        'user': user.toMap(),
+        'lastUsedAt': DateTime.now().toIso8601String(),
+      };
+      await _writeStoredAccountSessions(prefs, sessions);
+    }
   }
 
   Future<void> _removeActiveUserSnapshot() async {
@@ -145,7 +161,8 @@ class UsersProvider with ChangeNotifier {
       await saveUserToDevice(user);
       await SecureSessionStorage.migrateLegacySessionToAccount(accountKey);
 
-      final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      final activeAccountKey =
+          await SecureSessionStorage.readActiveAccountKey();
       if (activeAccountKey == null || activeAccountKey.isEmpty) {
         await SecureSessionStorage.setActiveAccountKey(accountKey);
       }
@@ -215,7 +232,8 @@ class UsersProvider with ChangeNotifier {
 
       if (message is List && message.isNotEmpty) {
         return message
-            .map((item) => _localizeBackendMessage(item.toString(), error: error))
+            .map((item) =>
+                _localizeBackendMessage(item.toString(), error: error))
             .join(', ');
       }
 
@@ -267,6 +285,8 @@ class UsersProvider with ChangeNotifier {
     switch (errorCode) {
       case 'ACCOUNT_NOT_VERIFIED':
         return 'auth_account_not_verified'.tr;
+      case 'LICENSE_REQUIRED':
+        return 'auth_license_required'.tr;
       case 'VERIFICATION_EMAIL_UNAVAILABLE':
         return 'auth_registration_verification_email_unavailable'.tr;
       case 'ACCOUNT_EXISTS_WITH_PASSWORD':
@@ -289,8 +309,7 @@ class UsersProvider with ChangeNotifier {
       return trimmed;
     }
 
-    if (trimmed == 'invalid credentials' ||
-        trimmed == 'Invalid credentials') {
+    if (trimmed == 'invalid credentials' || trimmed == 'Invalid credentials') {
       return 'invalid_credentials'.tr;
     }
 
@@ -301,6 +320,10 @@ class UsersProvider with ChangeNotifier {
 
     if (trimmed == 'Please verify your email before logging in.') {
       return 'auth_account_not_verified'.tr;
+    }
+
+    if (trimmed == 'An active license is required to access this feature.') {
+      return 'auth_license_required'.tr;
     }
 
     if (trimmed ==
@@ -357,10 +380,10 @@ class UsersProvider with ChangeNotifier {
     }
 
     if (trimmed.startsWith('Please wait ') &&
-        trimmed.contains(' seconds before requesting another verification email.')) {
-      final seconds = RegExp(r'Please wait (\d+) seconds')
-          .firstMatch(trimmed)
-          ?.group(1);
+        trimmed.contains(
+            ' seconds before requesting another verification email.')) {
+      final seconds =
+          RegExp(r'Please wait (\d+) seconds').firstMatch(trimmed)?.group(1);
       if (seconds != null) {
         return 'email_verification_pending_resend_wait'.trParams({
           'seconds': seconds,
@@ -500,8 +523,7 @@ class UsersProvider with ChangeNotifier {
 
   void _applyReadingDisplayPreferencesFromProfile(
       Map<String, dynamic> profile) {
-    showMemorizationColors =
-        profile['showMemorizationColors'] as bool? ?? true;
+    showMemorizationColors = profile['showMemorizationColors'] as bool? ?? true;
     showComprehensionUnderline =
         profile['showComprehensionUnderline'] as bool? ?? true;
   }
@@ -530,13 +552,156 @@ class UsersProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  bool get hasActiveLicense => selectedUser?.licenseStatus == 'active';
+
+  Future<void> ensureLicenseStateLoaded({bool forceRefresh = false}) async {
+    if (selectedUser == null) {
+      return;
+    }
+
+    if (!forceRefresh && selectedUser?.licenseStatus != null) {
+      return;
+    }
+
+    isLicenseLoading = true;
+    notifyListeners();
+
+    try {
+      final licenseState = await _usersService.getLicenseState();
+      selectedUser?.licenseStatus = licenseState['licenseStatus'] as String?;
+      if (selectedUser != null) {
+        await _setActiveUserSnapshot(selectedUser!);
+      }
+    } finally {
+      isLicenseLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> activateGiftLicense() async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isLicenseLoading = true;
+    notifyListeners();
+
+    try {
+      final activation = await _usersService.activateGiftLicense();
+      selectedUser?.licenseStatus = activation['licenseStatus'] as String?;
+      if (selectedUser != null) {
+        await _setActiveUserSnapshot(selectedUser!);
+      }
+    } finally {
+      isLicenseLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadPromoWorkspace({bool forceRefresh = false}) async {
+    if (selectedUser == null) {
+      return;
+    }
+
+    if (!forceRefresh &&
+        licenseBalanceSummary != null &&
+        myPromoCodes.isNotEmpty) {
+      return;
+    }
+
+    isPromoCodesLoading = true;
+    notifyListeners();
+
+    try {
+      final balance = await _usersService.getLicenseBalance();
+      final promoCodes = await _usersService.listMyPromoCodes();
+      licenseBalanceSummary = balance;
+      myPromoCodes = promoCodes;
+    } finally {
+      isPromoCodesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> createPromoCode({required int maxUses}) async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isPromoCodesLoading = true;
+    notifyListeners();
+
+    try {
+      final createdPromo =
+          await _usersService.createPromoCode(maxUses: maxUses);
+      await loadPromoWorkspace(forceRefresh: true);
+      return createdPromo;
+    } finally {
+      isPromoCodesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> revokePromoCode(String codeId) async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isPromoCodesLoading = true;
+    notifyListeners();
+
+    try {
+      final revokedPromo = await _usersService.revokePromoCode(codeId: codeId);
+      await loadPromoWorkspace(forceRefresh: true);
+      return revokedPromo;
+    } finally {
+      isPromoCodesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> activatePromoLicense(String code) async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isLicenseLoading = true;
+    notifyListeners();
+
+    try {
+      final activation = await _usersService.activatePromoLicense(code: code);
+      selectedUser?.licenseStatus = activation['licenseStatus'] as String?;
+      if (selectedUser != null) {
+        await _setActiveUserSnapshot(selectedUser!);
+      }
+    } finally {
+      isLicenseLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> createPurchaseIntent({int quantity = 20}) async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isLicenseLoading = true;
+    notifyListeners();
+
+    try {
+      return await _usersService.createPurchaseIntent(quantity: quantity);
+    } finally {
+      isLicenseLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updateReadingDisplayPreferences({
     bool? showMemorizationColors,
     bool? showComprehensionUnderline,
   }) async {
     final previousShowMemorizationColors = this.showMemorizationColors;
-    final previousShowComprehensionUnderline =
-        this.showComprehensionUnderline;
+    final previousShowComprehensionUnderline = this.showComprehensionUnderline;
 
     if (showMemorizationColors != null) {
       this.showMemorizationColors = showMemorizationColors;
@@ -556,8 +721,7 @@ class UsersProvider with ChangeNotifier {
       notifyListeners();
     } catch (ex) {
       this.showMemorizationColors = previousShowMemorizationColors;
-      this.showComprehensionUnderline =
-          previousShowComprehensionUnderline;
+      this.showComprehensionUnderline = previousShowComprehensionUnderline;
       notifyListeners();
       rethrow;
     }
@@ -620,6 +784,7 @@ class UsersProvider with ChangeNotifier {
       fullName: authData.user!.fullName,
       email: authData.user!.email,
       userRoleId: authData.user!.userRoleId,
+      licenseStatus: authData.user!.licenseStatus,
     );
 
     setSelectedUser(user);
@@ -790,6 +955,10 @@ class UsersProvider with ChangeNotifier {
     await prefs.remove('password');
     await SecureSessionStorage.setActiveAccountKey(null);
     selectedUser = null;
+    isLicenseLoading = false;
+    isPromoCodesLoading = false;
+    licenseBalanceSummary = null;
+    myPromoCodes = <Map<String, dynamic>>[];
     _resetReadingDisplayPreferencesState();
     notifyListeners();
   }
@@ -868,22 +1037,7 @@ class UsersProvider with ChangeNotifier {
         throw result;
       }
 
-      final user = User(
-        id: result.user!.id,
-        fullName: result.user!.fullName,
-        email: result.user!.email,
-        userRoleId: result.user!.userRoleId,
-      );
-
-      setSelectedUser(user);
-      await saveUserToDevice(user);
-      await saveUserSession(
-        user,
-        result.accessToken!,
-        refreshToken: result.refreshToken,
-      );
-      await clearPendingVerificationState();
-      return result;
+      return await finalizeAuthenticatedUser(result);
     } finally {
       resetLoading();
     }
@@ -1039,7 +1193,8 @@ class UsersProvider with ChangeNotifier {
         return false;
       }
 
-      String? activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      String? activeAccountKey =
+          await SecureSessionStorage.readActiveAccountKey();
       if (activeAccountKey == null || activeAccountKey.isEmpty) {
         activeAccountKey = sessions.keys.first;
         await SecureSessionStorage.setActiveAccountKey(activeAccountKey);
@@ -1069,7 +1224,7 @@ class UsersProvider with ChangeNotifier {
 
       selectedUser = User.fromJson(extractedUserData);
       await _setActiveUserSnapshot(selectedUser!);
-        await checkFirstLogin(user: selectedUser);
+      await checkFirstLogin(user: selectedUser);
       notifyListeners();
       return true;
     } catch (_) {
@@ -1105,14 +1260,15 @@ class UsersProvider with ChangeNotifier {
       return scopedValue;
     }
 
-    final legacyScopedLoginFlag =
-        prefs.getBool('${_legacyHasLoggedInBeforeKey}_${_accountKeyForUser(targetUser)}');
+    final legacyScopedLoginFlag = prefs.getBool(
+        '${_legacyHasLoggedInBeforeKey}_${_accountKeyForUser(targetUser)}');
     if (legacyScopedLoginFlag == true) {
       await prefs.setBool(scopedKey, true);
       return true;
     }
 
-    final legacyOnboardingComplete = prefs.getBool(_legacyOnboardingCompleteKey);
+    final legacyOnboardingComplete =
+        prefs.getBool(_legacyOnboardingCompleteKey);
     if (legacyOnboardingComplete == true) {
       await prefs.setBool(scopedKey, true);
       return true;
@@ -1285,13 +1441,14 @@ class UsersProvider with ChangeNotifier {
 
     if (storedUsersList.isNotEmpty) {
       final dynamic removedUser = storedUsersList.cast<dynamic>().firstWhere(
-        (element) => element['email'] == email,
-        orElse: () => null,
-      );
+            (element) => element['email'] == email,
+            orElse: () => null,
+          );
       storedUsersList.removeWhere((element) => element['email'] == email);
 
       // Save updated list back
-      await prefs.setString(_storedDeviceUsersKey, json.encode(storedUsersList));
+      await prefs.setString(
+          _storedDeviceUsersKey, json.encode(storedUsersList));
 
       if (removedUser is Map) {
         final accountKey = _accountKeyFromUserMap(

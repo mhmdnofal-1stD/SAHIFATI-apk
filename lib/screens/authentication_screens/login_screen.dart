@@ -8,7 +8,6 @@ import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/models/auth_data.dart';
-import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import '../../controllers/users_controller.dart';
 import '../../providers/users_provider.dart';
@@ -123,7 +122,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
         return 'social_provider_temporarily_unavailable'.trParams({
-          'provider': _providerLabel((error['provider'] ?? 'provider').toString()),
+          'provider':
+              _providerLabel((error['provider'] ?? 'provider').toString()),
         });
       }
       if (code == 'SOCIAL_ID_TOKEN_MISSING' ||
@@ -168,7 +168,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await navigateAfterSuccessfulLogin(
         userId: usersProvider.selectedUser!.id,
         isFirstLogin: usersProvider.isFirstLogin,
-        loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+        hasActiveLicense: usersProvider.hasActiveLicense,
+        loadChartData: (userId) =>
+            evaluationsProvider.getQuranChartData(userId),
       );
     } catch (error) {
       if (!mounted) {
@@ -302,20 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _userController.loginPasswordController.text,
       );
 
-      final User user = User(
-        id: authData.user!.id,
-        fullName: authData.user!.fullName,
-        email: authData.user!.email,
-      );
-
-      usersProvider.setSelectedUser(user);
-      await usersProvider.checkFirstLogin();
-
-      await usersProvider.saveUserSession(
-        user,
-        authData.accessToken!,
-        refreshToken: authData.refreshToken,
-      );
+      await usersProvider.finalizeAuthenticatedUser(authData);
 
       if (_userController.rememberMe) {
         _userController.saveLoginInfo(
@@ -331,7 +320,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await navigateAfterSuccessfulLogin(
         userId: usersProvider.selectedUser!.id,
         isFirstLogin: usersProvider.isFirstLogin,
-        loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+        hasActiveLicense: usersProvider.hasActiveLicense,
+        loadChartData: (userId) =>
+            evaluationsProvider.getQuranChartData(userId),
       );
     } catch (e) {
       final messageText = usersProvider.extractErrorMessage(e);
@@ -427,7 +418,8 @@ class _LoginScreenState extends State<LoginScreen> {
               autofillHints: const [AutofillHints.password],
               textEditingController: _userController.loginPasswordController,
               borderColor: _userController.loginPasswordTextFieldBorderColor,
-              onSubmitted: (_) => _handleLogin(usersProvider, evaluationsProvider),
+              onSubmitted: (_) =>
+                  _handleLogin(usersProvider, evaluationsProvider),
             ),
             SizedBox(height: utilitiesGap),
             Row(
@@ -437,7 +429,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? Icons.bookmark_rounded
                       : Icons.bookmark_border_rounded,
                   tooltip: 'remember_me'.tr,
-                  onTap: () => setState(() => _userController.toggleRememberMe()),
+                  onTap: () =>
+                      setState(() => _userController.toggleRememberMe()),
                 ),
                 const Spacer(),
                 _buildUtilityIconButton(
@@ -445,9 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   tooltip: 'forgot_password'.tr,
                   onTap: () => Get.to(
                     () => ForgotPasswordScreen(
-                      initialEmail: _userController
-                              .loginEmailController
-                              .text
+                      initialEmail: _userController.loginEmailController.text
                               .trim()
                               .isEmpty
                           ? null

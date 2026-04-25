@@ -19,6 +19,7 @@ import 'providers/language_provider.dart';
 import 'screens/authentication_screens/email_verification_pending_screen.dart';
 import 'screens/authentication_screens/email_verification_result_screen.dart';
 import 'screens/authentication_screens/forget_password_screen.dart';
+import 'screens/authentication_screens/license_activation_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
@@ -174,6 +175,10 @@ class MyApp extends StatelessWidget {
           page: () => const AuthenticatedRouteGate(
             child: WelcomeScreen(),
           ),
+        ),
+        GetPage(
+          name: '/license-activation',
+          page: () => const LicenseActivationScreen(),
         ),
         GetPage(
           name: '/sahifa',
@@ -381,9 +386,11 @@ class _InitialScreenState extends State<InitialScreen> {
 
       if (isLoggedIn && usersProvider.selectedUser != null) {
         try {
+          await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
           await navigateAfterSuccessfulLogin(
             userId: usersProvider.selectedUser!.id,
             isFirstLogin: usersProvider.isFirstLogin,
+            hasActiveLicense: usersProvider.hasActiveLicense,
             loadChartData: (userId) =>
                 evaluationsProvider.getQuranChartData(userId),
           );
@@ -426,4 +433,3 @@ class _InitialScreenState extends State<InitialScreen> {
     );
   }
 }
-

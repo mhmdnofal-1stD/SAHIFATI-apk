@@ -91,9 +91,12 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
       final switched = await usersProvider.switchToStoredUser(userData);
       if (switched && usersProvider.selectedUser != null) {
         await _resetUserScopedState();
-        await usersProvider.ensureReadingDisplayPreferencesLoaded(
-          forceRefresh: true,
-        );
+        await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
+        if (usersProvider.hasActiveLicense) {
+          await usersProvider.ensureReadingDisplayPreferencesLoaded(
+            forceRefresh: true,
+          );
+        }
 
         if (!mounted) {
           return;
@@ -102,6 +105,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
         await navigateAfterSuccessfulLogin(
           userId: usersProvider.selectedUser!.id,
           isFirstLogin: usersProvider.isFirstLogin,
+          hasActiveLicense: usersProvider.hasActiveLicense,
           loadChartData: (userId) =>
               evaluationsProvider.getQuranChartData(userId),
         );

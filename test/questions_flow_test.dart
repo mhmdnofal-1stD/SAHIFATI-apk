@@ -212,7 +212,7 @@ void main() {
           ayahNo: 1,
           juz: 1,
           hizb: 1,
-          surah: Surah(id: 1, nameAr: 'الفاتحة', ayahCount: 7),
+          surah: const Surah(id: 1, nameAr: 'الفاتحة', ayahCount: 7),
           userEvaluation: UserEvaluation(ayahId: 1, memoId: 1),
         ),
       ],

@@ -126,7 +126,11 @@ class EmailVerificationResultScreen extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () async {
                           if (state == VerificationResultState.success) {
-                            Get.offAllNamed('/welcome');
+                            Get.offAllNamed(
+                              usersProvider.hasActiveLicense
+                                  ? '/welcome'
+                                  : '/license-activation',
+                            );
                             return;
                           }
 

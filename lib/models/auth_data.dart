@@ -19,6 +19,7 @@ class AuthData {
         fullName: json['fullName'] ?? '',
         email: json['email'] ?? '',
         userRoleId: json['userRoleId'],
+        licenseStatus: json['licenseStatus'] as String?,
       );
       return AuthData(
           accessToken: json['token'],

@@ -27,6 +27,7 @@ class AuthenticatedRouteGate extends StatefulWidget {
 class _AuthenticatedRouteGateState extends State<AuthenticatedRouteGate> {
   late final Future<bool> _bootstrapFuture;
   bool _redirectScheduled = false;
+  String _redirectRoute = '/';
 
   @override
   void initState() {
@@ -41,8 +42,15 @@ class _AuthenticatedRouteGateState extends State<AuthenticatedRouteGate> {
     if (usersProvider.selectedUser == null) {
       final isLoggedIn = await usersProvider.tryAutoLogin();
       if (!isLoggedIn || usersProvider.selectedUser == null) {
+        _redirectRoute = '/';
         return false;
       }
+    }
+
+    await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
+    if (!usersProvider.hasActiveLicense) {
+      _redirectRoute = '/license-activation';
+      return false;
     }
 
     if (widget.loader != null) {
@@ -61,7 +69,7 @@ class _AuthenticatedRouteGateState extends State<AuthenticatedRouteGate> {
       if (!mounted) {
         return;
       }
-      Get.offAllNamed('/');
+      Get.offAllNamed(_redirectRoute);
     });
   }
 

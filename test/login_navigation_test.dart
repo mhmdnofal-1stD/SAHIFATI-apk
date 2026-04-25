@@ -128,6 +128,7 @@ void main() {
     await navigateAfterSuccessfulLogin(
       userId: 99,
       isFirstLogin: false,
+      hasActiveLicense: true,
       loadChartData: (_) async {},
     );
 
@@ -158,6 +159,7 @@ void main() {
     await navigateAfterSuccessfulLogin(
       userId: 99,
       isFirstLogin: false,
+      hasActiveLicense: true,
       loadChartData: (userId) async {
         loadedChartUserId = userId;
       },
@@ -179,6 +181,52 @@ void main() {
     final storedSession = await readingSessionStore.loadForUser(99);
     expect(storedSession, isNotNull);
     expect(storedSession!.shouldAutoResume, isFalse);
+  });
+
+  testWidgets('pending license navigation replaces the login route with the activation gate',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<UsersProvider>.value(
+            value: UsersProvider(),
+          ),
+          ChangeNotifierProvider<EvaluationsProvider>.value(
+            value: EvaluationsProvider(),
+          ),
+        ],
+        child: GetMaterialApp(
+          initialRoute: '/login',
+          getPages: [
+            GetPage(
+              name: '/login',
+              page: () => const LoginScreen(firstScreen: false),
+            ),
+            GetPage(
+              name: '/license-activation',
+              page: () => const Scaffold(
+                body: Text('license-activation-destination'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    expect(find.byType(LoginScreen), findsOneWidget);
+
+    await navigateAfterSuccessfulLogin(
+      userId: 99,
+      isFirstLogin: false,
+      hasActiveLicense: false,
+      loadChartData: (_) async {},
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsNothing);
+    expect(find.text('license-activation-destination'), findsOneWidget);
   });
 
   testWidgets('authentication text field exposes an explicit semantics label',

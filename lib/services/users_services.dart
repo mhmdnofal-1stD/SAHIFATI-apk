@@ -113,7 +113,6 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-
   Future<dynamic> login(
       {required String email, required String password}) async {
     try {
@@ -170,7 +169,8 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> resendVerification({required String email}) async {
+  Future<Map<String, dynamic>> resendVerification(
+      {required String email}) async {
     try {
       final response = await http
           .post(
@@ -259,6 +259,184 @@ class UsersServices with ChangeNotifier {
       throw _extractErrorMessage(
         responseData,
         'service_users_load_profile_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getLicenseState() async {
+    try {
+      final response = await SahifatyApi().get('licensing/me');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_load_license_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getLicenseBalance() async {
+    try {
+      final response = await SahifatyApi().get('licensing/balance');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_load_balance_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> listMyPromoCodes() async {
+    try {
+      final response = await SahifatyApi().get('licensing/codes');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData is List) {
+        return responseData
+            .whereType<Map>()
+            .map((entry) => Map<String, dynamic>.from(entry))
+            .toList();
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_load_promo_codes_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> activateGiftLicense() async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/activate/gift',
+        body: <String, dynamic>{},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_activate_license_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createPromoCode({
+    required int maxUses,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/codes',
+        body: <String, dynamic>{'maxUses': maxUses},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_create_promo_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> revokePromoCode({
+    required String codeId,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/codes/$codeId/revoke',
+        body: <String, dynamic>{},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_revoke_promo_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> activatePromoLicense({
+    required String code,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/activate/promo',
+        body: <String, dynamic>{'code': code},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_activate_promo_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createPurchaseIntent({
+    int quantity = 20,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/purchase/intent',
+        body: <String, dynamic>{'quantity': quantity},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_purchase_intent_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -400,7 +578,7 @@ class UsersServices with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('accessToken');
-      
+
       if (token == null) {
         throw 'service_users_missing_auth_token'.tr;
       }
