@@ -9,6 +9,7 @@ import '../questions_screen/questions_screen.dart';
 import '../settings_screen/settings_screen.dart';
 import '../settings_screen/my_licenses_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
+import '../profile_screen/profile_screen.dart';
 import 'custom_text.dart';
 
 class GlobalDrawer extends StatelessWidget {
@@ -31,6 +32,25 @@ class GlobalDrawer extends StatelessWidget {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
+              ListTile(
+                onTap: () {
+                  Get.to(() => const ProfileScreen());
+                },
+                title: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    const Icon(
+                      Icons.account_circle_outlined,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 10),
+                    CustomText(
+                      text: 'drawer_profile'.tr,
+                      withBackground: false,
+                    ),
+                  ],
+                ),
+              ),
               ListTile(
                 onTap: () {
                   Get.to(() => const MyLicensesScreen());

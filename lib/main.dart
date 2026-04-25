@@ -25,6 +25,7 @@ import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
 import 'screens/sahifa_screen/sahifa_screen.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
+import 'screens/profile_screen/profile_screen.dart';
 import 'services/localization_service.dart';
 
 Future<void> main() async {
@@ -174,6 +175,12 @@ class MyApp extends StatelessWidget {
           name: '/welcome',
           page: () => const AuthenticatedRouteGate(
             child: WelcomeScreen(),
+          ),
+        ),
+        GetPage(
+          name: '/profile',
+          page: () => const AuthenticatedRouteGate(
+            child: ProfileScreen(),
           ),
         ),
         GetPage(

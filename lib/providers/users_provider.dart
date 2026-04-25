@@ -8,6 +8,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../controllers/users_controller.dart';
 import '../core/auth/social_auth_config.dart';
 import '../core/constants/colors.dart';
+import '../models/user_notification_item.dart';
 import '../models/user.dart';
 import '../services/sahifaty_api.dart';
 import '../services/secure_session_storage.dart';
@@ -39,6 +40,7 @@ class UsersProvider with ChangeNotifier {
   bool isProfileLoading = false;
   bool isLicenseLoading = false;
   bool isPromoCodesLoading = false;
+  bool isNotificationsLoading = false;
   bool isFirstLogin = false;
   bool showMemorizationColors = true;
   bool showComprehensionUnderline = true;
@@ -47,6 +49,9 @@ class UsersProvider with ChangeNotifier {
   bool _facebookWebInitialized = false;
   Map<String, dynamic>? licenseBalanceSummary;
   List<Map<String, dynamic>> myPromoCodes = <Map<String, dynamic>>[];
+  List<UserNotificationItem> notifications = <UserNotificationItem>[];
+  int unreadNotificationsCount = 0;
+  bool _notificationsLoaded = false;
 
   String _accountKeyForUser(User user) => user.id.toString();
 
@@ -534,6 +539,13 @@ class UsersProvider with ChangeNotifier {
     _readingDisplayPreferencesLoaded = false;
   }
 
+  void _resetNotificationsState() {
+    notifications = <UserNotificationItem>[];
+    unreadNotificationsCount = 0;
+    isNotificationsLoading = false;
+    _notificationsLoaded = false;
+  }
+
   Future<void> ensureReadingDisplayPreferencesLoaded(
       {bool forceRefresh = false}) async {
     if (_readingDisplayPreferencesLoaded && !forceRefresh) {
@@ -549,6 +561,68 @@ class UsersProvider with ChangeNotifier {
     }
 
     _readingDisplayPreferencesLoaded = true;
+    notifyListeners();
+  }
+
+  Future<void> ensureNotificationsLoaded({bool forceRefresh = false}) async {
+    if (selectedUser == null) {
+      _resetNotificationsState();
+      notifyListeners();
+      return;
+    }
+
+    if (_notificationsLoaded && !forceRefresh) {
+      return;
+    }
+
+    isNotificationsLoading = true;
+    notifyListeners();
+
+    try {
+      final payload = await _usersService.listMyNotifications();
+      final rawItems = payload['items'];
+      notifications = rawItems is List
+          ? rawItems
+              .whereType<Map>()
+              .map(
+                (entry) => UserNotificationItem.fromJson(
+                  Map<String, dynamic>.from(entry),
+                ),
+              )
+              .toList()
+          : <UserNotificationItem>[];
+      unreadNotificationsCount =
+          (payload['unreadCount'] as num?)?.toInt() ??
+              notifications.where((item) => !item.isRead).length;
+      _notificationsLoaded = true;
+    } finally {
+      isNotificationsLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    final index = notifications.indexWhere((item) => item.id == notificationId);
+    if (index == -1 || notifications[index].isRead) {
+      return;
+    }
+
+    final updated = await _usersService.markNotificationRead(
+      notificationId: notificationId,
+    );
+
+    final current = notifications[index];
+    notifications[index] = UserNotificationItem(
+      id: current.id,
+      type: current.type,
+      title: current.title,
+      body: current.body,
+      meta: current.meta,
+      createdAt: current.createdAt,
+      readAt: updated.readAt ?? DateTime.now(),
+    );
+    unreadNotificationsCount =
+        notifications.where((item) => !item.isRead).length;
     notifyListeners();
   }
 
@@ -960,6 +1034,7 @@ class UsersProvider with ChangeNotifier {
     licenseBalanceSummary = null;
     myPromoCodes = <Map<String, dynamic>>[];
     _resetReadingDisplayPreferencesState();
+    _resetNotificationsState();
     notifyListeners();
   }
 
@@ -1102,12 +1177,14 @@ class UsersProvider with ChangeNotifier {
   void setSelectedUser(User user) {
     selectedUser = user;
     _resetReadingDisplayPreferencesState();
+    _resetNotificationsState();
     notifyListeners();
   }
 
   Future<void> _persistSelectedUser(User user) async {
     final prefs = await SharedPreferences.getInstance();
     selectedUser = user;
+    _resetNotificationsState();
     await prefs.setString('userData', json.encode(user.toMap()));
     await saveUserToDevice(user);
   }
@@ -1223,6 +1300,7 @@ class UsersProvider with ChangeNotifier {
       final extractedUserData = Map<String, dynamic>.from(rawUserData);
 
       selectedUser = User.fromJson(extractedUserData);
+      _resetNotificationsState();
       await _setActiveUserSnapshot(selectedUser!);
       await checkFirstLogin(user: selectedUser);
       notifyListeners();
@@ -1245,6 +1323,7 @@ class UsersProvider with ChangeNotifier {
     await prefs.remove('refreshToken');
     await prefs.remove('password');
     _resetReadingDisplayPreferencesState();
+    _resetNotificationsState();
   }
 
   Future<bool> isOnboardingCompleted({User? user}) async {

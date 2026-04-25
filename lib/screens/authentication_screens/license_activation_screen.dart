@@ -124,6 +124,54 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
     }
   }
 
+  Widget _buildPurchaseTierRow({
+    required String title,
+    required String price,
+    required Color accent,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: accent.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.blackFontColor,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              price,
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: accent,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildOptionCard({
     required IconData icon,
     required String title,
@@ -131,6 +179,7 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
     required Color accent,
     VoidCallback? onTap,
     bool enabled = true,
+    bool showAction = true,
     String? footer,
     Widget? child,
   }) {
@@ -192,32 +241,34 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
             const SizedBox(height: 14),
             child,
           ],
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: enabled ? onTap : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accent,
-                disabledBackgroundColor: const Color(0xFFE8EBF1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          if (showAction) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton(
+                onPressed: enabled ? onTap : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  disabledBackgroundColor: const Color(0xFFE8EBF1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-              ),
-              child: Text(
-                footer ??
-                    (enabled
-                        ? 'license_activation_continue'.tr
-                        : 'license_activation_coming_soon'.tr),
-                textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontWeight: FontWeight.w700,
-                  color: enabled ? Colors.white : const Color(0xFF7E8795),
+                child: Text(
+                  footer ??
+                      (enabled
+                          ? 'license_activation_continue'.tr
+                          : 'license_activation_coming_soon'.tr),
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontWeight: FontWeight.w700,
+                    color: enabled ? Colors.white : const Color(0xFF7E8795),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -385,55 +436,76 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                         title: 'license_activation_purchase_title'.tr,
                         body: 'license_activation_purchase_body'.tr,
                         accent: const Color(0xFF5B3DA1),
-                        enabled: false,
-                        footer: 'license_activation_coming_soon'.tr,
+                        showAction: false,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              'license_activation_purchase_deferred_notice'.tr,
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF5B3DA1),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F0FF),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'license_activation_purchase_deferred_notice'
+                                    .tr,
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(
+                                  fontFamily: AppFonts.primaryFont,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF5B3DA1),
+                                  height: 1.6,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              'license_activation_bundle_20'.tr,
+                              'license_activation_purchase_pricing_label'.tr,
                               textDirection: TextDirection.rtl,
                               style: TextStyle(
                                 fontFamily: AppFonts.primaryFont,
-                                color: AppColors.hintTextColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.blackFontColor,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'license_activation_bundle_100'.tr,
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                color: AppColors.hintTextColor,
-                              ),
+                            const SizedBox(height: 10),
+                            _buildPurchaseTierRow(
+                              title: 'license_activation_bundle_20_title'.tr,
+                              price: 'license_activation_bundle_20_price'.tr,
+                              accent: const Color(0xFF5B3DA1),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              'license_activation_bundle_1000'.tr,
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                color: AppColors.hintTextColor,
-                              ),
+                            _buildPurchaseTierRow(
+                              title: 'license_activation_bundle_100_title'.tr,
+                              price: 'license_activation_bundle_100_price'.tr,
+                              accent: const Color(0xFF1E7A6B),
                             ),
                             const SizedBox(height: 6),
+                            _buildPurchaseTierRow(
+                              title: 'license_activation_bundle_1000_title'.tr,
+                              price: 'license_activation_bundle_1000_price'.tr,
+                              accent: const Color(0xFFB26A12),
+                            ),
+                            const SizedBox(height: 6),
+                            _buildPurchaseTierRow(
+                              title: 'license_activation_bundle_10000_title'.tr,
+                              price: 'license_activation_bundle_10000_price'.tr,
+                              accent: const Color(0xFFB53C52),
+                            ),
+                            const SizedBox(height: 12),
                             Text(
-                              'license_activation_bundle_10000'.tr,
+                              'license_activation_purchase_footer_note'.tr,
                               textDirection: TextDirection.rtl,
                               style: TextStyle(
                                 fontFamily: AppFonts.primaryFont,
+                                fontSize: 12,
                                 color: AppColors.hintTextColor,
+                                height: 1.6,
                               ),
                             ),
                           ],

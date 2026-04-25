@@ -28,6 +28,12 @@
 	<array>
 		<string>mailto</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>يستخدم التطبيق الكاميرا لمسح رمز QR الخاص بالمعلم لإرسال طلب الإشراف.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج التطبيق إلى الوصول إلى الصور لاختيار صورة رمز QR وقراءتها.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>يحفظ التطبيق صورة رمز QR الخاص بحسابك إلى معرض الصور عند طلبك.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

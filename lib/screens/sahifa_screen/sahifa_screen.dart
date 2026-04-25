@@ -17,6 +17,7 @@ import '../widgets/custom_back_button.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/user_profile_badge.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/notifications_bell_button.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/responsive_content_shell.dart';
 
@@ -94,6 +95,7 @@ class SahifaScreen extends StatelessWidget {
                       child: UserProfileBadge(),
                     ),
               actions: [
+                const NotificationsBellButton(),
                 Builder(
                   builder: (context) => IconButton(
                     icon: const Icon(Icons.menu),

@@ -20,6 +20,7 @@ import '../widgets/custom_parts_dropdown.dart';
 import '../widgets/custom_thirds_dropdown.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/no_pop_scope.dart';
+import '../widgets/notifications_bell_button.dart';
 import '../widgets/responsive_content_shell.dart';
 
 class MainScreen extends StatefulWidget {
@@ -95,6 +96,7 @@ class _MainScreenState extends State<MainScreen> {
                     onPressed: () => Get.off(const SahifaScreen(firstScreen: false)),
                   ),
                   actions: [
+                    const NotificationsBellButton(),
                     Builder(
                       builder: (context) => IconButton(
                         icon: const Icon(Icons.menu),

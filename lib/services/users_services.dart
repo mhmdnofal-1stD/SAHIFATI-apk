@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api.dart';
+import '../models/user_notification_item.dart';
 import 'sahifaty_api.dart';
 
 class UsersServices with ChangeNotifier {
@@ -259,6 +260,24 @@ class UsersServices with ChangeNotifier {
       throw _extractErrorMessage(
         responseData,
         'service_users_load_profile_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getMySupervisionCode() async {
+    try {
+      final response = await SahifatyApi().get('users/me/supervision-code');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _extractErrorMessage(
+        responseData,
+        'service_users_load_supervision_code_failed'.tr,
       );
     } catch (ex) {
       rethrow;
@@ -602,6 +621,51 @@ class UsersServices with ChangeNotifier {
         final responseData = json.decode(response.body);
         return responseData['message'] ?? 'delete_account_error'.tr;
       }
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> listMyNotifications({int limit = 20}) async {
+    try {
+      final response = await SahifatyApi().get('notifications/me?limit=$limit');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_load_notifications_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<UserNotificationItem> markNotificationRead({
+    required String notificationId,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'notifications/$notificationId/read',
+        body: <String, dynamic>{},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return UserNotificationItem.fromJson(
+          Map<String, dynamic>.from(responseData as Map),
+        );
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_mark_notification_read_failed'.tr,
+      );
     } catch (ex) {
       rethrow;
     }
