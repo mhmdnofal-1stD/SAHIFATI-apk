@@ -379,12 +379,21 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final usersProvider = Provider.of<UsersProvider>(context);
     final evaluationsProvider = Provider.of<EvaluationsProvider>(context);
+    final mediaSize = MediaQuery.of(context).size;
+    final isCompactPhone = mediaSize.shortestSide < 600;
+    final fieldGap = isCompactPhone ? 8.0 : 14.0;
+    final utilitiesGap = isCompactPhone ? 8.0 : 10.0;
+    final errorGap = isCompactPhone ? 10.0 : 12.0;
+    final primaryActionGap = isCompactPhone ? 14.0 : 18.0;
+    final sectionGap = isCompactPhone ? 16.0 : 22.0;
 
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
-        subtitle: 'auth_login_subtitle_compact'.tr,
+        subtitle: '',
         isSignup: false,
+        fillViewport: true,
+        preferCompactMobileLayout: true,
         onSelectSignup: usersProvider.isLoading
             ? null
             : () {
@@ -407,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
               textEditingController: _userController.loginEmailController,
               borderColor: _userController.loginEmailTextFieldBorderColor,
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: fieldGap),
             CustomAuthenticationTextField(
               hintText: 'password_hint'.tr,
               obscureText: true,
@@ -420,7 +429,7 @@ class _LoginScreenState extends State<LoginScreen> {
               borderColor: _userController.loginPasswordTextFieldBorderColor,
               onSubmitted: (_) => _handleLogin(usersProvider, evaluationsProvider),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: utilitiesGap),
             Row(
               children: [
                 _buildUtilityIconButton(
@@ -450,10 +459,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
             if (_inlineError != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: errorGap),
               _buildInlineErrorBanner(_inlineError!),
             ],
-            const SizedBox(height: 18),
+            SizedBox(height: primaryActionGap),
             SizedBox(
               height: 56,
               child: ElevatedButton.icon(
@@ -490,7 +499,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: sectionGap),
             AuthSocialSection(
               googleControl: _buildGoogleControl(
                 usersProvider,
@@ -510,7 +519,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? AuthSocialStatusTone.error
                   : AuthSocialStatusTone.info,
             ),
-            const SizedBox(height: 22),
+            SizedBox(height: sectionGap),
             Center(
               child: CustomAuthFooter(
                 actionText: 'create_account_action'.tr,

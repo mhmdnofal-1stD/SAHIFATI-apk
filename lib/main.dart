@@ -263,138 +263,148 @@ class _InitialScreenState extends State<InitialScreen> {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
-    await usersProvider.loadPendingVerificationState();
+    try {
+      await usersProvider.loadPendingVerificationState();
 
-    final passwordResetIntent = resolvePasswordResetRoute(Uri.base);
-    if (!mounted) {
-      return;
-    }
-
-    if (passwordResetIntent.kind == PasswordResetRouteKind.request) {
-      Get.offAllNamed(
-        '/forgot-password',
-        parameters: {
-          if (passwordResetIntent.email != null)
-            'email': passwordResetIntent.email!,
-          if (passwordResetIntent.preview != null)
-            'preview': passwordResetIntent.preview!,
-        },
-      );
-      return;
-    }
-
-    if (passwordResetIntent.kind == PasswordResetRouteKind.reset) {
-      Get.offAllNamed(
-        '/reset-password',
-        parameters: {
-          if (passwordResetIntent.token != null)
-            'token': passwordResetIntent.token!,
-          if (passwordResetIntent.email != null)
-            'email': passwordResetIntent.email!,
-          if (passwordResetIntent.preview != null)
-            'preview': passwordResetIntent.preview!,
-        },
-      );
-      return;
-    }
-
-    final verificationIntent = resolveVerificationRoute(Uri.base);
-    if (!mounted) {
-      return;
-    }
-
-    if (verificationIntent.kind == VerificationRouteKind.verifyToken) {
-      Get.offAllNamed(
-        '/verify-email',
-        parameters: {
-          if (verificationIntent.token != null)
-            'token': verificationIntent.token!,
-          if (verificationIntent.email != null)
-            'email': verificationIntent.email!,
-        },
-      );
-      return;
-    }
-
-    if (verificationIntent.kind == VerificationRouteKind.pending) {
-      Get.offAllNamed(
-        '/verification-pending',
-        parameters: {
-          if (verificationIntent.email != null)
-            'email': verificationIntent.email!,
-        },
-      );
-      return;
-    }
-
-    if (verificationIntent.kind == VerificationRouteKind.success) {
-      Get.offAllNamed(
-        '/verification-success',
-        parameters: {
-          if (verificationIntent.email != null)
-            'email': verificationIntent.email!,
-        },
-      );
-      return;
-    }
-
-    if (verificationIntent.kind == VerificationRouteKind.failed) {
-      Get.offAllNamed(
-        '/verification-failed',
-        parameters: {
-          if (verificationIntent.email != null)
-            'email': verificationIntent.email!,
-        },
-      );
-      return;
-    }
-
-    if (verificationIntent.kind == VerificationRouteKind.expired) {
-      Get.offAllNamed(
-        '/verification-expired',
-        parameters: {
-          if (verificationIntent.email != null)
-            'email': verificationIntent.email!,
-        },
-      );
-      return;
-    }
-
-    final hasConnection = await GeneralController().checkConnectivity();
-
-    if (!mounted) {
-      return;
-    }
-
-    if (!hasConnection) {
-      await usersProvider.clearPersistedSession();
-      await _routeToLoginOrSelectUser(usersProvider);
-      return;
-    }
-
-    final bool isLoggedIn = await usersProvider.tryAutoLogin();
-
-    if (!mounted) {
-      return;
-    }
-
-    if (isLoggedIn && usersProvider.selectedUser != null) {
-      try {
-        await navigateAfterSuccessfulLogin(
-          userId: usersProvider.selectedUser!.id,
-          isFirstLogin: usersProvider.isFirstLogin,
-          loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
-        );
-        if (!mounted) {
-          return;
-        }
-      } catch (e) {
-        await usersProvider.clearPersistedSession();
-        _routeToLoginOrSelectUser(usersProvider);
+      final passwordResetIntent = resolvePasswordResetRoute(Uri.base);
+      if (!mounted) {
+        return;
       }
-    } else {
+
+      if (passwordResetIntent.kind == PasswordResetRouteKind.request) {
+        Get.offAllNamed(
+          '/forgot-password',
+          parameters: {
+            if (passwordResetIntent.email != null)
+              'email': passwordResetIntent.email!,
+            if (passwordResetIntent.preview != null)
+              'preview': passwordResetIntent.preview!,
+          },
+        );
+        return;
+      }
+
+      if (passwordResetIntent.kind == PasswordResetRouteKind.reset) {
+        Get.offAllNamed(
+          '/reset-password',
+          parameters: {
+            if (passwordResetIntent.token != null)
+              'token': passwordResetIntent.token!,
+            if (passwordResetIntent.email != null)
+              'email': passwordResetIntent.email!,
+            if (passwordResetIntent.preview != null)
+              'preview': passwordResetIntent.preview!,
+          },
+        );
+        return;
+      }
+
+      final verificationIntent = resolveVerificationRoute(Uri.base);
+      if (!mounted) {
+        return;
+      }
+
+      if (verificationIntent.kind == VerificationRouteKind.verifyToken) {
+        Get.offAllNamed(
+          '/verify-email',
+          parameters: {
+            if (verificationIntent.token != null)
+              'token': verificationIntent.token!,
+            if (verificationIntent.email != null)
+              'email': verificationIntent.email!,
+          },
+        );
+        return;
+      }
+
+      if (verificationIntent.kind == VerificationRouteKind.pending) {
+        Get.offAllNamed(
+          '/verification-pending',
+          parameters: {
+            if (verificationIntent.email != null)
+              'email': verificationIntent.email!,
+          },
+        );
+        return;
+      }
+
+      if (verificationIntent.kind == VerificationRouteKind.success) {
+        Get.offAllNamed(
+          '/verification-success',
+          parameters: {
+            if (verificationIntent.email != null)
+              'email': verificationIntent.email!,
+          },
+        );
+        return;
+      }
+
+      if (verificationIntent.kind == VerificationRouteKind.failed) {
+        Get.offAllNamed(
+          '/verification-failed',
+          parameters: {
+            if (verificationIntent.email != null)
+              'email': verificationIntent.email!,
+          },
+        );
+        return;
+      }
+
+      if (verificationIntent.kind == VerificationRouteKind.expired) {
+        Get.offAllNamed(
+          '/verification-expired',
+          parameters: {
+            if (verificationIntent.email != null)
+              'email': verificationIntent.email!,
+          },
+        );
+        return;
+      }
+
+      final hasConnection = await GeneralController().checkConnectivity();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!hasConnection) {
         await usersProvider.clearPersistedSession();
-        _routeToLoginOrSelectUser(usersProvider);
+        await _routeToLoginOrSelectUser(usersProvider);
+        return;
+      }
+
+      final bool isLoggedIn = await usersProvider.tryAutoLogin();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (isLoggedIn && usersProvider.selectedUser != null) {
+        try {
+          await navigateAfterSuccessfulLogin(
+            userId: usersProvider.selectedUser!.id,
+            isFirstLogin: usersProvider.isFirstLogin,
+            loadChartData: (userId) =>
+                evaluationsProvider.getQuranChartData(userId),
+          );
+          if (!mounted) {
+            return;
+          }
+        } catch (_) {
+          await usersProvider.clearPersistedSession();
+          await _routeToLoginOrSelectUser(usersProvider);
+        }
+      } else {
+        await usersProvider.clearPersistedSession();
+        await _routeToLoginOrSelectUser(usersProvider);
+      }
+    } catch (error) {
+      debugPrint('Initial session bootstrap failed: $error');
+      await usersProvider.clearPersistedSession();
+      if (!mounted) {
+        return;
+      }
+      await _routeToLoginOrSelectUser(usersProvider);
     }
   }
 

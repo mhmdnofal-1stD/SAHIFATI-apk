@@ -93,6 +93,31 @@ class UsersProvider with ChangeNotifier {
     await prefs.setString(_storedAccountSessionsKey, json.encode(sessions));
   }
 
+  Future<List<Map<String, dynamic>>> _readStoredDeviceUsersList(
+    SharedPreferences prefs,
+  ) async {
+    final storedUsersStr = prefs.getString(_storedDeviceUsersKey);
+    if (storedUsersStr == null || storedUsersStr.isEmpty) {
+      return <Map<String, dynamic>>[];
+    }
+
+    try {
+      final decoded = json.decode(storedUsersStr);
+      if (decoded is! List) {
+        await prefs.remove(_storedDeviceUsersKey);
+        return <Map<String, dynamic>>[];
+      }
+
+      return decoded
+          .whereType<Map>()
+          .map((rawUser) => Map<String, dynamic>.from(rawUser))
+          .toList();
+    } catch (_) {
+      await prefs.remove(_storedDeviceUsersKey);
+      return <Map<String, dynamic>>[];
+    }
+  }
+
   Future<void> _setActiveUserSnapshot(User user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_activeUserDataKey, json.encode(user.toMap()));
@@ -1034,8 +1059,13 @@ class UsersProvider with ChangeNotifier {
         return false;
       }
 
-      final extractedUserData =
-          Map<String, dynamic>.from(sessionRecord['user'] as Map);
+      final rawUserData = sessionRecord['user'];
+      if (rawUserData is! Map) {
+        await _removeStoredSessionByAccountKey(activeAccountKey, notify: true);
+        return false;
+      }
+
+      final extractedUserData = Map<String, dynamic>.from(rawUserData);
 
       selectedUser = User.fromJson(extractedUserData);
       await _setActiveUserSnapshot(selectedUser!);
@@ -1141,7 +1171,13 @@ class UsersProvider with ChangeNotifier {
       return false;
     }
 
-    final user = User.fromJson(Map<String, dynamic>.from(sessionRecord['user'] as Map));
+    final rawUserData = sessionRecord['user'];
+    if (rawUserData is! Map) {
+      await _removeStoredSessionByAccountKey(accountKey, notify: true);
+      return false;
+    }
+
+    final user = User.fromJson(Map<String, dynamic>.from(rawUserData));
     await SecureSessionStorage.setActiveAccountKey(accountKey);
     await _setActiveUserSnapshot(user);
     selectedUser = user;
@@ -1185,17 +1221,14 @@ class UsersProvider with ChangeNotifier {
 
   Future<void> saveUserToDevice(User user) async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Fetch existing users
-    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
-    List<dynamic> storedUsersList = [];
-    if (storedUsersStr != null) {
-      storedUsersList = json.decode(storedUsersStr);
-    }
+
+    final storedUsersList = await _readStoredDeviceUsersList(prefs);
 
     // Check if user already exists
-    final int existingIndex = storedUsersList.indexWhere((element) => element['email'] == user.email);
-    
+    final int existingIndex = storedUsersList.indexWhere(
+      (element) => element['email'] == user.email,
+    );
+
     final Map<String, dynamic> userMap = user.toMap();
 
     if (existingIndex != -1) {
@@ -1214,53 +1247,47 @@ class UsersProvider with ChangeNotifier {
     await _migrateLegacySessionIfNeeded(prefs);
     final sessions = await _readStoredAccountSessions(prefs);
     final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
-    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
-    if (storedUsersStr != null) {
-      List<dynamic> decodedList = json.decode(storedUsersStr);
-      final users = decodedList.map<Map<String, dynamic>>((rawUser) {
-        final userMap = Map<String, dynamic>.from(rawUser as Map);
-        final accountKey = _accountKeyFromUserMap(userMap);
-        return {
-          ...userMap,
-          'hasActiveSession':
-              accountKey != null && sessions.containsKey(accountKey),
-          'isCurrent': accountKey != null && accountKey == activeAccountKey,
-        };
-      }).toList();
+    final storedUsers = await _readStoredDeviceUsersList(prefs);
+    final users = storedUsers.map((userMap) {
+      final accountKey = _accountKeyFromUserMap(userMap);
+      return {
+        ...userMap,
+        'hasActiveSession':
+            accountKey != null && sessions.containsKey(accountKey),
+        'isCurrent': accountKey != null && accountKey == activeAccountKey,
+      };
+    }).toList();
 
-      users.sort((a, b) {
-        final currentA = a['isCurrent'] == true ? 1 : 0;
-        final currentB = b['isCurrent'] == true ? 1 : 0;
-        if (currentA != currentB) {
-          return currentB.compareTo(currentA);
-        }
+    users.sort((a, b) {
+      final currentA = a['isCurrent'] == true ? 1 : 0;
+      final currentB = b['isCurrent'] == true ? 1 : 0;
+      if (currentA != currentB) {
+        return currentB.compareTo(currentA);
+      }
 
-        final activeA = a['hasActiveSession'] == true ? 1 : 0;
-        final activeB = b['hasActiveSession'] == true ? 1 : 0;
-        if (activeA != activeB) {
-          return activeB.compareTo(activeA);
-        }
+      final activeA = a['hasActiveSession'] == true ? 1 : 0;
+      final activeB = b['hasActiveSession'] == true ? 1 : 0;
+      if (activeA != activeB) {
+        return activeB.compareTo(activeA);
+      }
 
-        return (a['fullName'] ?? '').toString().compareTo(
-              (b['fullName'] ?? '').toString(),
-            );
-      });
+      return (a['fullName'] ?? '').toString().compareTo(
+            (b['fullName'] ?? '').toString(),
+          );
+    });
 
-      return users;
-    }
-    return [];
+    return users;
   }
 
   Future<void> removeUserFromDevice(String email) async {
     final prefs = await SharedPreferences.getInstance();
-    final String? storedUsersStr = prefs.getString(_storedDeviceUsersKey);
-    
-    if (storedUsersStr != null) {
-      List<dynamic> storedUsersList = json.decode(storedUsersStr);
+    final storedUsersList = await _readStoredDeviceUsersList(prefs);
+
+    if (storedUsersList.isNotEmpty) {
       final dynamic removedUser = storedUsersList.cast<dynamic>().firstWhere(
-            (element) => element['email'] == email,
-            orElse: () => null,
-          );
+        (element) => element['email'] == email,
+        orElse: () => null,
+      );
       storedUsersList.removeWhere((element) => element['email'] == email);
 
       // Save updated list back

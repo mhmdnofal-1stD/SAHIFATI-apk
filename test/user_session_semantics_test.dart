@@ -72,4 +72,18 @@ void main() {
     expect(provider.selectedUser?.id, user.id);
     expect(provider.isFirstLogin, isFalse);
   });
+
+  test('corrupt stored device users are discarded instead of breaking bootstrap',
+      () async {
+    SharedPreferences.setMockInitialValues({
+      'stored_device_users': 'not-json',
+    });
+
+    final provider = UsersProvider();
+    final users = await provider.getStoredDeviceUsers();
+    final prefs = await SharedPreferences.getInstance();
+
+    expect(users, isEmpty);
+    expect(prefs.getString('stored_device_users'), isNull);
+  });
 }

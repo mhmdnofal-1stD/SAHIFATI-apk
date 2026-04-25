@@ -15,6 +15,8 @@ class AuthScreenShell extends StatelessWidget {
     this.onSelectLogin,
     this.onSelectSignup,
     this.maxWidth = 440,
+    this.fillViewport = false,
+    this.preferCompactMobileLayout = false,
   });
 
   final String title;
@@ -24,11 +26,30 @@ class AuthScreenShell extends StatelessWidget {
   final VoidCallback? onSelectLogin;
   final VoidCallback? onSelectSignup;
   final double maxWidth;
+  final bool fillViewport;
+  final bool preferCompactMobileLayout;
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final mediaQuery = MediaQuery.of(context);
+    final bottomInset = mediaQuery.viewInsets.bottom;
     final hasSubtitle = subtitle.trim().isNotEmpty;
+    final isCompactPhone =
+        preferCompactMobileLayout && mediaQuery.size.shortestSide < 600;
+    final outerHorizontalPadding = isCompactPhone ? 16.0 : 20.0;
+    final outerTopPadding = isCompactPhone ? 12.0 : 20.0;
+    final outerBottomPadding = bottomInset > 24
+        ? bottomInset + (isCompactPhone ? 16.0 : 24.0)
+        : (isCompactPhone ? 16.0 : 24.0);
+    final cardRadius = isCompactPhone ? 28.0 : 32.0;
+    final cardHorizontalPadding = isCompactPhone ? 18.0 : 22.0;
+    final cardTopPadding = isCompactPhone ? 18.0 : 22.0;
+    final cardBottomPadding = isCompactPhone ? 20.0 : 24.0;
+    final headerSpacing = isCompactPhone ? 16.0 : 22.0;
+    final modeSpacing = isCompactPhone ? 16.0 : 20.0;
+    final titleSpacing = isCompactPhone ? 6.0 : 8.0;
+    final contentSpacing = isCompactPhone ? 18.0 : 24.0;
+    final titleFontSize = isCompactPhone ? 22.0 : 24.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0E8),
@@ -40,78 +61,103 @@ class AuthScreenShell extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => FocusScope.of(context).unfocus(),
-              child: SingleChildScrollView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  bottomInset > 24 ? bottomInset + 24 : 24,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFCFBF8),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: const Color(0xFFE9E0D2),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x140F172A),
-                            blurRadius: 40,
-                            offset: Offset(0, 20),
-                          ),
-                        ],
+              child: LayoutBuilder(
+                builder: (context, viewportConstraints) {
+                  final minViewportHeight = fillViewport &&
+                          viewportConstraints.maxHeight.isFinite
+                      ? viewportConstraints.maxHeight -
+                          outerTopPadding -
+                          outerBottomPadding
+                      : 0.0;
+                  final normalizedMinViewportHeight = minViewportHeight > 0
+                      ? minViewportHeight
+                      : 0.0;
+
+                  return SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      outerHorizontalPadding,
+                      outerTopPadding,
+                      outerHorizontalPadding,
+                      outerBottomPadding,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: normalizedMinViewportHeight,
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _BrandHeader(),
-                            const SizedBox(height: 22),
-                            _AuthModeToggle(
-                              isSignup: isSignup,
-                              onSelectLogin: onSelectLogin,
-                              onSelectSignup: onSelectSignup,
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              title,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF132A4A),
-                                height: 1.15,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFCFBF8),
+                              borderRadius: BorderRadius.circular(cardRadius),
+                              border: Border.all(
+                                color: const Color(0xFFE9E0D2),
                               ),
-                            ),
-                            if (hasSubtitle) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                subtitle,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontSize: 14,
-                                  color: const Color(0xFF6C7280),
-                                  height: 1.5,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x140F172A),
+                                  blurRadius: 40,
+                                  offset: Offset(0, 20),
                                 ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                cardHorizontalPadding,
+                                cardTopPadding,
+                                cardHorizontalPadding,
+                                cardBottomPadding,
                               ),
-                            ],
-                            const SizedBox(height: 24),
-                            child,
-                          ],
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const _BrandHeader(),
+                                  SizedBox(height: headerSpacing),
+                                  _AuthModeToggle(
+                                    isSignup: isSignup,
+                                    onSelectLogin: onSelectLogin,
+                                    onSelectSignup: onSelectSignup,
+                                  ),
+                                  SizedBox(height: modeSpacing),
+                                  Text(
+                                    title,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: AppFonts.primaryFont,
+                                      fontSize: titleFontSize,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF132A4A),
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  if (hasSubtitle) ...[
+                                    SizedBox(height: titleSpacing),
+                                    Text(
+                                      subtitle,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: AppFonts.primaryFont,
+                                        fontSize: 14,
+                                        color: const Color(0xFF6C7280),
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                  SizedBox(height: contentSpacing),
+                                  child,
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
