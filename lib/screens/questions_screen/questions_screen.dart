@@ -402,7 +402,14 @@ class _QuestionsHeader extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD7DED6)),
+          border: Border.all(color: AppColors.lineColor),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x10112038),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -410,6 +417,7 @@ class _QuestionsHeader extends StatelessWidget {
           Text(
             eyebrow,
             style: const TextStyle(
+              fontSize: 15,
               color: AppColors.buttonColor,
               fontWeight: FontWeight.w700,
             ),
@@ -418,7 +426,7 @@ class _QuestionsHeader extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 30.5,
               fontWeight: FontWeight.w800,
               color: AppColors.blackFontColor,
             ),
@@ -427,7 +435,7 @@ class _QuestionsHeader extends StatelessWidget {
           Text(
             subtitle,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 16.2,
               height: 1.5,
               color: Color(0xFF39433D),
             ),
@@ -481,7 +489,7 @@ class _QuestionsMetricChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE1E5DE)),
+        border: Border.all(color: AppColors.lineColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +497,7 @@ class _QuestionsMetricChip extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 13,
               color: Color(0xFF5A645F),
             ),
           ),
@@ -497,7 +505,7 @@ class _QuestionsMetricChip extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -549,13 +557,14 @@ class _QuestionsStatusBanner extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
+                    fontSize: 15.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(height: 1.5),
+                  style: const TextStyle(fontSize: 15, height: 1.55),
                 ),
                 if (actionLabel != null && onAction != null) ...[
                   const SizedBox(height: 12),
@@ -604,12 +613,12 @@ class _QuestionsFooter extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFDCE2DA)),
+        border: Border.all(color: AppColors.lineColor),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x10112038),
             blurRadius: 18,
             offset: Offset(0, 8),
           ),
@@ -621,8 +630,9 @@ class _QuestionsFooter extends StatelessWidget {
           Text(
             footerHint,
             style: const TextStyle(
+              fontSize: 15,
               height: 1.5,
-              color: Color(0xFF4A554E),
+              color: AppColors.mutedText,
             ),
           ),
           const SizedBox(height: 14),
@@ -680,7 +690,7 @@ class _QuestionsEmptyState extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8F5),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFD9E0D4)),
+            border: Border.all(color: AppColors.lineColor),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -695,7 +705,7 @@ class _QuestionsEmptyState extends StatelessWidget {
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 24,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -703,7 +713,7 @@ class _QuestionsEmptyState extends StatelessWidget {
               Text(
                 body,
                 textAlign: TextAlign.center,
-                style: const TextStyle(height: 1.6),
+                style: const TextStyle(fontSize: 15.5, height: 1.6),
               ),
               if (actionLabel != null && onAction != null) ...[
                 const SizedBox(height: 18),

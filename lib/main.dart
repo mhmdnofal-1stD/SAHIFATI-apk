@@ -75,18 +75,59 @@ class MyApp extends StatelessWidget {
       fallbackLocale: LocalizationService.fallbackLocale,
       themeMode: ThemeMode.light,
       theme: ThemeData(
+        useMaterial3: true,
         scaffoldBackgroundColor: AppColors.backgroundColor,
         brightness: Brightness.light,
         textTheme: const TextTheme(
+          bodyMedium: TextStyle(
+            color: AppColors.blackFontColor,
+            fontSize: 16,
+            height: 1.5,
+          ),
           bodyLarge: TextStyle(color: AppColors.blackFontColor),
+          titleMedium: TextStyle(
+            color: AppColors.blackFontColor,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         colorScheme: const ColorScheme.light(
-          surface: AppColors.backgroundColor,
-          primary: AppColors.backgroundColor,
-          secondary: AppColors.buttonColor,
+          surface: AppColors.panelColor,
+          primary: AppColors.buttonColor,
+          secondary: AppColors.primaryPurple,
+          onPrimary: Colors.white,
+          onSurface: AppColors.blackFontColor,
+        ),
+        cardTheme: CardThemeData(
+          color: AppColors.panelColor,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: AppColors.lineColor),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.buttonColor,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primaryPurple,
+            side: const BorderSide(color: AppColors.lineColor),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
         ),
       ),
       darkTheme: ThemeData(
+        useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF121212),
         brightness: Brightness.dark,
         textTheme: const TextTheme(

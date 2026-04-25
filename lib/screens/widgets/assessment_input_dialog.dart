@@ -5,25 +5,30 @@ import '../../controllers/evaluations_controller.dart';
 import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/language_provider.dart';
+import '../../services/subjects_lookup_service.dart';
 
 class AssessmentSelection {
   const AssessmentSelection({
     required this.memoId,
     required this.compreId,
+    required this.comment,
     required this.memoChanged,
     required this.compreChanged,
+    required this.commentChanged,
     required this.memoEvaluation,
     required this.compreEvaluation,
   });
 
   final int? memoId;
   final int? compreId;
+  final String? comment;
   final bool memoChanged;
   final bool compreChanged;
+  final bool commentChanged;
   final Evaluation? memoEvaluation;
   final Evaluation? compreEvaluation;
 
-  bool get hasChanges => memoChanged || compreChanged;
+  bool get hasChanges => memoChanged || compreChanged || commentChanged;
 }
 
 Future<AssessmentSelection?> showAssessmentInputDialog({
@@ -32,6 +37,9 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   required LanguageProvider languageProvider,
   int? initialMemoId,
   int? initialCompreId,
+  String? initialComment,
+  Iterable<Object?> subjectKeys = const <Object?>[],
+  bool enableCommentField = false,
   String? title,
 }) async {
   if (evaluationsProvider.evaluations.isEmpty) {
@@ -47,6 +55,20 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   final comprehensionEvaluations = evaluationsProvider.comprehensionEvaluations;
   final hasMemoOptions = memorizationEvaluations.isNotEmpty;
   final hasCompreOptions = comprehensionEvaluations.isNotEmpty;
+  final normalizedInitialComment = (initialComment ?? '').trim();
+  final normalizedSubjectKeys = subjectKeys
+      .map((key) => key?.toString().trim() ?? '')
+      .where((key) => key.isNotEmpty)
+      .toList(growable: false);
+  final subjectNamesFuture = enableCommentField && normalizedSubjectKeys.isNotEmpty
+      ? SubjectsLookupService.instance.resolveSubjectNames(
+          normalizedSubjectKeys,
+          localeCode: languageProvider.langCode,
+        )
+      : null;
+  final commentController = TextEditingController(
+    text: normalizedInitialComment,
+  );
 
   String evaluationLabel(Evaluation evaluation) {
     final localizedName =
@@ -76,186 +98,299 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
           ? 'assessment_dialog_title_comprehension'.tr
           : 'assessment_dialog_title_unavailable'.tr);
 
-  return showDialog<AssessmentSelection>(
-    context: context,
-    builder: (dialogContext) {
-      int? memoId = initialMemoId;
-      int? compreId = initialCompreId;
-      bool memoChanged = false;
-      bool compreChanged = false;
+  try {
+    return await showDialog<AssessmentSelection>(
+      context: context,
+      builder: (dialogContext) {
+        int? memoId = initialMemoId;
+        int? compreId = initialCompreId;
+        bool memoChanged = false;
+        bool compreChanged = false;
+        bool commentChanged = false;
 
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          Widget buildEvaluationChip({
-            required Evaluation evaluation,
-            required bool selected,
-            required VoidCallback onTap,
-          }) {
-            final color = controller.getColorForEvaluationModel(evaluation);
-            final isDark =
-                ThemeData.estimateBrightnessForColor(color) == Brightness.dark;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget buildEvaluationChip({
+              required Evaluation evaluation,
+              required bool selected,
+              required VoidCallback onTap,
+            }) {
+              final color = controller.getColorForEvaluationModel(evaluation);
+              final isDark =
+                  ThemeData.estimateBrightnessForColor(color) == Brightness.dark;
 
-            return ChoiceChip(
-              label: Text(
-                evaluationLabel(evaluation),
+              return ChoiceChip(
+                label: Text(
+                  evaluationLabel(evaluation),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected
+                        ? (isDark ? Colors.white : Colors.black)
+                        : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                selected: selected,
+                selectedColor: color,
+                backgroundColor: Colors.white,
+                side: BorderSide(color: color),
+                onSelected: (_) => onTap(),
+              );
+            }
+
+            final canSave = memoChanged || compreChanged || commentChanged;
+
+            return AlertDialog(
+              title: Text(
+                effectiveTitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected
-                      ? (isDark ? Colors.white : Colors.black)
-                      : Colors.black87,
-                  fontWeight: FontWeight.w600,
-                ),
               ),
-              selected: selected,
-              selectedColor: color,
-              backgroundColor: Colors.white,
-              side: BorderSide(color: color),
-              onSelected: (_) => onTap(),
-            );
-          }
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 360,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!hasMemoOptions && !hasCompreOptions && !enableCommentField)
+                        Text(
+                          'assessment_dialog_no_values'.tr,
+                          textAlign: TextAlign.center,
+                        )
+                      else ...[
+                        if (hasMemoOptions || hasCompreOptions) ...[
+                          if (hasMemoOptions) ...[
+                            Text(
+                              'assessment_dimension_memorization'.tr,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: memorizationEvaluations
+                                  .map(
+                                    (evaluation) => buildEvaluationChip(
+                                      evaluation: evaluation,
+                                      selected: memoId == evaluation.id,
+                                      onTap: () {
+                                        setDialogState(() {
+                                          memoChanged = true;
+                                          memoId = memoId == evaluation.id
+                                              ? null
+                                              : evaluation.id;
+                                        });
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ] else
+                            Text(
+                              'assessment_dialog_memorization_unavailable'.tr,
+                              textAlign: TextAlign.center,
+                            ),
+                          const SizedBox(height: 20),
+                          if (hasCompreOptions) ...[
+                            Text(
+                              'assessment_dimension_comprehension'.tr,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.right,
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: comprehensionEvaluations
+                                  .map(
+                                    (evaluation) => buildEvaluationChip(
+                                      evaluation: evaluation,
+                                      selected: compreId == evaluation.id,
+                                      onTap: () {
+                                        setDialogState(() {
+                                          compreChanged = true;
+                                          compreId = compreId == evaluation.id
+                                              ? null
+                                              : evaluation.id;
+                                        });
+                                      },
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ] else
+                            Text(
+                              'assessment_dialog_comprehension_unavailable'.tr,
+                              textAlign: TextAlign.center,
+                            ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (subjectNamesFuture != null) ...[
+                          Text(
+                            'assessment_dialog_subjects_label'.tr,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                          const SizedBox(height: 10),
+                          FutureBuilder<List<String>>(
+                            future: subjectNamesFuture,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text('assessment_dialog_subjects_loading'.tr),
+                                    const SizedBox(width: 8),
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
 
-          return AlertDialog(
-            title: Text(
-              effectiveTitle,
-              textAlign: TextAlign.center,
-            ),
-            content: SingleChildScrollView(
-              child: SizedBox(
-                width: 360,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (!hasMemoOptions && !hasCompreOptions)
-                      Text(
-                        'assessment_dialog_no_values'.tr,
-                        textAlign: TextAlign.center,
-                      )
-                    else ...[
-                      if (hasMemoOptions) ...[
-                        Text(
-                          'assessment_dimension_memorization'.tr,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                              if (snapshot.hasError) {
+                                return Text(
+                                  'assessment_dialog_subjects_unavailable'.tr,
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                  ),
+                                );
+                              }
+
+                              final subjectNames = snapshot.data ?? const [];
+                              if (subjectNames.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+
+                              return Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.end,
+                                children: subjectNames
+                                    .map(
+                                      (name) => Chip(
+                                        label: Text(
+                                          name,
+                                          textAlign: TextAlign.right,
+                                        ),
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    )
+                                    .toList(),
+                              );
+                            },
                           ),
-                          textAlign: TextAlign.right,
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: memorizationEvaluations
-                              .map(
-                                (evaluation) => buildEvaluationChip(
-                                  evaluation: evaluation,
-                                  selected: memoId == evaluation.id,
-                                  onTap: () {
-                                    setDialogState(() {
-                                      memoChanged = true;
-                                      memoId = memoId == evaluation.id
-                                          ? null
-                                          : evaluation.id;
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ] else
-                        Text(
-                          'assessment_dialog_memorization_unavailable'.tr,
-                          textAlign: TextAlign.center,
-                        ),
-                      if (hasMemoOptions || hasCompreOptions)
-                        const SizedBox(height: 20),
-                      if (hasCompreOptions) ...[
-                        Text(
-                          'assessment_dimension_comprehension'.tr,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 20),
+                        ],
+                        if (enableCommentField) ...[
+                          Text(
+                            'assessment_dialog_comment_label'.tr,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.right,
                           ),
-                          textAlign: TextAlign.right,
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: comprehensionEvaluations
-                              .map(
-                                (evaluation) => buildEvaluationChip(
-                                  evaluation: evaluation,
-                                  selected: compreId == evaluation.id,
-                                  onTap: () {
-                                    setDialogState(() {
-                                      compreChanged = true;
-                                      compreId = compreId == evaluation.id
-                                          ? null
-                                          : evaluation.id;
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ] else
-                        Text(
-                          'assessment_dialog_comprehension_unavailable'.tr,
-                          textAlign: TextAlign.center,
-                        ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: commentController,
+                            minLines: 3,
+                            maxLines: 5,
+                            textAlign: TextAlign.right,
+                            decoration: InputDecoration(
+                              hintText: 'assessment_dialog_comment_hint'.tr,
+                              border: const OutlineInputBorder(),
+                              alignLabelWithHint: true,
+                            ),
+                            onChanged: (value) {
+                              final normalizedComment = value.trim();
+                              setDialogState(() {
+                                commentChanged =
+                                    normalizedComment != normalizedInitialComment;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (hasMemoOptions || hasCompreOptions)
+                          Text(
+                            'assessment_dialog_hint'.tr,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
                     ],
-                    const SizedBox(height: 16),
-                    Text(
-                      'assessment_dialog_hint'.tr,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text('cancel'.tr),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF132A4A),
-                  disabledBackgroundColor: const Color(0xFF132A4A)
-                      .withValues(alpha: 0.32),
-                  foregroundColor: Colors.white,
-                  disabledForegroundColor: Colors.white70,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text('cancel'.tr),
                 ),
-                onPressed: (memoChanged || compreChanged) &&
-                        (hasMemoOptions || hasCompreOptions)
-                    ? () {
-                        Navigator.of(dialogContext).pop(
-                          AssessmentSelection(
-                            memoId: memoId,
-                            compreId: compreId,
-                            memoChanged: memoChanged,
-                            compreChanged: compreChanged,
-                            memoEvaluation:
-                                evaluationsProvider.findEvaluationById(memoId),
-                            compreEvaluation: evaluationsProvider
-                                .findEvaluationById(compreId),
-                          ),
-                        );
-                      }
-                    : null,
-                child: Text('save'.tr),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF132A4A),
+                    disabledBackgroundColor: const Color(0xFF132A4A)
+                        .withValues(alpha: 0.32),
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white70,
+                  ),
+                  onPressed: canSave
+                      ? () {
+                          final normalizedComment =
+                              commentController.text.trim();
+                          Navigator.of(dialogContext).pop(
+                            AssessmentSelection(
+                              memoId: memoId,
+                              compreId: compreId,
+                              comment: normalizedComment.isEmpty
+                                  ? null
+                                  : normalizedComment,
+                              memoChanged: memoChanged,
+                              compreChanged: compreChanged,
+                              commentChanged:
+                                  normalizedComment != normalizedInitialComment,
+                              memoEvaluation:
+                                  evaluationsProvider.findEvaluationById(memoId),
+                              compreEvaluation: evaluationsProvider
+                                  .findEvaluationById(compreId),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Text('save'.tr),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    commentController.dispose();
+  }
 }

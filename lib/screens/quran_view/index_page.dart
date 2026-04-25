@@ -119,12 +119,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<List<Ayat>> _loadNavigationScopeAyat() async {
-    if (widget.page != null) {
-      return (await AyatController().loadAyatBySurah(widget.surah.id))
-          .where((ayah) => ayah.page == widget.page)
-          .toList();
-    }
-
     if (widget.hizbQuarter != null) {
       return AyatController().loadAyatByHizbQuarter(widget.hizbQuarter!);
     }
@@ -436,13 +430,17 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     _removeMenu();
 
-    final savedScrollOffset = _scrollController.offset;
+    final savedScrollOffset =
+      _scrollController.hasClients ? _scrollController.offset : 0.0;
     final selection = await showAssessmentInputDialog(
       context: context,
       evaluationsProvider: evaluationsProvider,
       languageProvider: languageProvider,
       initialMemoId: ayah.userEvaluation?.memoId,
       initialCompreId: ayah.userEvaluation?.compreId,
+      initialComment: ayah.userEvaluation?.comment,
+      subjectKeys: ayah.subjects ?? const <Object?>[],
+      enableCommentField: true,
       title: _trParams(
         'quran_reading_evaluate_ayah_title',
         {'ayah': ayah.ayahNo.toString()},
@@ -459,7 +457,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       null,
       memoId: selection.memoId,
       compreId: selection.compreId,
+      comment: selection.comment,
       memoChanged: selection.memoChanged,
+      commentChanged: selection.commentChanged,
       compreChanged: selection.compreChanged,
     );
 
@@ -473,7 +473,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       evaluationsProvider: evaluationsProvider,
       memoId: selection.memoId,
       compreId: selection.compreId,
+      comment: selection.comment,
       memoChanged: selection.memoChanged,
+      commentChanged: selection.commentChanged,
       compreChanged: selection.compreChanged,
     );
 
@@ -813,178 +815,267 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
                   ? null
                   : const GlobalDrawer(),
-              body: Container(
-                margin: const EdgeInsets.all(8.0),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: AppColors.blackFontColor,
-                    width: 8.0,
-                  ),
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
+              body: SafeArea(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: SizeConfig.getProportionalHeight(5),
-                    horizontal: SizeConfig.getProportionalWidth(10),
-                  ),
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        const PendingSyncBanner(bottomPadding: 12),
-                        Container(
-                          width: double.infinity,
-                          constraints: const BoxConstraints(maxWidth: 980),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Column(
+                    children: [
+                      const PendingSyncBanner(bottomPadding: 12),
+                      Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxWidth: 980),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? const Color(0xFF171C24)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
                             color: isDarkMode
-                                ? const Color(0xFF171C24)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? const Color(0xFF2C3442)
-                                  : const Color(0xFFDDE3DA),
+                                ? const Color(0xFF2C3442)
+                                : const Color(0xFFDDE3DA),
+                          ),
+                        ),
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilterChip(
+                              label: Text(
+                                _tr('quran_reading_show_memorization_colors'),
+                              ),
+                              selected: _showMemorizationColors,
+                              onSelected: (value) async {
+                                await _updateReadingDisplayPreferences(
+                                  showMemorizationColors: value,
+                                );
+                              },
                             ),
-                          ),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              FilterChip(
-                                label: Text(
-                                  _tr('quran_reading_show_memorization_colors'),
+                            FilterChip(
+                              label: Text(
+                                _tr(
+                                  'quran_reading_show_comprehension_underline',
                                 ),
-                                selected: _showMemorizationColors,
-                                onSelected: (value) async {
-                                  await _updateReadingDisplayPreferences(
-                                    showMemorizationColors: value,
-                                  );
-                                },
                               ),
-                              FilterChip(
-                                label: Text(
-                                  _tr(
-                                    'quran_reading_show_comprehension_underline',
-                                  ),
-                                ),
-                                selected: _showComprehensionUnderline,
-                                onSelected: (value) async {
-                                  await _updateReadingDisplayPreferences(
-                                    showComprehensionUnderline: value,
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
+                              selected: _showComprehensionUnderline,
+                              onSelected: (value) async {
+                                await _updateReadingDisplayPreferences(
+                                  showComprehensionUnderline: value,
+                                );
+                              },
+                            ),
+                          ],
                         ),
+                      ),
+                      if (_readingNotice != null)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 20, top: 12),
-                          child: _readingNotice == null
-                              ? const SizedBox.shrink()
-                              : _ReadingNoticeBanner(
-                                  message: _readingNotice!,
-                                  isDarkMode: isDarkMode,
-                                ),
+                          padding: const EdgeInsets.only(top: 12, bottom: 12),
+                          child: _ReadingNoticeBanner(
+                            message: _readingNotice!,
+                            isDarkMode: isDarkMode,
+                          ),
                         ),
-                        ..._buildAyatWidgets(
-                          languageProvider,
-                          evaluationProvider,
-                          _hasConnection,
-                          isDarkMode,
-                        ),
-                        if (_isPageNavigation || _currentHizbQuarter != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20, bottom: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                if ((_isPageNavigation &&
-                                        _pageSequence.indexOf(_currentPage!) > 0) ||
-                                    (!_isPageNavigation &&
-                                        _currentHizbQuarter! >
-                                            (_initialHizbQuarter ?? _minHizbQuarter!)))
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primaryPurple,
-                                      foregroundColor: Colors.white,
-                                      shape: const CircleBorder(),
-                                      padding: const EdgeInsets.all(12),
-                                    ),
-                                    onPressed: () =>
-                                        _loadAdjacentChunk(forward: false),
-                                    child: const Icon(
-                                      Icons.arrow_back_ios_new,
-                                      size: 20,
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(width: 48),
-                                if (_isPageNavigation)
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: AppColors.blackFontColor,
+                              width: 8.0,
+                            ),
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onHorizontalDragEnd: (details) {
+                              final velocity = details.primaryVelocity;
+                              if (velocity == null || velocity.abs() < 250) {
+                                return;
+                              }
+
+                              if (velocity > 0) {
+                                _loadAdjacentChunk(forward: false);
+                              } else {
+                                _loadAdjacentChunk(forward: true);
+                              }
+                            },
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: SizeConfig.getProportionalHeight(5),
+                                horizontal: SizeConfig.getProportionalWidth(10),
+                              ),
+                              child: Column(
+                                children: [
                                   Expanded(
-                                    child: Center(
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 14,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDarkMode
-                                              ? const Color(0xFF1E1E1E)
-                                              : Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: isDarkMode
-                                                ? const Color(0xFF2C3442)
-                                                : const Color(0xFFDDE3DA),
+                                    child: LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final pageContentWidth =
+                                            constraints.maxWidth.clamp(
+                                          280.0,
+                                          760.0,
+                                        );
+
+                                        return Center(
+                                          child: FittedBox(
+                                            fit: BoxFit.contain,
+                                            alignment: Alignment.center,
+                                            child: SizedBox(
+                                              width: pageContentWidth,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 14,
+                                                  vertical: 10,
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: _buildAyatWidgets(
+                                                    languageProvider,
+                                                    evaluationProvider,
+                                                    _hasConnection,
+                                                    isDarkMode,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          _trParams(
-                                            'quran_reading_page_indicator',
-                                            {'page': _currentPage!.toString()},
-                                          ),
-                                          style: TextStyle(
-                                            color: isDarkMode
-                                                ? Colors.white
-                                                : AppColors.blackFontColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  if (_isPageNavigation ||
+                                      _currentHizbQuarter != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 10,
+                                        bottom: 8,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          if ((_isPageNavigation &&
+                                                  _pageSequence.indexOf(
+                                                        _currentPage!,
+                                                      ) >
+                                                      0) ||
+                                              (!_isPageNavigation &&
+                                                  _currentHizbQuarter! >
+                                                      (_initialHizbQuarter ??
+                                                          _minHizbQuarter!)))
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primaryPurple,
+                                                foregroundColor: Colors.white,
+                                                shape: const CircleBorder(),
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                              ),
+                                              onPressed: () =>
+                                                  _loadAdjacentChunk(
+                                                forward: false,
+                                              ),
+                                              child: const Icon(
+                                                Icons.arrow_back_ios_new,
+                                                size: 20,
+                                              ),
+                                            )
+                                          else
+                                            const SizedBox(width: 48),
+                                          if (_isPageNavigation)
+                                            Expanded(
+                                              child: Center(
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 14,
+                                                    vertical: 8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: isDarkMode
+                                                        ? const Color(
+                                                            0xFF1E1E1E,
+                                                          )
+                                                        : Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                      999,
+                                                    ),
+                                                    border: Border.all(
+                                                      color: isDarkMode
+                                                          ? const Color(
+                                                              0xFF2C3442,
+                                                            )
+                                                          : const Color(
+                                                              0xFFDDE3DA,
+                                                            ),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    _trParams(
+                                                      'quran_reading_page_indicator',
+                                                      {
+                                                        'page': _currentPage!
+                                                            .toString(),
+                                                      },
+                                                    ),
+                                                    style: TextStyle(
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : AppColors
+                                                              .blackFontColor,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            const Spacer(),
+                                          if ((_isPageNavigation &&
+                                                  _pageSequence.indexOf(
+                                                        _currentPage!,
+                                                      ) <
+                                                      _pageSequence.length - 1) ||
+                                              (!_isPageNavigation &&
+                                                  _currentHizbQuarter! <
+                                                      _maxHizbQuarter!))
+                                            ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primaryPurple,
+                                                foregroundColor: Colors.white,
+                                                shape: const CircleBorder(),
+                                                padding:
+                                                    const EdgeInsets.all(12),
+                                              ),
+                                              onPressed: () =>
+                                                  _loadAdjacentChunk(
+                                                forward: true,
+                                              ),
+                                              child: const Icon(
+                                                Icons.arrow_forward_ios,
+                                                size: 20,
+                                              ),
+                                            )
+                                          else
+                                            const SizedBox(width: 48),
+                                        ],
                                       ),
                                     ),
-                                  )
-                                else
-                                  const Spacer(),
-                                if ((_isPageNavigation &&
-                                        _pageSequence.indexOf(_currentPage!) <
-                                            _pageSequence.length - 1) ||
-                                    (!_isPageNavigation &&
-                                        _currentHizbQuarter! < _maxHizbQuarter!))
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primaryPurple,
-                                      foregroundColor: Colors.white,
-                                      shape: const CircleBorder(),
-                                      padding: const EdgeInsets.all(12),
-                                    ),
-                                    onPressed: () =>
-                                        _loadAdjacentChunk(forward: true),
-                                    child: const Icon(
-                                      Icons.arrow_forward_ios,
-                                      size: 20,
-                                    ),
-                                  )
-                                else
-                                  const SizedBox(width: 48),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1026,14 +1117,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       if (isAtStartOfSurah) {
         widgets.add(
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
               _trParams(
                 'quran_reading_surah_heading',
                 {'surah': firstAyah.surah.nameAr},
               ),
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.white : Colors.black87,
               ),
@@ -1048,12 +1139,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           widgets.add(
             Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Text(
                   'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
                   style: TextStyle(
-                    fontSize: 18,
-                    height: 2,
+                    fontSize: 28,
+                    height: 1.9,
                     color: isDarkMode ? Colors.white : AppColors.blackFontColor,
                     fontFamily: AppFonts.versesFont,
                   ),
@@ -1100,8 +1191,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 text: '${ayah.text} ',
                 recognizer: ayahTapRecognizer,
                 style: TextStyle(
-                  fontSize: 20,
-                  height: 2,
+                  fontSize: 30,
+                  height: 1.9,
                   color: color,
                   fontFamily: AppFonts.versesFont,
                   decoration: showUnderline
@@ -1114,8 +1205,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     text: '${gc.ayahMarker(ayah.ayahNo)} ',
                     recognizer: ayahTapRecognizer,
                     style: TextStyle(
-                      fontSize: 24,
-                      height: 2,
+                      fontSize: 34,
+                      height: 1.9,
                       color: color,
                       fontFamily: AppFonts.versesFont,
                     ),
@@ -1142,7 +1233,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         ),
       );
 
-      widgets.add(const SizedBox(height: 24));
+      widgets.add(const SizedBox(height: 12));
     }
 
     return widgets;

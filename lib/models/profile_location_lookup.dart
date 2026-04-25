@@ -1,3 +1,62 @@
+String _normalizeLocationValue(String? value) {
+  if (value == null) {
+    return '';
+  }
+
+  final normalized = value.trim().toLowerCase();
+  if (normalized.isEmpty) {
+    return '';
+  }
+
+  final buffer = StringBuffer();
+  for (final codeUnit in normalized.runes) {
+    final isAsciiLetter = codeUnit >= 97 && codeUnit <= 122;
+    final isDigit = codeUnit >= 48 && codeUnit <= 57;
+    final isArabicLetter = codeUnit >= 0x0600 && codeUnit <= 0x06FF;
+    final isLatinExtended = codeUnit >= 0x00C0 && codeUnit <= 0x024F;
+    final isCyrillic = codeUnit >= 0x0400 && codeUnit <= 0x04FF;
+    final isGreek = codeUnit >= 0x0370 && codeUnit <= 0x03FF;
+    final isHebrew = codeUnit >= 0x0590 && codeUnit <= 0x05FF;
+    final isDevanagari = codeUnit >= 0x0900 && codeUnit <= 0x097F;
+    final isBengali = codeUnit >= 0x0980 && codeUnit <= 0x09FF;
+    final isGurmukhi = codeUnit >= 0x0A00 && codeUnit <= 0x0A7F;
+    final isGujarati = codeUnit >= 0x0A80 && codeUnit <= 0x0AFF;
+    final isTamil = codeUnit >= 0x0B80 && codeUnit <= 0x0BFF;
+    final isKannada = codeUnit >= 0x0C80 && codeUnit <= 0x0CFF;
+    final isThai = codeUnit >= 0x0E00 && codeUnit <= 0x0E7F;
+    final isGeorgian = codeUnit >= 0x10A0 && codeUnit <= 0x10FF;
+    final isEthiopic = codeUnit >= 0x1200 && codeUnit <= 0x137F;
+    final isCjk = codeUnit >= 0x4E00 && codeUnit <= 0x9FFF;
+    final isHangul = codeUnit >= 0xAC00 && codeUnit <= 0xD7AF;
+    final isKana = codeUnit >= 0x3040 && codeUnit <= 0x30FF;
+
+    if (
+        isAsciiLetter ||
+        isDigit ||
+        isArabicLetter ||
+        isLatinExtended ||
+        isCyrillic ||
+        isGreek ||
+        isHebrew ||
+        isDevanagari ||
+        isBengali ||
+        isGurmukhi ||
+        isGujarati ||
+        isTamil ||
+        isKannada ||
+        isThai ||
+        isGeorgian ||
+        isEthiopic ||
+        isCjk ||
+        isHangul ||
+        isKana) {
+      buffer.writeCharCode(codeUnit);
+    }
+  }
+
+  return buffer.toString();
+}
+
 class ProfileLocationLookup {
   final String source;
   final int countryCount;
@@ -30,13 +89,13 @@ class ProfileLocationLookup {
   }
 
   ProfileCountry? findByName(String? name) {
-    final normalized = _normalize(name);
+    final normalized = _normalizeLocationValue(name);
     if (normalized.isEmpty) {
       return null;
     }
 
     for (final country in countries) {
-      if (_normalize(country.name) == normalized) {
+      if (country.matchesName(normalized)) {
         return country;
       }
     }
@@ -57,39 +116,65 @@ class ProfileLocationLookup {
 
     return null;
   }
+}
 
-  static String _normalize(String? value) {
-    if (value == null) {
-      return '';
+class ProfileCity {
+  final String value;
+  final String displayName;
+
+  const ProfileCity({
+    required this.value,
+    required this.displayName,
+  });
+
+  factory ProfileCity.fromJson(dynamic json) {
+    if (json is String) {
+      return ProfileCity(value: json, displayName: json);
     }
 
-    final buffer = StringBuffer();
-    for (final codeUnit in value.trim().toLowerCase().codeUnits) {
-      final isAsciiLetter = codeUnit >= 97 && codeUnit <= 122;
-      final isDigit = codeUnit >= 48 && codeUnit <= 57;
-      final isArabicLetter = codeUnit >= 0x0600 && codeUnit <= 0x06FF;
-      if (isAsciiLetter || isDigit || isArabicLetter) {
-        buffer.writeCharCode(codeUnit);
-      }
+    final map = Map<String, dynamic>.from(json as Map);
+    final value = (map['value'] as String?) ?? (map['name'] as String?) ?? '';
+    final displayName =
+        (map['displayName'] as String?) ?? (map['label'] as String?) ?? value;
+
+    return ProfileCity(
+      value: value,
+      displayName: displayName,
+    );
+  }
+
+  String get effectiveDisplayName =>
+      displayName.trim().isEmpty ? value : displayName;
+
+  bool matchesValue(String? candidate) {
+    final normalizedCandidate = _normalizeLocationValue(candidate);
+    if (normalizedCandidate.isEmpty) {
+      return false;
     }
-    return buffer.toString();
+
+    return _normalizeLocationValue(value) == normalizedCandidate ||
+        _normalizeLocationValue(displayName) == normalizedCandidate;
   }
 }
 
 class ProfileCountry {
   final int id;
   final String name;
+  final String nativeName;
   final String emoji;
   final String iso2;
   final int phoneCode;
-  final List<String> cities;
+  final List<String> languages;
+  final List<ProfileCity> cities;
 
   const ProfileCountry({
     required this.id,
     required this.name,
+    required this.nativeName,
     required this.emoji,
     required this.iso2,
     required this.phoneCode,
+    required this.languages,
     required this.cities,
   });
 
@@ -97,23 +182,45 @@ class ProfileCountry {
     return ProfileCountry(
       id: json['id'] as int? ?? 0,
       name: json['name'] as String? ?? '',
+      nativeName:
+          (json['nativeName'] as String?) ?? (json['displayName'] as String?) ?? '',
       emoji: json['emoji'] as String? ?? '',
       iso2: json['iso2'] as String? ?? '',
       phoneCode: json['phoneCode'] as int? ?? 0,
-      cities: (json['cities'] as List<dynamic>? ?? const [])
+      languages: (json['languages'] as List<dynamic>? ?? const [])
           .map((item) => '$item')
+          .toList(),
+      cities: (json['cities'] as List<dynamic>? ?? const [])
+          .map(ProfileCity.fromJson)
           .toList(),
     );
   }
 
-  String get displayName => emoji.isEmpty ? name : '$emoji $name';
+  String get localizedName =>
+      nativeName.trim().isEmpty ? name : nativeName.trim();
 
-  bool hasCity(String? value) {
-    final normalized = value?.trim();
-    if (normalized == null || normalized.isEmpty) {
+  String get displayName => emoji.isEmpty ? localizedName : '$emoji $localizedName';
+
+  bool matchesName(String? candidate) {
+    final normalizedCandidate = _normalizeLocationValue(candidate);
+    if (normalizedCandidate.isEmpty) {
       return false;
     }
 
-    return cities.any((city) => city.toLowerCase() == normalized.toLowerCase());
+    return _normalizeLocationValue(name) == normalizedCandidate ||
+        _normalizeLocationValue(nativeName) == normalizedCandidate;
+  }
+
+  ProfileCity? findCity(String? value) {
+    for (final city in cities) {
+      if (city.matchesValue(value)) {
+        return city;
+      }
+    }
+    return null;
+  }
+
+  bool hasCity(String? value) {
+    return findCity(value) != null;
   }
 }

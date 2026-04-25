@@ -143,7 +143,14 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: const Color(0xFFD9DED7)),
+                        border: Border.all(color: AppColors.lineColor),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x10112038),
+                            blurRadius: 22,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +160,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                 ? 'questions_completion_badge_skipped'.tr
                                 : 'questions_completion_badge_complete'.tr,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppColors.buttonColor,
                             ),
@@ -164,7 +171,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                 ? 'questions_completion_heading_skipped'.tr
                                 : 'questions_completion_heading_complete'.tr,
                             style: const TextStyle(
-                              fontSize: 26,
+                              fontSize: 28.5,
                               height: 1.35,
                               fontWeight: FontWeight.w800,
                             ),
@@ -211,9 +218,9 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.white.withValues(alpha: 0.96),
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFDDE3DA)),
+                        border: Border.all(color: AppColors.lineColor),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +228,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                           Text(
                             'questions_completion_meaning_title'.tr,
                             style: const TextStyle(
-                              fontSize: 20,
+                              fontSize: 22,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -230,7 +237,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                             widget.skipped
                                 ? 'questions_completion_meaning_body_skipped'.tr
                                 : 'questions_completion_meaning_body_complete'.tr,
-                            style: const TextStyle(height: 1.6),
+                            style: const TextStyle(fontSize: 15.5, height: 1.6),
                           ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
@@ -314,7 +321,7 @@ class _SummaryMetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFF9FAF7),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFDDE3DA)),
+        border: Border.all(color: AppColors.lineColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +329,7 @@ class _SummaryMetricCard extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 14,
               color: Color(0xFF59625D),
             ),
           ),
@@ -330,7 +337,7 @@ class _SummaryMetricCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 26,
+              fontSize: 28,
               fontWeight: FontWeight.w800,
             ),
           ),

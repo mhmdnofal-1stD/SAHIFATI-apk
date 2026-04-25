@@ -68,7 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   ProfileLocationLookup? _locationLookup;
   ProfileCountry? _selectedCountry;
-  String? _selectedCity;
+  ProfileCity? _selectedCity;
   String? _selectedGender;
   String? _selectedEducationLevel;
   String? _selectedWorkType;
@@ -162,11 +162,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _applyUserProfile(User user) {
     final resolvedCountry = _locationLookup?.findByName(user.country) ??
         _locationLookup?.findByPhoneCode(user.countryCode);
-    final resolvedCity = (user.city?.trim().isNotEmpty ?? false)
+    final rawCity = (user.city?.trim().isNotEmpty ?? false)
         ? user.city!.trim()
         : ((user.state?.trim().isNotEmpty ?? false)
             ? user.state!.trim()
             : null);
+    final resolvedCity = rawCity == null
+      ? null
+      : (resolvedCountry?.findCity(rawCity) ??
+        ProfileCity(value: rawCity, displayName: rawCity));
 
     setState(() {
       _fullNameController.text = user.fullName;
@@ -224,6 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required List<T> items,
     required String Function(T item) itemLabel,
     String Function(T item)? itemSubtitle,
+    Iterable<String> Function(T item)? searchTerms,
     required String emptyMessage,
   }) async {
     final searchController = TextEditingController();
@@ -237,11 +242,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           builder: (context, setSheetState) {
             final query = searchController.text.trim().toLowerCase();
             final filteredItems = items.where((item) {
-              final label = itemLabel(item).toLowerCase();
-              final subtitle = itemSubtitle?.call(item).toLowerCase() ?? '';
-              return query.isEmpty ||
-                  label.contains(query) ||
-                  subtitle.contains(query);
+              final terms = <String>[
+                itemLabel(item),
+                if (itemSubtitle != null) itemSubtitle(item),
+                ...?searchTerms?.call(item),
+              ]
+                  .where((term) => term.trim().isNotEmpty)
+                  .map((term) => term.toLowerCase())
+                  .join(' ');
+
+              return query.isEmpty || terms.contains(query);
             }).toList();
 
             return SizedBox(
@@ -281,7 +291,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           )
                         : ListView.separated(
                             itemCount: filteredItems.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final item = filteredItems[index];
                               final subtitle = itemSubtitle?.call(item);
@@ -322,6 +333,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       items: lookup.countries,
       itemLabel: (country) => country.displayName,
       itemSubtitle: (country) => '+${country.phoneCode}',
+      searchTerms: (country) => [country.name, country.localizedName, country.iso2],
       emptyMessage: 'settings_picker_country_empty'.tr,
     );
 
@@ -331,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() {
       _selectedCountry = selectedCountry;
-      if (!_selectedCountry!.hasCity(_selectedCity)) {
+      if (!_selectedCountry!.hasCity(_selectedCity?.value)) {
         _selectedCity = null;
       }
     });
@@ -348,11 +360,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final selectedCity = await _showSearchablePicker<String>(
+    final selectedCity = await _showSearchablePicker<ProfileCity>(
       title: 'settings_picker_city_title'.tr,
       searchLabel: 'settings_picker_city_search'.tr,
       items: selectedCountry.cities,
-      itemLabel: (city) => city,
+      itemLabel: (city) => city.effectiveDisplayName,
+      searchTerms: (city) => [city.value],
       emptyMessage: 'settings_picker_city_empty'.tr,
     );
 
@@ -445,7 +458,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : _buildYearsForDecade(activeDecade!).map((year) {
                               return ListTile(
                                 title: Text(year.toString()),
-                                onTap: () => Navigator.of(sheetContext).pop(year),
+                                onTap: () =>
+                                    Navigator.of(sheetContext).pop(year),
                               );
                             }).toList(),
                     ),
@@ -496,7 +510,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showValidationMessage('settings_validation_pick_country'.tr);
       return;
     }
-    if (_selectedCity == null || _selectedCity!.trim().isEmpty) {
+    if (_selectedCity == null || _selectedCity!.value.trim().isEmpty) {
       _showValidationMessage('settings_validation_pick_city'.tr);
       return;
     }
@@ -516,7 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             birthYear: _selectedBirthYear!,
             country: _selectedCountry!.name,
             countryCode: _selectedCountry!.phoneCode,
-            city: _selectedCity!.trim(),
+            city: _selectedCity!.value.trim(),
             mobile: _mobileController.text.trim().isEmpty
                 ? null
                 : _mobileController.text.trim(),
@@ -641,7 +655,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 12),
               InputDecorator(
-                decoration: _inputDecoration('settings_profile_email'.tr).copyWith(
+                decoration:
+                    _inputDecoration('settings_profile_email'.tr).copyWith(
                   helperText: 'settings_profile_email_read_only'.tr,
                 ),
                 child: Text(
@@ -684,7 +699,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _pickBirthYear,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('settings_profile_birth_year'.tr),
+                  decoration:
+                      _inputDecoration('settings_profile_birth_year'.tr),
                   child: Text(
                     _selectedBirthYear?.toString() ??
                         'settings_profile_birth_year_placeholder'.tr,
@@ -737,17 +753,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _selectedCountry == null ? null : _pickCity,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('settings_profile_city'.tr).copyWith(
+                  decoration:
+                      _inputDecoration('settings_profile_city'.tr).copyWith(
                     helperText: _selectedCountry == null
                         ? 'settings_profile_city_helper_pick_country'.tr
                         : 'settings_profile_city_helper_canonical'.tr,
                   ),
                   child: Text(
-                    _selectedCity == null || _selectedCity!.trim().isEmpty
+                    _selectedCity == null ||
+                            _selectedCity!.effectiveDisplayName.trim().isEmpty
                         ? 'settings_profile_city_placeholder'.tr
-                        : _selectedCity!,
+                        : _selectedCity!.effectiveDisplayName,
                     style: TextStyle(
-                      color: _selectedCity == null || _selectedCity!.trim().isEmpty
+                      color: _selectedCity == null ||
+                              _selectedCity!.effectiveDisplayName.trim().isEmpty
                           ? Colors.black54
                           : Colors.black87,
                     ),
@@ -756,7 +775,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                key: ValueKey('education-${_selectedEducationLevel ?? 'empty'}'),
+                key:
+                    ValueKey('education-${_selectedEducationLevel ?? 'empty'}'),
                 initialValue: _selectedEducationLevel,
                 decoration: _inputDecoration('settings_profile_education'.tr),
                 items: _educationLevelOptions.map((option) {
@@ -864,6 +884,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Consumer<LanguageProvider>(
                   builder: (context, languageProvider, _) {
                     return ListTile(
+                      leading: const Icon(Icons.language),
                       title: Text(
                         'language'.tr,
                         style: const TextStyle(fontWeight: FontWeight.bold),

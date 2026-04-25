@@ -44,9 +44,11 @@ class EvaluationsController {
       EvaluationsProvider evaluationsProvider, AyatProvider? ayatProvider,
       {int? memoId,
       int? compreId,
+      String? comment,
       required bool memoChanged,
+      bool commentChanged = false,
       required bool compreChanged}) async {
-    if (!memoChanged && !compreChanged) {
+    if (!memoChanged && !compreChanged && !commentChanged) {
       return;
     }
 
@@ -55,8 +57,10 @@ class EvaluationsController {
         ayahId: verse.id!,
         memoId: memoId,
         compreId: compreId,
+        comment: comment,
         includeMemo: memoChanged,
         includeCompre: compreChanged,
+        includeComment: commentChanged,
         clearMemo: memoChanged && memoId == null,
         clearCompre: compreChanged && compreId == null,
       );
@@ -110,9 +114,11 @@ class EvaluationsController {
       String unitName,
       {int? memoId,
       int? compreId,
+      String? comment,
       required bool memoChanged,
+      bool commentChanged = false,
       required bool compreChanged}) async {
-    if (!memoChanged && !compreChanged) {
+    if (!memoChanged && !compreChanged && !commentChanged) {
       return;
     }
 
@@ -122,8 +128,10 @@ class EvaluationsController {
         ayahIds: ayatIds,
         memoId: memoId,
         compreId: compreId,
+        comment: comment,
         includeMemo: memoChanged,
         includeCompre: compreChanged,
+        includeComment: commentChanged,
         clearMemo: memoChanged && memoId == null,
         clearCompre: compreChanged && compreId == null,
       );
@@ -190,8 +198,10 @@ class EvaluationsController {
     required int ayahId,
     int? memoId,
     int? compreId,
+    String? comment,
     bool includeMemo = false,
     bool includeCompre = false,
+    bool includeComment = false,
     bool clearMemo = false,
     bool clearCompre = false,
   }) {
@@ -205,6 +215,9 @@ class EvaluationsController {
     if (includeCompre) {
       payload['compre_id'] = clearCompre ? null : compreId;
     }
+    if (includeComment) {
+      payload['comment'] = comment;
+    }
 
     return payload;
   }
@@ -213,8 +226,10 @@ class EvaluationsController {
     required List<int> ayahIds,
     int? memoId,
     int? compreId,
+    String? comment,
     bool includeMemo = false,
     bool includeCompre = false,
+    bool includeComment = false,
     bool clearMemo = false,
     bool clearCompre = false,
   }) {
@@ -228,6 +243,9 @@ class EvaluationsController {
     if (includeCompre) {
       payload['compre_id'] = clearCompre ? null : compreId;
     }
+    if (includeComment) {
+      payload['comment'] = comment;
+    }
 
     return payload;
   }
@@ -238,16 +256,19 @@ class EvaluationsController {
     required EvaluationsProvider evaluationsProvider,
     int? memoId,
     int? compreId,
+    String? comment,
     bool memoChanged = false,
     bool compreChanged = false,
+    bool commentChanged = false,
   }) {
     final nextMemoId = memoChanged ? memoId : existing?.memoId;
     final nextCompreId = compreChanged ? compreId : existing?.compreId;
+    final nextComment = commentChanged ? comment : existing?.comment;
 
     return UserEvaluation(
       id: existing?.id,
       ayahId: ayah.id,
-      comment: existing?.comment,
+      comment: nextComment,
       memoId: nextMemoId,
       compreId: nextCompreId,
       memoEvaluation: evaluationsProvider.findEvaluationById(nextMemoId),

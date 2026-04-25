@@ -406,14 +406,17 @@ class EvaluationsProvider with ChangeNotifier {
   ) {
     final hasMemo = body.containsKey('memo_id');
     final hasCompre = body.containsKey('compre_id');
+    final hasComment = body.containsKey('comment');
     final nextMemoId = hasMemo ? _asInt(body['memo_id']) : existing?.memoId;
     final nextCompreId =
         hasCompre ? _asInt(body['compre_id']) : existing?.compreId;
+    final nextComment =
+        hasComment ? _asNullableString(body['comment']) : existing?.comment;
 
     return UserEvaluation(
       id: existing?.id,
       ayahId: ayahId,
-      comment: existing?.comment,
+      comment: nextComment,
       memoId: nextMemoId,
       compreId: nextCompreId,
       memoEvaluation: findEvaluationById(nextMemoId),
@@ -569,6 +572,15 @@ class EvaluationsProvider with ChangeNotifier {
       return value.toInt();
     }
     return int.tryParse(value.toString());
+  }
+
+  String? _asNullableString(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? null : normalized;
   }
 
   @override

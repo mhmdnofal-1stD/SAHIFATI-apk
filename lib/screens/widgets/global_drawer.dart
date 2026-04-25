@@ -16,7 +16,8 @@ class GlobalDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
-    final drawerWidth = screenSize.width < 480 ? screenSize.width * 0.78 : 280.0;
+    final drawerWidth =
+        screenSize.width < 480 ? screenSize.width * 0.78 : 280.0;
     final topPadding = screenSize.height < 700 ? 72.0 : 100.0;
 
     return SizedBox(
@@ -49,8 +50,28 @@ class GlobalDrawer extends StatelessWidget {
                 ),
               ),
               ListTile(
+                onTap: () {
+                  Get.to(() => const SettingsScreen());
+                },
+                title: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    const Icon(
+                      Icons.language,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 10),
+                    CustomText(
+                      text: "language".tr,
+                      withBackground: false,
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
                 onTap: () async {
-                  final evaluationsProvider = context.read<EvaluationsProvider>();
+                  final evaluationsProvider =
+                      context.read<EvaluationsProvider>();
                   final schoolProvider = context.read<SchoolProvider>();
                   await schoolProvider.getQuickQuestionsSchool();
                   await evaluationsProvider.getAllEvaluations();
@@ -74,9 +95,12 @@ class GlobalDrawer extends StatelessWidget {
               ListTile(
                 onTap: () async {
                   final usersProvider = context.read<UsersProvider>();
-                  final storedUsers = await usersProvider.getStoredDeviceUsers();
+                  final storedUsers =
+                      await usersProvider.getStoredDeviceUsers();
                   if (storedUsers.isNotEmpty) {
-                    Get.to(() => const SelectUserScreen(firstScreen: false,));
+                    Get.to(() => const SelectUserScreen(
+                          firstScreen: false,
+                        ));
                   } else {
                     Get.snackbar(
                       "switch_user".tr,

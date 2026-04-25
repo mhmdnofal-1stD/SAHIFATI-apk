@@ -188,6 +188,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
   Future<AssessmentSelection?> _openAssessmentDialog(
     BuildContext context,
     LanguageProvider languageProvider, {
+    Ayat? ayah,
     UserEvaluation? currentEvaluation,
     String? title,
   }) async {
@@ -207,6 +208,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
       languageProvider: languageProvider,
       initialMemoId: currentEvaluation?.memoId,
       initialCompreId: currentEvaluation?.compreId,
+      initialComment: ayah?.userEvaluation?.comment ?? currentEvaluation?.comment,
+      subjectKeys: ayah?.subjects ?? const <Object?>[],
+      enableCommentField: ayah != null,
       title: title,
     );
   }
@@ -229,7 +233,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
       null,
       memoId: selection.memoId,
       compreId: selection.compreId,
+      comment: selection.comment,
       memoChanged: selection.memoChanged,
+      commentChanged: selection.commentChanged,
       compreChanged: selection.compreChanged,
     );
 
@@ -243,7 +249,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
       evaluationsProvider: evaluationsProvider,
       memoId: selection.memoId,
       compreId: selection.compreId,
+      comment: selection.comment,
       memoChanged: selection.memoChanged,
+      commentChanged: selection.commentChanged,
       compreChanged: selection.compreChanged,
     );
 
@@ -287,7 +295,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
       unitLabel,
       memoId: selection.memoId,
       compreId: selection.compreId,
+      comment: selection.comment,
       memoChanged: selection.memoChanged,
+      commentChanged: selection.commentChanged,
       compreChanged: selection.compreChanged,
     );
 
@@ -298,7 +308,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
         evaluationsProvider: evaluationsProvider,
         memoId: selection.memoId,
         compreId: selection.compreId,
+        comment: selection.comment,
         memoChanged: selection.memoChanged,
+        commentChanged: selection.commentChanged,
         compreChanged: selection.compreChanged,
       );
       ayah.userEvaluation = merged;
@@ -470,6 +482,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               await _openAssessmentDialog(
                                             context,
                                             languageProvider,
+                                            ayah: ayah,
                                             currentEvaluation:
                                                 ayah.userEvaluation,
                                             title: 'content_item_card_assess_verse_title'
@@ -802,6 +815,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                 await _openAssessmentDialog(
                                               context,
                                               languageProvider,
+                                              ayah: ayah,
                                               currentEvaluation:
                                                   ayah.userEvaluation,
                                               title: 'content_item_card_assess_verse_title'
@@ -920,10 +934,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
   Color _statusColor() {
     if (widget.isCompleted == true) {
-      return const Color(0xFFE9F8EF);
+      return const Color(0xFFEAF7F3);
     }
 
-    return const Color(0xFFF5EEF9);
+    return const Color(0xFFF6F1E8);
   }
 
   Widget _buildActionButton({
@@ -935,34 +949,37 @@ class _ContentItemCardState extends State<ContentItemCard> {
   }) {
     final buttonStyle = outlined
         ? OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            side: const BorderSide(color: AppColors.primaryPurple),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            side: BorderSide(
+              color: AppColors.buttonColor.withValues(alpha: 0.28),
+            ),
+            backgroundColor: Colors.white.withValues(alpha: 0.92),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
             ),
           )
-        : ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            backgroundColor: AppColors.primaryPurple,
+        : FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            backgroundColor: AppColors.buttonColor,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
             ),
           );
 
     final titleColor = outlined ? AppColors.primaryPurple : Colors.white;
     final subtitleColor = outlined
-      ? AppColors.primaryPurple.withValues(alpha: 0.74)
+      ? AppColors.mutedText
       : Colors.white.withValues(alpha: 0.88);
     final buttonChild = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           icon,
-          size: 18,
+          size: 20,
           color: titleColor,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -973,16 +990,17 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w700,
                   color: titleColor,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 subtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: subtitleColor),
+                style: TextStyle(fontSize: 13.2, color: subtitleColor),
               ),
             ],
           ),
@@ -998,7 +1016,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
               style: buttonStyle,
               child: buttonChild,
             )
-          : ElevatedButton(
+          : FilledButton(
               onPressed: onPressed,
               style: buttonStyle,
               child: buttonChild,
@@ -1038,19 +1056,18 @@ class _ContentItemCardState extends State<ContentItemCard> {
           horizontal: SizeConfig.getProportionalWidth(2),
         ),
         padding: EdgeInsets.symmetric(
-          horizontal: SizeConfig.getProportionalWidth(14),
-          vertical: SizeConfig.getProportionalHeight(16),
+          horizontal: SizeConfig.getProportionalWidth(16),
+          vertical: SizeConfig.getProportionalHeight(18),
         ),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: const Color(0xFFE8DFF1)),
+          color: Colors.white.withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.lineColor),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x1A6E4B8B),
-              spreadRadius: 1,
-              blurRadius: 14,
-              offset: Offset(0, 6),
+              color: Color(0x12112038),
+              blurRadius: 18,
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -1075,7 +1092,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                       Text(
                         title,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 17.5,
                           fontWeight: FontWeight.w800,
                           color: AppColors.primaryPurple,
                         ),
@@ -1083,10 +1100,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
                       const SizedBox(height: 6),
                       Text(
                         _contentSupportCopy(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: Colors.grey.shade700,
+                        style: const TextStyle(
+                          fontSize: 13.2,
+                          height: 1.5,
+                          color: AppColors.mutedText,
                         ),
                       ),
                     ],
@@ -1109,13 +1126,14 @@ class _ContentItemCardState extends State<ContentItemCard> {
                         ? Icons.verified_rounded
                         : Icons.pending_actions_rounded,
                     size: 18,
-                    color: AppColors.primaryPurple,
+                    color: AppColors.buttonColor,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _statusLabel(),
                       style: const TextStyle(
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.primaryPurple,
                       ),
@@ -1127,7 +1145,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
             const SizedBox(height: 14),
             if (isEvaluating)
               const Center(child: CircularProgressIndicator())
-            else if (!_isAyahRangeType) ...[
+            else ...[
               _buildActionButton(
                 onPressed:
                     canInteract ? () => _evaluateUnit(context, languageProvider) : null,
@@ -1145,22 +1163,14 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 icon: Icons.menu_book_rounded,
                 outlined: true,
               ),
-            ] else
-              _buildActionButton(
-                onPressed: canInteract
-                    ? () => _showIndividualEvaluation(context, languageProvider)
-                    : null,
-                title: 'content_item_card_action_start_verses_title'.tr,
-                subtitle: 'content_item_card_action_start_verses_subtitle'.tr,
-                icon: Icons.playlist_add_check_circle_rounded,
-              ),
+            ],
             if (_isJuzType) ...[
               const SizedBox(height: 12),
               Text(
                 'content_item_card_juz_hint'.tr,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.mutedText,
                 ),
               ),
             ],
