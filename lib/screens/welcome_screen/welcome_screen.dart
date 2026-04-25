@@ -526,16 +526,29 @@ class _WelcomeStoryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          OutlinedButton(
+          OutlinedButton.icon(
             onPressed: busy ? null : onSecondaryPressed,
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
-              side: const BorderSide(color: Color(0x26132A4A)),
+              side: const BorderSide(color: Color(0x40132A4A)),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
             ),
-            child: Text(
+            icon: isOpeningSahifa
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF132A4A),
+                    ),
+                  )
+                : const Icon(
+                    Icons.menu_book_rounded,
+                    color: Color(0xFF132A4A),
+                  ),
+            label: Text(
               isOpeningSahifa
                   ? 'welcome_secondary_cta_loading'.tr
                   : 'welcome_secondary_cta'.tr,

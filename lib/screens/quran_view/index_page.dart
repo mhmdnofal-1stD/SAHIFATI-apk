@@ -24,7 +24,6 @@ import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/assessment_input_dialog.dart';
-import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/teacher_recommendation_badge.dart';
@@ -541,9 +540,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       } else {
         await WakelockPlus.disable();
       }
-    } catch (_) {
-      // Keep web and unsupported environments quiet; reading can proceed without wake lock.
-    }
+    } catch (_) {}
   }
 
   Future<void> _loadAyat(
@@ -552,26 +549,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     List<Ayat> ayat = await _loadCurrentNavigationAyat();
 
-    // If navigating via Parts or Thirds filter, remove ayats from previous surahs in the same quarter
-    // This ensures that if a quarter starts with Al-Fatihah but Al-Baqarah was selected, Al-Baqarah appears at the top.
     if (_isInitialLoad &&
         (widget.filterTypeId == FilterTypes.parts ||
             widget.filterTypeId == FilterTypes.thirds)) {
       ayat = ayat.where((a) => a.surah.id >= widget.surah.id).toList();
     }
     _isInitialLoad = false;
-
-    // ---------------------------------------------
-    // FILTER AYAT BY JUZ/THIRD RANGE
-    // ---------------------------------------------
-    if (widget.filterTypeId == FilterTypes.parts ||
-        widget.filterTypeId == FilterTypes.thirds) {
-      if (widget.juz != null || widget.filterTypeId == FilterTypes.thirds) {
-        // We already set current/min/max hizb quarters above.
-        // The ayat list 'ayat' from loadAyatByHizbQuarter is correct.
-      }
-    }
-    // ---------------------------------------------
 
     final ayatIds = ayat.map((ayah) => ayah.id!).toList();
     var canOpenAssessment = _hasConnection;
@@ -785,27 +768,80 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           child: NoPopScope(
             child: Scaffold(
               appBar: PreferredSize(
-                preferredSize: const Size.fromHeight(kToolbarHeight),
-                child: Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: AppBar(
-                    leading: CustomBackButton(
-                      onPressed: _handleExitReading,
-                    ),
-                    actions: [
-                      Builder(
-                        builder: (context) => IconButton(
-                          icon: const Icon(Icons.menu),
-                          onPressed: () {
-                            if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
-                              Scaffold.of(context).openDrawer();
-                            } else {
-                              Scaffold.of(context).openEndDrawer();
-                            }
-                          },
-                        ),
+                preferredSize: const Size.fromHeight(64),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: Row(
+                        children: [
+                          Builder(
+                            builder: (context) => _ReaderToolIcon(
+                              icon: Icons.tune_rounded,
+                              tooltip: _tr('quran_reading_filters_tooltip'),
+                              isDarkMode: isDarkMode,
+                              onTap: () {
+                                if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                                  Scaffold.of(context).openDrawer();
+                                } else {
+                                  Scaffold.of(context).openEndDrawer();
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _ReaderSurahPill(
+                            surahName: widget.surah.nameAr,
+                            isDarkMode: isDarkMode,
+                            onTap: _handleExitReading,
+                          ),
+                          const Spacer(),
+                          _ReaderToolCluster(
+                            isDarkMode: isDarkMode,
+                            children: [
+                              _ReaderToolIcon(
+                                icon: Icons.color_lens_rounded,
+                                tooltip: _tr(
+                                  'quran_reading_show_memorization_colors',
+                                ),
+                                isDarkMode: isDarkMode,
+                                isActive: _showMemorizationColors,
+                                flat: true,
+                                onTap: () => _updateReadingDisplayPreferences(
+                                  showMemorizationColors:
+                                      !_showMemorizationColors,
+                                ),
+                              ),
+                              _ReaderToolIcon(
+                                icon: Icons.format_underlined_rounded,
+                                tooltip: _tr(
+                                  'quran_reading_show_comprehension_underline',
+                                ),
+                                isDarkMode: isDarkMode,
+                                isActive: _showComprehensionUnderline,
+                                flat: true,
+                                onTap: () => _updateReadingDisplayPreferences(
+                                  showComprehensionUnderline:
+                                      !_showComprehensionUnderline,
+                                ),
+                              ),
+                              _ReaderToolIcon(
+                                icon: Icons.touch_app_rounded,
+                                tooltip: _tr(
+                                  'quran_reading_assessment_tap_tooltip',
+                                ),
+                                isDarkMode: isDarkMode,
+                                isActive: _canOpenAssessment,
+                                flat: true,
+                                onTap: null,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -816,58 +852,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   ? null
                   : const GlobalDrawer(),
               body: SafeArea(
+                top: false,
                 child: Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
                   child: Column(
                     children: [
-                      const PendingSyncBanner(bottomPadding: 12),
-                      Container(
-                        width: double.infinity,
-                        constraints: const BoxConstraints(maxWidth: 980),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? const Color(0xFF171C24)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isDarkMode
-                                ? const Color(0xFF2C3442)
-                                : const Color(0xFFDDE3DA),
-                          ),
-                        ),
-                        child: Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            FilterChip(
-                              label: Text(
-                                _tr('quran_reading_show_memorization_colors'),
-                              ),
-                              selected: _showMemorizationColors,
-                              onSelected: (value) async {
-                                await _updateReadingDisplayPreferences(
-                                  showMemorizationColors: value,
-                                );
-                              },
-                            ),
-                            FilterChip(
-                              label: Text(
-                                _tr(
-                                  'quran_reading_show_comprehension_underline',
-                                ),
-                              ),
-                              selected: _showComprehensionUnderline,
-                              onSelected: (value) async {
-                                await _updateReadingDisplayPreferences(
-                                  showComprehensionUnderline: value,
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
+                      const PendingSyncBanner(bottomPadding: 8),
                       if (_readingNotice != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 12, bottom: 12),
@@ -881,11 +871,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           width: double.infinity,
                           margin: const EdgeInsets.only(top: 4),
                           decoration: BoxDecoration(
-                            border: Border.all(
-                              color: AppColors.blackFontColor,
-                              width: 8.0,
-                            ),
-                            borderRadius: BorderRadius.circular(12.0),
+                            color: isDarkMode
+                                ? const Color(0xFF15171C)
+                                : const Color(0xFFFBF7EF),
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,
@@ -952,121 +941,128 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                     Padding(
                                       padding: const EdgeInsets.only(
                                         top: 10,
-                                        bottom: 8,
+                                        bottom: 4,
                                       ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          if ((_isPageNavigation &&
-                                                  _pageSequence.indexOf(
-                                                        _currentPage!,
-                                                      ) >
-                                                      0) ||
-                                              (!_isPageNavigation &&
-                                                  _currentHizbQuarter! >
-                                                      (_initialHizbQuarter ??
-                                                          _minHizbQuarter!)))
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primaryPurple,
-                                                foregroundColor: Colors.white,
-                                                shape: const CircleBorder(),
-                                                padding:
-                                                    const EdgeInsets.all(12),
-                                              ),
-                                              onPressed: () =>
-                                                  _loadAdjacentChunk(
-                                                forward: false,
-                                              ),
-                                              child: const Icon(
-                                                Icons.arrow_back_ios_new,
-                                                size: 20,
-                                              ),
-                                            )
-                                          else
-                                            const SizedBox(width: 48),
-                                          if (_isPageNavigation)
-                                            Expanded(
-                                              child: Center(
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                    horizontal: 14,
-                                                    vertical: 8,
-                                                  ),
-                                                  decoration: BoxDecoration(
+                                      child: Directionality(
+                                        textDirection: TextDirection.rtl,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            _ReaderBottomChip(
+                                              isDarkMode: isDarkMode,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .auto_stories_rounded,
+                                                    size: 16,
                                                     color: isDarkMode
                                                         ? const Color(
-                                                            0xFF1E1E1E,
+                                                            0xFFE6DFD0,
                                                           )
-                                                        : Colors.white,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                      999,
-                                                    ),
-                                                    border: Border.all(
-                                                      color: isDarkMode
-                                                          ? const Color(
-                                                              0xFF2C3442,
-                                                            )
-                                                          : const Color(
-                                                              0xFFDDE3DA,
-                                                            ),
-                                                    ),
+                                                        : const Color(
+                                                            0xFF132A4A,
+                                                          ),
                                                   ),
-                                                  child: Text(
-                                                    _trParams(
-                                                      'quran_reading_page_indicator',
-                                                      {
-                                                        'page': _currentPage!
-                                                            .toString(),
-                                                      },
-                                                    ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    widget.juz != null
+                                                        ? _trParams(
+                                                            'quran_reading_juz_indicator',
+                                                            {
+                                                              'juz': widget
+                                                                  .juz!
+                                                                  .toString(),
+                                                            },
+                                                          )
+                                                        : widget.surah.nameAr,
                                                     style: TextStyle(
                                                       color: isDarkMode
                                                           ? Colors.white
-                                                          : AppColors
-                                                              .blackFontColor,
+                                                          : const Color(
+                                                              0xFF132A4A,
+                                                            ),
                                                       fontWeight:
-                                                          FontWeight.w600,
+                                                          FontWeight.w700,
+                                                      fontSize: 13,
                                                     ),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                            )
-                                          else
-                                            const Spacer(),
-                                          if ((_isPageNavigation &&
-                                                  _pageSequence.indexOf(
-                                                        _currentPage!,
-                                                      ) <
-                                                      _pageSequence.length - 1) ||
-                                              (!_isPageNavigation &&
-                                                  _currentHizbQuarter! <
-                                                      _maxHizbQuarter!))
-                                            ElevatedButton(
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primaryPurple,
-                                                foregroundColor: Colors.white,
-                                                shape: const CircleBorder(),
-                                                padding:
-                                                    const EdgeInsets.all(12),
+                                            ),
+                                            _ReaderBottomChip(
+                                              isDarkMode: isDarkMode,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  _ReaderInlineChevron(
+                                                    icon: Icons
+                                                        .chevron_right_rounded,
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: ((_isPageNavigation &&
+                                                                _pageSequence
+                                                                        .indexOf(
+                                                                          _currentPage!,
+                                                                        ) >
+                                                                    0) ||
+                                                            (!_isPageNavigation &&
+                                                                _currentHizbQuarter! >
+                                                                    (_initialHizbQuarter ??
+                                                                        _minHizbQuarter!)))
+                                                        ? () =>
+                                                            _loadAdjacentChunk(
+                                                              forward: false,
+                                                            )
+                                                        : null,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    _isPageNavigation
+                                                        ? '$_currentPage / 604'
+                                                        : 'Q${_currentHizbQuarter ?? '-'}',
+                                                    style: TextStyle(
+                                                      color: isDarkMode
+                                                          ? Colors.white
+                                                          : const Color(
+                                                              0xFF132A4A,
+                                                            ),
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      fontSize: 13,
+                                                      fontFeatures: const [
+                                                        FontFeature.tabularFigures(),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  _ReaderInlineChevron(
+                                                    icon: Icons
+                                                        .chevron_left_rounded,
+                                                    isDarkMode: isDarkMode,
+                                                    onTap: ((_isPageNavigation &&
+                                                                _pageSequence
+                                                                        .indexOf(
+                                                                          _currentPage!,
+                                                                        ) <
+                                                                    _pageSequence
+                                                                            .length -
+                                                                        1) ||
+                                                            (!_isPageNavigation &&
+                                                                _currentHizbQuarter! <
+                                                                    _maxHizbQuarter!))
+                                                        ? () =>
+                                                            _loadAdjacentChunk(
+                                                              forward: true,
+                                                            )
+                                                        : null,
+                                                  ),
+                                                ],
                                               ),
-                                              onPressed: () =>
-                                                  _loadAdjacentChunk(
-                                                forward: true,
-                                              ),
-                                              child: const Icon(
-                                                Icons.arrow_forward_ios,
-                                                size: 20,
-                                              ),
-                                            )
-                                          else
-                                            const SizedBox(width: 48),
-                                        ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -1111,7 +1107,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     for (var group in groups) {
       final firstAyah = group.first;
 
-      // Show surah title and Basmalah logic
       final isAtStartOfSurah = firstAyah.ayahNo == 1;
 
       if (isAtStartOfSurah) {
@@ -1282,6 +1277,184 @@ class _ReadingNoticeBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReaderToolIcon extends StatelessWidget {
+  const _ReaderToolIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.isDarkMode,
+    required this.onTap,
+    this.isActive = false,
+    this.flat = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool isDarkMode;
+  final VoidCallback? onTap;
+  final bool isActive;
+  final bool flat;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    final foreground = isDarkMode
+        ? (disabled ? const Color(0xFF6B7280) : Colors.white)
+        : (disabled ? const Color(0xFF9AA3B2) : const Color(0xFF132A4A));
+    final background = flat
+        ? Colors.transparent
+        : (isDarkMode
+            ? const Color(0xFF1F242E)
+            : const Color(0xFFEFEAE0));
+
+    final activeOverlay = isActive
+        ? (isDarkMode
+            ? Colors.white.withValues(alpha: 0.10)
+            : const Color(0xFF132A4A).withValues(alpha: 0.10))
+        : null;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: activeOverlay ?? background,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(icon, size: 20, color: foreground),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderToolCluster extends StatelessWidget {
+  const _ReaderToolCluster({
+    required this.isDarkMode,
+    required this.children,
+  });
+
+  final bool isDarkMode;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? const Color(0xFF1F242E)
+            : const Color(0xFFEFEAE0),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: children,
+      ),
+    );
+  }
+}
+
+class _ReaderSurahPill extends StatelessWidget {
+  const _ReaderSurahPill({
+    required this.surahName,
+    required this.isDarkMode,
+    required this.onTap,
+  });
+
+  final String surahName;
+  final bool isDarkMode;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isDarkMode ? Colors.white : const Color(0xFF132A4A);
+    return Material(
+      color: isDarkMode
+          ? const Color(0xFF1F242E)
+          : const Color(0xFFEFEAE0),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 8, 8, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                surahName,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(Icons.chevron_left_rounded, size: 22, color: foreground),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderBottomChip extends StatelessWidget {
+  const _ReaderBottomChip({
+    required this.isDarkMode,
+    required this.child,
+  });
+
+  final bool isDarkMode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? const Color(0xFF1F242E)
+            : const Color(0xFFEFEAE0),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _ReaderInlineChevron extends StatelessWidget {
+  const _ReaderInlineChevron({
+    required this.icon,
+    required this.isDarkMode,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool isDarkMode;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    final foreground = isDarkMode
+        ? (disabled ? const Color(0xFF5B6271) : Colors.white)
+        : (disabled ? const Color(0xFFB9C0CC) : const Color(0xFF132A4A));
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Icon(icon, size: 22, color: foreground),
       ),
     );
   }
