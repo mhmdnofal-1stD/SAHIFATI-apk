@@ -1199,7 +1199,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               final userEvaluation = ayah.userEvaluation ??
                   evaluationProvider.getUserEvaluationForAyah(ayah.id);
 
-              final defaultColor =
+                final defaultColor =
                   isDarkMode ? Colors.white : AppColors.blackFontColor;
 
               final memoEvaluation = userEvaluation?.memoEvaluation ??
@@ -1208,17 +1208,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   evaluationProvider
                       .findEvaluationById(userEvaluation?.compreId);
 
-                final rawColor = _showMemorizationColors
-                  ? (memoEvaluation != null
-                      ? EvaluationsController()
-                          .getColorForEvaluationModel(memoEvaluation)
-                      : defaultColor)
+                final hasMemorizationAccent =
+                  _showMemorizationColors && memoEvaluation != null;
+                final accentColor = hasMemorizationAccent
+                  ? _resolveReadableVerseColor(
+                    preferredColor: EvaluationsController()
+                      .getColorForEvaluationModel(memoEvaluation),
+                    fallbackColor: isDarkMode
+                      ? const Color(0xFFE6DFD0)
+                      : AppColors.buttonColor,
+                    isDarkMode: isDarkMode,
+                  )
                   : defaultColor;
-                final color = _resolveReadableVerseColor(
-                preferredColor: rawColor,
-                fallbackColor: defaultColor,
-                isDarkMode: isDarkMode,
-                );
 
               final showUnderline = _showComprehensionUnderline &&
                   EvaluationsController()
@@ -1235,12 +1236,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 style: TextStyle(
                   fontSize: 30,
                   height: 1.9,
-                  color: color,
+                  color: defaultColor,
                   fontFamily: AppFonts.versesFont,
                   decoration: showUnderline
                       ? TextDecoration.underline
                       : TextDecoration.none,
-                  decorationColor: color,
+                  decorationColor: showUnderline ? accentColor : null,
+                  decorationThickness: showUnderline ? 1.8 : null,
                 ),
                 children: [
                   TextSpan(
@@ -1249,7 +1251,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     style: TextStyle(
                       fontSize: 34,
                       height: 1.9,
-                      color: color,
+                      color: accentColor,
                       fontFamily: AppFonts.versesFont,
                     ),
                   ),
