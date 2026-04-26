@@ -204,7 +204,11 @@ class MyApp extends StatelessWidget {
         GetPage(
           name: IndexPage.routeName,
           page: () {
-            final readingPage = _buildReadingPageFromParameters(Get.parameters);
+            final readingPage = _buildReadingPageFromParameters(
+              Get.parameters.map(
+                (key, value) => MapEntry(key, value ?? ''),
+              ),
+            );
             if (readingPage == null) {
               return const InitialScreen();
             }
