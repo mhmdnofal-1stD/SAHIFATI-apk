@@ -92,7 +92,9 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: widget.initialEmail?.trim() ?? '');
+    _emailController = TextEditingController(
+      text: widget.initialEmail?.trim() ?? '',
+    );
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
     _stage = _resolveInitialStage();
@@ -268,35 +270,32 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
+        color: accent.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.24)),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: accent, size: 22),
-          ),
-          const SizedBox(width: 12),
+          if (!_isArabic) ...[
+            _buildInfoCardIcon(icon, accent),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: _isArabic
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
+                  textAlign: _isArabic ? TextAlign.right : TextAlign.left,
                   textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
                   style: TextStyle(
                     fontFamily: AppFonts.primaryFont,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF132A4A),
                   ),
@@ -304,15 +303,69 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 6),
                 Text(
                   body,
+                  textAlign: _isArabic ? TextAlign.right : TextAlign.left,
                   textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
                   style: TextStyle(
                     fontFamily: AppFonts.primaryFont,
-                    fontSize: 13,
-                    height: 1.5,
+                    fontSize: 12.5,
+                    height: 1.55,
                     color: const Color(0xFF566173),
                   ),
                 ),
               ],
+            ),
+          ),
+          if (_isArabic) ...[
+            const SizedBox(width: 12),
+            _buildInfoCardIcon(icon, accent),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCardIcon(IconData icon, Color accent) {
+    return Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.18)),
+      ),
+      child: Icon(icon, color: accent, size: 22),
+    );
+  }
+
+  Widget _buildCaptionNote(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F1E7),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2D8C8)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: Color(0xFF66758A),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              textAlign: _isArabic ? TextAlign.right : TextAlign.left,
+              textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 12.5,
+                height: 1.5,
+                color: const Color(0xFF5D697D),
+              ),
             ),
           ),
         ],
@@ -402,9 +455,17 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     required VoidCallback? onPressed,
     IconData icon = Icons.arrow_back_rounded,
   }) {
-    return TextButton.icon(
+    return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 18, color: const Color(0xFF132A4A)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF132A4A),
+        side: const BorderSide(color: Color(0xFFD8DDE5)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
+      icon: Icon(icon, size: 18),
       label: Text(
         label,
         style: TextStyle(
@@ -445,16 +506,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           },
         ),
         const SizedBox(height: 10),
-        Text(
-          'forgot_password_request_caption'.tr,
-          textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-          style: TextStyle(
-            fontFamily: AppFonts.primaryFont,
-            fontSize: 12,
-            height: 1.5,
-            color: const Color(0xFF6C7280),
-          ),
-        ),
+        _buildCaptionNote('forgot_password_request_caption'.tr),
         if (_inlineMessage != null) ...[
           const SizedBox(height: 14),
           _buildInlineBanner(_inlineMessage!, isError: _inlineIsError),
@@ -552,16 +604,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           },
         ),
         const SizedBox(height: 10),
-        Text(
-          'forgot_password_password_rules'.tr,
-          textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-          style: TextStyle(
-            fontFamily: AppFonts.primaryFont,
-            fontSize: 12,
-            height: 1.5,
-            color: const Color(0xFF6C7280),
-          ),
-        ),
+        _buildCaptionNote('forgot_password_password_rules'.tr),
         if (_inlineMessage != null) ...[
           const SizedBox(height: 14),
           _buildInlineBanner(_inlineMessage!, isError: _inlineIsError),

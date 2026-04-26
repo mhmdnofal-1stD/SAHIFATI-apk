@@ -36,8 +36,8 @@ class AuthScreenShell extends StatelessWidget {
     final hasSubtitle = subtitle.trim().isNotEmpty;
     final isCompactPhone =
         preferCompactMobileLayout && mediaQuery.size.shortestSide < 600;
-    final outerHorizontalPadding = isCompactPhone ? 16.0 : 20.0;
-    final outerTopPadding = isCompactPhone ? 12.0 : 20.0;
+    final outerHorizontalPadding = isCompactPhone ? 16.0 : 24.0;
+    final outerTopPadding = isCompactPhone ? 16.0 : 28.0;
     final outerBottomPadding = bottomInset > 24
         ? bottomInset + (isCompactPhone ? 16.0 : 24.0)
         : (isCompactPhone ? 16.0 : 24.0);
@@ -52,7 +52,7 @@ class AuthScreenShell extends StatelessWidget {
     final titleFontSize = isCompactPhone ? 22.0 : 24.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8),
+      backgroundColor: const Color(0xFFF2E9DD),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -91,16 +91,21 @@ class AuthScreenShell extends StatelessWidget {
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFCFBF8),
+                              color: const Color(0xFFFFFCF7),
                               borderRadius: BorderRadius.circular(cardRadius),
                               border: Border.all(
-                                color: const Color(0xFFE9E0D2),
+                                color: const Color(0xFFE0D3C0),
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x140F172A),
-                                  blurRadius: 40,
-                                  offset: Offset(0, 20),
+                                  color: Color(0x1813284A),
+                                  blurRadius: 48,
+                                  offset: Offset(0, 24),
+                                ),
+                                BoxShadow(
+                                  color: Color(0x08FFFFFF),
+                                  blurRadius: 18,
+                                  offset: Offset(0, -4),
                                 ),
                               ],
                             ),
@@ -142,7 +147,7 @@ class AuthScreenShell extends StatelessWidget {
                                       style: TextStyle(
                                         fontFamily: AppFonts.primaryFont,
                                         fontSize: 14,
-                                        color: const Color(0xFF6C7280),
+                                        color: const Color(0xFF556277),
                                         height: 1.5,
                                       ),
                                     ),
@@ -178,12 +183,13 @@ class _BrandHeader extends StatelessWidget {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFFFFFDFC),
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5D9C8)),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 20,
+                color: Color(0x1413284A),
+                blurRadius: 18,
                 offset: Offset(0, 10),
               ),
             ],
@@ -202,19 +208,20 @@ class _BrandHeader extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.4,
-              color: const Color(0xFF132A4A),
+              color: const Color(0xFF173054),
             ),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFE8F0FF),
+            color: const Color(0xFFE9F3ED),
             borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFD4E3DA)),
           ),
           child: const Icon(
             Icons.auto_awesome_rounded,
-            color: AppColors.primaryPurple,
+            color: AppColors.buttonColor,
             size: 18,
           ),
         ),
@@ -239,8 +246,9 @@ class _AuthModeToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1ECE3),
+        color: const Color(0xFFF0E7DB),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE0D2BF)),
       ),
       child: Row(
         children: [
@@ -283,7 +291,7 @@ class _ModeItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? Colors.white : Colors.transparent,
+      color: isSelected ? const Color(0xFF132A4A) : Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -296,9 +304,8 @@ class _ModeItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 17,
-                color: isSelected
-                    ? const Color(0xFF132A4A)
-                    : const Color(0xFF7A808A),
+                color:
+                    isSelected ? Colors.white : const Color(0xFF5E6A7E),
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -310,8 +317,8 @@ class _ModeItem extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: isSelected
-                        ? const Color(0xFF132A4A)
-                        : const Color(0xFF7A808A),
+                        ? Colors.white
+                        : const Color(0xFF5E6A7E),
                   ),
                 ),
               ),
@@ -339,7 +346,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x669FC4FF), Color(0x009FC4FF)],
+                colors: [Color(0x80B5CCFF), Color(0x00B5CCFF)],
               ),
             ),
           ),
@@ -353,7 +360,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x66EBC48E), Color(0x00EBC48E)],
+                colors: [Color(0x7AE2C48D), Color(0x00E2C48D)],
               ),
             ),
           ),
@@ -367,7 +374,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(90),
               gradient: const LinearGradient(
-                colors: [Color(0x22C3D6F5), Color(0x22F6E7CD)],
+                colors: [Color(0x30C5D8F3), Color(0x34F5DFC1)],
               ),
             ),
           ),

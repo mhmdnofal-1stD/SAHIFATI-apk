@@ -330,7 +330,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_signup_title'.tr,
-        subtitle: '',
+        subtitle: 'signup_subtitle'.tr,
         isSignup: true,
         onSelectLogin: isBusy
             ? null
@@ -427,6 +427,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 usersProvider,
                 evaluationsProvider,
               ),
+              showEmailMethod: false,
               showFacebook: SocialAuthConfig.facebookAuthEnabled,
               onFacebookPressed: usersProvider.isLoading
                   ? null

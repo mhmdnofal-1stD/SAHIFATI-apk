@@ -196,11 +196,11 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   Widget _buildSummaryBlock() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F1EA),
+        color: const Color(0xFFF7F1E6),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE8DECF)),
+        border: Border.all(color: const Color(0xFFE2D8C8)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,7 +222,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             style: TextStyle(
               fontFamily: AppFonts.primaryFont,
               fontSize: 13,
-              color: const Color(0xFF6C7280),
+              color: const Color(0xFF5E6B7D),
             ),
           ),
           const SizedBox(height: 10),
@@ -240,7 +240,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                   style: TextStyle(
                     fontFamily: AppFonts.primaryFont,
                     fontSize: 12,
-                    color: const Color(0xFF7A808A),
+                    color: const Color(0xFF6B7687),
                     height: 1.45,
                   ),
                 ),
@@ -287,25 +287,33 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F5EF),
+        color: const Color(0xFFF9F5EE),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE9E0D2)),
+        border: Border.all(color: const Color(0xFFE4DACA)),
       ),
       child: Column(
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFFFFFCF7),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE2D8C8)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1013284A),
+                  blurRadius: 14,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.person_search_rounded,
               color: Color(0xFF132A4A),
-              size: 30,
+              size: 32,
             ),
           ),
           const SizedBox(height: 16),
@@ -326,8 +334,40 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             style: TextStyle(
               fontFamily: AppFonts.primaryFont,
               fontSize: 13,
-              color: const Color(0xFF6C7280),
+              color: const Color(0xFF5E6B7D),
               height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3ECE0),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE4D9C7)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.lightbulb_outline_rounded,
+                  size: 16,
+                  color: Color(0xFF6A7688),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'auth_saved_accounts_caption'.tr,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primaryFont,
+                      fontSize: 12,
+                      height: 1.45,
+                      color: const Color(0xFF6A7688),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -484,11 +524,11 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             if (_isLoading)
               _buildLoadingState()
             else ...[
-              _buildSummaryBlock(),
-              const SizedBox(height: 16),
               if (_storedUsers.isEmpty)
                 _buildEmptyState()
-              else
+              else ...[
+                _buildSummaryBlock(),
+                const SizedBox(height: 16),
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -498,6 +538,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                   itemBuilder: (context, index) =>
                       _buildStoredUserCard(_storedUsers[index]),
                 ),
+              ],
             ],
             const SizedBox(height: 18),
             SizedBox(

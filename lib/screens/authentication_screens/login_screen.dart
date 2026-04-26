@@ -44,24 +44,48 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icon,
     required String tooltip,
     required VoidCallback? onTap,
+    String? label,
     Color foreground = const Color(0xFF132A4A),
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: onTap == null ? const Color(0xFFF1ECE3) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: onTap == null ? const Color(0xFFF1ECE3) : const Color(0xFFFFFCF8),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
           child: Container(
-            width: 44,
-            height: 44,
+            height: 46,
+            padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 12),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD9DEE5)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFD7D8DE)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0813284A),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(icon, color: foreground, size: 20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: foreground, size: 18),
+                if (label != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4F5D72),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -381,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
-        subtitle: '',
+        subtitle: 'surface_quick_login_hint'.tr,
         isSignup: false,
         fillViewport: true,
         preferCompactMobileLayout: true,
@@ -429,6 +453,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? Icons.bookmark_rounded
                       : Icons.bookmark_border_rounded,
                   tooltip: 'remember_me'.tr,
+                  label: 'remember_me'.tr,
                   onTap: () =>
                       setState(() => _userController.toggleRememberMe()),
                 ),
@@ -436,6 +461,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 _buildUtilityIconButton(
                   icon: Icons.lock_reset_rounded,
                   tooltip: 'forgot_password'.tr,
+                  label: 'forgot_password'.tr,
                   onTap: () => Get.to(
                     () => ForgotPasswordScreen(
                       initialEmail: _userController.loginEmailController.text
@@ -496,6 +522,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 usersProvider,
                 evaluationsProvider,
               ),
+              showEmailMethod: false,
               showFacebook: SocialAuthConfig.facebookAuthEnabled,
               onFacebookPressed: usersProvider.isLoading
                   ? null

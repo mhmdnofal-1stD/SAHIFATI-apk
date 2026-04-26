@@ -12,6 +12,7 @@
     "remember_me": "تذكرني",
     "forgot_password": "نسيت كلمة المرور",
     "login": "تسجيل الدخول",
+    "surface_quick_login_hint": "ادخل إلى حسابك بسرعة من واجهة أوضح، مع أقل قدر ممكن من التشتيت البصري.",
     "dont_have_account": "لا تملك حساب؟",
     "create_account_action": "قم بإنشاء حساب",
     "all_fields_required": "جميع الحقول مطلوبة",

@@ -12,6 +12,7 @@
     "remember_me": "Remember Me",
     "forgot_password": "Forgot Password",
     "login": "Login",
+    "surface_quick_login_hint": "Sign in from a clearer surface with less visual noise and a faster path to your account.",
     "dont_have_account": "Don't have an account?",
     "create_account_action": "Sign Up",
     "all_fields_required": "All fields are required",

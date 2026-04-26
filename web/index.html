@@ -20,6 +20,7 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#F7F4ED">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -32,13 +33,237 @@
 
   <title>sahifaty</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      color-scheme: light;
+      --boot-bg: #f7f4ed;
+      --boot-surface: rgba(252, 251, 248, 0.92);
+      --boot-ink: #132238;
+      --boot-muted: #617189;
+      --boot-accent: #0a7c62;
+      --boot-accent-soft: rgba(10, 124, 98, 0.14);
+      --boot-border: rgba(19, 34, 56, 0.08);
+      --boot-shadow: 0 28px 80px rgba(19, 34, 56, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top right, rgba(10, 124, 98, 0.10), transparent 24%),
+        radial-gradient(circle at bottom left, rgba(19, 34, 56, 0.08), transparent 28%),
+        var(--boot-bg);
+    }
+
+    body {
+      overflow: hidden;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+
+    #boot-screen {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      z-index: 9999;
+      transition: opacity 240ms ease, visibility 240ms ease;
+    }
+
+    #boot-screen.is-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .boot-card {
+      width: min(100%, 440px);
+      padding: 28px 24px;
+      border-radius: 28px;
+      background: var(--boot-surface);
+      border: 1px solid var(--boot-border);
+      box-shadow: var(--boot-shadow);
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .boot-mark {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 18px;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #0a7c62, #132238);
+      color: #fff;
+      font-size: 30px;
+      font-weight: 700;
+      box-shadow: 0 18px 34px rgba(10, 124, 98, 0.22);
+    }
+
+    .boot-title {
+      margin: 0;
+      color: var(--boot-ink);
+      font-size: clamp(28px, 4vw, 34px);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .boot-subtitle {
+      margin: 10px 0 0;
+      color: var(--boot-muted);
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .boot-progress {
+      width: 100%;
+      height: 12px;
+      margin-top: 22px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(19, 34, 56, 0.08);
+    }
+
+    .boot-progress::after {
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(10, 124, 98, 0.25), var(--boot-accent), rgba(19, 34, 56, 0.7));
+      animation: boot-slide 1.1s ease-in-out infinite;
+    }
+
+    .boot-status {
+      margin-top: 18px;
+      color: var(--boot-muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .boot-status strong {
+      color: var(--boot-ink);
+      font-weight: 600;
+    }
+
+    .boot-status.is-error {
+      color: #9f2d2d;
+    }
+
+    .boot-actions {
+      display: none;
+      justify-content: center;
+      margin-top: 18px;
+    }
+
+    .boot-actions.is-visible {
+      display: flex;
+    }
+
+    .boot-retry {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: var(--boot-accent-soft);
+      color: var(--boot-ink);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .boot-retry:hover {
+      background: rgba(10, 124, 98, 0.2);
+    }
+
+    @keyframes boot-slide {
+      0% {
+        transform: translateX(-115%);
+      }
+      100% {
+        transform: translateX(255%);
+      }
+    }
+
+    @media (max-width: 640px) {
+      #boot-screen {
+        padding: 16px;
+      }
+
+      .boot-card {
+        padding: 24px 18px;
+        border-radius: 24px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="boot-screen" aria-live="polite">
+    <div class="boot-card">
+      <div class="boot-mark">ص</div>
+      <h1 class="boot-title">صحيفتي</h1>
+      <p class="boot-subtitle">جاري تجهيز التطبيق وتحميل الواجهة بأمان. قد يستغرق ذلك لحظات عند أول فتح.</p>
+      <div class="boot-progress" aria-hidden="true"></div>
+      <p class="boot-status" id="boot-status"><strong>جاري التحميل...</strong> إذا طال الانتظار فسيظهر لك إجراء مباشر بدل الشاشة البيضاء.</p>
+      <div class="boot-actions" id="boot-actions">
+        <button class="boot-retry" type="button" onclick="window.location.reload()">إعادة المحاولة</button>
+      </div>
+    </div>
+  </div>
   <noscript>
     <div style="padding: 16px; font-family: sans-serif; line-height: 1.6; text-align: right;">
       يحتاج هذا التطبيق إلى JavaScript للعمل بشكل صحيح. Please enable JavaScript to continue.
     </div>
   </noscript>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function () {
+      const bootScreen = document.getElementById('boot-screen');
+      const bootStatus = document.getElementById('boot-status');
+      const bootActions = document.getElementById('boot-actions');
+      let isResolved = false;
+
+      function hideBootScreen() {
+        if (!bootScreen || isResolved) {
+          return;
+        }
+        isResolved = true;
+        bootScreen.classList.add('is-hidden');
+        window.setTimeout(() => bootScreen.remove(), 260);
+      }
+
+      function showBootError(message) {
+        if (!bootStatus || !bootActions || isResolved) {
+          return;
+        }
+        bootStatus.classList.add('is-error');
+        bootStatus.textContent = message;
+        bootActions.classList.add('is-visible');
+      }
+
+      window.addEventListener('flutter-first-frame', hideBootScreen);
+
+      window.addEventListener('error', function () {
+        showBootError('تعذر إكمال تحميل الواجهة. يمكنك إعادة المحاولة الآن بدل البقاء على شاشة بيضاء.');
+      });
+
+      window.setTimeout(function () {
+        if (!isResolved && bootStatus) {
+          bootStatus.innerHTML = '<strong>ما زال التحميل جاريًا...</strong> هذا قد يحدث في أول تشغيل أو مع اتصال بطيء.';
+        }
+      }, 4000);
+
+      window.setTimeout(function () {
+        if (!isResolved) {
+          showBootError('استغرق التحميل وقتًا أطول من المعتاد. أعد المحاولة، وإن تكرر ذلك فهناك خلل يستحق الفحص.');
+        }
+      }, 12000);
+    }());
+  </script>
 </body>
 </html>

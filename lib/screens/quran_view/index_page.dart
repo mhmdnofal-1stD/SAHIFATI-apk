@@ -180,6 +180,50 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return null;
   }
 
+  static const Color _lightReadingSurfaceColor = Color(0xFFFBF7EF);
+  static const Color _darkReadingSurfaceColor = Color(0xFF15171C);
+
+  Color _readingSurfaceColor(bool isDarkMode) {
+    return isDarkMode ? _darkReadingSurfaceColor : _lightReadingSurfaceColor;
+  }
+
+  double _contrastRatio(Color foreground, Color background) {
+    final foregroundLuminance = foreground.computeLuminance();
+    final backgroundLuminance = background.computeLuminance();
+    final lighter = foregroundLuminance > backgroundLuminance
+        ? foregroundLuminance
+        : backgroundLuminance;
+    final darker = foregroundLuminance > backgroundLuminance
+        ? backgroundLuminance
+        : foregroundLuminance;
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  Color _resolveReadableVerseColor({
+    required Color preferredColor,
+    required Color fallbackColor,
+    required bool isDarkMode,
+  }) {
+    final surfaceColor = _readingSurfaceColor(isDarkMode);
+    final baseCandidate = preferredColor.a >= 1
+        ? preferredColor
+        : Color.alphaBlend(preferredColor, surfaceColor);
+
+    if (_contrastRatio(baseCandidate, surfaceColor) >= 4.5) {
+      return baseCandidate;
+    }
+
+    final targetColor = isDarkMode ? Colors.white : fallbackColor;
+    for (var step = 1; step <= 8; step++) {
+      final candidate = Color.lerp(baseCandidate, targetColor, step / 8)!;
+      if (_contrastRatio(candidate, surfaceColor) >= 4.5) {
+        return candidate;
+      }
+    }
+
+    return targetColor;
+  }
+
   Future<void> _ensureNavigationInitialized() async {
     if (_navigationScopeAyat.isEmpty) {
       final scopeAyat = await _loadNavigationScopeAyat();
@@ -871,9 +915,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           width: double.infinity,
                           margin: const EdgeInsets.only(top: 4),
                           decoration: BoxDecoration(
-                            color: isDarkMode
-                                ? const Color(0xFF15171C)
-                                : const Color(0xFFFBF7EF),
+                            color: _readingSurfaceColor(isDarkMode),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: GestureDetector(
@@ -1166,12 +1208,17 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   evaluationProvider
                       .findEvaluationById(userEvaluation?.compreId);
 
-              final color = _showMemorizationColors
+                final rawColor = _showMemorizationColors
                   ? (memoEvaluation != null
                       ? EvaluationsController()
                           .getColorForEvaluationModel(memoEvaluation)
                       : defaultColor)
                   : defaultColor;
+                final color = _resolveReadableVerseColor(
+                preferredColor: rawColor,
+                fallbackColor: defaultColor,
+                isDarkMode: isDarkMode,
+                );
 
               final showUnderline = _showComprehensionUnderline &&
                   EvaluationsController()

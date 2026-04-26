@@ -50,17 +50,17 @@ class _CustomAuthenticationTextFieldState
           : const EdgeInsets.only(bottom: 12, top: 6),
       child: Container(
         width: double.infinity,
-        constraints: const BoxConstraints(minHeight: 56),
+        constraints: const BoxConstraints(minHeight: 60),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
               width: widget.borderWidth ?? 1.0, color: widget.borderColor),
-          color: const Color(0xFFFCFBF8),
+          color: const Color(0xFFFFFDFC),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x080F172A),
-              blurRadius: 12,
-              offset: Offset(0, 6),
+              color: Color(0x0D132A4A),
+              blurRadius: 16,
+              offset: Offset(0, 8),
             ),
           ],
         ),
@@ -91,14 +91,14 @@ class _CustomAuthenticationTextFieldState
                         ? null
                         : Icon(
                             widget.leadingIcon,
-                            color: const Color(0xFF7B8494),
+                            color: const Color(0xFF66758A),
                             size: 20,
                           ),
                     suffixIcon: widget.obscureText
                         ? IconButton(
                             icon: !showPassword
-                                ? const Icon(Icons.visibility, color: Color(0xFF7B8494))
-                                : const Icon(Icons.visibility_off, color: Color(0xFF7B8494)),
+                                ? const Icon(Icons.visibility, color: Color(0xFF66758A))
+                                : const Icon(Icons.visibility_off, color: Color(0xFF66758A)),
                             onPressed: () {
                               setState(() {
                                 showPassword = !showPassword;
@@ -108,8 +108,9 @@ class _CustomAuthenticationTextFieldState
                         : null,
                     hintText: widget.hintText ?? "",
                     hintStyle: TextStyle(
-                      color: const Color(0xFF9AA2AE),
+                      color: const Color(0xFF7B8696),
                       fontFamily: AppFonts.primaryFont,
+                      fontSize: 15,
                     ),
                     border: InputBorder.none,
                   )),

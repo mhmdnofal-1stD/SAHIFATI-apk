@@ -12,6 +12,7 @@ class AuthSocialSection extends StatelessWidget {
     required this.onFacebookPressed,
     required this.isBusy,
     this.showFacebook = true,
+    this.showEmailMethod = false,
     this.googleHint,
     this.facebookHint,
     this.statusMessage,
@@ -22,10 +23,17 @@ class AuthSocialSection extends StatelessWidget {
   final VoidCallback? onFacebookPressed;
   final bool isBusy;
   final bool showFacebook;
+  final bool showEmailMethod;
   final String? googleHint;
   final String? facebookHint;
   final String? statusMessage;
   final AuthSocialStatusTone statusTone;
+
+  String _sectionLabel() {
+    return (Get.locale?.languageCode ?? 'ar') == 'ar'
+        ? 'خيارات دخول أخرى'
+        : 'Other sign-in options';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,39 +41,56 @@ class AuthSocialSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F1EA),
+            color: const Color(0xFFF6EFE5),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFE8DECF)),
+            border: Border.all(color: const Color(0xFFE1D3C0)),
           ),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 18,
-            runSpacing: 14,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _StaticMethodIcon(
-                icon: Icons.alternate_email_rounded,
-                labelKey: 'auth_method_email',
-              ),
-              _MethodSlot(
-                label: 'social_provider_google'.tr,
-                child: googleControl,
-              ),
-              if (showFacebook)
-                _MethodSlot(
-                  label: 'social_provider_facebook'.tr,
-                  child: AuthCompactSocialButton(
-                    semanticLabel: 'social_provider_facebook'.tr,
-                    onPressed: onFacebookPressed,
-                    isBusy: isBusy,
-                    icon: const Icon(
-                      Icons.facebook_rounded,
-                      color: Color(0xFF1877F2),
-                      size: 25,
-                    ),
-                  ),
+              Text(
+                _sectionLabel(),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: AppFonts.primaryFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF58657A),
                 ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 18,
+                runSpacing: 16,
+                children: [
+                  if (showEmailMethod)
+                    const _StaticMethodIcon(
+                      icon: Icons.alternate_email_rounded,
+                      labelKey: 'auth_method_email',
+                    ),
+                  _MethodSlot(
+                    label: 'social_provider_google'.tr,
+                    child: googleControl,
+                  ),
+                  if (showFacebook)
+                    _MethodSlot(
+                      label: 'social_provider_facebook'.tr,
+                      child: AuthCompactSocialButton(
+                        semanticLabel: 'social_provider_facebook'.tr,
+                        onPressed: onFacebookPressed,
+                        isBusy: isBusy,
+                        icon: const Icon(
+                          Icons.facebook_rounded,
+                          color: Color(0xFF1877F2),
+                          size: 25,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -158,9 +183,30 @@ class _MethodSlot extends StatelessWidget {
     return Semantics(
       label: label,
       child: SizedBox(
-        width: 56,
-        height: 56,
-        child: Center(child: child),
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Center(child: child),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF5D697D),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -179,17 +225,38 @@ class _StaticMethodIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: labelKey.tr,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: const Color(0xFF132A4A),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 24,
+      child: SizedBox(
+        width: 72,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: const Color(0xFF132A4A),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              labelKey.tr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF5D697D),
+              ),
+            ),
+          ],
         ),
       ),
     );
