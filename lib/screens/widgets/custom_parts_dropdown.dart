@@ -133,11 +133,14 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
                         final surah = surahs[index];
                         return InkWell(
                           onTap: () {
-                            Get.to(IndexPage(
-                              surah: surah,
-                              filterTypeId: FilterTypes.parts,
-                              juz: widget.part['id'],
-                            ))?.then((_) {
+                            Get.toNamed(
+                              IndexPage.routeName,
+                              parameters: IndexPage.routeParameters(
+                                surah: surah,
+                                filterTypeId: FilterTypes.parts,
+                                juz: widget.part['id'] as int,
+                              ),
+                            )?.then((_) {
                               evaluationsProvider.getQuranChartData(
                                   usersProvider.selectedUser!.id);
                             });

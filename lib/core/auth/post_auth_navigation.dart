@@ -19,7 +19,10 @@ void _replaceLoginRoute(
 }
 
 void _replaceWithReadingSession(ReadingSession session) {
-  Get.offAll(() => IndexPage.fromReadingSession(session));
+  Get.offAllNamed(
+    IndexPage.routeName,
+    parameters: IndexPage.routeParametersForSession(session),
+  );
 }
 
 Future<void> navigateAfterSuccessfulLogin({

@@ -206,7 +206,13 @@ class _MainScreenState extends State<MainScreen> {
                                         return;
                                       }
 
-                                      Get.to(() => IndexPage.fromReadingSession(session));
+                                      Get.toNamed(
+                                        IndexPage.routeName,
+                                        parameters:
+                                            IndexPage.routeParametersForSession(
+                                          session,
+                                        ),
+                                      );
                                     },
                                     style: FilledButton.styleFrom(
                                       backgroundColor: AppColors.buttonColor,

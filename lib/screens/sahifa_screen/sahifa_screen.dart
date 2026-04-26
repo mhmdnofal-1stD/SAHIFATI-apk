@@ -240,7 +240,13 @@ class SahifaScreen extends StatelessWidget {
                                     return;
                                   }
 
-                                  Get.to(() => IndexPage.fromReadingSession(session));
+                                  Get.toNamed(
+                                    IndexPage.routeName,
+                                    parameters:
+                                        IndexPage.routeParametersForSession(
+                                      session,
+                                    ),
+                                  );
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.buttonColor,

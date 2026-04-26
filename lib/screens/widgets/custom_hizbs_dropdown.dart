@@ -58,11 +58,12 @@ class CustomHizbsButton extends StatelessWidget {
 
         final surah = surahs.first;
 
-        Get.to(
-          IndexPage(
+        Get.toNamed(
+          IndexPage.routeName,
+          parameters: IndexPage.routeParameters(
             surah: surah,
             filterTypeId: 3,
-            hizb: hizb['id'],
+            hizb: hizb['id'] as int,
           ),
         )?.then((_) {
           evaluationsProvider.getQuranChartData(

@@ -23,6 +23,7 @@ import 'screens/authentication_screens/license_activation_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
+import 'screens/quran_view/index_page.dart';
 import 'screens/sahifa_screen/sahifa_screen.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
@@ -142,6 +143,10 @@ class MyApp extends StatelessWidget {
         ),
       ),
       initialRoute: '/',
+      unknownRoute: GetPage(
+        name: '/route-fallback',
+        page: () => const InitialScreen(),
+      ),
       getPages: [
         GetPage(name: '/', page: () => const InitialScreen()),
         GetPage(
@@ -195,6 +200,17 @@ class MyApp extends StatelessWidget {
               firstScreen: (Get.parameters['firstScreen'] ?? 'false') == 'true',
             ),
           ),
+        ),
+        GetPage(
+          name: IndexPage.routeName,
+          page: () {
+            final readingPage = _buildReadingPageFromParameters(Get.parameters);
+            if (readingPage == null) {
+              return const InitialScreen();
+            }
+
+            return AuthenticatedRouteGate(child: readingPage);
+          },
         ),
         GetPage(
           name: '/verification-pending',
@@ -255,6 +271,14 @@ Future<void> _ensureSahifaChartData(
   }
 
   await evaluationsProvider.getQuranChartData(user.id);
+}
+
+IndexPage? _buildReadingPageFromParameters(Map<String, String> parameters) {
+  try {
+    return IndexPage.fromRouteParameters(parameters);
+  } catch (_) {
+    return null;
+  }
 }
 
 class InitialScreen extends StatefulWidget {

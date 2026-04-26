@@ -262,11 +262,14 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                         _removeSideOverlay();
                         _removeOverlay();
                         _controller.value = 0.0;
-                        Get.to(IndexPage(
-                          surah: sura,
-                          filterTypeId: FilterTypes.thirds,
-                          juz: juzId,
-                        ))?.then((_) {
+                        Get.toNamed(
+                          IndexPage.routeName,
+                          parameters: IndexPage.routeParameters(
+                            surah: sura,
+                            filterTypeId: FilterTypes.thirds,
+                            juz: juzId,
+                          ),
+                        )?.then((_) {
                           evaluationsProvider
                               .getQuranChartData(usersProvider.selectedUser!.id);
                         });

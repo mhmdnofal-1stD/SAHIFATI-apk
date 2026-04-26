@@ -31,6 +31,8 @@ import '../widgets/teacher_recommendation_badge.dart';
 enum _ReadingNavigationMode { page, hizbQuarter }
 
 class IndexPage extends StatefulWidget {
+  static const String routeName = '/read';
+
   const IndexPage(
       {super.key,
       required this.surah,
@@ -48,6 +50,66 @@ class IndexPage extends StatefulWidget {
       filterTypeId: session.filterTypeId,
       juz: session.juz,
       hizb: session.hizb,
+      restoredPage: session.currentPage,
+      restoredHizbQuarter: session.currentHizbQuarter,
+    );
+  }
+
+  factory IndexPage.fromRouteParameters(Map<String, String> parameters) {
+    final surahId = int.tryParse(parameters['surahId'] ?? '');
+    if (surahId == null) {
+      throw ArgumentError('Missing route parameter: surahId');
+    }
+
+    return IndexPage(
+      surah: Surah(
+        id: surahId,
+        nameAr: parameters['surahNameAr'] ?? '',
+        ayahCount: int.tryParse(parameters['ayahCount'] ?? '') ?? 0,
+      ),
+      filterTypeId:
+          int.tryParse(parameters['filterTypeId'] ?? '') ?? FilterTypes.thirds,
+      hizb: int.tryParse(parameters['hizb'] ?? ''),
+      hizbQuarter: int.tryParse(parameters['hizbQuarter'] ?? ''),
+      juz: int.tryParse(parameters['juz'] ?? ''),
+      page: int.tryParse(parameters['page'] ?? ''),
+      restoredPage: int.tryParse(parameters['restoredPage'] ?? ''),
+      restoredHizbQuarter:
+          int.tryParse(parameters['restoredHizbQuarter'] ?? ''),
+    );
+  }
+
+  static Map<String, String> routeParameters({
+    required Surah surah,
+    required int filterTypeId,
+    int? hizb,
+    int? hizbQuarter,
+    int? juz,
+    int? page,
+    int? restoredPage,
+    int? restoredHizbQuarter,
+  }) {
+    return <String, String>{
+      'surahId': surah.id.toString(),
+      'surahNameAr': surah.nameAr,
+      'ayahCount': surah.ayahCount.toString(),
+      'filterTypeId': filterTypeId.toString(),
+      if (hizb != null) 'hizb': hizb.toString(),
+      if (hizbQuarter != null) 'hizbQuarter': hizbQuarter.toString(),
+      if (juz != null) 'juz': juz.toString(),
+      if (page != null) 'page': page.toString(),
+      if (restoredPage != null) 'restoredPage': restoredPage.toString(),
+      if (restoredHizbQuarter != null)
+        'restoredHizbQuarter': restoredHizbQuarter.toString(),
+    };
+  }
+
+  static Map<String, String> routeParametersForSession(ReadingSession session) {
+    return routeParameters(
+      surah: session.surah,
+      filterTypeId: session.filterTypeId,
+      hizb: session.hizb,
+      juz: session.juz,
       restoredPage: session.currentPage,
       restoredHizbQuarter: session.currentHizbQuarter,
     );
