@@ -19,7 +19,6 @@ import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
 import '../../core/reading/reading_session.dart';
-import '../../core/utils/size_config.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
 import '../widgets/global_drawer.dart';
@@ -166,6 +165,56 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       _pageSequence.isNotEmpty &&
       _currentPage != null;
 
+  bool get _hasNavigationControls =>
+      _isPageNavigation || _currentHizbQuarter != null;
+
+  bool get _canNavigateBackward {
+    if (_isPageNavigation) {
+      final currentPage = _currentPage;
+      if (currentPage == null) {
+        return false;
+      }
+
+      return _pageSequence.indexOf(currentPage) > 0;
+    }
+
+    final currentQuarter = _currentHizbQuarter;
+    final firstQuarter = _initialHizbQuarter ?? _minHizbQuarter;
+    if (currentQuarter == null || firstQuarter == null) {
+      return false;
+    }
+
+    return currentQuarter > firstQuarter;
+  }
+
+  bool get _canNavigateForward {
+    if (_isPageNavigation) {
+      final currentPage = _currentPage;
+      if (currentPage == null) {
+        return false;
+      }
+
+      final currentIndex = _pageSequence.indexOf(currentPage);
+      return currentIndex >= 0 && currentIndex < _pageSequence.length - 1;
+    }
+
+    final currentQuarter = _currentHizbQuarter;
+    final lastQuarter = _maxHizbQuarter;
+    if (currentQuarter == null || lastQuarter == null) {
+      return false;
+    }
+
+    return currentQuarter < lastQuarter;
+  }
+
+  String get _navigationProgressLabel {
+    if (_isPageNavigation && _currentPage != null) {
+      return '$_currentPage / 604';
+    }
+
+    return 'Q${_currentHizbQuarter ?? '-'}';
+  }
+
   int _compareAyatOrder(Ayat left, Ayat right) {
     if (left.id != null && right.id != null) {
       return left.id!.compareTo(right.id!);
@@ -303,8 +352,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       _navigationScopeAyat,
       (ayah) => ayah.page,
     );
-    final hasCompletePageData =
-        pageSequence.isNotEmpty && _navigationScopeAyat.every((ayah) => ayah.page != null);
+    final hasCompletePageData = pageSequence.isNotEmpty &&
+        _navigationScopeAyat.every((ayah) => ayah.page != null);
 
     if (hasCompletePageData) {
       _navigationMode = _ReadingNavigationMode.page;
@@ -317,7 +366,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             (ayah) => ayah.page,
           );
 
-      _currentPage = _resolveClosestAvailableValue(_pageSequence, preferredPage);
+      _currentPage =
+          _resolveClosestAvailableValue(_pageSequence, preferredPage);
       _initialPage ??= _currentPage;
       return;
     }
@@ -373,11 +423,21 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadAdjacentChunk({required bool forward}) async {
-    final userId = context.read<UsersProvider>().selectedUser!.id;
+    final selectedUser = context.read<UsersProvider>().selectedUser;
+    if (selectedUser == null) {
+      return;
+    }
+
+    final userId = selectedUser.id;
     final evalProvider = context.read<EvaluationsProvider>();
 
     if (_isPageNavigation) {
-      final currentIndex = _pageSequence.indexOf(_currentPage!);
+      final currentPage = _currentPage;
+      if (currentPage == null) {
+        return;
+      }
+
+      final currentIndex = _pageSequence.indexOf(currentPage);
       if (currentIndex == -1) {
         return;
       }
@@ -398,9 +458,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
-    final nextQuarter = forward
-        ? _currentHizbQuarter! + 1
-        : _currentHizbQuarter! - 1;
+    final nextQuarter =
+        forward ? _currentHizbQuarter! + 1 : _currentHizbQuarter! - 1;
     if ((_minHizbQuarter != null && nextQuarter < _minHizbQuarter!) ||
         (_maxHizbQuarter != null && nextQuarter > _maxHizbQuarter!)) {
       return;
@@ -536,7 +595,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     _removeMenu();
 
     final savedScrollOffset =
-      _scrollController.hasClients ? _scrollController.offset : 0.0;
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
     final selection = await showAssessmentInputDialog(
       context: context,
       evaluationsProvider: evaluationsProvider,
@@ -662,7 +721,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
     _isInitialLoad = false;
 
-    final ayatIds = ayat.map((ayah) => ayah.id!).toList();
+    final ayatIds =
+        ayat.where((ayah) => ayah.id != null).map((ayah) => ayah.id!).toList();
     var canOpenAssessment = _hasConnection;
     String? readingNotice = _hasConnection
         ? null
@@ -889,7 +949,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               tooltip: _tr('quran_reading_filters_tooltip'),
                               isDarkMode: isDarkMode,
                               onTap: () {
-                                if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                                if ((Get.locale?.languageCode ?? 'ar') ==
+                                    'ar') {
                                   Scaffold.of(context).openDrawer();
                                 } else {
                                   Scaffold.of(context).openEndDrawer();
@@ -995,9 +1056,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               }
                             },
                             child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                vertical: SizeConfig.getProportionalHeight(5),
-                                horizontal: SizeConfig.getProportionalWidth(10),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 5,
+                                horizontal: 10,
                               ),
                               child: Column(
                                 children: [
@@ -1023,7 +1084,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                   vertical: 10,
                                                 ),
                                                 child: Column(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   mainAxisAlignment:
                                                       MainAxisAlignment.center,
                                                   children: _buildAyatWidgets(
@@ -1040,8 +1102,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                       },
                                     ),
                                   ),
-                                  if (_isPageNavigation ||
-                                      _currentHizbQuarter != null)
+                                  if (_hasNavigationControls)
                                     Padding(
                                       padding: const EdgeInsets.only(
                                         top: 10,
@@ -1059,8 +1120,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
                                                   Icon(
-                                                    Icons
-                                                        .auto_stories_rounded,
+                                                    Icons.auto_stories_rounded,
                                                     size: 16,
                                                     color: isDarkMode
                                                         ? const Color(
@@ -1076,8 +1136,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                         ? _trParams(
                                                             'quran_reading_juz_indicator',
                                                             {
-                                                              'juz': widget
-                                                                  .juz!
+                                                              'juz': widget.juz
                                                                   .toString(),
                                                             },
                                                           )
@@ -1105,16 +1164,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_right_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: ((_isPageNavigation &&
-                                                                _pageSequence
-                                                                        .indexOf(
-                                                                          _currentPage!,
-                                                                        ) >
-                                                                    0) ||
-                                                            (!_isPageNavigation &&
-                                                                _currentHizbQuarter! >
-                                                                    (_initialHizbQuarter ??
-                                                                        _minHizbQuarter!)))
+                                                    onTap: _canNavigateBackward
                                                         ? () =>
                                                             _loadAdjacentChunk(
                                                               forward: false,
@@ -1123,9 +1173,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Text(
-                                                    _isPageNavigation
-                                                        ? '$_currentPage / 604'
-                                                        : 'Q${_currentHizbQuarter ?? '-'}',
+                                                    _navigationProgressLabel,
                                                     style: TextStyle(
                                                       color: isDarkMode
                                                           ? Colors.white
@@ -1136,7 +1184,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                           FontWeight.w700,
                                                       fontSize: 13,
                                                       fontFeatures: const [
-                                                        FontFeature.tabularFigures(),
+                                                        FontFeature
+                                                            .tabularFigures(),
                                                       ],
                                                     ),
                                                   ),
@@ -1145,17 +1194,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_left_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: ((_isPageNavigation &&
-                                                                _pageSequence
-                                                                        .indexOf(
-                                                                          _currentPage!,
-                                                                        ) <
-                                                                    _pageSequence
-                                                                            .length -
-                                                                        1) ||
-                                                            (!_isPageNavigation &&
-                                                                _currentHizbQuarter! <
-                                                                    _maxHizbQuarter!))
+                                                    onTap: _canNavigateForward
                                                         ? () =>
                                                             _loadAdjacentChunk(
                                                               forward: true,
@@ -1261,7 +1300,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               final userEvaluation = ayah.userEvaluation ??
                   evaluationProvider.getUserEvaluationForAyah(ayah.id);
 
-                final defaultColor =
+              final defaultColor =
                   isDarkMode ? Colors.white : AppColors.blackFontColor;
 
               final memoEvaluation = userEvaluation?.memoEvaluation ??
@@ -1270,18 +1309,20 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   evaluationProvider
                       .findEvaluationById(userEvaluation?.compreId);
 
-                final hasMemorizationAccent =
+              final hasMemorizationAccent =
                   _showMemorizationColors && memoEvaluation != null;
-                final accentColor = hasMemorizationAccent
+              final accentColor = hasMemorizationAccent
                   ? _resolveReadableVerseColor(
-                    preferredColor: EvaluationsController()
-                      .getColorForEvaluationModel(memoEvaluation),
-                    fallbackColor: isDarkMode
-                      ? const Color(0xFFE6DFD0)
-                      : AppColors.buttonColor,
-                    isDarkMode: isDarkMode,
-                  )
+                      preferredColor: EvaluationsController()
+                          .getColorForEvaluationModel(memoEvaluation),
+                      fallbackColor: isDarkMode
+                          ? const Color(0xFFE6DFD0)
+                          : AppColors.buttonColor,
+                      isDarkMode: isDarkMode,
+                    )
                   : defaultColor;
+              final verseColor =
+                  hasMemorizationAccent ? accentColor : defaultColor;
 
               final showUnderline = _showComprehensionUnderline &&
                   EvaluationsController()
@@ -1298,7 +1339,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 style: TextStyle(
                   fontSize: 30,
                   height: 1.9,
-                  color: defaultColor,
+                  color: verseColor,
                   fontFamily: AppFonts.versesFont,
                   decoration: showUnderline
                       ? TextDecoration.underline
@@ -1418,9 +1459,7 @@ class _ReaderToolIcon extends StatelessWidget {
         : (disabled ? const Color(0xFF9AA3B2) : const Color(0xFF132A4A));
     final background = flat
         ? Colors.transparent
-        : (isDarkMode
-            ? const Color(0xFF1F242E)
-            : const Color(0xFFEFEAE0));
+        : (isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0));
 
     final activeOverlay = isActive
         ? (isDarkMode
@@ -1461,9 +1500,7 @@ class _ReaderToolCluster extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? const Color(0xFF1F242E)
-            : const Color(0xFFEFEAE0),
+        color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -1489,9 +1526,7 @@ class _ReaderSurahPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final foreground = isDarkMode ? Colors.white : const Color(0xFF132A4A);
     return Material(
-      color: isDarkMode
-          ? const Color(0xFF1F242E)
-          : const Color(0xFFEFEAE0),
+      color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -1533,9 +1568,7 @@ class _ReaderBottomChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? const Color(0xFF1F242E)
-            : const Color(0xFFEFEAE0),
+        color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
         borderRadius: BorderRadius.circular(14),
       ),
       child: child,

@@ -5,7 +5,7 @@ import 'dart:ui';
 
 class AppFonts {
   static String primaryFont = 'Roboto';
-  static String versesFont = 'KFGQPC';
+  static String versesFont = 'Amiri';
 
   //FontWeights
   static FontWeight thin = FontWeight.w100;

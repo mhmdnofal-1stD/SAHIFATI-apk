@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'core/auth/authenticated_route_gate.dart';
 import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
+import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
 import 'controllers/general_controller.dart';
 import 'core/constants/colors.dart';
@@ -285,6 +286,10 @@ IndexPage? _buildReadingPageFromParameters(Map<String, String> parameters) {
   }
 }
 
+bool _hasLegacyMinifiedReadingHash(Uri uri) {
+  return uri.fragment.contains('minified:');
+}
+
 class InitialScreen extends StatefulWidget {
   const InitialScreen({super.key});
 
@@ -422,6 +427,25 @@ class _InitialScreenState extends State<InitialScreen> {
       if (isLoggedIn && usersProvider.selectedUser != null) {
         try {
           await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
+
+          if (_hasLegacyMinifiedReadingHash(Uri.base) &&
+              usersProvider.hasActiveLicense) {
+            final readingSession = await ReadingSessionStore().loadForUser(
+              usersProvider.selectedUser!.id,
+            );
+            if (!mounted) {
+              return;
+            }
+
+            if (readingSession != null) {
+              Get.offAllNamed(
+                IndexPage.routeName,
+                parameters: IndexPage.routeParametersForSession(readingSession),
+              );
+              return;
+            }
+          }
+
           await navigateAfterSuccessfulLogin(
             userId: usersProvider.selectedUser!.id,
             isFirstLogin: usersProvider.isFirstLogin,
