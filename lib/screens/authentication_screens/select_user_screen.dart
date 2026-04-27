@@ -15,6 +15,27 @@ import 'sign_up_screen.dart';
 import 'widgets/auth_screen_shell.dart';
 import 'widgets/custom_auth_footer.dart';
 
+/// Resolves the human-facing identity for a stored device account row.
+///
+/// `username` is the live primary identity. When it is absent the caller
+/// falls back to `email` and only then to a generic label. Legacy display-only
+/// identity keys from older session caches are intentionally ignored so they
+/// cannot resurrect a live identity after task139/task140/task142.
+String resolveStoredAccountDisplayName(
+  Map<String, dynamic> user, {
+  required String fallback,
+}) {
+  final username = (user['username'] as String?)?.trim();
+  if (username != null && username.isNotEmpty) {
+    return username;
+  }
+  final email = (user['email'] as String?)?.trim();
+  if (email != null && email.isNotEmpty) {
+    return email;
+  }
+  return fallback;
+}
+
 class SelectUserScreen extends StatefulWidget {
   const SelectUserScreen({super.key, required this.firstScreen});
   final bool firstScreen;
@@ -91,8 +112,15 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
       final switched = await usersProvider.switchToStoredUser(userData);
       if (switched && usersProvider.selectedUser != null) {
         await _resetUserScopedState();
-        await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
-        if (usersProvider.hasActiveLicense) {
+        try {
+          await usersProvider.ensureLicenseStateLoaded(
+            forceRefresh: !usersProvider.hasKnownLicenseState,
+          );
+        } catch (error) {
+          debugPrint('Saved-account bootstrap skipped license refresh: $error');
+        }
+
+        if (usersProvider.canProceedWithoutFreshLicenseCheck) {
           await usersProvider.ensureReadingDisplayPreferencesLoaded(
             forceRefresh: true,
           );
@@ -105,7 +133,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
         await navigateAfterSuccessfulLogin(
           userId: usersProvider.selectedUser!.id,
           isFirstLogin: usersProvider.isFirstLogin,
-          hasActiveLicense: usersProvider.hasActiveLicense,
+          hasActiveLicense: usersProvider.canProceedWithoutFreshLicenseCheck,
           loadChartData: (userId) =>
               evaluationsProvider.getQuranChartData(userId),
         );
@@ -424,9 +452,11 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          (user['fullName'] ??
-                                  'auth_saved_accounts_user_fallback'.tr)
-                              .toString(),
+                          resolveStoredAccountDisplayName(
+                            Map<String, dynamic>.from(user),
+                            fallback:
+                                'auth_saved_accounts_user_fallback'.tr,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

@@ -93,7 +93,7 @@ void main() {
   testWidgets('first pie chart screen resolves to the initial Sahifa summary and hides uncategorized chart labels',
       (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Amina', email: 'amina@test.dev');
+      ..selectedUser = User(id: 1, username: 'Amina', email: 'amina@test.dev');
     final evaluationsProvider = EvaluationsProvider()
       ..isLoading = false
       ..chartDimension = 'memorization'
@@ -139,7 +139,7 @@ void main() {
   testWidgets('main screen shows a resilient error state for the hizb path',
       (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 2, fullName: 'Huda', email: 'huda@test.dev');
+      ..selectedUser = User(id: 2, username: 'Huda', email: 'huda@test.dev');
     final evaluationsProvider = EvaluationsProvider()
       ..isLoading = false
       ..totalCount = 0;

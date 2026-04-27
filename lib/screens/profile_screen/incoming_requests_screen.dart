@@ -3,6 +3,31 @@ import 'package:get/get.dart';
 
 import '../../services/teacher_supervisions_services.dart';
 
+/// Resolves the human-facing identity for a supervision student payload.
+///
+/// `username` is the live primary identity; `email` and `_id` are only used
+/// as secondary disambiguators. Legacy display-only identity keys are
+/// intentionally not honoured so stale cached payloads cannot drive live
+/// identity again.
+String resolveSupervisionStudentName(
+  Map<String, dynamic> student, {
+  required String fallback,
+}) {
+  final username = (student['username'] as String?)?.trim();
+  if (username != null && username.isNotEmpty) {
+    return username;
+  }
+  final email = (student['email'] as String?)?.trim();
+  if (email != null && email.isNotEmpty) {
+    return email;
+  }
+  final id = student['_id'];
+  if (id != null) {
+    return '#$id';
+  }
+  return fallback;
+}
+
 class IncomingRequestsScreen extends StatefulWidget {
   const IncomingRequestsScreen({super.key});
 
@@ -351,9 +376,11 @@ class _RequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final student = (request['student'] as Map?) ?? const {};
-    final fullName = (student['fullName'] as String?) ??
-        (student['displayName'] as String?) ??
-        'profile_unknown_user'.tr;
+    final studentMap = Map<String, dynamic>.from(student);
+    final studentDisplayName = resolveSupervisionStudentName(
+      studentMap,
+      fallback: 'profile_unknown_user'.tr,
+    );
     final email = (student['email'] as String?) ?? '';
     return Container(
       padding: const EdgeInsets.all(14),
@@ -385,7 +412,7 @@ class _RequestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      fullName,
+                      studentDisplayName,
                       textDirection: TextDirection.rtl,
                       style: const TextStyle(
                         color: Color(0xFF132A4A),
@@ -557,9 +584,10 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                   final link = widget.links[i];
                   final id = (link['_id'] as num).toInt();
                   final student = (link['student'] as Map?) ?? const {};
-                  final name = (student['fullName'] as String?) ??
-                      (student['displayName'] as String?) ??
-                      '#$id';
+                  final name = resolveSupervisionStudentName(
+                    Map<String, dynamic>.from(student),
+                    fallback: '#$id',
+                  );
                   return RadioListTile<int>(
                     value: id,
                     groupValue: _selectedId,

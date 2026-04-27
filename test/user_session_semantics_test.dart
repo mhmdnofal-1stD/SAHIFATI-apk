@@ -35,7 +35,7 @@ void main() {
 
   test('first-login state stays true until onboarding completes', () async {
     final provider = UsersProvider();
-    final user = User(id: 7, fullName: 'Test User', email: 'test@example.com');
+    final user = User(id: 7, username: 'test_user', email: 'test@example.com');
 
     provider.selectedUser = user;
 
@@ -52,7 +52,7 @@ void main() {
 
   test('auto login restores onboarding-based routing state for the active user', () async {
     final provider = UsersProvider();
-    final user = User(id: 11, fullName: 'Auto Login', email: 'auto@example.com');
+    final user = User(id: 11, username: 'auto_login', email: 'auto@example.com');
 
     await provider.saveUserSession(user, 'access-token');
     provider.selectedUser = null;
@@ -85,5 +85,17 @@ void main() {
 
     expect(users, isEmpty);
     expect(prefs.getString('stored_device_users'), isNull);
+  });
+
+  test('User.fromJson ignores legacy fullName-only payload as live identity',
+      () {
+    final user = User.fromJson({
+      'id': 99,
+      'fullName': 'Legacy Name',
+      'email': 'legacy@example.com',
+    });
+
+    expect(user.username, isEmpty);
+    expect(user.email, 'legacy@example.com');
   });
 }

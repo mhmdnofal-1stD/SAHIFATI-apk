@@ -247,7 +247,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _WelcomeHero(userName: user?.fullName),
+                          _WelcomeHero(userName: user?.username ?? user?.email),
                           const SizedBox(height: 24),
                           Flex(
                             direction: isWide ? Axis.horizontal : Axis.vertical,

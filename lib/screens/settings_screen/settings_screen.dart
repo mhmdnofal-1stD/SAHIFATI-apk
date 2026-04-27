@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/gestures.dart';
@@ -61,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   final GlobalKey<FormState> _profileFormKey = GlobalKey<FormState>();
-  final TextEditingController _fullNameController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
 
   late TapGestureRecognizer _emailRecognizer;
@@ -81,8 +82,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _emailRecognizer = TapGestureRecognizer()..onTap = _launchEmail;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Provider.of<LanguageProvider>(context, listen: false)
-          .fetchLanguages();
+      unawaited(
+        Provider.of<LanguageProvider>(context, listen: false).fetchLanguages(),
+      );
       await _loadLocationLookup();
       await _loadProfile();
     });
@@ -91,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _emailRecognizer.dispose();
-    _fullNameController.dispose();
+    _usernameController.dispose();
     _mobileController.dispose();
     super.dispose();
   }
@@ -132,8 +134,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadProfile() async {
+    final usersProvider = context.read<UsersProvider>();
+
     try {
-      final user = await context.read<UsersProvider>().loadCurrentUserProfile();
+      final cachedUser = await usersProvider.getCachedCurrentUserProfile();
+      if (!mounted) {
+        return;
+      }
+
+      if (cachedUser != null) {
+        _applyUserProfile(cachedUser);
+        unawaited(
+          usersProvider.refreshCurrentUserProfileInBackground(
+            onUpdated: (user) {
+              if (!mounted) {
+                return;
+              }
+
+              _applyUserProfile(user);
+            },
+          ),
+        );
+        return;
+      }
+
+      final user = await usersProvider.loadCurrentUserProfile();
       if (!mounted || user == null) {
         return;
       }
@@ -173,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ProfileCity(value: rawCity, displayName: rawCity));
 
     setState(() {
-      _fullNameController.text = user.fullName;
+      _usernameController.text = user.username;
       _mobileController.text = user.mobile ?? '';
       _selectedGender = user.gender;
       _selectedBirthYear = user.birthYear;
@@ -525,7 +550,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final user = await context.read<UsersProvider>().updateStructuredProfile(
-            fullName: _fullNameController.text.trim(),
+            username: _usernameController.text.trim(),
             gender: _selectedGender!,
             birthYear: _selectedBirthYear!,
             country: _selectedCountry!.name,
@@ -644,11 +669,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _fullNameController,
-                decoration: _inputDecoration('settings_profile_full_name'.tr),
+                controller: _usernameController,
+                decoration: _inputDecoration('اسم المستخدم'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'settings_profile_full_name_required'.tr;
+                    return 'اسم المستخدم مطلوب';
                   }
                   return null;
                 },

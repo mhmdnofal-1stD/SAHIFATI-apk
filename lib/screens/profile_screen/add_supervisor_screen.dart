@@ -8,6 +8,31 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../services/teacher_supervisions_services.dart';
 
+/// Resolves the human-facing identity for a supervision owner payload.
+///
+/// `username` is the live primary identity. If it is missing or empty the
+/// caller can fall back to `email` and finally `_id` for disambiguation.
+/// Legacy display-only identity keys are intentionally ignored so old cached
+/// data does not become a live identity source.
+String resolveSupervisionOwnerName(
+  Map<String, dynamic> owner, {
+  required String fallback,
+}) {
+  final username = (owner['username'] as String?)?.trim();
+  if (username != null && username.isNotEmpty) {
+    return username;
+  }
+  final email = (owner['email'] as String?)?.trim();
+  if (email != null && email.isNotEmpty) {
+    return email;
+  }
+  final id = owner['_id'];
+  if (id != null) {
+    return '#$id';
+  }
+  return fallback;
+}
+
 class AddSupervisorScreen extends StatefulWidget {
   const AddSupervisorScreen({super.key});
 
@@ -331,9 +356,11 @@ class _SupervisorPreviewSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final owner = (preview['owner'] as Map?) ?? const {};
-    final fullName = (owner['fullName'] as String?) ??
-        (owner['displayName'] as String?) ??
-        'profile_unknown_user'.tr;
+    final ownerMap = Map<String, dynamic>.from(owner);
+    final ownerDisplayName = resolveSupervisionOwnerName(
+      ownerMap,
+      fallback: 'profile_unknown_user'.tr,
+    );
     final email = (owner['email'] as String?) ?? '';
     final isSelf = preview['isSelf'] == true;
     final hasActiveLink = preview['hasActiveLink'] == true;
@@ -403,7 +430,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        fullName,
+                        ownerDisplayName,
                         textDirection: TextDirection.rtl,
                         style: const TextStyle(
                           color: Color(0xFF132A4A),

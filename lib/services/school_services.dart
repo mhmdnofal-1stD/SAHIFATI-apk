@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -35,6 +36,55 @@ class SchoolServices {
     }
   }
 
+  Future<List<School>> getAllSchools() async {
+    final cachedSchools = await _loadCachedSchools();
+    if (cachedSchools.isNotEmpty) {
+      unawaited(_refreshAllSchoolsInBackground());
+      return cachedSchools;
+    }
+
+    return _fetchAllSchools();
+  }
+
+  Future<List<School>> _fetchAllSchools() async {
+    try {
+      final http.Response res = await _sahifatyApi.get('schools');
+
+      if (res.statusCode != 200) {
+        throw Exception('service_school_load_failed'.tr);
+      }
+
+      await _offlineStore.cacheSchoolsJson(res.body);
+
+      return _parseSchools(res.body);
+    } catch (ex) {
+      final cachedSchools = await _loadCachedSchools();
+      if (cachedSchools.isNotEmpty) {
+        return cachedSchools;
+      }
+
+      rethrow;
+    }
+  }
+
+  Future<void> _refreshAllSchoolsInBackground() async {
+    try {
+      await _fetchAllSchools();
+    } catch (_) {}
+  }
+
+  List<School> _parseSchools(String rawJson) {
+    final decoded = jsonDecode(rawJson);
+    if (decoded is! List) {
+      return const [];
+    }
+
+    return decoded
+        .whereType<Map>()
+        .map((item) => School.fromJson(Map<String, dynamic>.from(item)))
+        .toList(growable: false);
+  }
+
   School _parseSchool(String rawJson) {
     final Map<String, dynamic> data = jsonDecode(rawJson);
     return School.fromJson(data);
@@ -47,5 +97,14 @@ class SchoolServices {
     }
 
     return _parseSchool(cachedJson);
+  }
+
+  Future<List<School>> _loadCachedSchools() async {
+    final cachedJson = await _offlineStore.getCachedSchoolsJson();
+    if (cachedJson == null || cachedJson.isEmpty) {
+      return const [];
+    }
+
+    return _parseSchools(cachedJson);
   }
 }

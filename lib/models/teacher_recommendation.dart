@@ -1,6 +1,5 @@
 class TeacherRecommendationTeacher {
   final int id;
-  final String? fullName;
   final String? firstName;
   final String? familyName;
   final String? username;
@@ -8,7 +7,6 @@ class TeacherRecommendationTeacher {
 
   const TeacherRecommendationTeacher({
     required this.id,
-    this.fullName,
     this.firstName,
     this.familyName,
     this.username,
@@ -18,7 +16,6 @@ class TeacherRecommendationTeacher {
   factory TeacherRecommendationTeacher.fromJson(Map<String, dynamic> json) {
     return TeacherRecommendationTeacher(
       id: json['_id'] ?? json['id'] ?? 0,
-      fullName: json['fullName'],
       firstName: json['firstName'],
       familyName: json['familyName'],
       username: json['username'],
@@ -27,19 +24,6 @@ class TeacherRecommendationTeacher {
   }
 
   String get displayName {
-    final full = fullName?.trim();
-    if (full != null && full.isNotEmpty) {
-      return full;
-    }
-
-    final combined = [
-      firstName?.trim(),
-      familyName?.trim(),
-    ].where((value) => value != null && value.isNotEmpty).join(' ');
-    if (combined.isNotEmpty) {
-      return combined;
-    }
-
     final user = username?.trim();
     if (user != null && user.isNotEmpty) {
       return user;
@@ -50,7 +34,25 @@ class TeacherRecommendationTeacher {
       return mail;
     }
 
+    final combined = [
+      firstName?.trim(),
+      familyName?.trim(),
+    ].where((value) => value != null && value.isNotEmpty).join(' ');
+    if (combined.isNotEmpty) {
+      return combined;
+    }
+
     return 'Teacher #$id';
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'firstName': firstName,
+      'familyName': familyName,
+      'username': username,
+      'email': email,
+    };
   }
 }
 
@@ -98,5 +100,20 @@ class TeacherRecommendation {
           ? TeacherRecommendationTeacher.fromJson(json['teacher'])
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'teacherId': teacherId,
+      'studentId': studentId,
+      'ayahId': ayahId,
+      'source': source,
+      'status': status,
+      'notified': notified,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+      'teacher': teacher?.toJson(),
+    };
   }
 }

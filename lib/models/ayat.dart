@@ -16,7 +16,7 @@ class Ayat {
   double? weight;
   String? ayahType;
   List<SchoolLevel>? schoolLevels;
-  List<int>? subjects;
+  List<String>? subjects;
   Surah surah;
   UserEvaluation? userEvaluation;
   List<TeacherRecommendation> teacherRecommendations;
@@ -61,8 +61,11 @@ class Ayat {
               .map((e) => SchoolLevel.fromJson(e))
               .toList()
           : [],
-      subjects:
-          json['subjects'] != null ? List<int>.from(json['subjects']) : [],
+        subjects: json['subjects'] != null
+          ? (json['subjects'] as List)
+            .map((item) => item.toString())
+            .toList()
+          : [],
       surah: Surah.fromJson(json['surah']),
       userEvaluation: json['userEvaluation'] == null
           ? null

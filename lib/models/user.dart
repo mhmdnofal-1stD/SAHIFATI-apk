@@ -1,6 +1,6 @@
 class User {
   int id;
-  String fullName;
+  String username;
   String email;
   int? userRoleId;
   String? licenseStatus;
@@ -17,7 +17,7 @@ class User {
 
   User({
     required this.id,
-    required this.fullName,
+    String? username,
     required this.email,
     this.userRoleId,
     this.licenseStatus,
@@ -31,7 +31,7 @@ class User {
     this.educationLevel,
     this.workType,
     this.specializationType,
-  });
+  }) : username = (username ?? '').trim();
 
   // from JSON
   factory User.fromJson(Map<String, dynamic> json) {
@@ -39,9 +39,9 @@ class User {
 
     return User(
       id: rawId is int ? rawId : int.tryParse('${rawId ?? 0}') ?? 0,
-      fullName: json['fullName'],
+      username: (json['username'] ?? '') as String,
       email: json['email'],
-      userRoleId: json['userRoleId'],
+      userRoleId: json['userRoleId'] ?? json['roleNum'],
       licenseStatus: json['licenseStatus'] as String?,
       gender: json['gender'] as String?,
       birthYear: json['birthYear'] as int?,
@@ -59,7 +59,7 @@ class User {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'fullName': fullName,
+      'username': username,
       'email': email,
       'userRoleId': userRoleId,
       'licenseStatus': licenseStatus,
@@ -78,6 +78,6 @@ class User {
 
   @override
   String toString() {
-    return 'User(id: $id, fullName: $fullName, email: $email, userRoleId: $userRoleId, licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, countryCode: $countryCode, country: $country, city: $city, state: $state, mobile: $mobile, educationLevel: $educationLevel, workType: $workType, specializationType: $specializationType)';
+    return 'User(id: $id, username: $username, email: $email, userRoleId: $userRoleId, licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, countryCode: $countryCode, country: $country, city: $city, state: $state, mobile: $mobile, educationLevel: $educationLevel, workType: $workType, specializationType: $specializationType)';
   }
 }

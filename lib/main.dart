@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/authenticated_route_gate.dart';
@@ -8,7 +9,6 @@ import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
-import 'controllers/general_controller.dart';
 import 'core/constants/colors.dart';
 import 'providers/ayat_provider.dart';
 import 'providers/evaluations_provider.dart';
@@ -64,6 +64,11 @@ Future<void> main() async {
       child: MyApp(initialLocale: initialLocale),
     ),
   );
+
+  // Pull latest translation bundles from the central translation library in
+  // the background. Failures (offline, server down) are swallowed so the app
+  // keeps using the cached/seed copy without blocking startup.
+  unawaited(LocalizationService.refreshFromRemote());
 }
 
 class MyApp extends StatelessWidget {
@@ -275,7 +280,11 @@ Future<void> _ensureSahifaChartData(
     return;
   }
 
-  await evaluationsProvider.getQuranChartData(user.id);
+  try {
+    await evaluationsProvider.getQuranChartData(user.id);
+  } catch (error) {
+    debugPrint('Sahifa bootstrap skipped chart refresh: $error');
+  }
 }
 
 IndexPage? _buildReadingPageFromParameters(Map<String, String> parameters) {
@@ -406,18 +415,6 @@ class _InitialScreenState extends State<InitialScreen> {
         return;
       }
 
-      final hasConnection = await GeneralController().checkConnectivity();
-
-      if (!mounted) {
-        return;
-      }
-
-      if (!hasConnection) {
-        await usersProvider.clearPersistedSession();
-        await _routeToLoginOrSelectUser(usersProvider);
-        return;
-      }
-
       final bool isLoggedIn = await usersProvider.tryAutoLogin();
 
       if (!mounted) {
@@ -449,24 +446,23 @@ class _InitialScreenState extends State<InitialScreen> {
           await navigateAfterSuccessfulLogin(
             userId: usersProvider.selectedUser!.id,
             isFirstLogin: usersProvider.isFirstLogin,
-            hasActiveLicense: usersProvider.hasActiveLicense,
+            hasActiveLicense:
+                usersProvider.canProceedWithoutFreshLicenseCheck,
             loadChartData: (userId) =>
                 evaluationsProvider.getQuranChartData(userId),
           );
           if (!mounted) {
             return;
           }
-        } catch (_) {
-          await usersProvider.clearPersistedSession();
+        } catch (error) {
+          debugPrint('Initial navigation fallback after cached session: $error');
           await _routeToLoginOrSelectUser(usersProvider);
         }
       } else {
-        await usersProvider.clearPersistedSession();
         await _routeToLoginOrSelectUser(usersProvider);
       }
     } catch (error) {
       debugPrint('Initial session bootstrap failed: $error');
-      await usersProvider.clearPersistedSession();
       if (!mounted) {
         return;
       }

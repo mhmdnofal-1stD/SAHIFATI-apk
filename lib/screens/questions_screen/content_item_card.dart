@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -103,6 +105,34 @@ class _ContentItemCardState extends State<ContentItemCard> {
     final ayahIds =
         ayahs.where((ayah) => ayah.id != null).map((ayah) => ayah.id!).toList();
     if (ayahIds.isEmpty) {
+      return;
+    }
+
+    final cachedRecommendations =
+        await _teacherRecommendationsService.getCachedStudentRecommendations(
+      userId,
+      ayahIds: ayahIds,
+    );
+    if (cachedRecommendations != null) {
+      _applyTeacherRecommendations(ayahs, cachedRecommendations);
+      unawaited(
+        _teacherRecommendationsService.refreshStudentRecommendationsInBackground(
+          userId,
+          ayahIds: ayahIds,
+          onUpdated: (freshRecommendations) {
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              _applyTeacherRecommendations(ayahs, freshRecommendations);
+            });
+            context
+                .read<EvaluationsProvider>()
+                .syncQuestionContentAyahs(widget.content, ayahs);
+          },
+        ),
+      );
       return;
     }
 

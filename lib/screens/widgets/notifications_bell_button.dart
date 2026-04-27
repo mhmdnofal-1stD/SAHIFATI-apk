@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/models/user_notification_item.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NotificationsBellButton extends StatefulWidget {
   const NotificationsBellButton({super.key});
@@ -188,6 +189,7 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final usersProvider = context.read<UsersProvider>();
+    final ctaUrl = _extractCtaUrl();
     final subtitleParts = <String>[];
     final ayahId = notification.meta['ayahId'];
     if (ayahId != null && ayahId.toString().isNotEmpty) {
@@ -279,14 +281,27 @@ class _NotificationCard extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (!notification.isRead) ...[
+                    if (!notification.isRead || ctaUrl != null) ...[
                       const SizedBox(height: 12),
                       Align(
                         alignment: AlignmentDirectional.centerStart,
-                        child: OutlinedButton.icon(
-                          onPressed: () => usersProvider.markNotificationRead(notification.id),
-                          icon: const Icon(Icons.done_rounded, size: 18),
-                          label: Text('notifications_mark_read'.tr),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (!notification.isRead)
+                              OutlinedButton.icon(
+                                onPressed: () => usersProvider.markNotificationRead(notification.id),
+                                icon: const Icon(Icons.done_rounded, size: 18),
+                                label: Text('notifications_mark_read'.tr),
+                              ),
+                            if (ctaUrl != null)
+                              FilledButton.tonalIcon(
+                                onPressed: () => _openCtaUrl(context, ctaUrl),
+                                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                                label: Text('notifications_open_cta'.tr),
+                              ),
+                          ],
                         ),
                       ),
                     ],
@@ -310,5 +325,36 @@ class _NotificationCard extends StatelessWidget {
     final hour = local.hour.toString().padLeft(2, '0');
     final minute = local.minute.toString().padLeft(2, '0');
     return '$day/$month $hour:$minute';
+  }
+
+  String? _extractCtaUrl() {
+    final rawValue = notification.meta['ctaUrl'];
+    if (rawValue is! String) {
+      return null;
+    }
+
+    final trimmed = rawValue.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Future<void> _openCtaUrl(BuildContext context, String ctaUrl) async {
+    final uri = Uri.tryParse(ctaUrl);
+    if (uri == null) {
+      _showLaunchFailure(context);
+      return;
+    }
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      _showLaunchFailure(context);
+    }
+  }
+
+  void _showLaunchFailure(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('notifications_cta_launch_failed'.tr),
+      ),
+    );
   }
 }

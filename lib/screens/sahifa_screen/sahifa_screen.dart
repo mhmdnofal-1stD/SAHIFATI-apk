@@ -1,14 +1,22 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/reading/reading_session.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
+import 'package:sahifaty/models/school.dart';
+import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
+import '../../services/evaluations_services.dart';
+import '../../services/school_services.dart';
+import '../../services/subjects_lookup_service.dart';
 import '../main_screen/main_screen.dart';
 import '../quran_view/index_page.dart';
 import '../widgets/assessment_dimension_toggle.dart';
@@ -152,7 +160,7 @@ class SahifaScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
+                          '${"well_done".tr} ${usersProvider.selectedUser?.username ?? usersProvider.selectedUser?.email ?? ''}',
                           style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
@@ -292,6 +300,15 @@ class SahifaScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 18),
+                        if (usersProvider.selectedUser != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 18),
+                            child: _SahifaChartFiltersPanel(
+                              userId: usersProvider.selectedUser!.id,
+                              evaluationsProvider: evaluationsProvider,
+                              languageProvider: languageProvider,
+                            ),
+                          ),
                         if (evaluationsProvider.isLoading && !hasChartData)
                           _SahifaStateCard(
                             icon: Icons.sync,
@@ -537,6 +554,668 @@ class _SahifaStateCard extends StatelessWidget {
               child: Text(actionLabel!),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartFilterCatalog {
+  const _ChartFilterCatalog({
+    required this.surahs,
+    required this.schools,
+    required this.subjects,
+  });
+
+  final List<Surah> surahs;
+  final List<School> schools;
+  final List<SubjectHierarchyItem> subjects;
+}
+
+class _SahifaChartFiltersPanel extends StatefulWidget {
+  const _SahifaChartFiltersPanel({
+    required this.userId,
+    required this.evaluationsProvider,
+    required this.languageProvider,
+  });
+
+  final int userId;
+  final EvaluationsProvider evaluationsProvider;
+  final LanguageProvider languageProvider;
+
+  @override
+  State<_SahifaChartFiltersPanel> createState() =>
+      _SahifaChartFiltersPanelState();
+}
+
+class _SahifaChartFiltersPanelState extends State<_SahifaChartFiltersPanel> {
+  late Future<_ChartFilterCatalog> _catalogFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _catalogFuture = _loadCatalog();
+  }
+
+  Future<_ChartFilterCatalog> _loadCatalog() async {
+    final results = await Future.wait<Object>([
+      _loadSurahs(),
+      SchoolServices().getAllSchools(),
+      SubjectsLookupService.instance.loadHierarchy(),
+    ]);
+
+    return _ChartFilterCatalog(
+      surahs: results[0] as List<Surah>,
+      schools: results[1] as List<School>,
+      subjects: results[2] as List<SubjectHierarchyItem>,
+    );
+  }
+
+  Future<List<Surah>> _loadSurahs() async {
+    final raw = await rootBundle.loadString('assets/json/data.json');
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map<String, dynamic>) {
+      return const [];
+    }
+
+    final rawAyat = decoded['data'];
+    if (rawAyat is! List) {
+      return const [];
+    }
+
+    final surahsById = <int, Surah>{};
+    for (final item in rawAyat.whereType<Map>()) {
+      final surahRaw = item['surah'];
+      if (surahRaw is Map) {
+        final surah = Surah.fromJson(Map<String, dynamic>.from(surahRaw));
+        surahsById[surah.id] = surah;
+      }
+    }
+
+    final surahs = surahsById.values.toList(growable: false)
+      ..sort((a, b) => a.id.compareTo(b.id));
+    return surahs;
+  }
+
+  Future<void> _openFilters() async {
+    try {
+      if (widget.evaluationsProvider.evaluations.isEmpty) {
+        await widget.evaluationsProvider.getAllEvaluations();
+      }
+
+      final catalog = await _catalogFuture;
+      if (!mounted) {
+        return;
+      }
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (_) => _SahifaChartFiltersSheet(
+          catalog: catalog,
+          userId: widget.userId,
+          evaluationsProvider: widget.evaluationsProvider,
+          languageProvider: widget.languageProvider,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('sahifa_chart_filters_load_failed'.tr)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filters = widget.evaluationsProvider.chartFilters;
+    final chips = <Widget>[];
+
+    void addSummaryChip(String label, int count) {
+      if (count <= 0) {
+        return;
+      }
+      chips.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4EFE6),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE1D5BC)),
+          ),
+          child: Text(
+            '$label: $count',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF31433D),
+            ),
+          ),
+        ),
+      );
+    }
+
+    addSummaryChip('surah_label'.tr, filters.surahIds.length);
+    addSummaryChip('juz_prefix'.tr, filters.juzs.length);
+    addSummaryChip('sahifa_chart_filters_type'.tr, filters.ayahTypes.length);
+    addSummaryChip(
+      'sahifa_chart_filters_subject'.tr,
+      filters.subjectKeys.length,
+    );
+    addSummaryChip(
+      'sahifa_chart_filters_school'.tr,
+      filters.schoolIds.length + filters.schoolLevelPairs.length,
+    );
+    addSummaryChip(
+      'sahifa_chart_filters_memorization'.tr,
+      filters.memoEvaluationIds.length,
+    );
+    addSummaryChip(
+      'sahifa_chart_filters_comprehension'.tr,
+      filters.comprehensionEvaluationIds.length,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F8F4),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFDCE2DA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'sahifa_chart_filters_title'.tr,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _openFilters,
+                icon: const Icon(Icons.tune_rounded),
+                label: Text('sahifa_chart_filters_open'.tr),
+              ),
+              if (filters.hasAnyActive)
+                TextButton(
+                  onPressed: () => widget.evaluationsProvider
+                      .clearChartFilters(widget.userId),
+                  child: Text('sahifa_chart_filters_reset'.tr),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            filters.hasAnyActive
+                ? 'sahifa_chart_filters_active_hint'.tr
+                : 'sahifa_chart_filters_empty_hint'.tr,
+            style: const TextStyle(
+              color: Color(0xFF5A645E),
+              height: 1.45,
+            ),
+          ),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chips,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SahifaChartFiltersSheet extends StatefulWidget {
+  const _SahifaChartFiltersSheet({
+    required this.catalog,
+    required this.userId,
+    required this.evaluationsProvider,
+    required this.languageProvider,
+  });
+
+  final _ChartFilterCatalog catalog;
+  final int userId;
+  final EvaluationsProvider evaluationsProvider;
+  final LanguageProvider languageProvider;
+
+  @override
+  State<_SahifaChartFiltersSheet> createState() =>
+      _SahifaChartFiltersSheetState();
+}
+
+class _SahifaChartFiltersSheetState extends State<_SahifaChartFiltersSheet> {
+  late Set<int> _surahIds;
+  late Set<int> _juzs;
+  late Set<String> _ayahTypes;
+  late Set<String> _subjectKeys;
+  late Set<int> _schoolIds;
+  late Set<String> _schoolLevelPairs;
+  late Set<int> _memoEvaluationIds;
+  late Set<int> _comprehensionEvaluationIds;
+
+  @override
+  void initState() {
+    super.initState();
+    final filters = widget.evaluationsProvider.chartFilters;
+    _surahIds = filters.surahIds.toSet();
+    _juzs = filters.juzs.toSet();
+    _ayahTypes = filters.ayahTypes.toSet();
+    _subjectKeys = filters.subjectKeys.toSet();
+    _schoolIds = filters.schoolIds.toSet();
+    _schoolLevelPairs = filters.schoolLevelPairs.toSet();
+    _memoEvaluationIds = filters.memoEvaluationIds.toSet();
+    _comprehensionEvaluationIds = filters.comprehensionEvaluationIds.toSet();
+  }
+
+  void _toggleValue<T>(Set<T> values, T value) {
+    setState(() {
+      if (!values.add(value)) {
+        values.remove(value);
+      }
+    });
+  }
+
+  void _clearAll() {
+    setState(() {
+      _surahIds.clear();
+      _juzs.clear();
+      _ayahTypes.clear();
+      _subjectKeys.clear();
+      _schoolIds.clear();
+      _schoolLevelPairs.clear();
+      _memoEvaluationIds.clear();
+      _comprehensionEvaluationIds.clear();
+    });
+  }
+
+  Future<void> _apply() async {
+    final expandedSubjects = _expandSubjectKeys(
+      _subjectKeys,
+      widget.catalog.subjects,
+    );
+
+    await widget.evaluationsProvider.applyChartFilters(
+      widget.userId,
+      QuranChartFilters(
+        surahIds: (_surahIds.toList()..sort()),
+        juzs: (_juzs.toList()..sort()),
+        ayahTypes: (_ayahTypes.toList()..sort()),
+        subjectKeys: expandedSubjects.toList()..sort(),
+        schoolIds: (_schoolIds.toList()..sort()),
+        schoolLevelPairs: (_schoolLevelPairs.toList()..sort()),
+        memoEvaluationIds: (_memoEvaluationIds.toList()..sort()),
+        comprehensionEvaluationIds:
+            (_comprehensionEvaluationIds.toList()..sort()),
+      ),
+    );
+
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  Set<String> _expandSubjectKeys(
+    Set<String> selectedKeys,
+    List<SubjectHierarchyItem> allSubjects,
+  ) {
+    final childrenByParent = <String, List<SubjectHierarchyItem>>{};
+    for (final subject in allSubjects) {
+      final parent = subject.parent;
+      if (parent == null || parent.isEmpty) {
+        continue;
+      }
+      final siblings = childrenByParent.putIfAbsent(
+        parent,
+        () => <SubjectHierarchyItem>[],
+      );
+      siblings.add(subject);
+    }
+
+    final expanded = <String>{...selectedKeys};
+
+    void visit(String key) {
+      for (final child in childrenByParent[key] ?? const <SubjectHierarchyItem>[]) {
+        if (expanded.add(child.key)) {
+          visit(child.key);
+        }
+      }
+    }
+
+    for (final key in selectedKeys) {
+      visit(key);
+    }
+
+    return expanded;
+  }
+
+  String _localizedText(Map<String, dynamic>? value, String fallback) {
+    if (value == null) {
+      return fallback;
+    }
+    final localeCode = widget.languageProvider.langCode;
+    final preferred = value[localeCode]?.toString().trim();
+    if (preferred != null && preferred.isNotEmpty) {
+      return preferred;
+    }
+    final arabic = value['ar']?.toString().trim();
+    if (arabic != null && arabic.isNotEmpty) {
+      return arabic;
+    }
+    final english = value['en']?.toString().trim();
+    if (english != null && english.isNotEmpty) {
+      return english;
+    }
+    return fallback;
+  }
+
+  List<Widget> _buildSubjectTree(
+    String? parentKey,
+    Map<String?, List<SubjectHierarchyItem>> tree,
+    int depth,
+  ) {
+    final items = tree[parentKey] ?? const <SubjectHierarchyItem>[];
+    final widgets = <Widget>[];
+
+    for (final item in items) {
+      widgets.add(
+        Padding(
+          padding: EdgeInsetsDirectional.only(start: depth * 12.0, bottom: 8),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: Text(item.displayName(widget.languageProvider.langCode)),
+                selected: _subjectKeys.contains(item.key),
+                onSelected: (_) => _toggleValue(_subjectKeys, item.key),
+              ),
+              ..._buildSubjectTree(item.key, tree, depth + 1),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return widgets;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memorizationEvaluations =
+        widget.evaluationsProvider.memorizationEvaluations;
+    final comprehensionEvaluations =
+        widget.evaluationsProvider.comprehensionEvaluations;
+    final subjectTree = <String?, List<SubjectHierarchyItem>>{};
+    for (final subject in widget.catalog.subjects) {
+      final parentKey =
+          (subject.parent == null || subject.parent!.isEmpty) ? null : subject.parent;
+      final siblings = subjectTree.putIfAbsent(
+        parentKey,
+        () => <SubjectHierarchyItem>[],
+      );
+      siblings.add(subject);
+    }
+
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.88,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'sahifa_chart_filters_title'.tr,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _clearAll,
+                    child: Text('sahifa_chart_filters_reset'.tr),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                children: [
+                  _FilterSection(
+                    title: 'surah_label'.tr,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: widget.catalog.surahs
+                          .map(
+                            (surah) => FilterChip(
+                              label: Text(surah.nameAr),
+                              selected: _surahIds.contains(surah.id),
+                              onSelected: (_) => _toggleValue(_surahIds, surah.id),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'juz_prefix'.tr,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(
+                        30,
+                        (index) => index + 1,
+                      )
+                          .map(
+                            (juz) => FilterChip(
+                              label: Text('${'juz_prefix'.tr} $juz'),
+                              selected: _juzs.contains(juz),
+                              onSelected: (_) => _toggleValue(_juzs, juz),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'sahifa_chart_filters_type'.tr,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        {'value': 'Makki', 'label': 'sahifa_chart_filters_type_makki'.tr},
+                        {'value': 'Madani', 'label': 'sahifa_chart_filters_type_madani'.tr},
+                        {
+                          'value': 'Debatable',
+                          'label': 'sahifa_chart_filters_type_debatable'.tr,
+                        },
+                      ]
+                          .map(
+                            (item) => FilterChip(
+                              label: Text(item['label']!),
+                              selected: _ayahTypes.contains(item['value']),
+                              onSelected: (_) =>
+                                  _toggleValue(_ayahTypes, item['value']!),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'sahifa_chart_filters_school'.tr,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: widget.catalog.schools.map((school) {
+                        final schoolName = _localizedText(
+                          school.schoolName,
+                          'sahifa_chart_filters_school'.tr,
+                        );
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FilterChip(
+                                label: Text(
+                                  '$schoolName · ${'sahifa_chart_filters_all_levels'.tr}',
+                                ),
+                                selected: school.id != null &&
+                                    _schoolIds.contains(school.id),
+                                onSelected: school.id == null
+                                    ? null
+                                    : (_) => _toggleValue(_schoolIds, school.id!),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: school.levels.asMap().entries.map((entry) {
+                                  final levelNumber = entry.key + 1;
+                                  final pair = '${school.id}:$levelNumber';
+                                  final levelLabel = _localizedText(
+                                    entry.value.name,
+                                    '${'level_assessment'.tr} $levelNumber',
+                                  );
+
+                                  return FilterChip(
+                                    label: Text(levelLabel),
+                                    selected: _schoolLevelPairs.contains(pair),
+                                    onSelected: school.id == null
+                                        ? null
+                                        : (_) =>
+                                            _toggleValue(_schoolLevelPairs, pair),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'sahifa_chart_filters_subject'.tr,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _buildSubjectTree(null, subjectTree, 0),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'sahifa_chart_filters_memorization'.tr,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: memorizationEvaluations
+                          .map(
+                            (evaluation) => FilterChip(
+                              label: Text(
+                                evaluation.name[widget.languageProvider.langCode] ??
+                                    evaluation.name['ar'] ??
+                                    evaluation.name['en'] ??
+                                    '',
+                              ),
+                              selected: evaluation.id != null &&
+                                  _memoEvaluationIds.contains(evaluation.id),
+                              onSelected: evaluation.id == null
+                                  ? null
+                                  : (_) => _toggleValue(
+                                        _memoEvaluationIds,
+                                        evaluation.id!,
+                                      ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                  _FilterSection(
+                    title: 'sahifa_chart_filters_comprehension'.tr,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: comprehensionEvaluations
+                          .map(
+                            (evaluation) => FilterChip(
+                              label: Text(
+                                evaluation.name[widget.languageProvider.langCode] ??
+                                    evaluation.name['ar'] ??
+                                    evaluation.name['en'] ??
+                                    '',
+                              ),
+                              selected: evaluation.id != null &&
+                                  _comprehensionEvaluationIds.contains(
+                                    evaluation.id,
+                                  ),
+                              onSelected: evaluation.id == null
+                                  ? null
+                                  : (_) => _toggleValue(
+                                        _comprehensionEvaluationIds,
+                                        evaluation.id!,
+                                      ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _apply,
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text('sahifa_chart_filters_apply'.tr),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterSection extends StatelessWidget {
+  const _FilterSection({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
         ],
       ),
     );
