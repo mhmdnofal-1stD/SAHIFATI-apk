@@ -13,12 +13,14 @@ class AuthData {
 
   factory AuthData.fromJson(Map<String, dynamic> json) {
     User? userData;
-    if (json.containsKey('id') || json.containsKey('fullName')) {
+    if (
+        json.containsKey('id') ||
+        json.containsKey('username')) {
       userData = User(
         id: json['id'],
-        fullName: json['fullName'] ?? '',
+        username: json['username'] ?? '',
         email: json['email'] ?? '',
-        userRoleId: json['userRoleId'],
+        userRoleId: json['userRoleId'] ?? json['roleNum'],
         licenseStatus: json['licenseStatus'] as String?,
       );
       return AuthData(

@@ -29,7 +29,7 @@ class UserProfileBadge extends StatelessWidget {
         const SizedBox(width: 8),
         Flexible(
           child: CustomText(
-            text: user.fullName,
+            text: user.username.isNotEmpty ? user.username : user.email,
             fontSize: 14,
             color: Colors.black,
             withBackground: false,

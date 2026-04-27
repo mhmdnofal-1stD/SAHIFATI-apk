@@ -6,15 +6,74 @@ import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api.dart';
 import '../models/user_notification_item.dart';
+import 'offline_assessment_store.dart';
+import 'secure_session_storage.dart';
 import 'sahifaty_api.dart';
 
 class UsersServices with ChangeNotifier {
   final String _baseURL = ApiConfig.baseUrl;
   final Duration _timeout = const Duration(seconds: 30);
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
   final Map<String, String> _authHeaders = {
     'Content-Type': 'application/json',
     'accept': 'application/json',
   };
+
+  Future<String> _resolveActiveCacheScopeKey() async {
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (activeAccountKey != null && activeAccountKey.trim().isNotEmpty) {
+      return activeAccountKey.trim();
+    }
+
+    return 'default';
+  }
+
+  Map<String, dynamic>? _decodeCachedMap(String? rawJson) {
+    if (rawJson == null || rawJson.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = json.decode(rawJson);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> getCachedCurrentUserProfile() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    return _decodeCachedMap(
+      await _offlineStore.getCachedCurrentUserProfileJson(scopeKey: scopeKey),
+    );
+  }
+
+  Future<Map<String, dynamic>?> getCachedMySupervisionCode() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    return _decodeCachedMap(
+      await _offlineStore.getCachedSupervisionCodeJson(scopeKey: scopeKey),
+    );
+  }
+
+  Future<Map<String, dynamic>?> getCachedNotificationsPayload() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    return _decodeCachedMap(
+      await _offlineStore.getCachedNotificationsJson(scopeKey: scopeKey),
+    );
+  }
+
+  Future<void> storeNotificationsPayload(Map<String, dynamic> payload) async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    await _offlineStore.cacheNotificationsJson(
+      scopeKey: scopeKey,
+      rawJson: json.encode(payload),
+    );
+  }
 
   Map<String, dynamic>? _extractStructuredMessage(dynamic responseData) {
     if (responseData is! Map<String, dynamic>) {
@@ -249,11 +308,16 @@ class UsersServices with ChangeNotifier {
   Future<void> logout() async {}
 
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
     try {
       final response = await SahifatyApi().get('users/me');
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        await _offlineStore.cacheCurrentUserProfileJson(
+          scopeKey: scopeKey,
+          rawJson: response.body,
+        );
         return Map<String, dynamic>.from(responseData as Map);
       }
 
@@ -262,16 +326,26 @@ class UsersServices with ChangeNotifier {
         'service_users_load_profile_failed'.tr,
       );
     } catch (ex) {
+      final cached = await getCachedCurrentUserProfile();
+      if (cached != null) {
+        return cached;
+      }
+
       rethrow;
     }
   }
 
   Future<Map<String, dynamic>> getMySupervisionCode() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
     try {
       final response = await SahifatyApi().get('users/me/supervision-code');
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        await _offlineStore.cacheSupervisionCodeJson(
+          scopeKey: scopeKey,
+          rawJson: response.body,
+        );
         return Map<String, dynamic>.from(responseData as Map);
       }
 
@@ -280,6 +354,11 @@ class UsersServices with ChangeNotifier {
         'service_users_load_supervision_code_failed'.tr,
       );
     } catch (ex) {
+      final cached = await getCachedMySupervisionCode();
+      if (cached != null) {
+        return cached;
+      }
+
       rethrow;
     }
   }
@@ -463,7 +542,7 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> updateCurrentUserProfile({
-    String? fullName,
+    String? username,
     String? gender,
     int? birthYear,
     int? countryCode,
@@ -478,8 +557,8 @@ class UsersServices with ChangeNotifier {
   }) async {
     try {
       final body = <String, dynamic>{};
-      if (fullName != null) {
-        body['fullName'] = fullName;
+      if (username != null) {
+        body['username'] = username;
       }
       if (gender != null) {
         body['gender'] = gender;
@@ -627,11 +706,16 @@ class UsersServices with ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> listMyNotifications({int limit = 20}) async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
     try {
       final response = await SahifatyApi().get('notifications/me?limit=$limit');
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        await _offlineStore.cacheNotificationsJson(
+          scopeKey: scopeKey,
+          rawJson: response.body,
+        );
         return Map<String, dynamic>.from(responseData as Map);
       }
 
@@ -641,6 +725,11 @@ class UsersServices with ChangeNotifier {
         'service_users_load_notifications_failed'.tr,
       );
     } catch (ex) {
+      final cached = await getCachedNotificationsPayload();
+      if (cached != null) {
+        return cached;
+      }
+
       rethrow;
     }
   }
@@ -665,6 +754,38 @@ class UsersServices with ChangeNotifier {
         response.statusCode,
         responseData,
         'service_users_mark_notification_read_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> registerPushToken({
+    required String token,
+    String? platform,
+    String? locale,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'notifications/me/push-token',
+        body: <String, dynamic>{
+          'token': token,
+          if (platform != null && platform.trim().isNotEmpty)
+            'platform': platform.trim(),
+          if (locale != null && locale.trim().isNotEmpty)
+            'locale': locale.trim(),
+        },
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_register_push_token_failed'.tr,
       );
     } catch (ex) {
       rethrow;

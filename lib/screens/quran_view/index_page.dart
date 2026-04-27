@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -727,6 +729,31 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final ayahIds =
         ayat.where((item) => item.id != null).map((item) => item.id!).toList();
     if (ayahIds.isEmpty) {
+      return true;
+    }
+
+    final cachedRecommendations =
+        await _teacherRecommendationsService.getCachedStudentRecommendations(
+      userId,
+      ayahIds: ayahIds,
+    );
+    if (cachedRecommendations != null) {
+      _applyTeacherRecommendations(ayat, cachedRecommendations);
+      unawaited(
+        _teacherRecommendationsService.refreshStudentRecommendationsInBackground(
+          userId,
+          ayahIds: ayahIds,
+          onUpdated: (freshRecommendations) {
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              _applyTeacherRecommendations(ayat, freshRecommendations);
+            });
+          },
+        ),
+      );
       return true;
     }
 

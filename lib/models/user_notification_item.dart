@@ -41,4 +41,16 @@ class UserNotificationItem {
       readAt: parseDate(json['readAt']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'title': title,
+      'body': body,
+      'meta': meta,
+      'createdAt': createdAt?.toIso8601String(),
+      'readAt': readAt?.toIso8601String(),
+    };
+  }
 }

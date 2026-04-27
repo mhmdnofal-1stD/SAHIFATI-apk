@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
@@ -550,8 +551,46 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
               ),
             ),
+            SizedBox(height: isCompactPhone ? 18 : 22),
+            const _OwnerBrandingCard(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _OwnerBrandingCard extends StatelessWidget {
+  const _OwnerBrandingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F1E7),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE1D5C2)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'auth_owner_brand_caption'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF6A7685),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SvgPicture.asset(
+            Assets.organization1STDLogo,
+            height: 54,
+            fit: BoxFit.contain,
+          ),
+        ],
       ),
     );
   }

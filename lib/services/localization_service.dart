@@ -1,8 +1,8 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'translation_library_service.dart';
 
 class LocalizationService extends Translations {
   static const locale = Locale('ar', 'AE');
@@ -14,16 +14,45 @@ class LocalizationService extends Translations {
     const Locale('en', 'US'),
   ];
 
+  /// Locale codes that the app currently knows how to display. Each one is
+  /// fetched and cached independently so a phone only needs network on first
+  /// launch (or when the admin publishes a new version).
+  static const List<String> supportedLanguageCodes = ['ar', 'en'];
+
   // Static maps to hold loaded translations
   static Map<String, String> arKeys = {};
   static Map<String, String> enKeys = {};
 
   Future<void> init() async {
-    final String arString = await rootBundle.loadString('assets/json/intl_ar.json');
-    final String enString = await rootBundle.loadString('assets/json/intl_en.json');
+    arKeys = await TranslationLibraryService.loadCachedOrSeed('ar');
+    enKeys = await TranslationLibraryService.loadCachedOrSeed('en');
+  }
 
-    arKeys = Map<String, String>.from(json.decode(arString));
-    enKeys = Map<String, String>.from(json.decode(enString));
+  /// Pulls the latest translation bundles from the API in the background and
+  /// updates the in-memory maps + UI when newer content arrives.
+  ///
+  /// Safe to call without `await` after `runApp`. Network failures are
+  /// swallowed so the app keeps functioning offline with the cached/seed copy.
+  static Future<void> refreshFromRemote() async {
+    await TranslationLibraryService.refreshInBackground(
+      languageCodes: supportedLanguageCodes,
+      onUpdated: (languageCode, translations) {
+        switch (languageCode) {
+          case 'ar':
+            arKeys = translations;
+            break;
+          case 'en':
+            enKeys = translations;
+            break;
+          default:
+            return;
+        }
+
+        // Force GetX to re-resolve translation keys so any visible screen picks
+        // up the refreshed strings without requiring a manual app restart.
+        Get.forceAppUpdate();
+      },
+    );
   }
 
   @override

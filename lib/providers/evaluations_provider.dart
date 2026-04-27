@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -25,12 +26,14 @@ class EvaluationsProvider with ChangeNotifier {
   List<UserEvaluation> userEvaluations = [];
   List<ChartEvaluationData> chartEvaluationData = [];
   String chartDimension = 'memorization';
+  QuranChartFilters chartFilters = const QuranChartFilters();
   String? chartLoadError;
   bool isLoading = true;
   bool isQuestionsLevelLoading = false;
   int totalCount = 0;
   String? _loadedQuestionsLevelKey;
   int _questionLoadRequestId = 0;
+  int _chartLoadRequestId = 0;
   Map<String, List<Ayat>> _questionContentAyahs = {};
   Map<String, bool> _questionContentCompletion = {};
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
@@ -110,23 +113,68 @@ class EvaluationsProvider with ChangeNotifier {
   Future<void> getQuranChartData(
     int userId, {
     String dimension = 'memorization',
+    QuranChartFilters? filters,
   }) async {
+    final effectiveFilters = filters ?? chartFilters;
+    final requestId = ++_chartLoadRequestId;
     try {
       setLoading();
       chartLoadError = null;
       chartDimension = dimension;
+      chartFilters = effectiveFilters;
+
+      final cacheScopeKey = await _resolveChartCacheScopeKey(userId);
+      final cachedPayload = await _readCachedChartPayload(
+        cacheScopeKey: cacheScopeKey,
+        dimension: dimension,
+        filters: effectiveFilters,
+      );
+
+      if (cachedPayload != null) {
+        _applyChartPayload(
+          cachedPayload,
+          dimension: dimension,
+          filters: effectiveFilters,
+        );
+        resetLoading();
+        unawaited(
+          _maybeRefreshQuranChartDataInBackground(
+            requestId: requestId,
+            userId: userId,
+            dimension: dimension,
+            filters: effectiveFilters,
+            cacheScopeKey: cacheScopeKey,
+          ),
+        );
+        return;
+      }
+
       chartEvaluationData.clear();
+      totalCount = 0;
+      notifyListeners();
+
       final response = await _evaluationsServices.getQuranChartData(
         userId,
         dimension: dimension,
+        filters: effectiveFilters,
       );
 
-      totalCount = response['totalVerses'];
-      chartEvaluationData = (response['evaluations'] as List)
-          .map<ChartEvaluationData>((e) => ChartEvaluationData.fromJson(e))
-          .toList();
+      await _cacheChartPayload(
+        cacheScopeKey: cacheScopeKey,
+        dimension: dimension,
+        filters: effectiveFilters,
+        payload: response,
+      );
 
-      notifyListeners();
+      if (requestId != _chartLoadRequestId) {
+        return;
+      }
+
+      _applyChartPayload(
+        response,
+        dimension: dimension,
+        filters: effectiveFilters,
+      );
     } catch (e) {
       chartLoadError = e.toString().replaceFirst('Exception: ', '').trim();
       if (kDebugMode) {
@@ -134,8 +182,168 @@ class EvaluationsProvider with ChangeNotifier {
       }
       rethrow;
     } finally {
-      resetLoading();
+      if (requestId == _chartLoadRequestId) {
+        resetLoading();
+      }
     }
+  }
+
+  Future<void> _maybeRefreshQuranChartDataInBackground({
+    required int requestId,
+    required int userId,
+    required String dimension,
+    required QuranChartFilters filters,
+    required String cacheScopeKey,
+  }) async {
+    if (!await _canUseRemoteSync()) {
+      return;
+    }
+
+    await _refreshQuranChartDataInBackground(
+      requestId: requestId,
+      userId: userId,
+      dimension: dimension,
+      filters: filters,
+      cacheScopeKey: cacheScopeKey,
+    );
+  }
+
+  Future<void> _refreshQuranChartDataInBackground({
+    required int requestId,
+    required int userId,
+    required String dimension,
+    required QuranChartFilters filters,
+    required String cacheScopeKey,
+  }) async {
+    try {
+      final response = await _evaluationsServices.getQuranChartData(
+        userId,
+        dimension: dimension,
+        filters: filters,
+      );
+
+      await _cacheChartPayload(
+        cacheScopeKey: cacheScopeKey,
+        dimension: dimension,
+        filters: filters,
+        payload: response,
+      );
+
+      if (requestId != _chartLoadRequestId) {
+        return;
+      }
+
+      _applyChartPayload(
+        response,
+        dimension: dimension,
+        filters: filters,
+      );
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Quran chart background refresh skipped: $error');
+      }
+    }
+  }
+
+  Future<String> _resolveChartCacheScopeKey(int userId) async {
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (activeAccountKey != null && activeAccountKey.trim().isNotEmpty) {
+      return activeAccountKey.trim();
+    }
+
+    return 'user_$userId';
+  }
+
+  Future<Map<String, dynamic>?> _readCachedChartPayload({
+    required String cacheScopeKey,
+    required String dimension,
+    required QuranChartFilters filters,
+  }) async {
+    final rawJson = await _offlineStore.getCachedQuranChartJson(
+      scopeKey: cacheScopeKey,
+      dimension: dimension,
+      filtersKey: filters.toCacheKey(),
+    );
+    if (rawJson == null || rawJson.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('Failed to parse cached Quran chart payload: $error');
+      }
+    }
+
+    return null;
+  }
+
+  Future<void> _cacheChartPayload({
+    required String cacheScopeKey,
+    required String dimension,
+    required QuranChartFilters filters,
+    required Map<String, dynamic> payload,
+  }) async {
+    await _offlineStore.cacheQuranChartJson(
+      scopeKey: cacheScopeKey,
+      dimension: dimension,
+      filtersKey: filters.toCacheKey(),
+      rawJson: jsonEncode(payload),
+    );
+  }
+
+  void _applyChartPayload(
+    Map<String, dynamic> payload, {
+    required String dimension,
+    required QuranChartFilters filters,
+  }) {
+    chartDimension = dimension;
+    chartFilters = filters;
+    totalCount = (payload['totalVerses'] as num?)?.toInt() ?? 0;
+
+    final rawEvaluations = payload['evaluations'];
+    if (rawEvaluations is! List) {
+      chartEvaluationData = <ChartEvaluationData>[];
+    } else {
+      chartEvaluationData = rawEvaluations
+          .whereType<Map>()
+          .map<ChartEvaluationData>(
+            (item) => ChartEvaluationData.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    }
+
+    chartLoadError = null;
+    notifyListeners();
+  }
+
+  Future<void> applyChartFilters(int userId, QuranChartFilters filters) async {
+    await getQuranChartData(
+      userId,
+      dimension: chartDimension,
+      filters: filters,
+    );
+  }
+
+  Future<void> clearChartFilters(int userId) async {
+    if (!chartFilters.hasAnyActive) {
+      return;
+    }
+
+    await getQuranChartData(
+      userId,
+      dimension: chartDimension,
+      filters: const QuranChartFilters(),
+    );
   }
 
   Future<void> getAllUserEvaluations(int userId, List<int> ayatIds) async {

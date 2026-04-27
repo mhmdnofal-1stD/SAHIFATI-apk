@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,7 @@ import '../core/auth/social_auth_config.dart';
 import '../core/constants/colors.dart';
 import '../models/user_notification_item.dart';
 import '../models/user.dart';
+import '../services/push_notifications_service.dart';
 import '../services/sahifaty_api.dart';
 import '../services/secure_session_storage.dart';
 import '../services/users_services.dart';
@@ -35,7 +37,10 @@ class UsersProvider with ChangeNotifier {
   DateTime? pendingVerificationSentAt;
 
   final UsersServices _usersService = UsersServices();
+  final PushNotificationsService _pushNotificationsService =
+      PushNotificationsService();
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  StreamSubscription<String>? _pushTokenRefreshSubscription;
   bool isLoading = false;
   bool isProfileLoading = false;
   bool isLicenseLoading = false;
@@ -52,6 +57,9 @@ class UsersProvider with ChangeNotifier {
   List<UserNotificationItem> notifications = <UserNotificationItem>[];
   int unreadNotificationsCount = 0;
   bool _notificationsLoaded = false;
+  String? _lastRegisteredPushToken;
+  int? _lastRegisteredPushUserId;
+  bool _pushTokenSyncInFlight = false;
 
   String _accountKeyForUser(User user) => user.id.toString();
 
@@ -546,6 +554,92 @@ class UsersProvider with ChangeNotifier {
     _notificationsLoaded = false;
   }
 
+  void _resetPushNotificationsSession({bool cancelSubscription = false}) {
+    if (cancelSubscription) {
+      _pushTokenRefreshSubscription?.cancel();
+      _pushTokenRefreshSubscription = null;
+    }
+
+    _lastRegisteredPushToken = null;
+    _lastRegisteredPushUserId = null;
+    _pushTokenSyncInFlight = false;
+  }
+
+  String _resolvePushPlatform() {
+    if (kIsWeb) {
+      return 'web';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      case TargetPlatform.macOS:
+        return 'macos';
+      case TargetPlatform.windows:
+        return 'windows';
+      case TargetPlatform.linux:
+        return 'linux';
+      default:
+        return 'unknown';
+    }
+  }
+
+  Future<void> _bootstrapPushNotificationsForCurrentUser() async {
+    if (selectedUser == null) {
+      return;
+    }
+
+    try {
+      await _pushNotificationsService.ensureInitialized();
+      _pushTokenRefreshSubscription ??=
+          _pushNotificationsService.onTokenRefresh.listen(
+        (token) => unawaited(_syncPushTokenForCurrentUser(token)),
+      );
+
+      final token = await _pushNotificationsService.getToken();
+      if (token != null && token.trim().isNotEmpty) {
+        await _syncPushTokenForCurrentUser(token);
+      }
+    } catch (error) {
+      debugPrint('Push notification bootstrap skipped: $error');
+    }
+  }
+
+  Future<void> _syncPushTokenForCurrentUser(String rawToken) async {
+    final user = selectedUser;
+    final token = rawToken.trim();
+    if (user == null || token.isEmpty) {
+      return;
+    }
+
+    if (_lastRegisteredPushUserId == user.id &&
+        _lastRegisteredPushToken == token) {
+      return;
+    }
+
+    if (_pushTokenSyncInFlight) {
+      return;
+    }
+
+    _pushTokenSyncInFlight = true;
+    try {
+      await _usersService.registerPushToken(
+        token: token,
+        platform: _resolvePushPlatform(),
+        locale: Get.locale?.languageCode,
+      );
+
+      _lastRegisteredPushToken = token;
+      _lastRegisteredPushUserId = user.id;
+    } catch (error) {
+      debugPrint('Push token sync failed: $error');
+    } finally {
+      _pushTokenSyncInFlight = false;
+    }
+  }
+
   Future<void> ensureReadingDisplayPreferencesLoaded(
       {bool forceRefresh = false}) async {
     if (_readingDisplayPreferencesLoaded && !forceRefresh) {
@@ -575,30 +669,66 @@ class UsersProvider with ChangeNotifier {
       return;
     }
 
+    if (!forceRefresh) {
+      final cachedPayload = await _usersService.getCachedNotificationsPayload();
+      if (cachedPayload != null) {
+        _applyNotificationsPayload(cachedPayload);
+        isNotificationsLoading = false;
+        notifyListeners();
+        unawaited(_refreshNotificationsInBackground());
+        return;
+      }
+    }
+
     isNotificationsLoading = true;
     notifyListeners();
 
     try {
-      final payload = await _usersService.listMyNotifications();
-      final rawItems = payload['items'];
-      notifications = rawItems is List
-          ? rawItems
-              .whereType<Map>()
-              .map(
-                (entry) => UserNotificationItem.fromJson(
-                  Map<String, dynamic>.from(entry),
-                ),
-              )
-              .toList()
-          : <UserNotificationItem>[];
-      unreadNotificationsCount =
-          (payload['unreadCount'] as num?)?.toInt() ??
-              notifications.where((item) => !item.isRead).length;
-      _notificationsLoaded = true;
+      await _refreshNotificationsFromRemote();
     } finally {
       isNotificationsLoading = false;
       notifyListeners();
     }
+  }
+
+  void _applyNotificationsPayload(Map<String, dynamic> payload) {
+    final rawItems = payload['items'];
+    notifications = rawItems is List
+        ? rawItems
+            .whereType<Map>()
+            .map(
+              (entry) => UserNotificationItem.fromJson(
+                Map<String, dynamic>.from(entry),
+              ),
+            )
+            .toList()
+        : <UserNotificationItem>[];
+    unreadNotificationsCount =
+        (payload['unreadCount'] as num?)?.toInt() ??
+            notifications.where((item) => !item.isRead).length;
+    _notificationsLoaded = true;
+  }
+
+  Map<String, dynamic> _buildNotificationsPayload() {
+    return {
+      'items': notifications.map((item) => item.toJson()).toList(),
+      'unreadCount': unreadNotificationsCount,
+    };
+  }
+
+  Future<void> _refreshNotificationsInBackground() async {
+    try {
+      await _refreshNotificationsFromRemote();
+      notifyListeners();
+    } catch (error) {
+      debugPrint('Notifications background refresh skipped: $error');
+    }
+  }
+
+  Future<void> _refreshNotificationsFromRemote() async {
+    final payload = await _usersService.listMyNotifications();
+    _applyNotificationsPayload(payload);
+    await _usersService.storeNotificationsPayload(_buildNotificationsPayload());
   }
 
   Future<void> markNotificationRead(String notificationId) async {
@@ -623,10 +753,26 @@ class UsersProvider with ChangeNotifier {
     );
     unreadNotificationsCount =
         notifications.where((item) => !item.isRead).length;
+    await _usersService.storeNotificationsPayload(_buildNotificationsPayload());
     notifyListeners();
   }
 
-  bool get hasActiveLicense => selectedUser?.licenseStatus == 'active';
+  String? get normalizedLicenseStatus {
+    final normalized = selectedUser?.licenseStatus?.trim().toLowerCase();
+    if (normalized == null || normalized.isEmpty) {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  bool get hasActiveLicense => normalizedLicenseStatus == 'active';
+
+  bool get hasKnownLicenseState => normalizedLicenseStatus != null;
+
+  bool get canProceedWithoutFreshLicenseCheck {
+    return selectedUser != null && (!hasKnownLicenseState || hasActiveLicense);
+  }
 
   Future<void> ensureLicenseStateLoaded({bool forceRefresh = false}) async {
     if (selectedUser == null) {
@@ -855,7 +1001,7 @@ class UsersProvider with ChangeNotifier {
 
     final user = User(
       id: authData.user!.id,
-      fullName: authData.user!.fullName,
+      username: authData.user!.username,
       email: authData.user!.email,
       userRoleId: authData.user!.userRoleId,
       licenseStatus: authData.user!.licenseStatus,
@@ -870,6 +1016,8 @@ class UsersProvider with ChangeNotifier {
     );
     await clearPendingVerificationState();
     await checkFirstLogin();
+    _resetPushNotificationsSession();
+    await _bootstrapPushNotificationsForCurrentUser();
     return authData;
   }
 
@@ -1028,6 +1176,7 @@ class UsersProvider with ChangeNotifier {
     await prefs.remove('refreshToken');
     await prefs.remove('password');
     await SecureSessionStorage.setActiveAccountKey(null);
+    _resetPushNotificationsSession(cancelSubscription: true);
     selectedUser = null;
     isLicenseLoading = false;
     isPromoCodesLoading = false;
@@ -1189,33 +1338,71 @@ class UsersProvider with ChangeNotifier {
     await saveUserToDevice(user);
   }
 
-  Future<User?> loadCurrentUserProfile() async {
-    isProfileLoading = true;
+  User _buildUserFromProfile(Map<String, dynamic> profile) {
+    final normalizedProfile = <String, dynamic>{
+      ...profile,
+      'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
+      'email': profile['email'] ?? selectedUser?.email ?? '',
+      'username':
+          profile['username'] ??
+          selectedUser?.username ??
+          '',
+      'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
+    };
+    return User.fromJson(normalizedProfile);
+  }
+
+  Future<User?> getCachedCurrentUserProfile() async {
+    final cachedProfile = await _usersService.getCachedCurrentUserProfile();
+    if (cachedProfile == null) {
+      return selectedUser;
+    }
+
+    final user = _buildUserFromProfile(cachedProfile);
+    await _persistSelectedUser(user);
+    _applyReadingDisplayPreferencesFromProfile(cachedProfile);
+    _readingDisplayPreferencesLoaded = true;
     notifyListeners();
+    return user;
+  }
+
+  Future<void> refreshCurrentUserProfileInBackground({
+    void Function(User user)? onUpdated,
+  }) async {
+    try {
+      final user = await loadCurrentUserProfile(notifyLoading: false);
+      if (user != null) {
+        onUpdated?.call(user);
+      }
+    } catch (error) {
+      debugPrint('Current user profile background refresh skipped: $error');
+    }
+  }
+
+  Future<User?> loadCurrentUserProfile({bool notifyLoading = true}) async {
+    if (notifyLoading) {
+      isProfileLoading = true;
+      notifyListeners();
+    }
 
     try {
       final profile = await _usersService.getCurrentUserProfile();
-      final normalizedProfile = <String, dynamic>{
-        ...profile,
-        'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
-        'email': profile['email'] ?? selectedUser?.email ?? '',
-        'fullName': profile['fullName'] ?? selectedUser?.fullName ?? '',
-        'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
-      };
-      final user = User.fromJson(normalizedProfile);
+      final user = _buildUserFromProfile(profile);
       await _persistSelectedUser(user);
       _applyReadingDisplayPreferencesFromProfile(profile);
       _readingDisplayPreferencesLoaded = true;
       notifyListeners();
       return user;
     } finally {
-      isProfileLoading = false;
-      notifyListeners();
+      if (notifyLoading) {
+        isProfileLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   Future<User> updateStructuredProfile({
-    required String fullName,
+    required String username,
     required String gender,
     required int birthYear,
     required String country,
@@ -1230,7 +1417,7 @@ class UsersProvider with ChangeNotifier {
 
     try {
       final profile = await _usersService.updateCurrentUserProfile(
-        fullName: fullName,
+        username: username,
         gender: gender,
         birthYear: birthYear,
         country: country,
@@ -1245,7 +1432,7 @@ class UsersProvider with ChangeNotifier {
         ...profile,
         'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
         'email': profile['email'] ?? selectedUser?.email ?? '',
-        'fullName': profile['fullName'] ?? fullName,
+        'username': profile['username'] ?? username,
         'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
       };
       final user = User.fromJson(normalizedProfile);
@@ -1303,6 +1490,8 @@ class UsersProvider with ChangeNotifier {
       _resetNotificationsState();
       await _setActiveUserSnapshot(selectedUser!);
       await checkFirstLogin(user: selectedUser);
+      _resetPushNotificationsSession();
+      await _bootstrapPushNotificationsForCurrentUser();
       notifyListeners();
       return true;
     } catch (_) {
@@ -1418,6 +1607,8 @@ class UsersProvider with ChangeNotifier {
     selectedUser = user;
     _resetReadingDisplayPreferencesState();
     await checkFirstLogin(user: user);
+    _resetPushNotificationsSession();
+    await _bootstrapPushNotificationsForCurrentUser();
     notifyListeners();
     return true;
   }
@@ -1506,8 +1697,10 @@ class UsersProvider with ChangeNotifier {
         return activeB.compareTo(activeA);
       }
 
-      return (a['fullName'] ?? '').toString().compareTo(
-            (b['fullName'] ?? '').toString(),
+      return (a['username'] ?? '')
+          .toString()
+          .compareTo(
+        (b['username'] ?? '').toString(),
           );
     });
 

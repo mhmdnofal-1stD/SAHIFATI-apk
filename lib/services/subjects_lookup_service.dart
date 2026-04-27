@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'offline_assessment_store.dart';
 import 'sahifaty_api.dart';
 
 class SubjectHierarchyItem {
@@ -9,11 +11,15 @@ class SubjectHierarchyItem {
     required this.key,
     required this.name,
     this.nameAr,
+    this.level = 0,
+    this.parent,
   });
 
   final String key;
   final Map<String, String> name;
   final String? nameAr;
+  final int level;
+  final String? parent;
 
   factory SubjectHierarchyItem.fromJson(Map<String, dynamic> json) {
     final localizedName = <String, String>{};
@@ -32,6 +38,8 @@ class SubjectHierarchyItem {
       key: json['_key']?.toString() ?? '',
       name: localizedName,
       nameAr: json['nameAr']?.toString(),
+      level: json['level'] is num ? (json['level'] as num).toInt() : 0,
+      parent: json['parent']?.toString(),
     );
   }
 
@@ -69,6 +77,7 @@ class SubjectsLookupService {
       SubjectsLookupService._internal();
 
   final SahifatyApi _api = SahifatyApi();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
 
   List<SubjectHierarchyItem>? _cachedHierarchy;
   Future<List<SubjectHierarchyItem>>? _pendingHierarchyLoad;
@@ -113,6 +122,10 @@ class SubjectsLookupService {
     return names;
   }
 
+  Future<List<SubjectHierarchyItem>> loadHierarchy() {
+    return _loadHierarchy();
+  }
+
   Future<List<SubjectHierarchyItem>> _loadHierarchy() async {
     if (_cachedHierarchy != null) {
       return _cachedHierarchy!;
@@ -122,7 +135,7 @@ class SubjectsLookupService {
       return _pendingHierarchyLoad!;
     }
 
-    _pendingHierarchyLoad = _fetchHierarchy();
+    _pendingHierarchyLoad = _loadHierarchyFromCacheOrRemote();
 
     try {
       _cachedHierarchy = await _pendingHierarchyLoad!;
@@ -132,13 +145,44 @@ class SubjectsLookupService {
     }
   }
 
+  Future<List<SubjectHierarchyItem>> _loadHierarchyFromCacheOrRemote() async {
+    final cachedHierarchy = await _loadCachedHierarchy();
+    if (cachedHierarchy.isNotEmpty) {
+      unawaited(_refreshHierarchyInBackground());
+      return cachedHierarchy;
+    }
+
+    return _fetchHierarchy();
+  }
+
   Future<List<SubjectHierarchyItem>> _fetchHierarchy() async {
     final response = await _api.get('subjects');
     if (response is! http.Response || response.statusCode != 200) {
       throw Exception('Failed to load subjects hierarchy');
     }
 
-    final decoded = jsonDecode(response.body);
+    await _offlineStore.cacheSubjectsHierarchyJson(response.body);
+
+    return _parseHierarchy(response.body);
+  }
+
+  Future<void> _refreshHierarchyInBackground() async {
+    try {
+      _cachedHierarchy = await _fetchHierarchy();
+    } catch (_) {}
+  }
+
+  Future<List<SubjectHierarchyItem>> _loadCachedHierarchy() async {
+    final cachedJson = await _offlineStore.getCachedSubjectsHierarchyJson();
+    if (cachedJson == null || cachedJson.isEmpty) {
+      return const [];
+    }
+
+    return _parseHierarchy(cachedJson);
+  }
+
+  List<SubjectHierarchyItem> _parseHierarchy(String rawJson) {
+    final decoded = jsonDecode(rawJson);
     if (decoded is! Map<String, dynamic>) {
       return const [];
     }

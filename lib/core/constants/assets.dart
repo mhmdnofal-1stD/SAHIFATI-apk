@@ -8,7 +8,7 @@ class Assets {
   static String quran = "$rootImages/quran.png";
   static String logo = "$rootImages/logo.png";
   static String logoSvg = "$rootImages/logo.svg";
-  static String organization1STDLogo = "$rootImages/1st_D_logo.png";
+  static String organization1STDLogo = "$rootImages/1st_D_logo.svg";
 
 
   /// Icons

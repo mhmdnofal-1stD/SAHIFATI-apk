@@ -133,7 +133,7 @@ void main() {
 
   testWidgets('sahifa screen shows truthful empty summary state', (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
     final evaluationsProvider = EvaluationsProvider()
       ..isLoading = false
       ..totalCount = 0
@@ -166,7 +166,7 @@ void main() {
     );
 
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
     final evaluationsProvider = EvaluationsProvider()
       ..isLoading = false
       ..totalCount = 0
@@ -187,7 +187,7 @@ void main() {
 
   testWidgets('sahifa screen shows chart summary when data exists', (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
     final evaluationsProvider = EvaluationsProvider()
       ..isLoading = false
       ..totalCount = 20
@@ -224,7 +224,7 @@ void main() {
 
   testWidgets('main screen explains active entry path', (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
     final evaluationsProvider = EvaluationsProvider()..isLoading = false;
     final generalProvider = GeneralProvider()..setView(FilterTypes.parts);
 
@@ -254,7 +254,7 @@ void main() {
     );
 
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
     final evaluationsProvider = EvaluationsProvider()..isLoading = false;
     final generalProvider = GeneralProvider()..setView(FilterTypes.parts);
 
@@ -274,7 +274,7 @@ void main() {
 
   testWidgets('hizb button stays safe when its surahs are unavailable', (tester) async {
     final usersProvider = UsersProvider()
-      ..selectedUser = User(id: 1, fullName: 'Sara', email: 'sara@test.local');
+      ..selectedUser = User(id: 1, username: 'Sara', email: 'sara@test.local');
 
     await _pumpSurface(
       tester,

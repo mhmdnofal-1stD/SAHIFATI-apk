@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -33,13 +32,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _supervisionCodeFuture = _usersServices.getMySupervisionCode();
+    _supervisionCodeFuture = _loadInitialSupervisionCode();
+  }
+
+  Future<Map<String, dynamic>> _loadInitialSupervisionCode() async {
+    final cached = await _usersServices.getCachedMySupervisionCode();
+    if (cached != null) {
+      unawaited(_refreshSupervisionCodeInBackground());
+      return cached;
+    }
+
+    return _usersServices.getMySupervisionCode();
+  }
+
+  Future<void> _refreshSupervisionCodeInBackground() async {
+    try {
+      final fresh = await _usersServices.getMySupervisionCode();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _supervisionCodeFuture = Future.value(fresh);
+      });
+    } catch (error) {
+      debugPrint('Supervision code background refresh skipped: $error');
+    }
   }
 
   Future<void> _reload() async {
-    setState(() {
-      _supervisionCodeFuture = _usersServices.getMySupervisionCode();
-    });
+    try {
+      final fresh = await _usersServices.getMySupervisionCode();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _supervisionCodeFuture = Future.value(fresh);
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      _showSnack(context, error.toString());
+    }
   }
 
   Future<Uint8List?> _captureCardImage() async {
@@ -53,12 +90,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return byteData?.buffer.asUint8List();
   }
 
-  Future<void> _handleShare(String shareUrl, String fullName) async {
+  Future<void> _handleShare(String shareUrl, String username) async {
     final bytes = await _captureCardImage();
     final shareText =
-        '$fullName\n$shareUrl\n${'profile_qr_share_caption'.tr}';
+        '$username\n$shareUrl\n${'profile_qr_share_caption'.tr}';
     if (bytes == null) {
-      await Share.share(shareText);
+      await SharePlus.instance.share(
+        ShareParams(
+          text: shareText,
+          subject: 'profile_qr_share_subject'.tr,
+        ),
+      );
       return;
     }
     final file = XFile.fromData(
@@ -66,21 +108,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       mimeType: 'image/png',
       name: 'sahifati-supervision-qr.png',
     );
-    await Share.shareXFiles(
-      [file],
-      text: shareText,
-      subject: 'profile_qr_share_subject'.tr,
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [file],
+        text: shareText,
+        subject: 'profile_qr_share_subject'.tr,
+      ),
     );
   }
 
-  Future<void> _handleSave(BuildContext context) async {
+  Future<void> _handleSave() async {
     final bytes = await _captureCardImage();
+    if (!mounted) {
+      return;
+    }
+
     if (bytes == null) {
       _showSnack(context, 'profile_qr_save_failed'.tr);
       return;
     }
     if (kIsWeb) {
       await downloadBytes(bytes, 'sahifati-supervision-qr.png', 'image/png');
+      if (!mounted) {
+        return;
+      }
+
       _showSnack(context, 'profile_qr_save_started'.tr);
       return;
     }
@@ -89,9 +141,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       mimeType: 'image/png',
       name: 'sahifati-supervision-qr.png',
     );
-    await Share.shareXFiles(
-      [file],
-      text: 'profile_qr_save_share_hint'.tr,
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [file],
+        text: 'profile_qr_save_share_hint'.tr,
+      ),
     );
   }
 
@@ -182,7 +236,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _ProfileIdentityHeader(
-                        fullName: user?.fullName ?? '',
+                        username: user?.username ?? user?.email ?? '',
                         email: user?.email ?? '',
                       ),
                       const SizedBox(height: 18),
@@ -200,18 +254,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             );
                           }
                           final data = snapshot.data!;
-                          final fullName =
-                              (data['fullName'] as String?)?.trim().isNotEmpty ==
+                          final username =
+                              (data['username'] as String?)?.trim().isNotEmpty ==
                                       true
-                                  ? data['fullName'] as String
-                                  : (user?.fullName ?? '');
+                                  ? data['username'] as String
+                                  : (user?.username ?? user?.email ?? '');
                           final shareUrl = data['shareUrl'] as String;
                           return _QrShareCard(
                             qrCardKey: _qrCardKey,
-                            fullName: fullName,
+                            username: username,
                             shareUrl: shareUrl,
-                            onShare: () => _handleShare(shareUrl, fullName),
-                            onSave: () => _handleSave(context),
+                            onShare: () => _handleShare(shareUrl, username),
+                            onSave: _handleSave,
                           );
                         },
                       ),
@@ -231,11 +285,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class _ProfileIdentityHeader extends StatelessWidget {
   const _ProfileIdentityHeader({
-    required this.fullName,
+    required this.username,
     required this.email,
   });
 
-  final String fullName;
+  final String username;
   final String email;
 
   @override
@@ -277,7 +331,7 @@ class _ProfileIdentityHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  fullName.isEmpty ? 'profile_unknown_user'.tr : fullName,
+                  username.isEmpty ? 'profile_unknown_user'.tr : username,
                   textDirection: TextDirection.rtl,
                   style: const TextStyle(
                     color: Colors.white,
@@ -306,14 +360,14 @@ class _ProfileIdentityHeader extends StatelessWidget {
 class _QrShareCard extends StatelessWidget {
   const _QrShareCard({
     required this.qrCardKey,
-    required this.fullName,
+    required this.username,
     required this.shareUrl,
     required this.onShare,
     required this.onSave,
   });
 
   final GlobalKey qrCardKey;
-  final String fullName;
+  final String username;
   final String shareUrl;
   final Future<void> Function() onShare;
   final Future<void> Function() onSave;
@@ -382,7 +436,7 @@ class _QrShareCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    fullName,
+                    username,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.center,
                     style: const TextStyle(

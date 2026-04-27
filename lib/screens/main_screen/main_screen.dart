@@ -146,7 +146,7 @@ class _MainScreenState extends State<MainScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${"well_done".tr} ${usersProvider.selectedUser?.fullName ?? ''}',
+                            '${"well_done".tr} ${usersProvider.selectedUser?.username ?? usersProvider.selectedUser?.email ?? ''}',
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.w800,

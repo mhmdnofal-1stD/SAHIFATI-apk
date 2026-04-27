@@ -47,14 +47,25 @@ class _AuthenticatedRouteGateState extends State<AuthenticatedRouteGate> {
       }
     }
 
-    await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
-    if (!usersProvider.hasActiveLicense) {
+    try {
+      await usersProvider.ensureLicenseStateLoaded(
+        forceRefresh: !usersProvider.hasKnownLicenseState,
+      );
+    } catch (error) {
+      debugPrint('Authenticated route bootstrap skipped license refresh: $error');
+    }
+
+    if (!usersProvider.canProceedWithoutFreshLicenseCheck) {
       _redirectRoute = '/license-activation';
       return false;
     }
 
     if (widget.loader != null) {
-      await widget.loader!(usersProvider, evaluationsProvider);
+      try {
+        await widget.loader!(usersProvider, evaluationsProvider);
+      } catch (error) {
+        debugPrint('Authenticated route loader skipped: $error');
+      }
     }
 
     return true;

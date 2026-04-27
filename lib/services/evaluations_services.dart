@@ -9,6 +9,91 @@ import 'package:sahifaty/services/sahifaty_api.dart';
 
 import 'offline_assessment_store.dart';
 
+class QuranChartFilters {
+  const QuranChartFilters({
+    this.surahIds = const <int>[],
+    this.juzs = const <int>[],
+    this.ayahTypes = const <String>[],
+    this.subjectKeys = const <String>[],
+    this.schoolIds = const <int>[],
+    this.schoolLevelPairs = const <String>[],
+    this.memoEvaluationIds = const <int>[],
+    this.comprehensionEvaluationIds = const <int>[],
+  });
+
+  final List<int> surahIds;
+  final List<int> juzs;
+  final List<String> ayahTypes;
+  final List<String> subjectKeys;
+  final List<int> schoolIds;
+  final List<String> schoolLevelPairs;
+  final List<int> memoEvaluationIds;
+  final List<int> comprehensionEvaluationIds;
+
+  bool get hasAnyActive =>
+      surahIds.isNotEmpty ||
+      juzs.isNotEmpty ||
+      ayahTypes.isNotEmpty ||
+      subjectKeys.isNotEmpty ||
+      schoolIds.isNotEmpty ||
+      schoolLevelPairs.isNotEmpty ||
+      memoEvaluationIds.isNotEmpty ||
+      comprehensionEvaluationIds.isNotEmpty;
+
+  List<int> _sortedInts(List<int> values) {
+    final sorted = [...values];
+    sorted.sort();
+    return sorted;
+  }
+
+  List<String> _sortedStrings(List<String> values) {
+    final sorted = [...values];
+    sorted.sort((left, right) => left.compareTo(right));
+    return sorted;
+  }
+
+  Map<String, String> toQueryParameters() {
+    final params = <String, String>{};
+
+    if (surahIds.isNotEmpty) {
+      params['surahIds'] = _sortedInts(surahIds).join(',');
+    }
+    if (juzs.isNotEmpty) {
+      params['juzs'] = _sortedInts(juzs).join(',');
+    }
+    if (ayahTypes.isNotEmpty) {
+      params['ayahTypes'] = _sortedStrings(ayahTypes).join(',');
+    }
+    if (subjectKeys.isNotEmpty) {
+      params['subjectKeys'] = _sortedStrings(subjectKeys).join(',');
+    }
+    if (schoolIds.isNotEmpty) {
+      params['schoolIds'] = _sortedInts(schoolIds).join(',');
+    }
+    if (schoolLevelPairs.isNotEmpty) {
+      params['schoolLevelPairs'] = _sortedStrings(schoolLevelPairs).join(',');
+    }
+    if (memoEvaluationIds.isNotEmpty) {
+      params['memoEvaluationIds'] = _sortedInts(memoEvaluationIds).join(',');
+    }
+    if (comprehensionEvaluationIds.isNotEmpty) {
+      params['comprehensionEvaluationIds'] =
+          _sortedInts(comprehensionEvaluationIds).join(',');
+    }
+
+    return params;
+  }
+
+  String toCacheKey() {
+    final query = Uri(queryParameters: toQueryParameters()).query;
+    if (query.isEmpty) {
+      return 'all';
+    }
+
+    return base64UrlEncode(utf8.encode(query));
+  }
+}
+
 class EvaluationsServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
@@ -52,10 +137,16 @@ class EvaluationsServices {
   Future<Map<String, dynamic>> getQuranChartData(
     int userId, {
     String dimension = 'memorization',
+    QuranChartFilters filters = const QuranChartFilters(),
   }) async {
     try {
+      final queryParameters = <String, String>{
+        'dimension': dimension,
+        ...filters.toQueryParameters(),
+      };
+      final queryString = Uri(queryParameters: queryParameters).query;
       final res = await _sahifatyApi
-          .get('user-evaluations/chart/$userId?dimension=$dimension');
+          .get('user-evaluations/chart/$userId?$queryString');
 
       if (res.statusCode == 200) {
         // Decode the full JSON map
