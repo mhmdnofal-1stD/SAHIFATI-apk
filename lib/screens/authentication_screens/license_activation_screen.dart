@@ -6,6 +6,7 @@ import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LicenseActivationScreen extends StatefulWidget {
   const LicenseActivationScreen({super.key});
@@ -18,6 +19,7 @@ class LicenseActivationScreen extends StatefulWidget {
 class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
   late final Future<void> _bootstrapFuture;
   final TextEditingController _promoCodeController = TextEditingController();
+  int _selectedPurchaseQuantity = 20;
   String? _inlineError;
 
   @override
@@ -113,6 +115,92 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
       }
 
       await _continueWithActiveLicense(usersProvider, evaluationsProvider);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _inlineError = usersProvider.extractErrorMessage(error);
+      });
+    }
+  }
+
+  Future<void> _startPurchaseCheckout() async {
+    final usersProvider = context.read<UsersProvider>();
+
+    setState(() {
+      _inlineError = null;
+    });
+
+    try {
+      final purchase = await usersProvider.createPurchaseIntent(
+        quantity: _selectedPurchaseQuantity,
+      );
+
+      final checkoutUrl = (purchase['checkoutUrl'] ?? '').toString().trim();
+      if (checkoutUrl.isEmpty) {
+        throw Exception('service_users_purchase_intent_failed'.tr);
+      }
+
+      final checkoutUri = Uri.tryParse(checkoutUrl);
+      if (checkoutUri == null) {
+        throw Exception('service_users_purchase_intent_failed'.tr);
+      }
+
+      final launched = await launchUrl(
+        checkoutUri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!launched) {
+        setState(() {
+          _inlineError = 'license_activation_purchase_open_failed'.tr;
+        });
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('license_activation_purchase_launched'.tr)),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _inlineError = usersProvider.extractErrorMessage(error);
+      });
+    }
+  }
+
+  Future<void> _refreshLicenseAfterPurchase() async {
+    final usersProvider = context.read<UsersProvider>();
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
+    setState(() {
+      _inlineError = null;
+    });
+
+    try {
+      await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
+
+      if (!mounted || usersProvider.selectedUser == null) {
+        return;
+      }
+
+      if (usersProvider.hasActiveLicense) {
+        await _continueWithActiveLicense(usersProvider, evaluationsProvider);
+        return;
+      }
+
+      setState(() {
+        _inlineError = 'license_activation_purchase_pending_after_check'.tr;
+      });
     } catch (error) {
       if (!mounted) {
         return;
@@ -436,7 +524,11 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                         title: 'license_activation_purchase_title'.tr,
                         body: 'license_activation_purchase_body'.tr,
                         accent: const Color(0xFF5B3DA1),
-                        showAction: false,
+                        enabled: !usersProvider.isLicenseLoading,
+                        onTap: _startPurchaseCheckout,
+                        footer: usersProvider.isLicenseLoading
+                            ? 'license_activation_purchase_loading'.tr
+                            : 'license_activation_purchase_action'.tr,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -498,6 +590,37 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                               accent: const Color(0xFFB53C52),
                             ),
                             const SizedBox(height: 12),
+                            DropdownButtonFormField<int>(
+                              initialValue: _selectedPurchaseQuantity,
+                              decoration: InputDecoration(
+                                labelText:
+                                    'license_activation_purchase_pricing_label'
+                                        .tr,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              items: const [20, 100, 1000, 10000]
+                                  .map(
+                                    (quantity) => DropdownMenuItem<int>(
+                                      value: quantity,
+                                      child: Text(quantity.toString()),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: usersProvider.isLicenseLoading
+                                  ? null
+                                  : (value) {
+                                      if (value == null) {
+                                        return;
+                                      }
+
+                                      setState(() {
+                                        _selectedPurchaseQuantity = value;
+                                      });
+                                    },
+                            ),
+                            const SizedBox(height: 12),
                             Text(
                               'license_activation_purchase_footer_note'.tr,
                               textDirection: TextDirection.rtl,
@@ -506,6 +629,18 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                                 fontSize: 12,
                                 color: AppColors.hintTextColor,
                                 height: 1.6,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 46,
+                              child: OutlinedButton(
+                                onPressed: usersProvider.isLicenseLoading
+                                    ? null
+                                    : _refreshLicenseAfterPurchase,
+                                child: Text(
+                                  'license_activation_purchase_refresh'.tr,
+                                ),
                               ),
                             ),
                           ],

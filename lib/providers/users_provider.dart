@@ -53,6 +53,7 @@ class UsersProvider with ChangeNotifier {
   bool _googleInitialized = false;
   bool _facebookWebInitialized = false;
   Map<String, dynamic>? licenseBalanceSummary;
+  Map<String, dynamic>? giftPoolSummary;
   List<Map<String, dynamic>> myPromoCodes = <Map<String, dynamic>>[];
   List<UserNotificationItem> notifications = <UserNotificationItem>[];
   int unreadNotificationsCount = 0;
@@ -337,6 +338,20 @@ class UsersProvider with ChangeNotifier {
 
     if (trimmed == 'An active license is required to access this feature.') {
       return 'auth_license_required'.tr;
+    }
+
+    if (trimmed ==
+        'Not enough owned licenses are available to contribute to the gift pool.') {
+      return 'license_hub_gift_pool_not_enough'.tr;
+    }
+
+    if (trimmed == 'Please verify your email before managing promo codes.') {
+      return 'license_hub_gift_pool_verify_email'.tr;
+    }
+
+    if (trimmed ==
+        'Please verify your email before contributing licenses to the gift pool.') {
+      return 'license_hub_gift_pool_verify_email'.tr;
     }
 
     if (trimmed ==
@@ -703,9 +718,8 @@ class UsersProvider with ChangeNotifier {
             )
             .toList()
         : <UserNotificationItem>[];
-    unreadNotificationsCount =
-        (payload['unreadCount'] as num?)?.toInt() ??
-            notifications.where((item) => !item.isRead).length;
+    unreadNotificationsCount = (payload['unreadCount'] as num?)?.toInt() ??
+        notifications.where((item) => !item.isRead).length;
     _notificationsLoaded = true;
   }
 
@@ -825,6 +839,7 @@ class UsersProvider with ChangeNotifier {
 
     if (!forceRefresh &&
         licenseBalanceSummary != null &&
+        giftPoolSummary != null &&
         myPromoCodes.isNotEmpty) {
       return;
     }
@@ -834,9 +849,33 @@ class UsersProvider with ChangeNotifier {
 
     try {
       final balance = await _usersService.getLicenseBalance();
+      final giftPool = await _usersService.getGiftPoolState();
       final promoCodes = await _usersService.listMyPromoCodes();
       licenseBalanceSummary = balance;
+      giftPoolSummary = giftPool;
       myPromoCodes = promoCodes;
+    } finally {
+      isPromoCodesLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> contributeToGiftPool({
+    required int quantity,
+  }) async {
+    if (selectedUser == null) {
+      throw Exception('welcome_kickoff_error_missing_user'.tr);
+    }
+
+    isPromoCodesLoading = true;
+    notifyListeners();
+
+    try {
+      final response = await _usersService.contributeToGiftPool(
+        quantity: quantity,
+      );
+      await loadPromoWorkspace(forceRefresh: true);
+      return response;
     } finally {
       isPromoCodesLoading = false;
       notifyListeners();
@@ -1181,6 +1220,7 @@ class UsersProvider with ChangeNotifier {
     isLicenseLoading = false;
     isPromoCodesLoading = false;
     licenseBalanceSummary = null;
+    giftPoolSummary = null;
     myPromoCodes = <Map<String, dynamic>>[];
     _resetReadingDisplayPreferencesState();
     _resetNotificationsState();
@@ -1343,10 +1383,7 @@ class UsersProvider with ChangeNotifier {
       ...profile,
       'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
       'email': profile['email'] ?? selectedUser?.email ?? '',
-      'username':
-          profile['username'] ??
-          selectedUser?.username ??
-          '',
+      'username': profile['username'] ?? selectedUser?.username ?? '',
       'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
     };
     return User.fromJson(normalizedProfile);
@@ -1697,10 +1734,8 @@ class UsersProvider with ChangeNotifier {
         return activeB.compareTo(activeA);
       }
 
-      return (a['username'] ?? '')
-          .toString()
-          .compareTo(
-        (b['username'] ?? '').toString(),
+      return (a['username'] ?? '').toString().compareTo(
+            (b['username'] ?? '').toString(),
           );
     });
 

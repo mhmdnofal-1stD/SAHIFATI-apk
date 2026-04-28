@@ -382,6 +382,25 @@ class UsersServices with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> getGiftPoolState() async {
+    try {
+      final response = await SahifatyApi().get('licensing/gift-pool');
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_load_gift_pool_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
   Future<Map<String, dynamic>> getLicenseBalance() async {
     try {
       final response = await SahifatyApi().get('licensing/balance');
@@ -535,6 +554,30 @@ class UsersServices with ChangeNotifier {
         response.statusCode,
         responseData,
         'service_users_purchase_intent_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> contributeToGiftPool({
+    required int quantity,
+  }) async {
+    try {
+      final response = await SahifatyApi().post(
+        url: 'licensing/gift/contribute',
+        body: <String, dynamic>{'quantity': quantity},
+      );
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return Map<String, dynamic>.from(responseData as Map);
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'service_users_contribute_gift_pool_failed'.tr,
       );
     } catch (ex) {
       rethrow;
