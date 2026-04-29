@@ -54,6 +54,7 @@ class UsersProvider with ChangeNotifier {
   bool _facebookWebInitialized = false;
   Map<String, dynamic>? licenseBalanceSummary;
   Map<String, dynamic>? giftPoolSummary;
+  String? promoWorkspaceError;
   List<Map<String, dynamic>> myPromoCodes = <Map<String, dynamic>>[];
   List<UserNotificationItem> notifications = <UserNotificationItem>[];
   int unreadNotificationsCount = 0;
@@ -845,6 +846,7 @@ class UsersProvider with ChangeNotifier {
     }
 
     isPromoCodesLoading = true;
+    promoWorkspaceError = null;
     notifyListeners();
 
     try {
@@ -854,6 +856,9 @@ class UsersProvider with ChangeNotifier {
       licenseBalanceSummary = balance;
       giftPoolSummary = giftPool;
       myPromoCodes = promoCodes;
+      promoWorkspaceError = null;
+    } catch (error) {
+      promoWorkspaceError = extractErrorMessage(error);
     } finally {
       isPromoCodesLoading = false;
       notifyListeners();
@@ -1221,6 +1226,7 @@ class UsersProvider with ChangeNotifier {
     isPromoCodesLoading = false;
     licenseBalanceSummary = null;
     giftPoolSummary = null;
+    promoWorkspaceError = null;
     myPromoCodes = <Map<String, dynamic>>[];
     _resetReadingDisplayPreferencesState();
     _resetNotificationsState();

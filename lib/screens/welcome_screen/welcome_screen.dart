@@ -630,12 +630,15 @@ class _WelcomeMetricsCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             SizedBox(
-              height: 280,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 54,
-                  sections: _truthfulSections(entries),
+              height: 320,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 48,
+                    sections: _truthfulSections(entries),
+                  ),
                 ),
               ),
             ),
@@ -702,18 +705,26 @@ class _WelcomeMetricsCard extends StatelessWidget {
 
   List<PieChartSectionData> _truthfulSections(List<ChartEvaluationData> entries) {
     final controller = EvaluationsController();
+    // Slices below this percentage are too narrow to fit a label inside,
+    // so we draw an external callout (leader arrow + text) instead.
+    const double inlineLabelThreshold = 8;
     return entries.map((entry) {
       final percentage = entry.percentage?.toDouble() ?? 0;
+      final color = controller.getColorForChartEntry(entry);
+      final fitsInside = percentage >= inlineLabelThreshold;
       return PieChartSectionData(
-        color: controller.getColorForChartEntry(entry),
+        color: color,
         value: percentage,
-        radius: 108,
-        title: percentage >= 4 ? '${percentage.toStringAsFixed(0)}%' : '',
+        radius: 96,
+        title: fitsInside ? '${percentage.toStringAsFixed(0)}%' : '',
         titleStyle: const TextStyle(
           color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
         ),
+        badgeWidget:
+            fitsInside ? null : _ExternalSliceLabel(color: color, percentage: percentage),
+        badgePositionPercentageOffset: 1.45,
       );
     }).toList();
   }
@@ -873,7 +884,6 @@ class _ChartLegend extends StatelessWidget {
       spacing: 12,
       runSpacing: 8,
       children: entries.map((entry) {
-        final percentage = entry.percentage?.toDouble() ?? 0;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -887,7 +897,7 @@ class _ChartLegend extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              '${_localizedName(entry)} (${percentage.toStringAsFixed(0)}%)',
+              _localizedName(entry),
               textDirection: TextDirection.rtl,
               style: const TextStyle(
                 color: Color(0xFF132A4A),
@@ -898,6 +908,51 @@ class _ChartLegend extends StatelessWidget {
           ],
         );
       }).toList(),
+    );
+  }
+}
+
+class _ExternalSliceLabel extends StatelessWidget {
+  const _ExternalSliceLabel({required this.color, required this.percentage});
+
+  final Color color;
+  final double percentage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 2,
+          color: color,
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color, width: 1),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Text(
+            '${percentage.toStringAsFixed(0)}%',
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
