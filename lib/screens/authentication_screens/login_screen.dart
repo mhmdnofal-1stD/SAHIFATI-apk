@@ -410,6 +410,7 @@ class _LoginScreenState extends State<LoginScreen> {
         isSignup: false,
         fillViewport: true,
         preferCompactMobileLayout: true,
+        showHeading: false,
         onSelectSignup: usersProvider.isLoading
             ? null
             : () {
@@ -551,7 +552,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
               ),
             ),
-            SizedBox(height: isCompactPhone ? 18 : 22),
+            const SizedBox(height: 8),
             const _OwnerBrandingCard(),
           ],
         ),
@@ -565,18 +566,14 @@ class _OwnerBrandingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F1E7),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE1D5C2)),
-      ),
-      child: Column(
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'auth_owner_brand_caption'.tr,
-            textAlign: TextAlign.center,
+            'By',
             style: TextStyle(
               fontFamily: AppFonts.primaryFont,
               fontSize: 12,
@@ -584,10 +581,10 @@ class _OwnerBrandingCard extends StatelessWidget {
               color: const Color(0xFF6A7685),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(width: 6),
           SvgPicture.asset(
             Assets.organization1STDLogo,
-            height: 54,
+            height: 28,
             fit: BoxFit.contain,
           ),
         ],

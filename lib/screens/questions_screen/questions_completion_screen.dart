@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
-import 'package:sahifaty/screens/sahifa_screen/sahifa_screen.dart';
+import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/no_pop_scope.dart';
@@ -34,16 +34,16 @@ class QuestionsCompletionScreen extends StatefulWidget {
 }
 
 class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
-  bool _isOpeningSahifa = false;
+  bool _isOpeningReadingBrowser = false;
   String? _errorMessage;
 
-  Future<void> _openSahifa() async {
+  Future<void> _openReadingBrowser() async {
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final user = usersProvider.selectedUser;
 
     setState(() {
-      _isOpeningSahifa = true;
+      _isOpeningReadingBrowser = true;
       _errorMessage = null;
     });
 
@@ -56,7 +56,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
         return;
       }
 
-      Get.off(() => const SahifaScreen(firstScreen: false));
+      Get.offAllNamed(MainScreen.routeName);
     } catch (error) {
       if (!mounted) {
         return;
@@ -65,13 +65,13 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
       final message = error.toString().replaceFirst('Exception: ', '').trim();
       setState(() {
         _errorMessage = message.isEmpty
-            ? 'questions_completion_open_sahifa_error'.tr
+        ? 'questions_completion_open_browse_error'.tr
             : message;
       });
     } finally {
       if (mounted) {
         setState(() {
-          _isOpeningSahifa = false;
+          _isOpeningReadingBrowser = false;
         });
       }
     }
@@ -255,8 +255,10 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                             runSpacing: 12,
                             children: [
                               FilledButton.icon(
-                                onPressed: _isOpeningSahifa ? null : _openSahifa,
-                                icon: _isOpeningSahifa
+                              onPressed: _isOpeningReadingBrowser
+                                ? null
+                                : _openReadingBrowser,
+                              icon: _isOpeningReadingBrowser
                                     ? const SizedBox(
                                         width: 16,
                                         height: 16,
@@ -274,13 +276,13 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                   ),
                                 ),
                                 label: Text(
-                                  _isOpeningSahifa
+                                  _isOpeningReadingBrowser
                                       ? 'questions_completion_opening_label'.tr
                                       : 'questions_completion_continue_label'.tr,
                                 ),
                               ),
                               OutlinedButton.icon(
-                                onPressed: _isOpeningSahifa
+                                onPressed: _isOpeningReadingBrowser
                                     ? null
                                     : () => Get.back<void>(),
                                 icon: const Icon(Icons.arrow_back),

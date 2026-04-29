@@ -94,15 +94,75 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     context.read<SurahsProvider>().resetForAccountSwitch();
   }
 
-  Future<void> _continueWithUser(Map<String, dynamic> userData) async {
-    if (userData['isCurrent'] == true) {
-      Get.back();
+  Future<void> _bootstrapAndEnterSelectedUser({
+    required UsersProvider usersProvider,
+    required EvaluationsProvider evaluationsProvider,
+  }) async {
+    final selectedUser = usersProvider.selectedUser;
+    if (selectedUser == null) {
+      throw Exception('auth_saved_accounts_session_expired'.tr);
+    }
+
+    await _resetUserScopedState();
+    try {
+      await usersProvider.ensureLicenseStateLoaded(
+        forceRefresh: !usersProvider.hasKnownLicenseState,
+      );
+    } catch (error) {
+      debugPrint('Saved-account bootstrap skipped license refresh: $error');
+    }
+
+    if (usersProvider.canProceedWithoutFreshLicenseCheck) {
+      await usersProvider.ensureReadingDisplayPreferencesLoaded(
+        forceRefresh: true,
+      );
+    }
+
+    if (!mounted) {
       return;
     }
 
+    await navigateAfterSuccessfulLogin(
+      userId: selectedUser.id,
+      isFirstLogin: usersProvider.isFirstLogin,
+      hasActiveLicense: usersProvider.canProceedWithoutFreshLicenseCheck,
+      loadChartData: (userId) => evaluationsProvider.getQuranChartData(userId),
+    );
+  }
+
+  Future<void> _continueWithUser(Map<String, dynamic> userData) async {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
+
+    if (userData['isCurrent'] == true) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final hasReadyCurrentUser = usersProvider.selectedUser != null;
+      final restoredCurrentUser = hasReadyCurrentUser
+          ? true
+          : await usersProvider.switchToStoredUser(userData);
+
+      if (restoredCurrentUser && usersProvider.selectedUser != null) {
+        await _bootstrapAndEnterSelectedUser(
+          usersProvider: usersProvider,
+          evaluationsProvider: evaluationsProvider,
+        );
+        return;
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+      _prepareLoginForUser(userData);
+      return;
+    }
 
     if (userData['hasActiveSession'] == true) {
       setState(() {
@@ -111,31 +171,9 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
 
       final switched = await usersProvider.switchToStoredUser(userData);
       if (switched && usersProvider.selectedUser != null) {
-        await _resetUserScopedState();
-        try {
-          await usersProvider.ensureLicenseStateLoaded(
-            forceRefresh: !usersProvider.hasKnownLicenseState,
-          );
-        } catch (error) {
-          debugPrint('Saved-account bootstrap skipped license refresh: $error');
-        }
-
-        if (usersProvider.canProceedWithoutFreshLicenseCheck) {
-          await usersProvider.ensureReadingDisplayPreferencesLoaded(
-            forceRefresh: true,
-          );
-        }
-
-        if (!mounted) {
-          return;
-        }
-
-        await navigateAfterSuccessfulLogin(
-          userId: usersProvider.selectedUser!.id,
-          isFirstLogin: usersProvider.isFirstLogin,
-          hasActiveLicense: usersProvider.canProceedWithoutFreshLicenseCheck,
-          loadChartData: (userId) =>
-              evaluationsProvider.getQuranChartData(userId),
+        await _bootstrapAndEnterSelectedUser(
+          usersProvider: usersProvider,
+          evaluationsProvider: evaluationsProvider,
         );
         return;
       }
@@ -222,61 +260,39 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   }
 
   Widget _buildSummaryBlock() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F1E6),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE2D8C8)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
             'auth_saved_accounts_label'.tr,
             style: TextStyle(
               fontFamily: AppFonts.primaryFont,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               color: const Color(0xFF132A4A),
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3ECE0),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE2D8C8)),
+          ),
+          child: Text(
             'auth_saved_accounts_count'.trParams({
               'count': _storedUsers.length.toString(),
             }),
             style: TextStyle(
               fontFamily: AppFonts.primaryFont,
-              fontSize: 13,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
               color: const Color(0xFF5E6B7D),
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(
-                Icons.verified_user_outlined,
-                size: 16,
-                color: Color(0xFF7A808A),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'auth_saved_accounts_caption'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 12,
-                    color: const Color(0xFF6B7687),
-                    height: 1.45,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -364,38 +380,6 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
               fontSize: 13,
               color: const Color(0xFF5E6B7D),
               height: 1.55,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3ECE0),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE4D9C7)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.lightbulb_outline_rounded,
-                  size: 16,
-                  color: Color(0xFF6A7688),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'auth_saved_accounts_caption'.tr,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primaryFont,
-                      fontSize: 12,
-                      height: 1.45,
-                      color: const Color(0xFF6A7688),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -506,7 +490,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       _statusText(user),
                       style: TextStyle(
                         fontFamily: AppFonts.primaryFont,
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: statusColor,
                       ),
@@ -517,7 +501,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                     'auth_saved_accounts_continue'.tr,
                     style: TextStyle(
                       fontFamily: AppFonts.primaryFont,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: const Color(0xFF132A4A),
                     ),
@@ -558,7 +542,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                 _buildEmptyState()
               else ...[
                 _buildSummaryBlock(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),

@@ -17,6 +17,7 @@ class AuthScreenShell extends StatelessWidget {
     this.maxWidth = 440,
     this.fillViewport = false,
     this.preferCompactMobileLayout = false,
+    this.showHeading = true,
   });
 
   final String title;
@@ -28,6 +29,7 @@ class AuthScreenShell extends StatelessWidget {
   final double maxWidth;
   final bool fillViewport;
   final bool preferCompactMobileLayout;
+  final bool showHeading;
 
   @override
   Widget build(BuildContext context) {
@@ -128,31 +130,33 @@ class AuthScreenShell extends StatelessWidget {
                                     onSelectSignup: onSelectSignup,
                                   ),
                                   SizedBox(height: modeSpacing),
-                                  Text(
-                                    title,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: AppFonts.primaryFont,
-                                      fontSize: titleFontSize,
-                                      fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF132A4A),
-                                      height: 1.15,
-                                    ),
-                                  ),
-                                  if (hasSubtitle) ...[
-                                    SizedBox(height: titleSpacing),
+                                  if (showHeading) ...[
                                     Text(
-                                      subtitle,
+                                      title,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontFamily: AppFonts.primaryFont,
-                                        fontSize: 14,
-                                        color: const Color(0xFF556277),
-                                        height: 1.5,
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF132A4A),
+                                        height: 1.15,
                                       ),
                                     ),
+                                    if (hasSubtitle) ...[
+                                      SizedBox(height: titleSpacing),
+                                      Text(
+                                        subtitle,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontFamily: AppFonts.primaryFont,
+                                          fontSize: 14,
+                                          color: const Color(0xFF556277),
+                                          height: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                    SizedBox(height: contentSpacing),
                                   ],
-                                  SizedBox(height: contentSpacing),
                                   child,
                                 ],
                               ),

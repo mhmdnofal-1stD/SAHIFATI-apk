@@ -12,9 +12,10 @@ import 'package:share_plus/share_plus.dart';
 import '../../providers/users_provider.dart';
 import '../../services/users_services.dart';
 import '../../core/utils/file_download.dart';
-import '../widgets/no_pop_scope.dart';
+import '../widgets/custom_back_button.dart';
 import 'add_supervisor_screen.dart';
 import 'incoming_requests_screen.dart';
+import 'profile_details_form.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -93,7 +94,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _handleShare(String shareUrl, String username) async {
     final bytes = await _captureCardImage();
     final shareText =
-        '$username\n$shareUrl\n${'profile_qr_share_caption'.tr}';
+        '$username\n${'profile_qr_share_caption'.tr}\n$shareUrl';
     if (bytes == null) {
       await SharePlus.instance.share(
         ShareParams(
@@ -166,113 +167,113 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.shortestSide < 600;
 
-    return NoPopScope(
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F4ED),
+      appBar: AppBar(
         backgroundColor: const Color(0xFFF7F4ED),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF7F4ED),
-          elevation: 0,
-          centerTitle: true,
-          iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
-          title: Text(
-            'profile_screen_title'.tr,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontWeight: FontWeight.w800,
+        elevation: 0,
+        centerTitle: true,
+        leading: const CustomBackButton(),
+        iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
+        title: Text(
+          'profile_screen_title'.tr,
+          style: const TextStyle(
+            color: Color(0xFF132A4A),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 4),
+            child: Tooltip(
+              message: 'supervision_incoming_screen_title'.tr,
+              child: IconButton(
+                onPressed: () => Get.to(
+                  () => const IncomingRequestsScreen(),
+                ),
+                icon: const Icon(
+                  Icons.inbox_outlined,
+                  color: Color(0xFF132A4A),
+                ),
+              ),
             ),
           ),
-          actions: [
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 4),
-              child: Tooltip(
-                message: 'supervision_incoming_screen_title'.tr,
-                child: IconButton(
-                  onPressed: () => Get.to(
-                    () => const IncomingRequestsScreen(),
-                  ),
-                  icon: const Icon(
-                    Icons.inbox_outlined,
-                    color: Color(0xFF132A4A),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8),
+            child: Tooltip(
+              message: 'profile_add_supervisor_tooltip'.tr,
+              child: Material(
+                color: const Color(0xFF132A4A),
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _handleAddSupervisor,
+                  child: const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(Icons.add_rounded, color: Colors.white),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              child: Tooltip(
-                message: 'profile_add_supervisor_tooltip'.tr,
-                child: Material(
-                  color: const Color(0xFF132A4A),
-                  shape: const CircleBorder(),
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: _handleAddSupervisor,
-                    child: const SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: Icon(Icons.add_rounded, color: Colors.white),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _reload,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+              isCompact ? 16 : 24,
+              12,
+              isCompact ? 16 : 24,
+              24,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ProfileIdentityHeader(
+                      username: user?.username ?? user?.email ?? '',
+                      email: user?.email ?? '',
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _reload,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                isCompact ? 16 : 24,
-                12,
-                isCompact ? 16 : 24,
-                24,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _ProfileIdentityHeader(
-                        username: user?.username ?? user?.email ?? '',
-                        email: user?.email ?? '',
-                      ),
-                      const SizedBox(height: 18),
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: _supervisionCodeFuture,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState !=
-                              ConnectionState.done) {
-                            return const _QrCardLoading();
-                          }
-                          if (snapshot.hasError) {
-                            return _QrCardError(
-                              message: snapshot.error.toString(),
-                              onRetry: _reload,
-                            );
-                          }
-                          final data = snapshot.data!;
-                          final username =
-                              (data['username'] as String?)?.trim().isNotEmpty ==
-                                      true
-                                  ? data['username'] as String
-                                  : (user?.username ?? user?.email ?? '');
-                          final shareUrl = data['shareUrl'] as String;
-                          return _QrShareCard(
-                            qrCardKey: _qrCardKey,
-                            username: username,
-                            shareUrl: shareUrl,
-                            onShare: () => _handleShare(shareUrl, username),
-                            onSave: _handleSave,
+                    const SizedBox(height: 18),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _supervisionCodeFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const _QrCardLoading();
+                        }
+                        if (snapshot.hasError) {
+                          return _QrCardError(
+                            message: snapshot.error.toString(),
+                            onRetry: _reload,
                           );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      const _SupervisorIntroCard(),
-                    ],
-                  ),
+                        }
+                        final data = snapshot.data!;
+                        final username =
+                            (data['username'] as String?)?.trim().isNotEmpty ==
+                                    true
+                                ? data['username'] as String
+                                : (user?.username ?? user?.email ?? '');
+                        final shareUrl = data['shareUrl'] as String;
+                        return _QrShareCard(
+                          qrCardKey: _qrCardKey,
+                          username: username,
+                          shareUrl: shareUrl,
+                          onShare: () => _handleShare(shareUrl, username),
+                          onSave: _handleSave,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const _SupervisorIntroCard(),
+                    const SizedBox(height: 16),
+                    const ProfileDetailsForm(),
+                  ],
                 ),
               ),
             ),
@@ -416,47 +417,64 @@ class _QrShareCard extends StatelessWidget {
             child: Container(
               color: Colors.white,
               padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  QrImageView(
-                    data: shareUrl,
-                    version: QrVersions.auto,
-                    size: 240,
-                    backgroundColor: Colors.white,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: Color(0xFF132A4A),
-                    ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: Color(0xFF132A4A),
-                    ),
-                    errorCorrectionLevel: QrErrorCorrectLevel.H,
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 240,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      QrImageView(
+                        data: shareUrl,
+                        version: QrVersions.auto,
+                        size: 240,
+                        backgroundColor: Colors.white,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF132A4A),
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF132A4A),
+                        ),
+                        errorCorrectionLevel: QrErrorCorrectLevel.H,
+                      ),
+                      IgnorePointer(
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 96),
+                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/images/clean_logo.png',
+                                width: 24,
+                                height: 24,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                username,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textDirection: TextDirection.rtl,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF132A4A),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  Text(
-                    username,
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFF132A4A),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'sahifati.org',
-                    textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      color: const Color(0xFF132A4A).withValues(alpha: 0.6),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

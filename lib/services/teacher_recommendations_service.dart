@@ -27,6 +27,16 @@ String buildTeacherRecommendationsPath(
   ).toString();
 }
 
+class TeacherRecommendationUpsertResult {
+  const TeacherRecommendationUpsertResult({
+    required this.recommendation,
+    required this.operation,
+  });
+
+  final TeacherRecommendation recommendation;
+  final String operation;
+}
+
 class TeacherRecommendationsService {
   final SahifatyApi _sahifatyApi = SahifatyApi();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
@@ -105,6 +115,43 @@ class TeacherRecommendationsService {
 
       rethrow;
     }
+  }
+
+  Future<TeacherRecommendationUpsertResult> createRecommendation({
+    required int studentId,
+    required int ayahId,
+  }) async {
+    final response = await _sahifatyApi.post(
+      url: 'teacher-recommendations',
+      body: {
+        'studentId': studentId,
+        'ayahId': ayahId,
+      },
+    );
+
+    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_extractCreateErrorMessage(decoded));
+    }
+
+    if (decoded is! Map) {
+      throw Exception('service_teacher_recommendations_create_failed'.tr);
+    }
+
+    final data = Map<String, dynamic>.from(decoded);
+    final recommendationJson = data['recommendation'];
+    if (recommendationJson is! Map) {
+      throw Exception('service_teacher_recommendations_create_failed'.tr);
+    }
+
+    return TeacherRecommendationUpsertResult(
+      recommendation: TeacherRecommendation.fromJson(
+        Map<String, dynamic>.from(recommendationJson),
+      ),
+      operation: data['operation']?.toString() == 'updated'
+          ? 'updated'
+          : 'created',
+    );
   }
 
   Future<http.Response> deleteRecommendation(int recommendationId) async {
@@ -188,5 +235,26 @@ class TeacherRecommendationsService {
     return recommendations
         .where((item) => ayahIdSet.contains(item.ayahId))
         .toList();
+  }
+
+  String _extractCreateErrorMessage(dynamic decoded) {
+    if (decoded is Map) {
+      final data = Map<String, dynamic>.from(decoded);
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return message.trim();
+      }
+      if (message is List) {
+        final joined = message
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .join('\n');
+        if (joined.isNotEmpty) {
+          return joined;
+        }
+      }
+    }
+
+    return 'service_teacher_recommendations_create_failed'.tr;
   }
 }

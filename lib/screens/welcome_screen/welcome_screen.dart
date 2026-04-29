@@ -8,6 +8,7 @@ import 'package:sahifaty/models/chart_evaluation_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/school_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import 'package:sahifaty/screens/questions_screen/questions_screen.dart';
 import 'package:sahifaty/screens/widgets/assessment_dimension_toggle.dart';
 import 'package:sahifaty/screens/widgets/no_pop_scope.dart';
@@ -24,7 +25,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   bool _hasResolvedChartState = false;
   String? _chartErrorMessage;
   bool _isStartingAssessment = false;
-  bool _isOpeningSahifa = false;
+  bool _isOpeningReadingBrowser = false;
   String? _kickoffErrorMessage;
 
   @override
@@ -90,7 +91,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Future<void> _startAssessment() async {
-    if (_isStartingAssessment || _isOpeningSahifa) {
+    if (_isStartingAssessment || _isOpeningReadingBrowser) {
       return;
     }
 
@@ -138,8 +139,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
-  Future<void> _openSahifaNow() async {
-    if (_isStartingAssessment || _isOpeningSahifa) {
+  Future<void> _openReadingBrowserNow() async {
+    if (_isStartingAssessment || _isOpeningReadingBrowser) {
       return;
     }
 
@@ -152,7 +153,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
 
     setState(() {
-      _isOpeningSahifa = true;
+      _isOpeningReadingBrowser = true;
       _kickoffErrorMessage = null;
     });
 
@@ -163,7 +164,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         return;
       }
 
-      Get.offAllNamed('/sahifa');
+      Get.offAllNamed(
+        MainScreen.routeName,
+        parameters: const {'comesFirst': 'true'},
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -178,7 +182,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isOpeningSahifa = false;
+          _isOpeningReadingBrowser = false;
         });
       }
     }
@@ -257,10 +261,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 flex: isWide ? 6 : 0,
                                 child: _WelcomeStoryCard(
                                   isBusy: _isStartingAssessment,
-                                  isOpeningSahifa: _isOpeningSahifa,
+                                  isOpeningSahifa: _isOpeningReadingBrowser,
                                   errorMessage: _kickoffErrorMessage,
                                   onPrimaryPressed: _startAssessment,
-                                  onSecondaryPressed: _openSahifaNow,
+                                  onSecondaryPressed: _openReadingBrowserNow,
                                 ),
                               ),
                               SizedBox(
@@ -322,33 +326,14 @@ class _WelcomeHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.16),
-              ),
-            ),
-            child: Text(
-              'welcome_kickoff_badge'.tr,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
           Text(
             firstName == null
-                ? 'welcome_kickoff_title'.tr
-                : '${'welcome_back'.tr} $firstName، ${'welcome_kickoff_title'.tr}',
+                ? 'welcome_back'.tr
+                : '${'welcome_back'.tr} $firstName',
             textDirection: TextDirection.rtl,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 30,
+              fontSize: 26,
               fontWeight: FontWeight.w800,
               height: 1.25,
             ),
@@ -456,30 +441,10 @@ class _WelcomeStoryCard extends StatelessWidget {
             bodyKey: 'welcome_kickoff_step_3_body',
           ),
           const SizedBox(height: 24),
-          Text(
-            'welcome_cta_title'.tr,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'welcome_cta_body'.tr,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 14,
-              height: 1.6,
-            ),
-          ),
           if (errorMessage != null) ...[
-            const SizedBox(height: 16),
             _InlineFeedbackBanner(message: errorMessage!),
+            const SizedBox(height: 16),
           ],
-          const SizedBox(height: 18),
           SizedBox(
             height: 54,
             child: ElevatedButton.icon(
@@ -674,6 +639,8 @@ class _WelcomeMetricsCard extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            _ChartLegend(entries: entries),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
@@ -884,6 +851,53 @@ class _JourneyStep extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  const _ChartLegend({required this.entries});
+
+  final List<ChartEvaluationData> entries;
+
+  String _localizedName(ChartEvaluationData entry) {
+    final langCode = Get.locale?.languageCode ?? 'ar';
+    return entry.name[langCode] ?? entry.name['ar'] ?? entry.name['en'] ?? '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = EvaluationsController();
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 12,
+      runSpacing: 8,
+      children: entries.map((entry) {
+        final percentage = entry.percentage?.toDouble() ?? 0;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: controller.getColorForChartEntry(entry),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${_localizedName(entry)} (${percentage.toStringAsFixed(0)}%)',
+              textDirection: TextDirection.rtl,
+              style: const TextStyle(
+                color: Color(0xFF132A4A),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 }

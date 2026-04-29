@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
 import '../../providers/users_provider.dart';
+import '../widgets/custom_back_button.dart';
 
 class MyLicensesScreen extends StatefulWidget {
   const MyLicensesScreen({super.key});
@@ -16,16 +18,23 @@ class MyLicensesScreen extends StatefulWidget {
 
 class _MyLicensesScreenState extends State<MyLicensesScreen> {
   late final Future<void> _loadFuture;
-  int _selectedMaxUses = 1;
+  final TextEditingController _maxUsesController =
+      TextEditingController(text: '1');
   final TextEditingController _giftContributionController =
       TextEditingController(text: '1');
   String? _recentRawCode;
-  String? _inlineMessage;
 
   @override
   void initState() {
     super.initState();
     _loadFuture = _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _maxUsesController.dispose();
+    _giftContributionController.dispose();
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -39,7 +48,6 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
         return;
       }
     }
-
     await usersProvider.loadPromoWorkspace(forceRefresh: true);
   }
 
@@ -47,171 +55,167 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     if (rawValue == null) {
       return 'license_hub_date_not_set'.tr;
     }
-
     final parsed = DateTime.tryParse(rawValue.toString());
     if (parsed == null) {
       return rawValue.toString();
     }
-
     final date = parsed.toLocal();
     return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _createPromoCode() async {
-    final usersProvider = context.read<UsersProvider>();
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message, textDirection: TextDirection.rtl),
+          backgroundColor: isError ? Colors.red.shade700 : null,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
 
-    setState(() {
-      _inlineMessage = null;
-    });
+  Future<void> _createPromoCode(int ownedCount) async {
+    final usersProvider = context.read<UsersProvider>();
+    final value = int.tryParse(_maxUsesController.text.trim()) ?? 0;
+    if (value < 1) {
+      _showSnack('license_hub_max_uses_invalid'.tr, isError: true);
+      return;
+    }
+    if (value > ownedCount) {
+      _showSnack(
+        'license_hub_max_uses_exceeds'.trParams({
+          'max': ownedCount.toString(),
+        }),
+        isError: true,
+      );
+      return;
+    }
 
     try {
-      final createdPromo = await usersProvider.createPromoCode(
-        maxUses: _selectedMaxUses,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
+      final createdPromo =
+          await usersProvider.createPromoCode(maxUses: value);
+      if (!mounted) return;
       setState(() {
         _recentRawCode = createdPromo['rawCode'] as String?;
-        _inlineMessage = 'license_hub_create_success'.trParams({
-          'count': _selectedMaxUses.toString(),
-        });
       });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = usersProvider.extractErrorMessage(error);
-      });
-    }
-  }
-
-  Future<void> _contributeToGiftPool() async {
-    final usersProvider = context.read<UsersProvider>();
-    final ownedCount =
-        ((usersProvider.licenseBalanceSummary?['ownedCount'] ?? 0) as num)
-            .toInt();
-    final quantity = int.tryParse(_giftContributionController.text.trim()) ?? 0;
-
-    setState(() {
-      _inlineMessage = null;
-    });
-
-    if (quantity < 1 || quantity > ownedCount) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = 'license_hub_gift_pool_not_enough'.tr;
-      });
-      return;
-    }
-
-    try {
-      final response = await usersProvider.contributeToGiftPool(
-        quantity: quantity,
+      _showSnack(
+        'license_hub_create_success'.trParams({'count': value.toString()}),
       );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = 'license_hub_gift_pool_success'.trParams({
-          'count': (response['quantityContributed'] ?? quantity).toString(),
-        });
-      });
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = usersProvider.extractErrorMessage(error);
-      });
+      _showSnack(usersProvider.extractErrorMessage(error), isError: true);
     }
   }
 
-  Future<void> _copyRecentCode() async {
-    if (_recentRawCode == null || _recentRawCode!.isEmpty) {
+  Future<void> _contributeToGiftPool(int ownedCount) async {
+    final usersProvider = context.read<UsersProvider>();
+    final quantity =
+        int.tryParse(_giftContributionController.text.trim()) ?? 0;
+
+    if (quantity < 1) {
+      _showSnack('license_hub_max_uses_invalid'.tr, isError: true);
+      return;
+    }
+    if (quantity > ownedCount) {
+      _showSnack('license_hub_gift_pool_not_enough'.tr, isError: true);
       return;
     }
 
-    await Clipboard.setData(ClipboardData(text: _recentRawCode!));
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('license_hub_recent_code_copied'.tr),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('license_hub_gift_pool_confirm_title'.tr),
+        content: Text(
+          'license_hub_gift_pool_confirm_body'.trParams({
+            'count': quantity.toString(),
+          }),
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('cancel'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('license_hub_gift_pool_action'.tr),
+          ),
+        ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    try {
+      final response =
+          await usersProvider.contributeToGiftPool(quantity: quantity);
+      if (!mounted) return;
+      _showSnack(
+        'license_hub_gift_pool_success'.trParams({
+          'count': (response['quantityContributed'] ?? quantity).toString(),
+        }),
+      );
+    } catch (error) {
+      _showSnack(usersProvider.extractErrorMessage(error), isError: true);
+    }
+  }
+
+  Future<void> _copyCode(String code) async {
+    await Clipboard.setData(ClipboardData(text: code));
+    _showSnack('license_hub_recent_code_copied'.tr);
+  }
+
+  Future<void> _shareCode(String code) async {
+    final message =
+        'license_hub_share_message'.trParams({'code': code});
+    await SharePlus.instance.share(ShareParams(text: message));
   }
 
   Future<void> _revokePromoCode(Map<String, dynamic> promoCode) async {
     final usersProvider = context.read<UsersProvider>();
     final shouldRevoke = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('license_hub_revoke_confirm_title'.tr),
         content: Text(
           'license_hub_revoke_confirm_body'.trParams({
-            'code': (promoCode['codePreview'] ?? '').toString(),
+            'code': (promoCode['rawCode'] ??
+                    promoCode['codePreview'] ??
+                    '')
+                .toString(),
           }),
           textDirection: TextDirection.rtl,
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text('cancel'.tr),
           ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text('license_hub_revoke_action'.tr),
           ),
         ],
       ),
     );
 
-    if (shouldRevoke != true) {
-      return;
-    }
+    if (shouldRevoke != true) return;
 
     try {
       final response = await usersProvider.revokePromoCode(
         (promoCode['id'] ?? '').toString(),
       );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = 'license_hub_revoke_success'.trParams({
+      if (!mounted) return;
+      _showSnack(
+        'license_hub_revoke_success'.trParams({
           'count': (response['releasedCount'] ?? 0).toString(),
-        });
-      });
+        }),
+      );
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineMessage = usersProvider.extractErrorMessage(error);
-      });
+      _showSnack(usersProvider.extractErrorMessage(error), isError: true);
     }
-  }
-
-  @override
-  void dispose() {
-    _giftContributionController.dispose();
-    super.dispose();
   }
 
   Widget _buildSummaryTile({
@@ -259,6 +263,13 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     UsersProvider usersProvider,
   ) {
     final isRevoked = (promoCode['status'] ?? '') == 'revoked';
+    final rawCode = (promoCode['rawCode'] ?? '').toString();
+    final hasRawCode = !isRevoked && rawCode.isNotEmpty;
+    final displayCode = hasRawCode
+        ? rawCode
+        : (promoCode['codePreview'] ?? '').toString();
+    final remainingUses =
+        ((promoCode['remainingUses'] ?? 0) as num).toInt();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -273,14 +284,16 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  (promoCode['codePreview'] ?? '').toString(),
+                child: SelectableText(
+                  displayCode,
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
                     fontFamily: AppFonts.primaryFont,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.blackFontColor,
+                    color: hasRawCode
+                        ? AppColors.buttonColor
+                        : AppColors.blackFontColor,
                   ),
                 ),
               ),
@@ -326,7 +339,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
               ),
               Text(
                 'license_hub_code_remaining'.trParams({
-                  'count': (promoCode['remainingUses'] ?? 0).toString(),
+                  'count': remainingUses.toString(),
                 }),
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
@@ -358,15 +371,47 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton(
-              onPressed: isRevoked || usersProvider.isPromoCodesLoading
-                  ? null
-                  : () => _revokePromoCode(promoCode),
-              child: Text('license_hub_revoke_action'.tr),
+          if (!isRevoked && !hasRawCode) ...[
+            const SizedBox(height: 10),
+            Text(
+              'license_hub_legacy_code_hidden'.tr,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                color: AppColors.hintTextColor,
+                fontSize: 12,
+              ),
             ),
+          ],
+          const SizedBox(height: 14),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (hasRawCode)
+                OutlinedButton.icon(
+                  onPressed: () => _copyCode(rawCode),
+                  icon: const Icon(Icons.copy, size: 18),
+                  label: Text('license_hub_recent_code_copy'.tr),
+                ),
+              if (hasRawCode)
+                OutlinedButton.icon(
+                  onPressed: () => _shareCode(rawCode),
+                  icon: const Icon(Icons.share, size: 18),
+                  label: Text('license_hub_share_action'.tr),
+                ),
+              if (!isRevoked && remainingUses > 0)
+                OutlinedButton(
+                  onPressed: usersProvider.isPromoCodesLoading
+                      ? null
+                      : () => _revokePromoCode(promoCode),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade700,
+                  ),
+                  child: Text('license_hub_revoke_action'.tr),
+                ),
+            ],
           ),
         ],
       ),
@@ -379,6 +424,14 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     final balance = usersProvider.licenseBalanceSummary;
     final giftPool = usersProvider.giftPoolSummary;
     final promoCodes = usersProvider.myPromoCodes;
+    final ownedCount = ((balance?['ownedCount'] ?? 0) as num).toInt();
+    final reservedCount = ((balance?['reservedCount'] ?? 0) as num).toInt();
+    final giftAvailable =
+        ((giftPool?['availableCount'] ?? 0) as num).toInt();
+    final giftContributed =
+        ((giftPool?['lifetimeContributed'] ?? 0) as num).toInt();
+    final giftConsumed =
+        ((giftPool?['lifetimeConsumed'] ?? 0) as num).toInt();
     final licenseStatus =
         usersProvider.selectedUser?.licenseStatus ?? 'pending';
 
@@ -387,6 +440,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.backgroundColor,
         elevation: 0,
+        leading: const CustomBackButton(),
         title: Text(
           'license_hub_title'.tr,
           style: TextStyle(
@@ -446,250 +500,43 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   children: [
                     _buildSummaryTile(
                       label: 'license_hub_owned_count'.tr,
-                      value: ((balance?['ownedCount'] ?? 0) as num).toString(),
+                      value: ownedCount.toString(),
                       accent: AppColors.buttonColor,
                     ),
                     const SizedBox(width: 12),
                     _buildSummaryTile(
                       label: 'license_hub_reserved_count'.tr,
-                      value:
-                          ((balance?['reservedCount'] ?? 0) as num).toString(),
+                      value: reservedCount.toString(),
                       accent: AppColors.primaryPurple,
                     ),
                   ],
                 ),
-                const SizedBox(height: 22),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.lineColor),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'license_hub_gift_pool_title'.tr,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: AppColors.blackFontColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'license_hub_gift_pool_body'.tr,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          color: AppColors.hintTextColor,
-                          height: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          _buildSummaryTile(
-                            label: 'license_hub_gift_pool_available'.trParams({
-                              'count':
-                                  ((giftPool?['availableCount'] ?? 0) as num)
-                                      .toString(),
-                            }),
-                            value: ((giftPool?['availableCount'] ?? 0) as num)
-                                .toString(),
-                            accent: AppColors.buttonColor,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildSummaryTile(
-                            label:
-                                'license_hub_gift_pool_contributed'.trParams({
-                              'count': ((giftPool?['lifetimeContributed'] ?? 0)
-                                      as num)
-                                  .toString(),
-                            }),
-                            value:
-                                ((giftPool?['lifetimeContributed'] ?? 0) as num)
-                                    .toString(),
-                            accent: AppColors.primaryPurple,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildSummaryTile(
-                            label: 'license_hub_gift_pool_consumed'.trParams({
-                              'count':
-                                  ((giftPool?['lifetimeConsumed'] ?? 0) as num)
-                                      .toString(),
-                            }),
-                            value: ((giftPool?['lifetimeConsumed'] ?? 0) as num)
-                                .toString(),
-                            accent: AppColors.successColor,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _giftContributionController,
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        decoration: InputDecoration(
-                          labelText: 'license_hub_gift_pool_quantity'.tr,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: usersProvider.isPromoCodesLoading
-                            ? null
-                            : _contributeToGiftPool,
-                        child: Text(
-                          usersProvider.isPromoCodesLoading
-                              ? 'license_hub_gift_pool_loading'.tr
-                              : 'license_hub_gift_pool_action'.tr,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildSummaryTile(
+                      label: 'license_hub_gift_pool_balance'.tr,
+                      value: giftAvailable.toString(),
+                      accent: AppColors.successColor,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryTile(
+                      label: 'license_hub_gift_pool_contributed_label'.tr,
+                      value: giftContributed.toString(),
+                      accent: AppColors.primaryPurple,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildSummaryTile(
+                      label: 'license_hub_gift_pool_consumed_label'.tr,
+                      value: giftConsumed.toString(),
+                      accent: AppColors.hintTextColor,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 22),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.lineColor),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'license_hub_create_title'.tr,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: AppColors.blackFontColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'license_hub_create_body'.tr,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          color: AppColors.hintTextColor,
-                          height: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<int>(
-                        initialValue: _selectedMaxUses,
-                        decoration: InputDecoration(
-                          labelText: 'license_hub_max_uses'.tr,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        items: List.generate(
-                          10,
-                          (index) => DropdownMenuItem<int>(
-                            value: index + 1,
-                            child: Text((index + 1).toString()),
-                          ),
-                        ),
-                        onChanged: usersProvider.isPromoCodesLoading
-                            ? null
-                            : (value) {
-                                if (value == null) {
-                                  return;
-                                }
-                                setState(() {
-                                  _selectedMaxUses = value;
-                                });
-                              },
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: usersProvider.isPromoCodesLoading
-                            ? null
-                            : _createPromoCode,
-                        child: Text(
-                          usersProvider.isPromoCodesLoading
-                              ? 'license_hub_loading'.tr
-                              : 'license_hub_create_action'.tr,
-                        ),
-                      ),
-                      if (_recentRawCode != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.mintSurface,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(
-                                'license_hub_recent_code_title'.tr,
-                                textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.blackFontColor,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              SelectableText(
-                                _recentRawCode!,
-                                textDirection: TextDirection.ltr,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.buttonColor,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: OutlinedButton(
-                                  onPressed: _copyRecentCode,
-                                  child:
-                                      Text('license_hub_recent_code_copy'.tr),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (_inlineMessage != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.warmSurface,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      _inlineMessage!,
-                      textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        color: AppColors.blackFontColor,
-                      ),
-                    ),
-                  ),
-                ],
+                _buildCreateCodeSection(usersProvider, ownedCount),
+                const SizedBox(height: 22),
+                _buildGiftPoolSection(usersProvider, ownedCount),
                 const SizedBox(height: 22),
                 Text(
                   'license_hub_codes_title'.tr,
@@ -730,6 +577,224 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCreateCodeSection(
+    UsersProvider usersProvider,
+    int ownedCount,
+  ) {
+    final canCreate = ownedCount > 0 && !usersProvider.isPromoCodesLoading;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.lineColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'license_hub_create_title'.tr,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.blackFontColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'license_hub_create_body'.tr,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              color: AppColors.hintTextColor,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _maxUsesController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            decoration: InputDecoration(
+              labelText: 'license_hub_max_uses'.tr,
+              helperText: 'license_hub_max_uses_helper'.trParams({
+                'max': ownedCount.toString(),
+              }),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed: canCreate ? () => _createPromoCode(ownedCount) : null,
+            child: Text(
+              usersProvider.isPromoCodesLoading
+                  ? 'license_hub_loading'.tr
+                  : 'license_hub_create_action'.tr,
+            ),
+          ),
+          if (ownedCount == 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              'license_hub_max_uses_zero'.tr,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                color: AppColors.hintTextColor,
+                fontSize: 12,
+              ),
+            ),
+          ],
+          if (_recentRawCode != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.mintSurface,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'license_hub_recent_code_title'.tr,
+                    textDirection: TextDirection.rtl,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primaryFont,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blackFontColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    _recentRawCode!,
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      fontFamily: AppFonts.primaryFont,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.buttonColor,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _copyCode(_recentRawCode!),
+                        icon: const Icon(Icons.copy, size: 18),
+                        label: Text('license_hub_recent_code_copy'.tr),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _shareCode(_recentRawCode!),
+                        icon: const Icon(Icons.share, size: 18),
+                        label: Text('license_hub_share_action'.tr),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGiftPoolSection(
+    UsersProvider usersProvider,
+    int ownedCount,
+  ) {
+    final canContribute = ownedCount > 0 && !usersProvider.isPromoCodesLoading;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.lineColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'license_hub_gift_pool_title'.tr,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: AppColors.blackFontColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'license_hub_gift_pool_body'.tr,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontFamily: AppFonts.primaryFont,
+              color: AppColors.hintTextColor,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warmSurface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              'license_hub_gift_pool_irreversible'.tr,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontFamily: AppFonts.primaryFont,
+                color: AppColors.blackFontColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _giftContributionController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(6),
+            ],
+            decoration: InputDecoration(
+              labelText: 'license_hub_gift_pool_quantity'.tr,
+              helperText: 'license_hub_max_uses_helper'.trParams({
+                'max': ownedCount.toString(),
+              }),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
+            onPressed:
+                canContribute ? () => _contributeToGiftPool(ownedCount) : null,
+            child: Text(
+              usersProvider.isPromoCodesLoading
+                  ? 'license_hub_gift_pool_loading'.tr
+                  : 'license_hub_gift_pool_action'.tr,
+            ),
+          ),
+        ],
       ),
     );
   }

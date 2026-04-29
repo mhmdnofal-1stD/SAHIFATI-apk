@@ -31,65 +31,61 @@ class AuthSocialSection extends StatelessWidget {
 
   String _sectionLabel() {
     return (Get.locale?.languageCode ?? 'ar') == 'ar'
-        ? 'خيارات دخول أخرى'
-        : 'Other sign-in options';
+        ? 'الدخول بـ'
+        : 'Sign in with';
   }
 
   @override
   Widget build(BuildContext context) {
+    final iconChildren = <Widget>[
+      if (showEmailMethod)
+        const _StaticMethodIcon(
+          icon: Icons.alternate_email_rounded,
+          labelKey: 'auth_method_email',
+        ),
+      SizedBox(
+        width: 56,
+        height: 56,
+        child: Center(child: googleControl),
+      ),
+      if (showFacebook)
+        AuthCompactSocialButton(
+          semanticLabel: 'social_provider_facebook'.tr,
+          onPressed: onFacebookPressed,
+          isBusy: isBusy,
+          icon: const Icon(
+            Icons.facebook_rounded,
+            color: Color(0xFF1877F2),
+            size: 25,
+          ),
+        ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF6EFE5),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFE1D3C0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        SizedBox(
+          height: 56,
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(
-                _sectionLabel(),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF58657A),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(
+                  _sectionLabel(),
+                  style: TextStyle(
+                    fontFamily: AppFonts.primaryFont,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF58657A),
+                  ),
                 ),
               ),
-              const SizedBox(height: 14),
               Wrap(
                 alignment: WrapAlignment.center,
-                spacing: 18,
-                runSpacing: 16,
-                children: [
-                  if (showEmailMethod)
-                    const _StaticMethodIcon(
-                      icon: Icons.alternate_email_rounded,
-                      labelKey: 'auth_method_email',
-                    ),
-                  _MethodSlot(
-                    label: 'social_provider_google'.tr,
-                    child: googleControl,
-                  ),
-                  if (showFacebook)
-                    _MethodSlot(
-                      label: 'social_provider_facebook'.tr,
-                      child: AuthCompactSocialButton(
-                        semanticLabel: 'social_provider_facebook'.tr,
-                        onPressed: onFacebookPressed,
-                        isBusy: isBusy,
-                        icon: const Icon(
-                          Icons.facebook_rounded,
-                          color: Color(0xFF1877F2),
-                          size: 25,
-                        ),
-                      ),
-                    ),
-                ],
+                spacing: 14,
+                runSpacing: 8,
+                children: iconChildren,
               ),
             ],
           ),
@@ -163,49 +159,6 @@ class AuthCompactSocialButton extends StatelessWidget {
                   : icon,
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MethodSlot extends StatelessWidget {
-  const _MethodSlot({
-    required this.label,
-    required this.child,
-  });
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 56,
-              height: 56,
-              child: Center(child: child),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF5D697D),
-              ),
-            ),
-          ],
         ),
       ),
     );

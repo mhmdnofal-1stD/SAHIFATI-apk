@@ -24,10 +24,11 @@ import 'screens/authentication_screens/license_activation_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
+import 'screens/main_screen/main_screen.dart';
 import 'screens/quran_view/index_page.dart';
-import 'screens/sahifa_screen/sahifa_screen.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
+import 'screens/settings_screen/my_licenses_screen.dart';
 import 'services/localization_service.dart';
 
 Future<void> main() async {
@@ -199,12 +200,23 @@ class MyApp extends StatelessWidget {
           page: () => const LicenseActivationScreen(),
         ),
         GetPage(
-          name: '/sahifa',
+          name: '/my-licenses',
+          page: () => const AuthenticatedRouteGate(
+            child: MyLicensesScreen(),
+          ),
+        ),
+        GetPage(
+          name: MainScreen.routeName,
           page: () => AuthenticatedRouteGate(
-            loader: _ensureSahifaChartData,
-            child: SahifaScreen(
-              firstScreen: (Get.parameters['firstScreen'] ?? 'false') == 'true',
+            child: MainScreen(
+              comesFirst: (Get.parameters['comesFirst'] ?? 'false') == 'true',
             ),
+          ),
+        ),
+        GetPage(
+          name: '/sahifa',
+          page: () => const AuthenticatedRouteGate(
+            child: MainScreen(),
           ),
         ),
         GetPage(
@@ -258,32 +270,6 @@ class MyApp extends StatelessWidget {
         ),
       ],
     );
-  }
-}
-
-Future<void> _ensureSahifaChartData(
-  UsersProvider usersProvider,
-  EvaluationsProvider evaluationsProvider,
-) async {
-  final user = usersProvider.selectedUser;
-  if (user == null) {
-    return;
-  }
-
-  await usersProvider.checkFirstLogin(user: user);
-  if (usersProvider.isFirstLogin) {
-    Get.offAllNamed('/welcome');
-    return;
-  }
-
-  if (evaluationsProvider.chartEvaluationData.isNotEmpty) {
-    return;
-  }
-
-  try {
-    await evaluationsProvider.getQuranChartData(user.id);
-  } catch (error) {
-    debugPrint('Sahifa bootstrap skipped chart refresh: $error');
   }
 }
 

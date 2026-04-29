@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:sahifaty/core/reading/reading_session.dart';
+import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
 
 typedef LoginRouteReplacer = void Function(
@@ -53,8 +54,8 @@ Future<void> navigateAfterSuccessfulLogin({
 
     await loadChartData(userId);
     replace(
-      '/sahifa',
-      parameters: const {'firstScreen': 'false'},
+      MainScreen.routeName,
+      parameters: const {'comesFirst': 'false'},
     );
     return;
   }

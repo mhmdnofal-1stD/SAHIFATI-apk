@@ -6,16 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:quran/quran.dart' as quran;
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:sahifaty/controllers/ayat_controller.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/models/ayat.dart';
+import 'package:sahifaty/models/evaluation.dart';
+import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
+import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
+import 'package:sahifaty/services/users_services.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
@@ -156,6 +161,81 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       <int, TapGestureRecognizer>{};
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
+    final UsersServices _usersService = UsersServices();
+    User? _viewerUser;
+
+  // Reading display filter (fades non-matching ayahs in the rendered text).
+  final Set<String> _filterAyahTypes = <String>{};
+  final Set<String> _filterSubjectKeys = <String>{};
+  final Set<String> _filterSchoolLevelIds = <String>{};
+  final Set<int> _filterMemoEvaluationIds = <int>{};
+  final Set<int> _filterCompreEvaluationIds = <int>{};
+
+  bool get _hasActiveDisplayFilter =>
+      _filterAyahTypes.isNotEmpty ||
+      _filterSubjectKeys.isNotEmpty ||
+      _filterSchoolLevelIds.isNotEmpty ||
+      _filterMemoEvaluationIds.isNotEmpty ||
+      _filterCompreEvaluationIds.isNotEmpty;
+
+  bool _ayahMatchesDisplayFilter(
+    Ayat ayah,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (!_hasActiveDisplayFilter) {
+      return true;
+    }
+
+    if (_filterAyahTypes.isNotEmpty) {
+      final type = ayah.ayahType?.trim().toLowerCase();
+      if (type == null || !_filterAyahTypes.contains(type)) {
+        return false;
+      }
+    }
+
+    if (_filterSubjectKeys.isNotEmpty) {
+      final subjects = ayah.subjects ?? const <String>[];
+      final hasMatch =
+          subjects.any((subject) => _filterSubjectKeys.contains(subject));
+      if (!hasMatch) {
+        return false;
+      }
+    }
+
+    if (_filterSchoolLevelIds.isNotEmpty) {
+      final levels = ayah.schoolLevels ?? const <SchoolLevel>[];
+      final hasMatch = levels.any((level) {
+        final id = level.id;
+        return id != null && _filterSchoolLevelIds.contains(id);
+      });
+      if (!hasMatch) {
+        return false;
+      }
+    }
+
+    if (_filterMemoEvaluationIds.isNotEmpty ||
+        _filterCompreEvaluationIds.isNotEmpty) {
+      final userEvaluation = ayah.userEvaluation ??
+          evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+
+      if (_filterMemoEvaluationIds.isNotEmpty) {
+        final memoId = userEvaluation?.memoId;
+        if (memoId == null || !_filterMemoEvaluationIds.contains(memoId)) {
+          return false;
+        }
+      }
+
+      if (_filterCompreEvaluationIds.isNotEmpty) {
+        final compreId = userEvaluation?.compreId;
+        if (compreId == null ||
+            !_filterCompreEvaluationIds.contains(compreId)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
 
   String _tr(String key) => key.tr;
 
@@ -410,9 +490,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     await _ensureNavigationInitialized();
 
     if (_isPageNavigation) {
-      return _navigationScopeAyat
-          .where((ayah) => ayah.page == _currentPage)
-          .toList();
+      // Load every ayah on this mushaf page across all surahs so that a
+      // single page that spans the end of one surah and the start of another
+      // shows both surahs in place instead of being split across two pages.
+      final pageAyat =
+          await AyatController().loadAyatByPage(_currentPage!);
+      pageAyat.sort(_compareAyatOrder);
+      return pageAyat;
     }
 
     if (_currentHizbQuarter != null) {
@@ -478,13 +562,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     EvaluationsProvider evaluationsProvider,
     LanguageProvider languageProvider,
   ) {
+    final usersProvider = context.read<UsersProvider>();
     final ayahKey = ayah.id ?? ((ayah.surah.id * 1000) + ayah.ayahNo);
     final recognizer = _ayahTapRecognizers.putIfAbsent(
       ayahKey,
       () => TapGestureRecognizer(),
     );
 
-    recognizer.onTap = (_hasConnection && _canOpenAssessment)
+    recognizer.onTap = _canTapAyah(usersProvider)
         ? () => _openAssessmentDialogForAyah(
               ayah,
               evaluationsProvider,
@@ -572,11 +657,238 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     });
   }
 
+  Future<User?> _ensureViewerUserLoaded() async {
+    if (_viewerUser != null) {
+      return _viewerUser;
+    }
+
+    try {
+      final cachedProfile = await _usersService.getCachedCurrentUserProfile();
+      if (cachedProfile != null) {
+        final viewer = User.fromJson(cachedProfile);
+        if (mounted) {
+          setState(() {
+            _viewerUser = viewer;
+          });
+        } else {
+          _viewerUser = viewer;
+        }
+        return viewer;
+      }
+
+      final profile = await _usersService.getCurrentUserProfile();
+      final viewer = User.fromJson(profile);
+      if (mounted) {
+        setState(() {
+          _viewerUser = viewer;
+        });
+      } else {
+        _viewerUser = viewer;
+      }
+      return viewer;
+    } catch (_) {
+      return _viewerUser;
+    }
+  }
+
+  bool _isSupervisorViewingStudent(UsersProvider usersProvider) {
+    final viewer = _viewerUser;
+    final selectedUser = usersProvider.selectedUser;
+    if (viewer == null || selectedUser == null) {
+      return false;
+    }
+
+    final role = viewer.userRoleId ?? 0;
+    final isPrivileged = role == 1 || role == 2;
+    return isPrivileged && viewer.id != selectedUser.id;
+  }
+
+  bool _canTapAyah(UsersProvider usersProvider) {
+    return _hasConnection &&
+        (_canOpenAssessment || _isSupervisorViewingStudent(usersProvider));
+  }
+
+  bool _isMasteredMemoEvaluation(Evaluation? evaluation) {
+    if (evaluation == null || evaluation.type != 'memorization') {
+      return false;
+    }
+
+    final code = evaluation.code.trim().toLowerCase();
+    final nameAr = evaluation.name['ar']?.trim() ?? '';
+    final nameEn = evaluation.name['en']?.trim().toLowerCase() ?? '';
+    return code == 'g' || nameAr == 'متمكن' || nameEn == 'proficient';
+  }
+
+  bool _isAyahMasteredForRecommendation(
+    Ayat ayah,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    final existingEvaluation = ayah.userEvaluation ??
+        evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+    final memoEvaluation = existingEvaluation?.memoEvaluation ??
+        evaluationsProvider.findEvaluationById(existingEvaluation?.memoId);
+    return _isMasteredMemoEvaluation(memoEvaluation);
+  }
+
+  TeacherRecommendation _hydrateRecommendationWithViewer(
+    TeacherRecommendation recommendation,
+  ) {
+    final viewer = _viewerUser;
+    if (viewer == null || recommendation.teacher != null) {
+      return recommendation;
+    }
+
+    return TeacherRecommendation(
+      id: recommendation.id,
+      teacherId: recommendation.teacherId,
+      studentId: recommendation.studentId,
+      ayahId: recommendation.ayahId,
+      source: recommendation.source,
+      status: recommendation.status,
+      notified: recommendation.notified,
+      createdAt: recommendation.createdAt,
+      updatedAt: recommendation.updatedAt,
+      teacher: TeacherRecommendationTeacher(
+        id: viewer.id,
+        username: viewer.username.isNotEmpty ? viewer.username : null,
+        email: viewer.email,
+      ),
+    );
+  }
+
+  Future<void> _sendSupervisorRecommendationForAyah(
+    Ayat ayah,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    final usersProvider = context.read<UsersProvider>();
+    final student = usersProvider.selectedUser;
+    if (student == null || ayah.id == null) {
+      return;
+    }
+
+    if (_isAyahMasteredForRecommendation(ayah, evaluationsProvider)) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('quran_reading_recommendation_mastered_blocked'.tr),
+        ),
+      );
+      return;
+    }
+
+    final studentLabel =
+        student.username.isNotEmpty ? student.username : student.email;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'quran_reading_recommendation_dialog_title'.trParams({
+            'ayah': ayah.ayahNo.toString(),
+          }),
+        ),
+        content: Text(
+          'quran_reading_recommendation_dialog_body'.trParams({
+            'student': studentLabel,
+            'ayah': ayah.ayahNo.toString(),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('quran_reading_recommendation_cancel'.tr),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('quran_reading_recommendation_confirm'.tr),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      final result = await _teacherRecommendationsService.createRecommendation(
+        studentId: student.id,
+        ayahId: ayah.id!,
+      );
+      if (!mounted) {
+        return;
+      }
+
+      final hydratedRecommendation =
+          _hydrateRecommendationWithViewer(result.recommendation);
+      setState(() {
+        ayah.teacherRecommendations = [
+          ...ayah.teacherRecommendations.where(
+            (item) => item.id != hydratedRecommendation.id,
+          ),
+          hydratedRecommendation,
+        ];
+      });
+
+      unawaited(
+        _teacherRecommendationsService.refreshStudentRecommendationsInBackground(
+          student.id,
+          ayahIds: [ayah.id!],
+          onUpdated: (freshRecommendations) {
+            if (!mounted) {
+              return;
+            }
+
+            setState(() {
+              ayah.teacherRecommendations = freshRecommendations
+                  .where((item) => item.ayahId == ayah.id)
+                  .toList();
+            });
+          },
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.operation == 'updated'
+                ? 'quran_reading_recommendation_updated'.tr
+                : 'quran_reading_recommendation_sent'.tr,
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final message = '$error';
+      final feedbackKey = message.contains('Cannot recommend mastered ayahs')
+          ? 'quran_reading_recommendation_mastered_blocked'
+          : 'quran_reading_recommendation_send_error';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(feedbackKey.tr)),
+      );
+    }
+  }
+
   Future<void> _openAssessmentDialogForAyah(
     Ayat ayah,
     EvaluationsProvider evaluationsProvider,
     LanguageProvider languageProvider,
   ) async {
+    await _ensureViewerUserLoaded();
+    if (!mounted) {
+      return;
+    }
+
+    final usersProvider = context.read<UsersProvider>();
+    if (_isSupervisorViewingStudent(usersProvider)) {
+      await _sendSupervisorRecommendationForAyah(ayah, evaluationsProvider);
+      return;
+    }
+
     if (!_canOpenAssessment) {
       if (!mounted) {
         return;
@@ -696,6 +1008,209 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Get.off(const MainScreen());
   }
 
+  void _replaceWithRoute({
+    required Surah surah,
+    required int filterTypeId,
+    int? juz,
+    int? page,
+  }) {
+    final parameters = IndexPage.routeParameters(
+      surah: surah,
+      filterTypeId: filterTypeId,
+      juz: juz,
+      page: page,
+    );
+    Get.offNamed(IndexPage.routeName, parameters: parameters);
+  }
+
+  void _navigateToJuz(int juz) {
+    final firstSurahNumber = quran.getSurahAndVersesFromJuz(juz).keys.first;
+    _replaceWithRoute(
+      surah: Surah(
+        id: firstSurahNumber,
+        nameAr: quran.getSurahNameArabic(firstSurahNumber),
+        ayahCount: quran.getVerseCount(firstSurahNumber),
+      ),
+      filterTypeId: FilterTypes.parts,
+      juz: juz,
+    );
+  }
+
+  void _navigateToSurah(int surahNumber) {
+    _replaceWithRoute(
+      surah: Surah(
+        id: surahNumber,
+        nameAr: quran.getSurahNameArabic(surahNumber),
+        ayahCount: quran.getVerseCount(surahNumber),
+      ),
+      filterTypeId: FilterTypes.thirds,
+    );
+  }
+
+  Future<void> _navigateToPage(int targetPage) async {
+    if (targetPage < 1 || targetPage > 604) {
+      return;
+    }
+
+    // Locate the first surah covered on this mushaf page so that the route
+    // carries a sensible surah id, then load page-mode navigation around it.
+    int? resolvedSurahId;
+    try {
+      final pageAyat = await AyatController().loadAyatByPage(targetPage);
+      if (pageAyat.isNotEmpty) {
+        pageAyat.sort(_compareAyatOrder);
+        resolvedSurahId = pageAyat.first.surah.id;
+      }
+    } catch (_) {
+      // Fall back to the current surah if the lookup fails.
+    }
+
+    final surahNumber = resolvedSurahId ?? widget.surah.id;
+    _replaceWithRoute(
+      surah: Surah(
+        id: surahNumber,
+        nameAr: quran.getSurahNameArabic(surahNumber),
+        ayahCount: quran.getVerseCount(surahNumber),
+      ),
+      filterTypeId: widget.filterTypeId,
+      page: targetPage,
+    );
+  }
+
+  Future<void> _openJuzPicker() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _ReaderJuzPicker(
+        currentJuz: widget.juz,
+      ),
+    );
+
+    if (selected != null && mounted) {
+      _navigateToJuz(selected);
+    }
+  }
+
+  Future<void> _openSurahPicker() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _ReaderSurahPicker(
+        currentSurahId: widget.surah.id,
+      ),
+    );
+
+    if (selected != null && mounted) {
+      _navigateToSurah(selected);
+    }
+  }
+
+  Future<void> _openPagePicker() async {
+    final currentPage = _currentPage;
+    if (currentPage == null) {
+      return;
+    }
+
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _ReaderPagePicker(
+        currentPage: currentPage,
+      ),
+    );
+
+    if (selected != null && mounted) {
+      await _navigateToPage(selected);
+    }
+  }
+
+  Future<void> _openDisplayFilter() async {
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
+    // Snapshot the dimensions available across the loaded ayat so the picker
+    // only offers values the user can actually act on right now.
+    final availableSubjects = <String>{};
+    final availableSchoolLevels = <String, String>{}; // id -> display name
+    for (final ayah in _ayat) {
+      if (ayah.subjects != null) {
+        availableSubjects.addAll(ayah.subjects!);
+      }
+      if (ayah.schoolLevels != null) {
+        for (final level in ayah.schoolLevels!) {
+          final id = level.id;
+          if (id == null) continue;
+          final localizedName = _resolveSchoolLevelName(level);
+          availableSchoolLevels[id] = localizedName;
+        }
+      }
+    }
+
+    final result = await showModalBottomSheet<_ReadingDisplayFilterResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => _ReaderDisplayFilterSheet(
+        initialAyahTypes: _filterAyahTypes,
+        initialSubjectKeys: _filterSubjectKeys,
+        initialSchoolLevelIds: _filterSchoolLevelIds,
+        initialMemoEvaluationIds: _filterMemoEvaluationIds,
+        initialCompreEvaluationIds: _filterCompreEvaluationIds,
+        availableSubjects: availableSubjects,
+        availableSchoolLevels: availableSchoolLevels,
+        memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
+        comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _filterAyahTypes
+          ..clear()
+          ..addAll(result.ayahTypes);
+        _filterSubjectKeys
+          ..clear()
+          ..addAll(result.subjectKeys);
+        _filterSchoolLevelIds
+          ..clear()
+          ..addAll(result.schoolLevelIds);
+        _filterMemoEvaluationIds
+          ..clear()
+          ..addAll(result.memoEvaluationIds);
+        _filterCompreEvaluationIds
+          ..clear()
+          ..addAll(result.compreEvaluationIds);
+      });
+    }
+  }
+
+  String _resolveSchoolLevelName(SchoolLevel level) {
+    final raw = level.name;
+    if (raw == null) {
+      return level.id ?? '';
+    }
+    final locale = Get.locale?.languageCode ?? 'ar';
+    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
+    if (localized is String && localized.trim().isNotEmpty) {
+      return localized.trim();
+    }
+    return level.id ?? '';
+  }
+
   Future<void> _setWakelockEnabled(bool enabled) async {
     if (kIsWeb) {
       return;
@@ -717,6 +1232,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     List<Ayat> ayat = await _loadCurrentNavigationAyat();
 
     if (_isInitialLoad &&
+        !_isPageNavigation &&
         (widget.filterTypeId == FilterTypes.parts ||
             widget.filterTypeId == FilterTypes.thirds)) {
       ayat = ayat.where((a) => a.surah.id >= widget.surah.id).toList();
@@ -889,6 +1405,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       final evaluationsProvider = context.read<EvaluationsProvider>();
 
       () async {
+        await _ensureViewerUserLoaded();
         await _loadReadingDisplayPreferences(usersProvider);
         if (!mounted || usersProvider.selectedUser == null) {
           return;
@@ -903,6 +1420,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
+    final usersProvider = Provider.of<UsersProvider>(context);
+    final isSupervisorRecommendationMode =
+      _isSupervisorViewingStudent(usersProvider);
+    final ayahTapTooltip = isSupervisorRecommendationMode
+      ? 'quran_reading_recommendation_tap_tooltip'.tr
+      : 'quran_reading_assessment_tap_tooltip'.tr;
 
     if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
@@ -972,8 +1495,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                         children: [
                           Builder(
                             builder: (context) => _ReaderToolIcon(
-                              icon: Icons.tune_rounded,
-                              tooltip: _tr('quran_reading_filters_tooltip'),
+                              icon: Icons.menu_rounded,
+                              tooltip: _tr('quran_reading_menu_tooltip'),
                               isDarkMode: isDarkMode,
                               onTap: () {
                                 if ((Get.locale?.languageCode ?? 'ar') ==
@@ -985,11 +1508,27 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               },
                             ),
                           ),
+                          const SizedBox(width: 6),
+                          _ReaderToolIcon(
+                            icon: Icons.chevron_left_rounded,
+                            tooltip: _tr('quran_reading_exit_tooltip'),
+                            isDarkMode: isDarkMode,
+                            onTap: _handleExitReading,
+                          ),
                           const SizedBox(width: 8),
                           _ReaderSurahPill(
                             surahName: widget.surah.nameAr,
                             isDarkMode: isDarkMode,
-                            onTap: _handleExitReading,
+                            tooltip: _tr('quran_reading_surah_picker_tooltip'),
+                            onTap: _openSurahPicker,
+                          ),
+                          const SizedBox(width: 8),
+                          _ReaderToolIcon(
+                            icon: Icons.tune_rounded,
+                            tooltip: _tr('quran_reading_filters_tooltip'),
+                            isDarkMode: isDarkMode,
+                            isActive: _hasActiveDisplayFilter,
+                            onTap: _openDisplayFilter,
                           ),
                           const Spacer(),
                           _ReaderToolCluster(
@@ -1023,11 +1562,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               ),
                               _ReaderToolIcon(
                                 icon: Icons.touch_app_rounded,
-                                tooltip: _tr(
-                                  'quran_reading_assessment_tap_tooltip',
-                                ),
+                                tooltip: ayahTapTooltip,
                                 isDarkMode: isDarkMode,
-                                isActive: _canOpenAssessment,
+                                isActive: _canTapAyah(usersProvider),
                                 flat: true,
                                 onTap: null,
                               ),
@@ -1143,6 +1680,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                           children: [
                                             _ReaderBottomChip(
                                               isDarkMode: isDarkMode,
+                                              onTap: _openJuzPicker,
+                                              tooltip: _tr(
+                                                'quran_reading_juz_picker_tooltip',
+                                              ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
@@ -1179,6 +1720,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                       fontSize: 13,
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 4),
+                                                  Icon(
+                                                    Icons
+                                                        .keyboard_arrow_down_rounded,
+                                                    size: 16,
+                                                    color: isDarkMode
+                                                        ? const Color(
+                                                            0xFFE6DFD0,
+                                                          )
+                                                        : const Color(
+                                                            0xFF132A4A,
+                                                          ),
+                                                  ),
                                                 ],
                                               ),
                                             ),
@@ -1189,7 +1743,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                 children: [
                                                   _ReaderInlineChevron(
                                                     icon: Icons
-                                                        .chevron_right_rounded,
+                                                        .chevron_left_rounded,
                                                     isDarkMode: isDarkMode,
                                                     onTap: _canNavigateBackward
                                                         ? () =>
@@ -1198,28 +1752,24 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                             )
                                                         : null,
                                                   ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    _navigationProgressLabel,
-                                                    style: TextStyle(
-                                                      color: isDarkMode
-                                                          ? Colors.white
-                                                          : const Color(
-                                                              0xFF132A4A,
-                                                            ),
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 13,
-                                                      fontFeatures: const [
-                                                        FontFeature
-                                                            .tabularFigures(),
-                                                      ],
-                                                    ),
+                                                  const SizedBox(width: 4),
+                                                  _ReaderProgressLabel(
+                                                    label:
+                                                        _navigationProgressLabel,
+                                                    isDarkMode: isDarkMode,
+                                                    tooltip: _isPageNavigation
+                                                        ? _tr(
+                                                            'quran_reading_page_picker_tooltip',
+                                                          )
+                                                        : null,
+                                                    onTap: _isPageNavigation
+                                                        ? _openPagePicker
+                                                        : null,
                                                   ),
-                                                  const SizedBox(width: 8),
+                                                  const SizedBox(width: 4),
                                                   _ReaderInlineChevron(
                                                     icon: Icons
-                                                        .chevron_left_rounded,
+                                                        .chevron_right_rounded,
                                                     isDarkMode: isDarkMode,
                                                     onTap: _canNavigateForward
                                                         ? () =>
@@ -1329,6 +1879,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
               final defaultColor =
                   isDarkMode ? Colors.white : AppColors.blackFontColor;
+              final fadedColor = isDarkMode
+                  ? const Color(0xFF4A4A4A)
+                  : const Color(0xFFCFCFCF);
+              final isFiltered =
+                  _hasActiveDisplayFilter &&
+                      !_ayahMatchesDisplayFilter(ayah, evaluationProvider);
 
               final memoEvaluation = userEvaluation?.memoEvaluation ??
                   evaluationProvider.findEvaluationById(userEvaluation?.memoId);
@@ -1336,8 +1892,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   evaluationProvider
                       .findEvaluationById(userEvaluation?.compreId);
 
-              final hasMemorizationAccent =
-                  _showMemorizationColors && memoEvaluation != null;
+              final hasMemorizationAccent = !isFiltered &&
+                  _showMemorizationColors &&
+                  memoEvaluation != null;
               final accentColor = hasMemorizationAccent
                   ? _resolveReadableVerseColor(
                       preferredColor: EvaluationsController()
@@ -1347,11 +1904,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           : AppColors.buttonColor,
                       isDarkMode: isDarkMode,
                     )
-                  : defaultColor;
-              final verseColor =
-                  hasMemorizationAccent ? accentColor : defaultColor;
+                  : (isFiltered ? fadedColor : defaultColor);
+              final verseColor = isFiltered
+                  ? fadedColor
+                  : (hasMemorizationAccent ? accentColor : defaultColor);
 
-              final showUnderline = _showComprehensionUnderline &&
+              final showUnderline = !isFiltered &&
+                  _showComprehensionUnderline &&
                   EvaluationsController()
                       .isPositiveComprehension(compreEvaluation);
               final ayahTapRecognizer = _getAyahTapRecognizer(
@@ -1385,7 +1944,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                       fontFamily: AppFonts.versesFont,
                     ),
                   ),
-                  if (ayah.teacherRecommendations.isNotEmpty)
+                  if (!isFiltered &&
+                      ayah.teacherRecommendations.isNotEmpty)
                     WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
                       child: Padding(
@@ -1543,41 +2103,44 @@ class _ReaderSurahPill extends StatelessWidget {
     required this.surahName,
     required this.isDarkMode,
     required this.onTap,
+    this.tooltip,
   });
 
   final String surahName;
   final bool isDarkMode;
   final VoidCallback onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
     final foreground = isDarkMode ? Colors.white : const Color(0xFF132A4A);
-    return Material(
+    final pill = Material(
       color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(14, 8, 8, 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                surahName,
-                style: TextStyle(
-                  color: foreground,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(Icons.chevron_left_rounded, size: 22, color: foreground),
-            ],
+          padding: const EdgeInsetsDirectional.symmetric(
+            horizontal: 14,
+            vertical: 8,
+          ),
+          child: Text(
+            surahName,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
     );
+
+    if (tooltip == null || tooltip!.isEmpty) {
+      return pill;
+    }
+    return Tooltip(message: tooltip!, child: pill);
   }
 }
 
@@ -1585,21 +2148,99 @@ class _ReaderBottomChip extends StatelessWidget {
   const _ReaderBottomChip({
     required this.isDarkMode,
     required this.child,
+    this.onTap,
+    this.tooltip,
   });
 
   final bool isDarkMode;
   final Widget child;
+  final VoidCallback? onTap;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
+    final background =
+        isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0);
+    Widget body;
+    if (onTap != null) {
+      body = Material(
+        color: background,
         borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: child,
+          ),
+        ),
+      );
+    } else {
+      body = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: child,
+      );
+    }
+
+    if (tooltip == null || tooltip!.isEmpty) {
+      return body;
+    }
+    return Tooltip(message: tooltip!, child: body);
+  }
+}
+
+class _ReaderProgressLabel extends StatelessWidget {
+  const _ReaderProgressLabel({
+    required this.label,
+    required this.isDarkMode,
+    this.onTap,
+    this.tooltip,
+  });
+
+  final String label;
+  final bool isDarkMode;
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      label,
+      style: TextStyle(
+        color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
+        fontWeight: FontWeight.w700,
+        fontSize: 13,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        decoration: onTap != null ? TextDecoration.underline : null,
+        decorationStyle:
+            onTap != null ? TextDecorationStyle.dotted : null,
       ),
-      child: child,
     );
+
+    if (onTap == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: text,
+      );
+    }
+
+    final tappable = InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: text,
+      ),
+    );
+
+    if (tooltip == null || tooltip!.isEmpty) {
+      return tappable;
+    }
+    return Tooltip(message: tooltip!, child: tappable);
   }
 }
 
@@ -1626,6 +2267,666 @@ class _ReaderInlineChevron extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(2),
         child: Icon(icon, size: 22, color: foreground),
+      ),
+    );
+  }
+}
+
+class _ReadingDisplayFilterResult {
+  const _ReadingDisplayFilterResult({
+    required this.ayahTypes,
+    required this.subjectKeys,
+    required this.schoolLevelIds,
+    required this.memoEvaluationIds,
+    required this.compreEvaluationIds,
+  });
+
+  final Set<String> ayahTypes;
+  final Set<String> subjectKeys;
+  final Set<String> schoolLevelIds;
+  final Set<int> memoEvaluationIds;
+  final Set<int> compreEvaluationIds;
+}
+
+class _ReaderJuzPicker extends StatefulWidget {
+  const _ReaderJuzPicker({this.currentJuz});
+
+  final int? currentJuz;
+
+  @override
+  State<_ReaderJuzPicker> createState() => _ReaderJuzPickerState();
+}
+
+class _ReaderJuzPickerState extends State<_ReaderJuzPicker> {
+  late final ScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = (widget.currentJuz ?? 1) - 1;
+    _controller = ScrollController(
+      initialScrollOffset: (initial * 60.0).clamp(0, double.infinity),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _tr(String key) => key.tr;
+
+  String _trParams(String key, Map<String, String> params) =>
+      key.trParams(params);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 4,
+              width: 44,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black26,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              _tr('quran_reading_juz_picker_title'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 360,
+              child: ListView.separated(
+                controller: _controller,
+                itemCount: 30,
+                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemBuilder: (context, index) {
+                  final juz = index + 1;
+                  final isCurrent = juz == widget.currentJuz;
+                  return ListTile(
+                    selected: isCurrent,
+                    title: Text(
+                      _trParams('quran_reading_juz_picker_item', {
+                        'juz': juz.toString(),
+                      }),
+                      style: TextStyle(
+                        fontWeight: isCurrent
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(juz),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderSurahPicker extends StatefulWidget {
+  const _ReaderSurahPicker({required this.currentSurahId});
+
+  final int currentSurahId;
+
+  @override
+  State<_ReaderSurahPicker> createState() => _ReaderSurahPickerState();
+}
+
+class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
+  late final ScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = (widget.currentSurahId - 1).clamp(0, 113);
+    _controller = ScrollController(
+      initialScrollOffset:
+          (initial * 56.0 - 200).clamp(0, double.infinity).toDouble(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _tr(String key) => key.tr;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 4,
+              width: 44,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black26,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              _tr('quran_reading_surah_picker_title'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 420,
+              child: ListView.separated(
+                controller: _controller,
+                itemCount: quran.totalSurahCount,
+                separatorBuilder: (_, __) => const SizedBox(height: 2),
+                itemBuilder: (context, index) {
+                  final surahNumber = index + 1;
+                  final isCurrent = surahNumber == widget.currentSurahId;
+                  return ListTile(
+                    selected: isCurrent,
+                    leading: Text(
+                      surahNumber.toString(),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                    title: Text(
+                      quran.getSurahNameArabic(surahNumber),
+                      style: TextStyle(
+                        fontWeight:
+                            isCurrent ? FontWeight.w800 : FontWeight.w600,
+                        fontFamily: AppFonts.versesFont,
+                        fontSize: 18,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(surahNumber),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderPagePicker extends StatefulWidget {
+  const _ReaderPagePicker({required this.currentPage});
+
+  final int currentPage;
+
+  @override
+  State<_ReaderPagePicker> createState() => _ReaderPagePickerState();
+}
+
+class _ReaderPagePickerState extends State<_ReaderPagePicker> {
+  late final TextEditingController _input;
+  late final ScrollController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _input = TextEditingController(text: widget.currentPage.toString());
+    final initialIndex = (widget.currentPage - 1).clamp(0, 603);
+    _controller = ScrollController(
+      initialScrollOffset:
+          (initialIndex * 48.0 - 160).clamp(0, double.infinity).toDouble(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _tr(String key) => key.tr;
+
+  String _trParams(String key, Map<String, String> params) =>
+      key.trParams(params);
+
+  void _submit() {
+    final raw = _input.text.trim();
+    final parsed = int.tryParse(raw);
+    if (parsed == null || parsed < 1 || parsed > 604) {
+      setState(() {
+        _errorText = _tr('quran_reading_page_picker_invalid');
+      });
+      return;
+    }
+    Navigator.of(context).pop(parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + viewInsets),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              height: 4,
+              width: 44,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black26,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              _tr('quran_reading_page_picker_title'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    keyboardType: TextInputType.number,
+                    onSubmitted: (_) => _submit(),
+                    decoration: InputDecoration(
+                      labelText:
+                          _tr('quran_reading_page_picker_input_label'),
+                      errorText: _errorText,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _submit,
+                  child: Text(_tr('quran_reading_page_picker_jump')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 280,
+              child: ListView.builder(
+                controller: _controller,
+                itemCount: 604,
+                itemExtent: 48,
+                itemBuilder: (context, index) {
+                  final page = index + 1;
+                  final isCurrent = page == widget.currentPage;
+                  return ListTile(
+                    dense: true,
+                    selected: isCurrent,
+                    title: Text(
+                      _trParams(
+                        'quran_reading_page_picker_item',
+                        {'page': page.toString()},
+                      ),
+                      style: TextStyle(
+                        fontWeight:
+                            isCurrent ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(page),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReaderDisplayFilterSheet extends StatefulWidget {
+  const _ReaderDisplayFilterSheet({
+    required this.initialAyahTypes,
+    required this.initialSubjectKeys,
+    required this.initialSchoolLevelIds,
+    required this.initialMemoEvaluationIds,
+    required this.initialCompreEvaluationIds,
+    required this.availableSubjects,
+    required this.availableSchoolLevels,
+    required this.memorizationEvaluations,
+    required this.comprehensionEvaluations,
+  });
+
+  final Set<String> initialAyahTypes;
+  final Set<String> initialSubjectKeys;
+  final Set<String> initialSchoolLevelIds;
+  final Set<int> initialMemoEvaluationIds;
+  final Set<int> initialCompreEvaluationIds;
+  final Set<String> availableSubjects;
+  final Map<String, String> availableSchoolLevels;
+  final List<Evaluation> memorizationEvaluations;
+  final List<Evaluation> comprehensionEvaluations;
+
+  @override
+  State<_ReaderDisplayFilterSheet> createState() =>
+      _ReaderDisplayFilterSheetState();
+}
+
+class _ReaderDisplayFilterSheetState extends State<_ReaderDisplayFilterSheet> {
+  late final Set<String> _ayahTypes;
+  late final Set<String> _subjects;
+  late final Set<String> _schoolLevels;
+  late final Set<int> _memos;
+  late final Set<int> _compres;
+
+  @override
+  void initState() {
+    super.initState();
+    _ayahTypes = {...widget.initialAyahTypes};
+    _subjects = {...widget.initialSubjectKeys};
+    _schoolLevels = {...widget.initialSchoolLevelIds};
+    _memos = {...widget.initialMemoEvaluationIds};
+    _compres = {...widget.initialCompreEvaluationIds};
+  }
+
+  String _tr(String key) => key.tr;
+
+  String _trParams(String key, Map<String, String> params) =>
+      key.trParams(params);
+
+  void _toggleString(Set<String> set, String value) {
+    setState(() {
+      if (set.contains(value)) {
+        set.remove(value);
+      } else {
+        set.add(value);
+      }
+    });
+  }
+
+  void _toggleInt(Set<int> set, int value) {
+    setState(() {
+      if (set.contains(value)) {
+        set.remove(value);
+      } else {
+        set.add(value);
+      }
+    });
+  }
+
+  String _evaluationLabel(Evaluation evaluation) {
+    final locale = Get.locale?.languageCode ?? 'ar';
+    final raw = evaluation.name;
+    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
+    if (localized != null && localized.trim().isNotEmpty) {
+      return localized.trim();
+    }
+    return evaluation.id?.toString() ?? '';
+  }
+
+  Widget _buildDimensionSection({
+    required String title,
+    required List<Widget> chips,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          if (chips.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                _tr('quran_reading_filter_empty_dimension'),
+                style: TextStyle(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 12,
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chips,
+            ),
+        ],
+      ),
+    );
+  }
+
+  FilterChip _filterChipString(
+    String label,
+    String value,
+    Set<String> selectionSet,
+  ) {
+    final selected = selectionSet.contains(value);
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => _toggleString(selectionSet, value),
+    );
+  }
+
+  FilterChip _filterChipInt(
+    String label,
+    int value,
+    Set<int> selectionSet,
+  ) {
+    final selected = selectionSet.contains(value);
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => _toggleInt(selectionSet, value),
+    );
+  }
+
+  int get _activeDimensionCount {
+    var n = 0;
+    if (_ayahTypes.isNotEmpty) n++;
+    if (_subjects.isNotEmpty) n++;
+    if (_schoolLevels.isNotEmpty) n++;
+    if (_memos.isNotEmpty) n++;
+    if (_compres.isNotEmpty) n++;
+    return n;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final revelationOptions = <MapEntry<String, String>>[
+      MapEntry('makki', _tr('quran_reading_filter_revelation_makki')),
+      MapEntry('madani', _tr('quran_reading_filter_revelation_madani')),
+      MapEntry('debatable', _tr('quran_reading_filter_revelation_debatable')),
+    ];
+
+    final subjectsList = widget.availableSubjects.toList()..sort();
+    final schoolEntries = widget.availableSchoolLevels.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                height: 4,
+                width: 44,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text(
+                _tr('quran_reading_filter_title'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _tr('quran_reading_filter_subtitle'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildDimensionSection(
+                title: _tr('quran_reading_filter_dim_revelation'),
+                chips: revelationOptions
+                    .map((entry) => _filterChipString(
+                          entry.value,
+                          entry.key,
+                          _ayahTypes,
+                        ))
+                    .toList(),
+              ),
+              _buildDimensionSection(
+                title: _tr('quran_reading_filter_dim_subject'),
+                chips: subjectsList
+                    .map((subject) =>
+                        _filterChipString(subject, subject, _subjects))
+                    .toList(),
+              ),
+              _buildDimensionSection(
+                title: _tr('quran_reading_filter_dim_school'),
+                chips: schoolEntries
+                    .map((entry) => _filterChipString(
+                          entry.value,
+                          entry.key,
+                          _schoolLevels,
+                        ))
+                    .toList(),
+              ),
+              _buildDimensionSection(
+                title: _tr('quran_reading_filter_dim_memorization'),
+                chips: widget.memorizationEvaluations
+                    .where((e) => e.id != null)
+                    .map((e) => _filterChipInt(
+                          _evaluationLabel(e),
+                          e.id!,
+                          _memos,
+                        ))
+                    .toList(),
+              ),
+              _buildDimensionSection(
+                title: _tr('quran_reading_filter_dim_comprehension'),
+                chips: widget.comprehensionEvaluations
+                    .where((e) => e.id != null)
+                    .map((e) => _filterChipInt(
+                          _evaluationLabel(e),
+                          e.id!,
+                          _compres,
+                        ))
+                    .toList(),
+              ),
+              if (_activeDimensionCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    _trParams(
+                      'quran_reading_filter_active_summary',
+                      {'count': _activeDimensionCount.toString()},
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        setState(() {
+                          _ayahTypes.clear();
+                          _subjects.clear();
+                          _schoolLevels.clear();
+                          _memos.clear();
+                          _compres.clear();
+                        });
+                      },
+                      child: Text(_tr('quran_reading_filter_clear')),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(
+                        _ReadingDisplayFilterResult(
+                          ayahTypes: _ayahTypes,
+                          subjectKeys: _subjects,
+                          schoolLevelIds: _schoolLevels,
+                          memoEvaluationIds: _memos,
+                          compreEvaluationIds: _compres,
+                        ),
+                      ),
+                      child: Text(_tr('quran_reading_filter_apply')),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

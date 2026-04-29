@@ -34,6 +34,8 @@ class UserProfileBadge extends StatelessWidget {
             color: Colors.black,
             withBackground: false,
             textAlign: TextAlign.start,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

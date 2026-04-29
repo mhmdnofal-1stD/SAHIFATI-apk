@@ -48,6 +48,14 @@ class AyatController {
     return ayahs.where((item) => item.juz == juz).toList();
   }
 
+  Future<List<Ayat>> loadAyatByPage(int page) async {
+    final ayahs = await _loadAllAyat();
+
+    return ayahs.where((item) => item.page == page).toList();
+  }
+
+  Future<List<Ayat>> loadAllAyat() => _loadAllAyat();
+
   Future<List<Ayat>> loadAyatByRange(int surahId, int startAyah, int endAyah) async {
     if (kDebugMode) {
       print("AyatController: loadAyatByRange called with surahId: $surahId, start: $startAyah, end: $endAyah");

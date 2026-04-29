@@ -11,6 +11,7 @@ import 'offline_assessment_store.dart';
 
 class QuranChartFilters {
   const QuranChartFilters({
+    this.thirds = const <String>[],
     this.surahIds = const <int>[],
     this.juzs = const <int>[],
     this.ayahTypes = const <String>[],
@@ -21,6 +22,7 @@ class QuranChartFilters {
     this.comprehensionEvaluationIds = const <int>[],
   });
 
+  final List<String> thirds;
   final List<int> surahIds;
   final List<int> juzs;
   final List<String> ayahTypes;
@@ -31,6 +33,7 @@ class QuranChartFilters {
   final List<int> comprehensionEvaluationIds;
 
   bool get hasAnyActive =>
+      thirds.isNotEmpty ||
       surahIds.isNotEmpty ||
       juzs.isNotEmpty ||
       ayahTypes.isNotEmpty ||
@@ -52,14 +55,44 @@ class QuranChartFilters {
     return sorted;
   }
 
+  List<int> _effectiveJuzs() {
+    final selectedJuzs = juzs.toSet();
+    final thirdsJuzs = <int>{};
+
+    for (final third in thirds) {
+      switch (third) {
+        case 'first':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 1));
+          break;
+        case 'second':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 11));
+          break;
+        case 'third':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 21));
+          break;
+      }
+    }
+
+    if (thirdsJuzs.isEmpty) {
+      return _sortedInts(selectedJuzs.toList());
+    }
+
+    if (selectedJuzs.isEmpty) {
+      return _sortedInts(thirdsJuzs.toList());
+    }
+
+    return _sortedInts(selectedJuzs.intersection(thirdsJuzs).toList());
+  }
+
   Map<String, String> toQueryParameters() {
     final params = <String, String>{};
+    final effectiveJuzs = _effectiveJuzs();
 
     if (surahIds.isNotEmpty) {
       params['surahIds'] = _sortedInts(surahIds).join(',');
     }
-    if (juzs.isNotEmpty) {
-      params['juzs'] = _sortedInts(juzs).join(',');
+    if (effectiveJuzs.isNotEmpty) {
+      params['juzs'] = effectiveJuzs.join(',');
     }
     if (ayahTypes.isNotEmpty) {
       params['ayahTypes'] = _sortedStrings(ayahTypes).join(',');
@@ -145,8 +178,8 @@ class EvaluationsServices {
         ...filters.toQueryParameters(),
       };
       final queryString = Uri(queryParameters: queryParameters).query;
-      final res = await _sahifatyApi
-          .get('user-evaluations/chart/$userId?$queryString');
+      final res =
+          await _sahifatyApi.get('user-evaluations/chart/$userId?$queryString');
 
       if (res.statusCode == 200) {
         // Decode the full JSON map

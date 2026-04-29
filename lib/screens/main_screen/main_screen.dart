@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/core/reading/reading_session.dart';
 import 'package:sahifaty/providers/language_provider.dart';
-import 'package:sahifaty/screens/sahifa_screen/sahifa_screen.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
 import 'package:sahifaty/screens/widgets/custom_hizbs_dropdown.dart';
 import '../../controllers/general_controller.dart';
@@ -24,6 +23,8 @@ import '../widgets/notifications_bell_button.dart';
 import '../widgets/responsive_content_shell.dart';
 
 class MainScreen extends StatefulWidget {
+  static const String routeName = '/browse';
+
   const MainScreen({super.key, this.comesFirst = false});
 
   final bool comesFirst;
@@ -34,6 +35,19 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int? openIndex;
+
+  bool _hasInAppBackTarget(BuildContext context) {
+    final canPop = Navigator.maybeOf(context)?.canPop() ?? false;
+    if (canPop) {
+      return true;
+    }
+
+    final previousRoute = Get.previousRoute;
+    return previousRoute.isNotEmpty &&
+        previousRoute != '/' &&
+        previousRoute != MainScreen.routeName &&
+        previousRoute != Get.currentRoute;
+  }
 
   bool _hasChartData(EvaluationsProvider provider) {
     return provider.totalCount > 0 && provider.chartEvaluationData.isNotEmpty;
@@ -79,6 +93,7 @@ class _MainScreenState extends State<MainScreen> {
     final languageProvider = Provider.of<LanguageProvider>(context);
     final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
     final hasChartData = _hasChartData(evaluationsProvider);
+    final showBackButton = _hasInAppBackTarget(context);
 
     return evaluationsProvider.isLoading == true
         ? const Center(
@@ -91,10 +106,9 @@ class _MainScreenState extends State<MainScreen> {
               child: Directionality(
                 textDirection: TextDirection.ltr,
                 child: AppBar(
+                  automaticallyImplyLeading: false,
                   backgroundColor: AppColors.backgroundColor,
-                  leading:  CustomBackButton(
-                    onPressed: () => Get.off(const SahifaScreen(firstScreen: false)),
-                  ),
+                  leading: showBackButton ? const CustomBackButton() : null,
                   actions: [
                     const NotificationsBellButton(),
                     Builder(
