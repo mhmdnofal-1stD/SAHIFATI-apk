@@ -2567,18 +2567,33 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       if (isAtStartOfSurah) {
         widgets.add(
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              _trParams(
-                'quran_reading_surah_heading',
-                {'surah': firstAyah.surah.nameAr},
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? const Color(0xFF2A2210)
+                    : const Color(0xFFF5EDD5),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isDarkMode
+                      ? const Color(0xFF8B6914)
+                      : const Color(0xFFB7852A),
+                ),
               ),
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black87,
+              child: Text(
+                firstAyah.surah.nameAr,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDarkMode
+                      ? const Color(0xFFE8C97E)
+                      : const Color(0xFF5C3A00),
+                  letterSpacing: 2,
+                ),
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         );
@@ -2593,9 +2608,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 child: Text(
                   'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
                   style: TextStyle(
-                    fontSize: 28,
-                    height: 1.9,
-                    color: isDarkMode ? Colors.white : AppColors.blackFontColor,
+                    fontSize: 22,
+                    height: 1.8,
+                    color: isDarkMode
+                        ? const Color(0xFFE8C97E)
+                        : const Color(0xFF5C3A00),
                     fontFamily: AppFonts.versesFont,
                   ),
                 ),
@@ -2657,8 +2674,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 text: '${ayah.text} ',
                 recognizer: ayahTapRecognizer,
                 style: TextStyle(
-                  fontSize: 30,
-                  height: 1.9,
+                  fontSize: 19,
+                  height: 1.8,
                   color: verseColor,
                   fontFamily: AppFonts.versesFont,
                   decoration: showUnderline
@@ -2672,8 +2689,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     text: '${gc.ayahMarker(ayah.ayahNo)} ',
                     recognizer: ayahTapRecognizer,
                     style: TextStyle(
-                      fontSize: 34,
-                      height: 1.9,
+                      fontSize: 22,
+                      height: 1.8,
                       color: accentColor,
                       fontFamily: AppFonts.versesFont,
                     ),
@@ -2941,42 +2958,54 @@ class _ReaderRenderedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dividerColor = isDarkMode
-        ? Colors.white.withValues(alpha: 0.06)
-        : Colors.black.withValues(alpha: 0.06);
+    final borderColor = isDarkMode
+        ? const Color(0xFF8B6914)
+        : const Color(0xFFB7852A);
+    final bgColor = isDarkMode
+        ? const Color(0xFF1C1A15)
+        : const Color(0xFFFDFAF3);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 12, 18, 18),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: dividerColor),
-        ),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.30 : 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                'صفحة $pageNumber',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : const Color(0xFF132A4A),
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: child,
+          ),
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: borderColor.withValues(alpha: 0.45),
                 ),
               ),
             ),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              pageNumber.toString(),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFFB7852A),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                letterSpacing: 0.5,
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          child,
         ],
       ),
     );

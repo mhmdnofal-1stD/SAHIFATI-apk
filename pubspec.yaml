@@ -66,4 +66,4 @@ flutter:
         - asset: fonts/Amiri.ttf
     - family: KFGQPC
       fonts:
-        - asset: fonts/KFGQPCDotFont.otf
+        - asset: fonts/KFGQPC-Uthmanic-Hafs.otf

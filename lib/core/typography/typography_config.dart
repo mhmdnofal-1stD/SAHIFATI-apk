@@ -311,9 +311,9 @@ class TypographyConfig {
   static const TypographyConfig defaults = TypographyConfig(
     styles: <TypographyRole, TypographyRoleStyle>{
       TypographyRole.quranVerse: TypographyRoleStyle(
-        fontSize: 22,
+        fontSize: 19,
         fontWeight: FontWeight.w600,
-        height: 2.0,
+        height: 1.8,
         fontFamilyKey: TypographyFontFamilies.quranAmiri,
         colorKey: TypographyColorTokens.primaryText,
       ),
