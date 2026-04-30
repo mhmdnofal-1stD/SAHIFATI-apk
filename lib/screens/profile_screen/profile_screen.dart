@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../providers/users_provider.dart';
 import '../../services/users_services.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/file_download.dart';
 import '../widgets/custom_back_button.dart';
 import 'add_supervisor_screen.dart';
@@ -177,10 +178,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
         title: Text(
           'profile_screen_title'.tr,
-          style: const TextStyle(
-            color: Color(0xFF132A4A),
-            fontWeight: FontWeight.w800,
-          ),
+          style: AppTypography.of(context)
+              .appBarTitle
+              .copyWith(color: const Color(0xFF132A4A)),
         ),
         actions: [
           Padding(
@@ -334,20 +334,17 @@ class _ProfileIdentityHeader extends StatelessWidget {
                 Text(
                   username.isEmpty ? 'profile_unknown_user'.tr : username,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: AppTypography.of(context)
+                      .userDisplayName
+                      .copyWith(color: Colors.white),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   email,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.78),
-                    fontSize: 13,
-                  ),
+                  style: AppTypography.of(context)
+                      .bodySecondary
+                      .copyWith(color: Colors.white.withValues(alpha: 0.78)),
                 ),
               ],
             ),
@@ -395,21 +392,17 @@ class _QrShareCard extends StatelessWidget {
           Text(
             'profile_qr_card_title'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A)),
           ),
           const SizedBox(height: 6),
           Text(
             'profile_qr_card_subtitle'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF4B5563),
-              fontSize: 13,
-              height: 1.55,
-            ),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF4B5563)),
           ),
           const SizedBox(height: 14),
           RepaintBoundary(
@@ -536,10 +529,9 @@ class _QrActionButton extends StatelessWidget {
           icon: Icon(icon, color: Colors.white, size: 18),
           label: Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+            style: AppTypography.of(context)
+                .buttonPrimary
+                .copyWith(color: Colors.white),
           ),
         ),
       );
@@ -557,10 +549,9 @@ class _QrActionButton extends StatelessWidget {
         icon: const Icon(Icons.download_rounded, color: Color(0xFF132A4A), size: 18),
         label: Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF132A4A),
-            fontWeight: FontWeight.w700,
-          ),
+          style: AppTypography.of(context)
+              .buttonSecondary
+              .copyWith(color: const Color(0xFF132A4A)),
         ),
       ),
     );
@@ -614,18 +605,18 @@ class _QrCardError extends StatelessWidget {
             'profile_qr_load_failed'.tr,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A)),
           ),
           const SizedBox(height: 6),
           Text(
             message,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
@@ -633,10 +624,9 @@ class _QrCardError extends StatelessWidget {
             icon: const Icon(Icons.refresh_rounded, color: Color(0xFF132A4A)),
             label: Text(
               'profile_qr_retry'.tr,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppTypography.of(context)
+                  .buttonSecondary
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
           ),
         ],
@@ -680,21 +670,17 @@ class _SupervisorIntroCard extends StatelessWidget {
                 Text(
                   'profile_supervisor_intro_title'.tr,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: Color(0xFF132A4A),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: AppTypography.of(context)
+                      .listTileTitle
+                      .copyWith(color: const Color(0xFF132A4A)),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'profile_supervisor_intro_body'.tr,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: Color(0xFF4B5563),
-                    fontSize: 13,
-                    height: 1.55,
-                  ),
+                  style: AppTypography.of(context)
+                      .bodySecondary
+                      .copyWith(color: const Color(0xFF4B5563)),
                 ),
               ],
             ),

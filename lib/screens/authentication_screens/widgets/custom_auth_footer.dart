@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/fonts.dart';
+import '../../../core/typography/app_typography.dart';
 
 class CustomAuthFooter extends StatelessWidget {
   const CustomAuthFooter({
@@ -28,11 +28,10 @@ class CustomAuthFooter extends StatelessWidget {
       icon: Icon(icon, size: 18),
       label: Text(
         actionText,
-        style: TextStyle(
-          fontFamily: AppFonts.primaryFont,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
+        style: AppTypography.of(context).buttonSecondary.copyWith(
+              fontSize: 14,
+              color: const Color(0xFF132A4A),
+            ),
       ),
     );
   }

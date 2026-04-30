@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/school_provider.dart';
@@ -331,22 +332,17 @@ class _WelcomeHero extends StatelessWidget {
                 ? 'welcome_back'.tr
                 : '${'welcome_back'.tr} $firstName',
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              height: 1.25,
-            ),
+            style: AppTypography.of(context)
+                .pageHeading
+                .copyWith(color: Colors.white),
           ),
           const SizedBox(height: 12),
           Text(
             'welcome_kickoff_subtitle'.tr,
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.86),
-              fontSize: 15,
-              height: 1.7,
-            ),
+            style: AppTypography.of(context)
+                .bodyDefault
+                .copyWith(color: Colors.white.withValues(alpha: 0.86)),
           ),
         ],
       ),
@@ -393,12 +389,9 @@ class _WelcomeStoryCard extends StatelessWidget {
           Text(
             'welcome_msg'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              height: 1.6,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A)),
           ),
           const SizedBox(height: 18),
           const Wrap(
@@ -472,11 +465,9 @@ class _WelcomeStoryCard extends StatelessWidget {
                     ? 'welcome_primary_cta_loading'.tr
                     : 'start_evaluation'.tr,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.of(context)
+                    .buttonPrimary
+                    .copyWith(color: Colors.white),
               ),
             ),
           ),
@@ -484,11 +475,9 @@ class _WelcomeStoryCard extends StatelessWidget {
           Text(
             'welcome_primary_cta_caption'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 13,
-              height: 1.55,
-            ),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
@@ -518,22 +507,18 @@ class _WelcomeStoryCard extends StatelessWidget {
                   ? 'welcome_secondary_cta_loading'.tr
                   : 'welcome_secondary_cta'.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppTypography.of(context)
+                  .buttonSecondary
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
           ),
           const SizedBox(height: 10),
           Text(
             'welcome_secondary_cta_caption'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 13,
-              height: 1.55,
-            ),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -575,21 +560,17 @@ class _WelcomeMetricsCard extends StatelessWidget {
           Text(
             'welcome_chart_title'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A)),
           ),
           const SizedBox(height: 8),
           Text(
             'welcome_chart_subtitle'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 14,
-              height: 1.6,
-            ),
+            style: AppTypography.of(context)
+                .bodyDefault
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
           const SizedBox(height: 20),
           if (isChartLoading && !hasResolvedChartState)
@@ -622,11 +603,9 @@ class _WelcomeMetricsCard extends StatelessWidget {
             Text(
               'welcome_dimension_hint'.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-                fontSize: 12,
-                height: 1.5,
-              ),
+              style: AppTypography.of(context)
+                  .bodySmall
+                  .copyWith(color: const Color(0xFF6B7280)),
             ),
             const SizedBox(height: 14),
             SizedBox(
@@ -637,7 +616,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
                   PieChartData(
                     sectionsSpace: 2,
                     centerSpaceRadius: 48,
-                    sections: _truthfulSections(entries),
+                    sections: _truthfulSections(context, entries),
                   ),
                 ),
               ),
@@ -658,21 +637,17 @@ class _WelcomeMetricsCard extends StatelessWidget {
                   Text(
                     'welcome_chart_top_label'.tr,
                     textDirection: TextDirection.rtl,
-                    style: const TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: AppTypography.of(context)
+                        .badgeLabel
+                        .copyWith(color: const Color(0xFF6B7280)),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     topEntry == null ? '-' : _localizedName(topEntry),
                     textDirection: TextDirection.rtl,
-                    style: const TextStyle(
-                      color: Color(0xFF132A4A),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: AppTypography.of(context)
+                        .sectionTitle
+                        .copyWith(color: const Color(0xFF132A4A)),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -680,10 +655,9 @@ class _WelcomeMetricsCard extends StatelessWidget {
                       'count': evaluationsProvider.totalCount.toString(),
                     }),
                     textDirection: TextDirection.rtl,
-                    style: const TextStyle(
-                      color: Color(0xFF4B5563),
-                      fontSize: 13,
-                    ),
+                    style: AppTypography.of(context)
+                        .bodySecondary
+                        .copyWith(color: const Color(0xFF4B5563)),
                   ),
                 ],
               ),
@@ -703,7 +677,8 @@ class _WelcomeMetricsCard extends StatelessWidget {
     }).toList();
   }
 
-  List<PieChartSectionData> _truthfulSections(List<ChartEvaluationData> entries) {
+  List<PieChartSectionData> _truthfulSections(
+      BuildContext context, List<ChartEvaluationData> entries) {
     final controller = EvaluationsController();
     // Slices below this percentage are too narrow to fit a label inside,
     // so we draw an external callout (leader arrow + text) instead.
@@ -717,11 +692,9 @@ class _WelcomeMetricsCard extends StatelessWidget {
         value: percentage,
         radius: 96,
         title: fitsInside ? '${percentage.toStringAsFixed(0)}%' : '',
-        titleStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-        ),
+        titleStyle: AppTypography.of(context)
+            .chartTooltip
+            .copyWith(color: Colors.white),
         badgeWidget:
             fitsInside ? null : _ExternalSliceLabel(color: color, percentage: percentage),
         badgePositionPercentageOffset: 1.45,
@@ -776,21 +749,17 @@ class _ValueCard extends StatelessWidget {
             Text(
               titleKey.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTypography.of(context)
+                  .listTileTitle
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
             const SizedBox(height: 8),
             Text(
               bodyKey.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF304256),
-                fontSize: 13,
-                height: 1.55,
-              ),
+              style: AppTypography.of(context)
+                  .bodySecondary
+                  .copyWith(color: const Color(0xFF304256)),
             ),
           ],
         ),
@@ -841,21 +810,17 @@ class _JourneyStep extends StatelessWidget {
                 Text(
                   titleKey.tr,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: Color(0xFF132A4A),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: AppTypography.of(context)
+                      .listTileTitle
+                      .copyWith(color: const Color(0xFF132A4A)),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   bodyKey.tr,
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    color: Color(0xFF4B5563),
-                    fontSize: 13,
-                    height: 1.55,
-                  ),
+                  style: AppTypography.of(context)
+                      .bodySecondary
+                      .copyWith(color: const Color(0xFF4B5563)),
                 ),
               ],
             ),
@@ -899,11 +864,9 @@ class _ChartLegend extends StatelessWidget {
             Text(
               _localizedName(entry),
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppTypography.of(context)
+                  .chartAxisLabel
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
           ],
         );
@@ -945,11 +908,9 @@ class _ExternalSliceLabel extends StatelessWidget {
           child: Text(
             '${percentage.toStringAsFixed(0)}%',
             textDirection: TextDirection.ltr,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .badgeCount
+                .copyWith(color: color, fontSize: 11),
           ),
         ),
       ],
@@ -1000,22 +961,18 @@ class _ChartStateCard extends StatelessWidget {
             titleKey.tr,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A)),
           ),
           const SizedBox(height: 8),
           Text(
             bodyKey.tr,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 14,
-              height: 1.6,
-            ),
+            style: AppTypography.of(context)
+                .bodyDefault
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
           if (footerMessage != null) ...[
             const SizedBox(height: 10),
@@ -1023,11 +980,9 @@ class _ChartStateCard extends StatelessWidget {
               footerMessage!,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.errorColor,
-                fontSize: 13,
-                height: 1.5,
-              ),
+              style: AppTypography.of(context)
+                  .bodySecondary
+                  .copyWith(color: AppColors.errorColor),
             ),
           ],
           if (actionLabel != null && onAction != null) ...[
@@ -1043,10 +998,9 @@ class _ChartStateCard extends StatelessWidget {
               child: Text(
                 actionLabel!,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  color: Color(0xFF132A4A),
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.of(context)
+                    .buttonSecondary
+                    .copyWith(color: const Color(0xFF132A4A)),
               ),
             ),
           ],
@@ -1084,11 +1038,9 @@ class _InlineFeedbackBanner extends StatelessWidget {
             child: Text(
               message,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: AppColors.errorColor,
-                fontSize: 13,
-                height: 1.5,
-              ),
+              style: AppTypography.of(context)
+                  .inputError
+                  .copyWith(color: AppColors.errorColor),
             ),
           ),
         ],

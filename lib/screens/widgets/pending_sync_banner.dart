@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/typography/app_typography.dart';
 import '../../providers/evaluations_provider.dart';
 
 class PendingSyncBanner extends StatelessWidget {
@@ -66,20 +67,12 @@ class PendingSyncBanner extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF5D3A00),
-                          ),
+                          style: AppTypography.of(context).bannerTitle,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.45,
-                            color: Color(0xFF6B4C16),
-                          ),
+                          style: AppTypography.of(context).bannerBody,
                         ),
                       ],
                     ),
@@ -96,10 +89,9 @@ class PendingSyncBanner extends StatelessWidget {
                     ),
                     child: Text(
                       pendingSyncCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTypography.of(context)
+                          .badgeCount
+                          .copyWith(color: Colors.white),
                     ),
                   ),
                 ],

@@ -7,6 +7,7 @@ import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
 import '../../controllers/surahs_controller.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
@@ -418,7 +419,7 @@ class _ThirdsOverlayState extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(height: 1.5),
+            style: AppTypography.of(context).bodyDefault,
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 12),

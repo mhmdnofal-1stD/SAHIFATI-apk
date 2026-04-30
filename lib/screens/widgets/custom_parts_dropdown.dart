@@ -7,6 +7,7 @@ import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../quran_view/index_page.dart';
 import 'custom_text.dart';
@@ -154,8 +155,9 @@ class _CustomPartsDropdownState extends State<CustomPartsDropdown>
                               alignment: Alignment.centerRight,
                               child: Text(
                                 quran.getSurahNameArabic(surah.id),
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.black87),
+                                style: AppTypography.of(context)
+                                    .bodyDefault
+                                    .copyWith(color: Colors.black87),
                               ),
                             ),
                           ),
@@ -262,7 +264,7 @@ class _PartsOverlayState extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(height: 1.5),
+            style: AppTypography.of(context).bodyDefault,
           ),
           if (actionLabel != null && onAction != null) ...[
             const SizedBox(height: 12),

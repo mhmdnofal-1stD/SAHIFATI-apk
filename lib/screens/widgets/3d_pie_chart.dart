@@ -3,6 +3,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import '../../controllers/evaluations_controller.dart';
@@ -27,6 +28,7 @@ class _DonutChartState extends State<DonutChart> {
   @override
   Widget build(BuildContext context) {
     final evaluationsController = EvaluationsController();
+    final t = AppTypography.of(context);
 
     final List<PieChartSectionData> sections = [];
     List<int> sectionEvaluationIds = [];
@@ -51,9 +53,8 @@ class _DonutChartState extends State<DonutChart> {
                 'count': evaluation.verseCount.toString()
               })}',
           radius: radius,
-          titleStyle: TextStyle(
+          titleStyle: t.chartTooltip.copyWith(
             fontSize: fontSize,
-            fontWeight: FontWeight.bold,
             color: const Color(0xffffffff),
             shadows: const [Shadow(color: Colors.black, blurRadius: 2)],
           ),
@@ -107,11 +108,7 @@ class _DonutChartState extends State<DonutChart> {
               if (touchedIndex != -1)
                 Text(
                   "${sections[touchedIndex].value.toStringAsFixed(1)}%",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+                  style: t.sectionTitle,
                 ),
               if (touchedIndex != -1)
                 Text(
@@ -123,7 +120,7 @@ class _DonutChartState extends State<DonutChart> {
                       : widget.evaluationsProvider.getName(
                           sectionEvaluationIds[touchedIndex],
                           widget.languageProvider),
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  style: t.chartAxisLabel,
                 ),
             ],
           ),
@@ -171,11 +168,7 @@ class _Badge extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
+          style: AppTypography.of(context).badgeLabel,
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
         ),

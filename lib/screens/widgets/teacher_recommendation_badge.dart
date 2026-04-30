@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
 
 class TeacherRecommendationBadge extends StatelessWidget {
@@ -46,11 +47,10 @@ class TeacherRecommendationBadge extends StatelessWidget {
             SizedBox(width: compact ? 2 : 4),
             Text(
               recommendations.length.toString(),
-              style: TextStyle(
-                color: const Color(0xFF8A5A00),
-                fontWeight: FontWeight.w700,
-                fontSize: compact ? 10 : 12,
-              ),
+              style: AppTypography.of(context).badgeCount.copyWith(
+                    color: const Color(0xFF8A5A00),
+                    fontSize: compact ? 10 : 12,
+                  ),
             ),
           ],
         ),
@@ -86,10 +86,7 @@ class TeacherRecommendationBadge extends StatelessWidget {
                     Text(
                       'teacher_recommendation_badge_sheet_title'.tr,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.of(context).dialogTitle,
                     ),
                     const SizedBox(height: 12),
                     if (localRecommendations.isEmpty)
@@ -141,9 +138,8 @@ class TeacherRecommendationBadge extends StatelessWidget {
                                                     .teacher?.displayName ??
                                                 'teacher_recommendation_badge_unknown_teacher'
                                                     .tr,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: AppTypography.of(context)
+                                                .listTileTitle,
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
@@ -151,10 +147,12 @@ class TeacherRecommendationBadge extends StatelessWidget {
                                               context,
                                               recommendation,
                                             ),
-                                            style: const TextStyle(
-                                              color: AppColors.hintTextColor,
-                                              fontSize: 12,
-                                            ),
+                                            style: AppTypography.of(context)
+                                                .listTileSubtitle
+                                                .copyWith(
+                                                  color:
+                                                      AppColors.hintTextColor,
+                                                ),
                                           ),
                                         ],
                                       ),

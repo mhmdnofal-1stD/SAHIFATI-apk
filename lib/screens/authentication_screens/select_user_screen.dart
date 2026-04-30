@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../core/auth/post_auth_navigation.dart';
 import '../../core/constants/colors.dart';
-import '../../core/constants/fonts.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/ayat_provider.dart';
 import '../../providers/evaluations_provider.dart';
@@ -265,12 +265,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
         Expanded(
           child: Text(
             'auth_saved_accounts_label'.tr,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF132A4A),
-            ),
+            style: AppTypography.of(context).sectionTitle.copyWith(
+                  fontSize: 16,
+                  color: const Color(0xFF132A4A),
+                ),
           ),
         ),
         Container(
@@ -284,12 +282,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             'auth_saved_accounts_count'.trParams({
               'count': _storedUsers.length.toString(),
             }),
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF5E6B7D),
-            ),
+            style: AppTypography.of(context).badgeLabel.copyWith(
+                  fontSize: 12,
+                  color: const Color(0xFF5E6B7D),
+                ),
           ),
         ),
       ],
@@ -316,12 +312,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
           Text(
             'auth_saved_accounts_loading'.tr,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF132A4A),
-            ),
+            style: AppTypography.of(context).bodySecondary.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF132A4A),
+                ),
           ),
         ],
       ),
@@ -364,23 +358,19 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
           Text(
             'auth_saved_accounts_empty_title'.tr,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF132A4A),
-            ),
+            style: AppTypography.of(context).subsectionTitle.copyWith(
+                  color: const Color(0xFF132A4A),
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'auth_saved_accounts_empty_body'.tr,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 13,
-              color: const Color(0xFF5E6B7D),
-              height: 1.55,
-            ),
+            style: AppTypography.of(context).bodySecondary.copyWith(
+                  fontSize: 13,
+                  color: const Color(0xFF5E6B7D),
+                  height: 1.55,
+                ),
           ),
         ],
       ),
@@ -443,23 +433,24 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF132A4A),
-                          ),
+                          style: AppTypography.of(context)
+                              .userDisplayName
+                              .copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF132A4A),
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           (user['email'] ?? '').toString(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontSize: 13,
-                            color: const Color(0xFF6C7280),
-                          ),
+                          style: AppTypography.of(context)
+                              .listTileSubtitle
+                              .copyWith(
+                                color: const Color(0xFF6C7280),
+                              ),
                         ),
                       ],
                     ),
@@ -488,23 +479,19 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                     ),
                     child: Text(
                       _statusText(user),
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                      ),
+                      style: AppTypography.of(context).badgeLabel.copyWith(
+                            fontSize: 11,
+                            color: statusColor,
+                          ),
                     ),
                   ),
                   const Spacer(),
                   Text(
                     'auth_saved_accounts_continue'.tr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primaryFont,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF132A4A),
-                    ),
+                    style: AppTypography.of(context).buttonSecondary.copyWith(
+                          fontSize: 12,
+                          color: const Color(0xFF132A4A),
+                        ),
                   ),
                   const SizedBox(width: 6),
                   const Icon(
@@ -571,12 +558,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                 icon: const Icon(Icons.login_rounded, color: Colors.white),
                 label: Text(
                   'auth_saved_accounts_manual_login'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                  style: AppTypography.of(context).buttonPrimary.copyWith(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
                 ),
               ),
             ),

@@ -14,12 +14,15 @@ import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/models/ayat.dart';
 import 'package:sahifaty/models/evaluation.dart';
+import 'package:sahifaty/models/school.dart';
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/services/school_services.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
+import 'package:sahifaty/services/subjects_lookup_service.dart';
 import 'package:sahifaty/services/users_services.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
@@ -33,6 +36,7 @@ import '../widgets/assessment_input_dialog.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/pending_sync_banner.dart';
 import '../widgets/teacher_recommendation_badge.dart';
+import '../widgets/unified_quran_filter_sheet.dart';
 
 enum _ReadingNavigationMode { page, hizbQuarter }
 
@@ -213,8 +217,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     if (_filterSchoolLevelIds.isNotEmpty) {
       final levels = ayah.schoolLevels ?? const <SchoolLevel>[];
       final hasMatch = levels.any((level) {
-        final id = level.id;
-        return id != null && _filterSchoolLevelIds.contains(id);
+        final schoolId = level.schoolId;
+        final levelNumber = level.level;
+        if (schoolId == null || levelNumber == null) {
+          return false;
+        }
+        return _filterSchoolLevelIds.contains(
+          _schoolLevelFilterKey(schoolId, levelNumber),
+        );
       });
       if (!hasMatch) {
         return false;
@@ -258,6 +268,165 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final preview =
         raw.length > maxLen ? '${raw.substring(0, maxLen).trim()}…' : raw;
     return '$preview (${ayah.ayahNo})';
+  }
+
+  String _schoolLevelFilterKey(int schoolId, int level) => '$schoolId:$level';
+
+  String _resolveLocalizedMapValue(Map<String, dynamic> raw) {
+    final locale = Get.locale?.languageCode ?? 'ar';
+    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
+    if (localized is String && localized.trim().isNotEmpty) {
+      return localized.trim();
+    }
+    for (final value in raw.values) {
+      if (value is String && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return '';
+  }
+
+  String _resolveSchoolName(SchoolLevel level, Map<int, School> schoolsById) {
+    final schoolId = level.schoolId;
+    if (schoolId != null) {
+      final school = schoolsById[schoolId];
+      if (school != null) {
+        final localized = _resolveLocalizedMapValue(school.schoolName);
+        if (localized.isNotEmpty) {
+          return localized;
+        }
+      }
+    }
+
+    final embedded = level.schoolName?.trim();
+    if (embedded != null && embedded.isNotEmpty) {
+      return embedded;
+    }
+
+    return schoolId?.toString() ?? '';
+  }
+
+  String _resolveSchoolFilterLevelName(
+    SchoolLevel level,
+    Map<int, School> schoolsById,
+  ) {
+    final schoolId = level.schoolId;
+    final levelNumber = level.level;
+
+    if (schoolId != null && levelNumber != null) {
+      final school = schoolsById[schoolId];
+      if (school != null &&
+          levelNumber >= 1 &&
+          levelNumber <= school.levels.length) {
+        final localized = _resolveSchoolLevelName(
+          school.levels[levelNumber - 1],
+        );
+        if (localized.isNotEmpty) {
+          return localized;
+        }
+      }
+    }
+
+    final direct = _resolveSchoolLevelName(level);
+    if (direct.isNotEmpty && direct != (level.id ?? '')) {
+      return direct;
+    }
+
+    if (levelNumber != null) {
+      final fallbackKey = 'level_$levelNumber';
+      final translated = fallbackKey.tr;
+      return translated == fallbackKey ? levelNumber.toString() : translated;
+    }
+
+    return level.id ?? '';
+  }
+
+  Future<Map<String, String>> _resolveSubjectDisplayLabels(
+    Set<String> subjectKeys,
+  ) async {
+    final labels = <String, String>{
+      for (final key in subjectKeys) key: key,
+    };
+    if (subjectKeys.isEmpty) {
+      return labels;
+    }
+
+    try {
+      final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
+      final locale = Get.locale?.languageCode ?? 'ar';
+      final byKey = <String, SubjectHierarchyItem>{
+        for (final item in hierarchy) item.key: item,
+      };
+      for (final key in subjectKeys) {
+        final subject = byKey[key];
+        if (subject == null) {
+          continue;
+        }
+        final displayName = subject.displayName(locale).trim();
+        if (displayName.isNotEmpty) {
+          labels[key] = displayName;
+        }
+      }
+    } catch (_) {}
+
+    return labels;
+  }
+
+  Future<List<UnifiedFilterSchoolGroup>> _resolveSchoolFilterGroups() async {
+    final schoolsById = <int, School>{};
+    try {
+      final schools = await SchoolServices().getAllSchools();
+      for (final school in schools) {
+        final schoolId = school.id;
+        if (schoolId == null) {
+          continue;
+        }
+        schoolsById[schoolId] = school;
+      }
+    } catch (_) {}
+
+    final groupTitles = <int, String>{};
+    final groupedLevels = <int, Map<String, UnifiedFilterSchoolLevel>>{};
+
+    for (final ayah in _ayat) {
+      final schoolLevels = ayah.schoolLevels ?? const <SchoolLevel>[];
+      for (final level in schoolLevels) {
+        final schoolId = level.schoolId;
+        final levelNumber = level.level;
+        if (schoolId == null || levelNumber == null) {
+          continue;
+        }
+
+        groupTitles[schoolId] = _resolveSchoolName(level, schoolsById);
+        final filterKey = _schoolLevelFilterKey(schoolId, levelNumber);
+        groupedLevels
+            .putIfAbsent(
+                schoolId, () => <String, UnifiedFilterSchoolLevel>{})
+            .putIfAbsent(
+              filterKey,
+              () => UnifiedFilterSchoolLevel(
+                key: filterKey,
+                label: _resolveSchoolFilterLevelName(level, schoolsById),
+                level: levelNumber,
+              ),
+            );
+      }
+    }
+
+    final groups = groupedLevels.entries
+        .map((entry) {
+          final levels = entry.value.values.toList()
+            ..sort((left, right) => left.level.compareTo(right.level));
+          return UnifiedFilterSchoolGroup(
+            label: groupTitles[entry.key] ?? entry.key.toString(),
+            levels: levels,
+          );
+        })
+        .where((group) => group.levels.isNotEmpty)
+        .toList()
+      ..sort((left, right) => left.label.compareTo(right.label));
+
+    return groups;
   }
 
   bool get _isPageNavigation =>
@@ -325,48 +494,26 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return _mushafLastPage;
   }
 
-  bool get _canNavigateBackward {
-    if (_isPageNavigation) {
-      final currentPage = _currentPage;
-      if (currentPage == null) {
-        return false;
-      }
-      return currentPage > _scopeFirstPage;
-    }
-
-    final currentQuarter = _currentHizbQuarter;
-    final firstQuarter = _initialHizbQuarter ?? _minHizbQuarter;
-    if (currentQuarter == null || firstQuarter == null) {
-      return false;
-    }
-
-    return currentQuarter > firstQuarter;
-  }
-
-  bool get _canNavigateForward {
-    if (_isPageNavigation) {
-      final currentPage = _currentPage;
-      if (currentPage == null) {
-        return false;
-      }
-      return currentPage < _scopeLastPage;
-    }
-
-    final currentQuarter = _currentHizbQuarter;
-    final lastQuarter = _maxHizbQuarter;
-    if (currentQuarter == null || lastQuarter == null) {
-      return false;
-    }
-
-    return currentQuarter < lastQuarter;
-  }
-
   String get _navigationProgressLabel {
     if (_isPageNavigation && _currentPage != null) {
       return '$_currentPage / 604';
     }
 
     return 'Q${_currentHizbQuarter ?? '-'}';
+  }
+
+  int? get _currentNavigationJuz {
+    if (_ayat.isNotEmpty) {
+      return _ayat.first.juz;
+    }
+    return widget.juz;
+  }
+
+  bool get _canTapNavigationControls {
+    if (_isPageNavigation) {
+      return _currentPage != null;
+    }
+    return _currentHizbQuarter != null;
   }
 
   int _compareAyatOrder(Ayat left, Ayat right) {
@@ -1219,40 +1366,38 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     // Snapshot the dimensions available across the loaded ayat so the picker
     // only offers values the user can actually act on right now.
-    final availableSubjects = <String>{};
-    final availableSchoolLevels = <String, String>{}; // id -> display name
+    final availableSubjectKeys = <String>{};
     for (final ayah in _ayat) {
       if (ayah.subjects != null) {
-        availableSubjects.addAll(ayah.subjects!);
-      }
-      if (ayah.schoolLevels != null) {
-        for (final level in ayah.schoolLevels!) {
-          final id = level.id;
-          if (id == null) continue;
-          final localizedName = _resolveSchoolLevelName(level);
-          availableSchoolLevels[id] = localizedName;
-        }
+        availableSubjectKeys.addAll(ayah.subjects!);
       }
     }
 
-    final result = await showModalBottomSheet<_ReadingDisplayFilterResult>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => _ReaderDisplayFilterSheet(
-        initialAyahTypes: _filterAyahTypes,
-        initialSubjectKeys: _filterSubjectKeys,
-        initialSchoolLevelIds: _filterSchoolLevelIds,
-        initialMemoEvaluationIds: _filterMemoEvaluationIds,
-        initialCompreEvaluationIds: _filterCompreEvaluationIds,
-        initialThirds: _filterThirds,
-        initialJuzs: _filterJuzs,
-        initialSurahIds: _filterSurahIds,
-        availableSubjects: availableSubjects,
-        availableSchoolLevels: availableSchoolLevels,
+    final availableSubjects = await _resolveSubjectDisplayLabels(
+      availableSubjectKeys,
+    );
+    final availableSchoolGroups = await _resolveSchoolFilterGroups();
+    if (!mounted) {
+      return;
+    }
+
+    final initial = UnifiedFilterSelection(
+      thirds: {..._filterThirds},
+      juzs: {..._filterJuzs},
+      surahIds: {..._filterSurahIds},
+      ayahTypes: {..._filterAyahTypes},
+      subjectKeys: {..._filterSubjectKeys},
+      schoolLevelIds: {..._filterSchoolLevelIds},
+      memoEvaluationIds: {..._filterMemoEvaluationIds},
+      compreEvaluationIds: {..._filterCompreEvaluationIds},
+    );
+
+    final result = await showUnifiedQuranFilterSheet(
+      context,
+      initial: initial,
+      available: UnifiedFilterAvailableData(
+        subjects: availableSubjects,
+        schoolGroups: availableSchoolGroups,
         memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
         comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
       ),
@@ -1301,12 +1446,17 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   String _resolveSchoolLevelName(SchoolLevel level) {
     final raw = level.name;
     if (raw == null) {
+      final levelNumber = level.level;
+      if (levelNumber != null) {
+        final fallbackKey = 'level_$levelNumber';
+        final translated = fallbackKey.tr;
+        return translated == fallbackKey ? levelNumber.toString() : translated;
+      }
       return level.id ?? '';
     }
-    final locale = Get.locale?.languageCode ?? 'ar';
-    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
-    if (localized is String && localized.trim().isNotEmpty) {
-      return localized.trim();
+    final localized = _resolveLocalizedMapValue(raw);
+    if (localized.isNotEmpty) {
+      return localized;
     }
     return level.id ?? '';
   }
@@ -1770,7 +1920,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                 children: [
                                                   Icon(
                                                     Icons.auto_stories_rounded,
-                                                    size: 16,
+                                                    size: 22,
                                                     color: isDarkMode
                                                         ? const Color(
                                                             0xFFE6DFD0,
@@ -1779,13 +1929,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                             0xFF132A4A,
                                                           ),
                                                   ),
-                                                  const SizedBox(width: 6),
+                                                  const SizedBox(width: 8),
                                                   Text(
-                                                    widget.juz != null
+                                                    _currentNavigationJuz != null
                                                         ? _trParams(
                                                             'quran_reading_juz_indicator',
                                                             {
-                                                              'juz': widget.juz
+                                                              'juz': _currentNavigationJuz
                                                                   .toString(),
                                                             },
                                                           )
@@ -1798,14 +1948,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                             ),
                                                       fontWeight:
                                                           FontWeight.w700,
-                                                      fontSize: 13,
+                                                      fontSize: 18,
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 4),
+                                                  const SizedBox(width: 6),
                                                   Icon(
                                                     Icons
                                                         .keyboard_arrow_down_rounded,
-                                                    size: 16,
+                                                    size: 22,
                                                     color: isDarkMode
                                                         ? const Color(
                                                             0xFFE6DFD0,
@@ -1826,7 +1976,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_left_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: _canNavigateBackward
+                                                    onTap: _canTapNavigationControls
                                                         ? () =>
                                                             _loadAdjacentChunk(
                                                               forward: false,
@@ -1852,7 +2002,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_right_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: _canNavigateForward
+                                                    onTap: _canTapNavigationControls
                                                         ? () =>
                                                             _loadAdjacentChunk(
                                                               forward: true,
@@ -2294,7 +2444,7 @@ class _ReaderProgressLabel extends StatelessWidget {
       style: TextStyle(
         color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
         fontWeight: FontWeight.w700,
-        fontSize: 13,
+        fontSize: 18,
         fontFeatures: const [FontFeature.tabularFigures()],
         decoration: onTap != null ? TextDecoration.underline : null,
         decorationStyle: onTap != null ? TextDecorationStyle.dotted : null,
@@ -2346,32 +2496,10 @@ class _ReaderInlineChevron extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(2),
-        child: Icon(icon, size: 22, color: foreground),
+        child: Icon(icon, size: 30, color: foreground),
       ),
     );
   }
-}
-
-class _ReadingDisplayFilterResult {
-  const _ReadingDisplayFilterResult({
-    required this.ayahTypes,
-    required this.subjectKeys,
-    required this.schoolLevelIds,
-    required this.memoEvaluationIds,
-    required this.compreEvaluationIds,
-    required this.thirds,
-    required this.juzs,
-    required this.surahIds,
-  });
-
-  final Set<String> ayahTypes;
-  final Set<String> subjectKeys;
-  final Set<String> schoolLevelIds;
-  final Set<int> memoEvaluationIds;
-  final Set<int> compreEvaluationIds;
-  final Set<int> thirds;
-  final Set<int> juzs;
-  final Set<int> surahIds;
 }
 
 /// Static helpers + cached lookup tables for the reader's hierarchical
@@ -2386,8 +2514,6 @@ class _ReaderScopeData {
     final end = third * _juzsPerThird;
     return Iterable<int>.generate(end - start + 1, (i) => start + i);
   }
-
-  static int thirdOfJuz(int juz) => ((juz - 1) ~/ _juzsPerThird) + 1;
 
   static Map<int, List<int>> _ensureJuzToSurahs() {
     final cached = _juzToSurahs;
@@ -2740,491 +2866,6 @@ class _ReaderPagePickerState extends State<_ReaderPagePicker> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReaderDisplayFilterSheet extends StatefulWidget {
-  const _ReaderDisplayFilterSheet({
-    required this.initialAyahTypes,
-    required this.initialSubjectKeys,
-    required this.initialSchoolLevelIds,
-    required this.initialMemoEvaluationIds,
-    required this.initialCompreEvaluationIds,
-    required this.initialThirds,
-    required this.initialJuzs,
-    required this.initialSurahIds,
-    required this.availableSubjects,
-    required this.availableSchoolLevels,
-    required this.memorizationEvaluations,
-    required this.comprehensionEvaluations,
-  });
-
-  final Set<String> initialAyahTypes;
-  final Set<String> initialSubjectKeys;
-  final Set<String> initialSchoolLevelIds;
-  final Set<int> initialMemoEvaluationIds;
-  final Set<int> initialCompreEvaluationIds;
-  final Set<int> initialThirds;
-  final Set<int> initialJuzs;
-  final Set<int> initialSurahIds;
-  final Set<String> availableSubjects;
-  final Map<String, String> availableSchoolLevels;
-  final List<Evaluation> memorizationEvaluations;
-  final List<Evaluation> comprehensionEvaluations;
-
-  @override
-  State<_ReaderDisplayFilterSheet> createState() =>
-      _ReaderDisplayFilterSheetState();
-}
-
-class _ReaderDisplayFilterSheetState extends State<_ReaderDisplayFilterSheet> {
-  late final Set<String> _ayahTypes;
-  late final Set<String> _subjects;
-  late final Set<String> _schoolLevels;
-  late final Set<int> _memos;
-  late final Set<int> _compres;
-  late final Set<int> _thirds;
-  late final Set<int> _juzs;
-  late final Set<int> _surahIds;
-
-  @override
-  void initState() {
-    super.initState();
-    _ayahTypes = {...widget.initialAyahTypes};
-    _subjects = {...widget.initialSubjectKeys};
-    _schoolLevels = {...widget.initialSchoolLevelIds};
-    _memos = {...widget.initialMemoEvaluationIds};
-    _compres = {...widget.initialCompreEvaluationIds};
-    _thirds = {...widget.initialThirds};
-    _juzs = {...widget.initialJuzs};
-    _surahIds = {...widget.initialSurahIds};
-  }
-
-  String _tr(String key) => key.tr;
-
-  String _trParams(String key, Map<String, String> params) =>
-      key.trParams(params);
-
-  void _toggleString(Set<String> set, String value) {
-    setState(() {
-      if (set.contains(value)) {
-        set.remove(value);
-      } else {
-        set.add(value);
-      }
-    });
-  }
-
-  void _toggleInt(Set<int> set, int value) {
-    setState(() {
-      if (set.contains(value)) {
-        set.remove(value);
-      } else {
-        set.add(value);
-      }
-    });
-  }
-
-  String _evaluationLabel(Evaluation evaluation) {
-    final locale = Get.locale?.languageCode ?? 'ar';
-    final raw = evaluation.name;
-    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
-    if (localized != null && localized.trim().isNotEmpty) {
-      return localized.trim();
-    }
-    return evaluation.id?.toString() ?? '';
-  }
-
-  Widget _buildDimensionSection({
-    required String title,
-    required List<Widget> chips,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-              ),
-            ),
-          ),
-          if (chips.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                _tr('quran_reading_filter_empty_dimension'),
-                style: TextStyle(
-                  color: Theme.of(context).hintColor,
-                  fontSize: 12,
-                ),
-              ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: chips,
-            ),
-        ],
-      ),
-    );
-  }
-
-  FilterChip _filterChipString(
-    String label,
-    String value,
-    Set<String> selectionSet,
-  ) {
-    final selected = selectionSet.contains(value);
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => _toggleString(selectionSet, value),
-    );
-  }
-
-  FilterChip _filterChipInt(
-    String label,
-    int value,
-    Set<int> selectionSet,
-  ) {
-    final selected = selectionSet.contains(value);
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => _toggleInt(selectionSet, value),
-    );
-  }
-
-  /// Surahs the user is allowed to pick, narrowed by Thirds/Juz selection.
-  /// "كلما قل خيار اثلاث/اجزاء قلت السور المتاحة"
-  List<int> get _availableSurahIds {
-    final allowedJuzs = <int>{};
-    if (_juzs.isNotEmpty) {
-      allowedJuzs.addAll(_juzs);
-    } else if (_thirds.isNotEmpty) {
-      for (final t in _thirds) {
-        allowedJuzs.addAll(_ReaderScopeData.juzsInThird(t));
-      }
-    }
-    if (allowedJuzs.isEmpty) {
-      return List<int>.generate(quran.totalSurahCount, (i) => i + 1);
-    }
-    final scoped = _ReaderScopeData.surahsInJuzs(allowedJuzs).toList()..sort();
-    return scoped;
-  }
-
-  int get _activeDimensionCount {
-    var n = 0;
-    if (_thirds.isNotEmpty || _juzs.isNotEmpty || _surahIds.isNotEmpty) n++;
-    if (_ayahTypes.isNotEmpty) n++;
-    if (_subjects.isNotEmpty) n++;
-    if (_schoolLevels.isNotEmpty) n++;
-    if (_memos.isNotEmpty) n++;
-    if (_compres.isNotEmpty) n++;
-    return n;
-  }
-
-  String _scopeBadgeText() {
-    if (_surahIds.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_surahs_count', {
-        'count': _surahIds.length.toString(),
-      });
-    }
-    if (_juzs.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_juzs_count', {
-        'count': _juzs.length.toString(),
-      });
-    }
-    if (_thirds.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_thirds_count', {
-        'count': _thirds.length.toString(),
-      });
-    }
-    return _tr('quran_reading_filter_scope_full_mushaf');
-  }
-
-  Widget _buildScopeTreeSection() {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Theme(
-          data: theme.copyWith(dividerColor: Colors.transparent),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _tr('quran_reading_filter_scope_title'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      _scopeBadgeText(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.hintColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_thirds')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (var t = 1; t <= 3; t++)
-                        _filterChipInt(
-                          _tr('quran_reading_filter_third_$t'),
-                          t,
-                          _thirds,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_juzs')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (var j = 1; j <= 30; j++)
-                        if (_thirds.isEmpty ||
-                            _thirds.contains(_ReaderScopeData.thirdOfJuz(j)))
-                          _filterChipInt(
-                            _trParams('quran_reading_filter_juz_n', {
-                              'juz': j.toString(),
-                            }),
-                            j,
-                            _juzs,
-                          ),
-                    ],
-                  ),
-                ],
-              ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_surahs')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final s in _availableSurahIds)
-                        _filterChipInt(
-                          quran.getSurahNameArabic(s),
-                          s,
-                          _surahIds,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final revelationOptions = <MapEntry<String, String>>[
-      MapEntry('makki', _tr('quran_reading_filter_revelation_makki')),
-      MapEntry('madani', _tr('quran_reading_filter_revelation_madani')),
-      MapEntry('debatable', _tr('quran_reading_filter_revelation_debatable')),
-    ];
-
-    final subjectsList = widget.availableSubjects.toList()..sort();
-    final schoolEntries = widget.availableSchoolLevels.entries.toList()
-      ..sort((a, b) => a.value.compareTo(b.value));
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          12,
-          16,
-          16 + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: 4,
-                  width: 44,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white24 : Colors.black26,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                Text(
-                  _tr('quran_reading_filter_title'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _tr('quran_reading_filter_subtitle'),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).hintColor,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildScopeTreeSection(),
-                _buildDimensionSection(
-                  title: _tr('quran_reading_filter_dim_revelation'),
-                  chips: revelationOptions
-                      .map((entry) => _filterChipString(
-                            entry.value,
-                            entry.key,
-                            _ayahTypes,
-                          ))
-                      .toList(),
-                ),
-                _buildDimensionSection(
-                  title: _tr('quran_reading_filter_dim_subject'),
-                  chips: subjectsList
-                      .map((subject) =>
-                          _filterChipString(subject, subject, _subjects))
-                      .toList(),
-                ),
-                _buildDimensionSection(
-                  title: _tr('quran_reading_filter_dim_school'),
-                  chips: schoolEntries
-                      .map((entry) => _filterChipString(
-                            entry.value,
-                            entry.key,
-                            _schoolLevels,
-                          ))
-                      .toList(),
-                ),
-                _buildDimensionSection(
-                  title: _tr('quran_reading_filter_dim_memorization'),
-                  chips: widget.memorizationEvaluations
-                      .where((e) => e.id != null)
-                      .map((e) => _filterChipInt(
-                            _evaluationLabel(e),
-                            e.id!,
-                            _memos,
-                          ))
-                      .toList(),
-                ),
-                _buildDimensionSection(
-                  title: _tr('quran_reading_filter_dim_comprehension'),
-                  chips: widget.comprehensionEvaluations
-                      .where((e) => e.id != null)
-                      .map((e) => _filterChipInt(
-                            _evaluationLabel(e),
-                            e.id!,
-                            _compres,
-                          ))
-                      .toList(),
-                ),
-                if (_activeDimensionCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      _trParams(
-                        'quran_reading_filter_active_summary',
-                        {'count': _activeDimensionCount.toString()},
-                      ),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).hintColor,
-                      ),
-                    ),
-                  ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _ayahTypes.clear();
-                            _subjects.clear();
-                            _schoolLevels.clear();
-                            _memos.clear();
-                            _compres.clear();
-                            _thirds.clear();
-                            _juzs.clear();
-                            _surahIds.clear();
-                          });
-                        },
-                        child: Text(_tr('quran_reading_filter_clear')),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(
-                          _ReadingDisplayFilterResult(
-                            ayahTypes: _ayahTypes,
-                            subjectKeys: _subjects,
-                            schoolLevelIds: _schoolLevels,
-                            memoEvaluationIds: _memos,
-                            compreEvaluationIds: _compres,
-                            thirds: _thirds,
-                            juzs: _juzs,
-                            surahIds: _surahIds,
-                          ),
-                        ),
-                        child: Text(_tr('quran_reading_filter_apply')),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

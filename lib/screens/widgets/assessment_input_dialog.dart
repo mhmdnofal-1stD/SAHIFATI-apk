@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/evaluations_controller.dart';
+import '../../core/typography/app_typography.dart';
 import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/language_provider.dart';
@@ -123,12 +124,11 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                 label: Text(
                   evaluationLabel(evaluation),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected
-                        ? (isDark ? Colors.white : Colors.black)
-                        : Colors.black87,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: AppTypography.of(context).badgeLabel.copyWith(
+                        color: selected
+                            ? (isDark ? Colors.white : Colors.black)
+                            : Colors.black87,
+                      ),
                 ),
                 selected: selected,
                 selectedColor: color,
@@ -162,10 +162,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           if (hasMemoOptions) ...[
                             Text(
                               'assessment_dimension_memorization'.tr,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: AppTypography.of(context).subsectionTitle,
                               textAlign: TextAlign.right,
                             ),
                             const SizedBox(height: 10),
@@ -199,10 +196,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           if (hasCompreOptions) ...[
                             Text(
                               'assessment_dimension_comprehension'.tr,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: AppTypography.of(context).subsectionTitle,
                               textAlign: TextAlign.right,
                             ),
                             const SizedBox(height: 10),
@@ -237,10 +231,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         if (subjectNamesFuture != null) ...[
                           Text(
                             'assessment_dialog_subjects_label'.tr,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTypography.of(context).subsectionTitle,
                             textAlign: TextAlign.right,
                           ),
                           const SizedBox(height: 10),
@@ -269,9 +260,9 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                 return Text(
                                   'assessment_dialog_subjects_unavailable'.tr,
                                   textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Colors.grey.shade700,
-                                  ),
+                                  style: AppTypography.of(context)
+                                      .bodySecondary
+                                      .copyWith(color: Colors.grey.shade700),
                                 );
                               }
 
@@ -305,10 +296,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         if (enableCommentField) ...[
                           Text(
                             'assessment_dialog_comment_label'.tr,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: AppTypography.of(context).subsectionTitle,
                             textAlign: TextAlign.right,
                           ),
                           const SizedBox(height: 10),
@@ -336,10 +324,9 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           Text(
                             'assessment_dialog_hint'.tr,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontSize: 12,
-                            ),
+                            style: AppTypography.of(context)
+                                .bodySmall
+                                .copyWith(color: Colors.grey.shade700),
                           ),
                       ],
                     ],

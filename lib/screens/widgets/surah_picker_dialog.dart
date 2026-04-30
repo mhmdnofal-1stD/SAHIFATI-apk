@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:quran/quran.dart' as quran;
 
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 
 class SurahPickerDialog extends StatefulWidget {
   const SurahPickerDialog({super.key});
@@ -56,10 +57,7 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
                     Expanded(
                       child: Text(
                         'surah_picker_title'.tr,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppTypography.of(context).dialogTitle,
                       ),
                     ),
                     IconButton(
@@ -92,7 +90,7 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
                         child: Text(
                           'surah_picker_empty'.tr,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.black54),
+                          style: AppTypography.of(context).emptyStateBody,
                         ),
                       )
                     : ListView.separated(
@@ -108,11 +106,9 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
                                   AppColors.primaryPurple.withValues(alpha: 0.1),
                               child: Text(
                                 surahId.toString(),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryPurple,
-                                ),
+                                style: AppTypography.of(context)
+                                    .badgeLabel
+                                    .copyWith(color: AppColors.primaryPurple),
                               ),
                             ),
                             title: Text(
@@ -122,9 +118,7 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
                               textDirection: isArabic
                                   ? TextDirection.rtl
                                   : TextDirection.ltr,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
+                              style: AppTypography.of(context).listTileTitle,
                             ),
                             subtitle: Text(
                               'surah_picker_ayah_count'.trParams({

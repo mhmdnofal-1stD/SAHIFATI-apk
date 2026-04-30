@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 
 class CustomAuthenticationTextField extends StatefulWidget {
   const CustomAuthenticationTextField({
@@ -107,11 +108,9 @@ class _CustomAuthenticationTextFieldState
                           )
                         : null,
                     hintText: widget.hintText ?? "",
-                    hintStyle: TextStyle(
-                      color: const Color(0xFF7B8696),
-                      fontFamily: AppFonts.primaryFont,
-                      fontSize: 15,
-                    ),
+                    hintStyle: AppTypography.of(context)
+                        .inputHint
+                        .copyWith(fontFamily: AppFonts.primaryFont),
                     border: InputBorder.none,
                   )),
             ),

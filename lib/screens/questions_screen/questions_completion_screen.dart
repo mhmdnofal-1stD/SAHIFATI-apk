@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
@@ -96,10 +97,9 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
               centerTitle: true,
               title: Text(
                 'questions_completion_title'.tr,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.blackFontColor,
-                ),
+                style: AppTypography.of(context)
+                    .appBarTitle
+                    .copyWith(color: AppColors.blackFontColor),
               ),
               leading: const CustomBackButton(),
               actions: [
@@ -159,22 +159,19 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                             widget.skipped
                                 ? 'questions_completion_badge_skipped'.tr
                                 : 'questions_completion_badge_complete'.tr,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.buttonColor,
-                            ),
+                            style: AppTypography.of(context)
+                                .badgeLabel
+                                .copyWith(
+                                  color: AppColors.buttonColor,
+                                  fontSize: 15,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             widget.skipped
                                 ? 'questions_completion_heading_skipped'.tr
                                 : 'questions_completion_heading_complete'.tr,
-                            style: const TextStyle(
-                              fontSize: 28.5,
-                              height: 1.35,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: AppTypography.of(context).pageHeading,
                           ),
                           const SizedBox(height: 18),
                           ClipRRect(
@@ -227,26 +224,22 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                         children: [
                           Text(
                             'questions_completion_meaning_title'.tr,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: AppTypography.of(context).sectionTitle,
                           ),
                           const SizedBox(height: 10),
                           Text(
                             widget.skipped
                                 ? 'questions_completion_meaning_body_skipped'.tr
                                 : 'questions_completion_meaning_body_complete'.tr,
-                            style: const TextStyle(fontSize: 15.5, height: 1.6),
+                            style: AppTypography.of(context).bodyDefault,
                           ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
                             Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                color: AppColors.errorColor,
-                                height: 1.5,
-                              ),
+                              style: AppTypography.of(context)
+                                  .bodySecondary
+                                  .copyWith(color: AppColors.errorColor),
                             ),
                           ],
                           const SizedBox(height: 18),
@@ -330,18 +323,14 @@ class _SummaryMetricCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF59625D),
-            ),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF59625D)),
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context).pageHeading,
           ),
         ],
       ),

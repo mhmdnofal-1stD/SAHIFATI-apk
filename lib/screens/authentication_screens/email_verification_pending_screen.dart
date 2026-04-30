@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 
 class EmailVerificationPendingScreen extends StatefulWidget {
@@ -208,23 +208,25 @@ class _EmailVerificationPendingScreenState
                                   Text(
                                     'email_verification_pending_title'.tr,
                                     textDirection: TextDirection.rtl,
-                                    style: TextStyle(
-                                      fontFamily: AppFonts.primaryFont,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.blackFontColor,
-                                    ),
+                                    style: AppTypography.of(context)
+                                        .pageHeading
+                                        .copyWith(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.blackFontColor,
+                                        ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'email_verification_pending_subtitle'.tr,
                                     textDirection: TextDirection.rtl,
-                                    style: TextStyle(
-                                      fontFamily: AppFonts.primaryFont,
-                                      fontSize: 13,
-                                      color: AppColors.hintTextColor,
-                                      height: 1.5,
-                                    ),
+                                    style: AppTypography.of(context)
+                                        .bodySecondary
+                                        .copyWith(
+                                          fontSize: 13,
+                                          color: AppColors.hintTextColor,
+                                          height: 1.5,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -258,11 +260,11 @@ class _EmailVerificationPendingScreenState
                                 'email_verification_pending_sent_to'.tr,
                                 textAlign: TextAlign.center,
                                 textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontSize: 14,
-                                  color: AppColors.hintTextColor,
-                                ),
+                                style: AppTypography.of(context)
+                                    .bodySecondary
+                                    .copyWith(
+                                      color: AppColors.hintTextColor,
+                                    ),
                               ),
                               const SizedBox(height: 10),
                               Container(
@@ -281,13 +283,14 @@ class _EmailVerificationPendingScreenState
                                   maskedEmail,
                                   textAlign: TextAlign.center,
                                   textDirection: TextDirection.ltr,
-                                  style: TextStyle(
-                                    fontFamily: AppFonts.primaryFont,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primaryPurple,
-                                    letterSpacing: 0.2,
-                                  ),
+                                  style: AppTypography.of(context)
+                                      .userDisplayName
+                                      .copyWith(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primaryPurple,
+                                        letterSpacing: 0.2,
+                                      ),
                                 ),
                               ),
                               const SizedBox(height: 18),
@@ -329,12 +332,12 @@ class _EmailVerificationPendingScreenState
                             child: Text(
                               _feedbackMessage!,
                               textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 13,
-                                color: const Color(0xFF184C3A),
-                                height: 1.5,
-                              ),
+                              style: AppTypography.of(context)
+                                  .bannerBody
+                                  .copyWith(
+                                    color: const Color(0xFF184C3A),
+                                    height: 1.5,
+                                  ),
                             ),
                           ),
                         ],
@@ -372,12 +375,9 @@ class _EmailVerificationPendingScreenState
                                         remainingSeconds.toString(),
                                       }),
                                     textDirection: TextDirection.rtl,
-                                    style: TextStyle(
-                                      fontFamily: AppFonts.primaryFont,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
+                                    style: AppTypography.of(context)
+                                        .buttonPrimary
+                                        .copyWith(color: Colors.white),
                                   ),
                           ),
                         ),
@@ -394,12 +394,13 @@ class _EmailVerificationPendingScreenState
                           child: Text(
                             'email_verification_pending_change_email'.tr,
                             textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontFamily: AppFonts.primaryFont,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryPurple,
-                            ),
+                            style: AppTypography.of(context)
+                                .buttonSecondary
+                                .copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryPurple,
+                                ),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -408,11 +409,11 @@ class _EmailVerificationPendingScreenState
                           child: Text(
                             'email_verification_pending_back_to_login'.tr,
                             textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontFamily: AppFonts.primaryFont,
-                              fontSize: 14,
-                              color: AppColors.hintTextColor,
-                            ),
+                            style: AppTypography.of(context)
+                                .bodySecondary
+                                .copyWith(
+                                  color: AppColors.hintTextColor,
+                                ),
                           ),
                         ),
                       ],
@@ -461,23 +462,19 @@ class _StepLine extends StatelessWidget {
               Text(
                 titleKey.tr,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.blackFontColor,
-                ),
+                style: AppTypography.of(context).listTileTitle.copyWith(
+                      color: AppColors.blackFontColor,
+                    ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitleKey.tr,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 12,
-                  color: AppColors.hintTextColor,
-                  height: 1.5,
-                ),
+                style: AppTypography.of(context).listTileSubtitle.copyWith(
+                      fontSize: 12,
+                      color: AppColors.hintTextColor,
+                      height: 1.5,
+                    ),
               ),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
+import '../../core/typography/app_typography.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
@@ -180,10 +181,9 @@ class GlobalDrawer extends StatelessWidget {
                     const SizedBox(width: 10),
                     Text(
                       'logout'.tr,
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTypography.of(context)
+                          .drawerItem
+                          .copyWith(color: Colors.red),
                     ),
                   ],
                 ),

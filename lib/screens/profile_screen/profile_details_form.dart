@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../models/profile_location_lookup.dart';
 import '../../models/user.dart';
 import '../../providers/users_provider.dart';
@@ -243,7 +244,7 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                   ListTile(
                     title: Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTypography.of(context).listTileTitle,
                     ),
                   ),
                   Padding(
@@ -268,7 +269,9 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                         ? Center(
                             child: Text(
                               emptyMessage,
-                              style: const TextStyle(color: Colors.black54),
+                              style: AppTypography.of(context)
+                                  .bodySecondary
+                                  .copyWith(color: Colors.black54),
                             ),
                           )
                         : ListView.separated(
@@ -407,7 +410,7 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                       activeDecade == null
                           ? 'settings_birth_year_pick_decade'.tr
                           : 'settings_birth_year_pick_year'.tr,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTypography.of(context).listTileTitle,
                     ),
                   ),
                   const Divider(height: 1),
@@ -583,7 +586,9 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
           padding: const EdgeInsets.all(16),
           child: Text(
             'settings_profile_location_source_error'.tr,
-            style: const TextStyle(color: Colors.black54),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: Colors.black54),
           ),
         ),
       );
@@ -601,15 +606,14 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
             children: [
               Text(
                 'settings_profile_section_title'.tr,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.of(context).sectionTitle,
               ),
               const SizedBox(height: 8),
               Text(
                 'settings_profile_section_subtitle'.tr,
-                style: const TextStyle(color: Colors.black54),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: Colors.black54),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -630,7 +634,9 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                 ),
                 child: Text(
                   usersProvider.selectedUser?.email ?? '',
-                  style: const TextStyle(color: Colors.black87),
+                  style: AppTypography.of(context)
+                      .bodyDefault
+                      .copyWith(color: Colors.black87),
                 ),
               ),
               const SizedBox(height: 12),
@@ -643,7 +649,7 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
               const SizedBox(height: 16),
               Text(
                 'settings_profile_gender'.tr,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: AppTypography.of(context).inputLabel,
               ),
               RadioGroup<String>(
                 groupValue: _selectedGender,

@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 
 enum VerificationResultState {
@@ -76,24 +76,21 @@ class EmailVerificationResultScreen extends StatelessWidget {
                       config.titleKey.tr,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 25,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.blackFontColor,
-                      ),
+                      style: AppTypography.of(context).pageHeading.copyWith(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.blackFontColor,
+                          ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       config.descriptionKey.tr,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 14,
-                        color: AppColors.hintTextColor,
-                        height: 1.6,
-                      ),
+                      style: AppTypography.of(context).bodySecondary.copyWith(
+                            color: AppColors.hintTextColor,
+                            height: 1.6,
+                          ),
                     ),
                     if (resolvedEmail != null && resolvedEmail.isNotEmpty) ...[
                       const SizedBox(height: 18),
@@ -111,12 +108,13 @@ class EmailVerificationResultScreen extends StatelessWidget {
                           maskEmailAddress(resolvedEmail),
                           textAlign: TextAlign.center,
                           textDirection: TextDirection.ltr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryPurple,
-                          ),
+                          style: AppTypography.of(context)
+                              .userDisplayName
+                              .copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryPurple,
+                              ),
                         ),
                       ),
                     ],
@@ -162,12 +160,9 @@ class EmailVerificationResultScreen extends StatelessWidget {
                         child: Text(
                           config.primaryActionKey.tr,
                           textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
+                          style: AppTypography.of(context)
+                              .buttonPrimary
+                              .copyWith(color: Colors.white),
                         ),
                       ),
                     ),
@@ -197,12 +192,11 @@ class EmailVerificationResultScreen extends StatelessWidget {
                             ? 'email_verification_result_back_to_login'.tr
                             : 'email_verification_result_back_to_signup'.tr,
                         textDirection: TextDirection.rtl,
-                        style: TextStyle(
-                          fontFamily: AppFonts.primaryFont,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryPurple,
-                        ),
+                        style: AppTypography.of(context).buttonSecondary.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryPurple,
+                            ),
                       ),
                     ),
                   ],
@@ -311,23 +305,21 @@ class _EmailVerificationHandlerScreenState
                 'email_verification_result_loading_title'.tr,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.blackFontColor,
-                ),
+                style: AppTypography.of(context).pageHeading.copyWith(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.blackFontColor,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 'email_verification_result_loading_body'.tr,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 13,
-                  color: AppColors.hintTextColor,
-                ),
+                style: AppTypography.of(context).bodySecondary.copyWith(
+                      fontSize: 13,
+                      color: AppColors.hintTextColor,
+                    ),
               ),
             ],
           ),

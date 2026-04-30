@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import 'package:sahifaty/core/auth/social_auth_config.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import '../../controllers/users_controller.dart';
@@ -78,11 +80,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF4F5D72),
-                    ),
+                    style: AppTypography.of(context)
+                        .buttonSecondary
+                        .copyWith(color: const Color(0xFF4F5D72)),
                   ),
                 ],
               ],
@@ -231,11 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               message,
               textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 13,
-                color: AppColors.errorColor,
-              ),
+              style: AppTypography.of(context)
+                  .inputError
+                  .copyWith(fontFamily: AppFonts.primaryFont),
             ),
           ),
         ],
@@ -330,6 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       await usersProvider.finalizeAuthenticatedUser(authData);
+      TextInput.finishAutofillContext(shouldSave: true);
 
       if (_userController.rememberMe) {
         _userController.saveLoginInfo(
@@ -419,33 +418,42 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CustomAuthenticationTextField(
-              hintText: 'email_hint'.tr,
-              obscureText: false,
-              semanticLabel: 'email_label'.tr,
-              leadingIcon: Icons.alternate_email_rounded,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [
-                AutofillHints.username,
-                AutofillHints.email,
-              ],
-              textEditingController: _userController.loginEmailController,
-              borderColor: _userController.loginEmailTextFieldBorderColor,
-            ),
-            SizedBox(height: fieldGap),
-            CustomAuthenticationTextField(
-              hintText: 'password_hint'.tr,
-              obscureText: true,
-              semanticLabel: 'password_label'.tr,
-              leadingIcon: Icons.lock_outline_rounded,
-              keyboardType: TextInputType.visiblePassword,
-              textInputAction: TextInputAction.done,
-              autofillHints: const [AutofillHints.password],
-              textEditingController: _userController.loginPasswordController,
-              borderColor: _userController.loginPasswordTextFieldBorderColor,
-              onSubmitted: (_) =>
-                  _handleLogin(usersProvider, evaluationsProvider),
+            AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  CustomAuthenticationTextField(
+                    hintText: 'email_hint'.tr,
+                    obscureText: false,
+                    semanticLabel: 'email_label'.tr,
+                    leadingIcon: Icons.alternate_email_rounded,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    textEditingController: _userController.loginEmailController,
+                    borderColor: _userController.loginEmailTextFieldBorderColor,
+                  ),
+                  SizedBox(height: fieldGap),
+                  CustomAuthenticationTextField(
+                    hintText: 'password_hint'.tr,
+                    obscureText: true,
+                    semanticLabel: 'password_label'.tr,
+                    leadingIcon: Icons.lock_outline_rounded,
+                    keyboardType: TextInputType.visiblePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    textEditingController:
+                        _userController.loginPasswordController,
+                    borderColor:
+                        _userController.loginPasswordTextFieldBorderColor,
+                    onSubmitted: (_) =>
+                        _handleLogin(usersProvider, evaluationsProvider),
+                  ),
+                ],
+              ),
             ),
             SizedBox(height: utilitiesGap),
             Row(
@@ -509,12 +517,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     : const Icon(Icons.login_rounded, color: Colors.white),
                 label: Text(
                   'login'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                  style: AppTypography.of(context).buttonPrimary.copyWith(
+                        fontFamily: AppFonts.primaryFont,
+                        color: Colors.white,
+                      ),
                 ),
               ),
             ),
@@ -574,12 +580,11 @@ class _OwnerBrandingCard extends StatelessWidget {
         children: [
           Text(
             'By',
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF6A7685),
-            ),
+            style: AppTypography.of(context).bodySmall.copyWith(
+                  fontFamily: AppFonts.primaryFont,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF6A7685),
+                ),
           ),
           const SizedBox(width: 6),
           SvgPicture.asset(

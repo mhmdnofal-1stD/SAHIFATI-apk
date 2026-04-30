@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 
 class CustomText extends StatelessWidget {
   const CustomText(
@@ -32,6 +33,7 @@ class CustomText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextStyle base = AppTypography.of(context).bodyDefault;
     return Container(
       color: withBackground ?  AppColors.primaryPurple : Colors.transparent,
       padding: const EdgeInsets.all(8),
@@ -46,12 +48,11 @@ class CustomText extends StatelessWidget {
           height: structHeight,
           leading: structLeading,
         ),
-        style: TextStyle(
-          fontSize: fontSize ?? 16,
-          height: textHeight ?? 1,
-          color: color ?? Theme.of(context).textTheme.bodyLarge?.color ?? const Color(0xFF000000),
-          fontWeight: fontWeight ?? AppFonts.normal,
-          fontFamily: 'roboto',
+        style: base.copyWith(
+          fontSize: fontSize ?? base.fontSize,
+          height: textHeight ?? base.height ?? 1,
+          color: color ?? base.color ?? Theme.of(context).textTheme.bodyLarge?.color,
+          fontWeight: fontWeight ?? base.fontWeight ?? AppFonts.normal,
         ),
       ),
     );

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/assets.dart';
 import '../../../core/constants/colors.dart';
-import '../../../core/constants/fonts.dart';
+import '../../../core/typography/app_typography.dart';
 import '../../../core/utils/size_config.dart';
 
 class CustomGoogleAuthBtn extends StatelessWidget {
@@ -40,19 +40,19 @@ class CustomGoogleAuthBtn extends StatelessWidget {
                       TextSpan(children: [
                     TextSpan(
                       text: text,
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: AppFonts.primaryFont,
-                          color: AppColors.hintTextColor),
+                      style: AppTypography.of(context).buttonSecondary.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.hintTextColor,
+                          ),
                     ),
                     TextSpan(
                       text: ' Google',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: AppFonts.primaryFont,
-                          color: AppColors.hintTextColor),
+                      style: AppTypography.of(context).buttonSecondary.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.hintTextColor,
+                          ),
                     ),
                   ])),
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../core/typography/app_typography.dart';
 import '../../services/teacher_supervisions_services.dart';
 
 /// Resolves the human-facing identity for a supervision student payload.
@@ -140,7 +141,9 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(
               'supervision_reject_confirm_action'.tr,
-              style: const TextStyle(color: Color(0xFFB13030)),
+              style: AppTypography.of(ctx)
+                  .buttonSecondary
+                  .copyWith(color: const Color(0xFFB13030)),
             ),
           ),
         ],
@@ -181,7 +184,9 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
             ),
             child: Text(
               'supervision_one_time_review_confirm_action'.tr,
-              style: const TextStyle(color: Colors.white),
+              style: AppTypography.of(ctx)
+                  .buttonPrimary
+                  .copyWith(color: Colors.white),
             ),
           ),
         ],
@@ -208,10 +213,9 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         centerTitle: true,
         title: Text(
           'supervision_incoming_screen_title'.tr,
-          style: const TextStyle(
-            color: Color(0xFF132A4A),
-            fontWeight: FontWeight.w800,
-          ),
+          style: AppTypography.of(context)
+              .appBarTitle
+              .copyWith(color: const Color(0xFF132A4A)),
         ),
       ),
       body: SafeArea(
@@ -338,20 +342,16 @@ class _LimitTile extends StatelessWidget {
               Text(
                 label,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.of(context).badgeLabel.copyWith(
+                      color: Colors.white.withValues(alpha: 0.78),
+                    ),
               ),
               const SizedBox(height: 2),
               Text(
                 '$count / $max',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: AppTypography.of(context)
+                    .badgeCount
+                    .copyWith(color: Colors.white, fontSize: 18),
               ),
             ],
           ),
@@ -414,20 +414,17 @@ class _RequestCard extends StatelessWidget {
                     Text(
                       studentDisplayName,
                       textDirection: TextDirection.rtl,
-                      style: const TextStyle(
-                        color: Color(0xFF132A4A),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTypography.of(context)
+                          .listTileTitle
+                          .copyWith(color: const Color(0xFF132A4A)),
                     ),
                     if (email.isNotEmpty)
                       Text(
                         email,
                         textDirection: TextDirection.ltr,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 12,
-                        ),
+                        style: AppTypography.of(context)
+                            .bodySmall
+                            .copyWith(color: const Color(0xFF6B7280)),
                       ),
                   ],
                 ),
@@ -455,10 +452,9 @@ class _RequestCard extends StatelessWidget {
                   ),
                   label: Text(
                     'supervision_action_accept'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: AppTypography.of(context)
+                        .buttonPrimary
+                        .copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -480,10 +476,9 @@ class _RequestCard extends StatelessWidget {
                   ),
                   label: Text(
                     'supervision_action_reject'.tr,
-                    style: const TextStyle(
-                      color: Color(0xFFB13030),
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: AppTypography.of(context)
+                        .buttonSecondary
+                        .copyWith(color: const Color(0xFFB13030)),
                   ),
                 ),
               ),
@@ -506,10 +501,9 @@ class _RequestCard extends StatelessWidget {
             ),
             label: Text(
               'supervision_action_one_time_review'.tr,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTypography.of(context)
+                  .buttonSecondary
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
           ),
         ],
@@ -558,21 +552,17 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
             Text(
               'supervision_pick_remove_title'.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+              style: AppTypography.of(context)
+                  .sectionTitle
+                  .copyWith(color: const Color(0xFF132A4A), fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
               'supervision_pick_remove_body'.tr,
               textDirection: TextDirection.rtl,
-              style: const TextStyle(
-                color: Color(0xFF6B7280),
-                fontSize: 13,
-                height: 1.55,
-              ),
+              style: AppTypography.of(context)
+                  .bodySecondary
+                  .copyWith(color: const Color(0xFF6B7280)),
             ),
             const SizedBox(height: 12),
             Flexible(
@@ -595,10 +585,9 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                     title: Text(
                       name,
                       textDirection: TextDirection.rtl,
-                      style: const TextStyle(
-                        color: Color(0xFF132A4A),
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.of(context)
+                          .listTileTitle
+                          .copyWith(color: const Color(0xFF132A4A)),
                     ),
                   );
                 },
@@ -619,10 +608,9 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                     ),
                     child: Text(
                       'supervision_preview_cancel'.tr,
-                      style: const TextStyle(
-                        color: Color(0xFF132A4A),
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.of(context)
+                          .buttonSecondary
+                          .copyWith(color: const Color(0xFF132A4A)),
                     ),
                   ),
                 ),
@@ -642,10 +630,9 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                     ),
                     child: Text(
                       'supervision_pick_remove_confirm'.tr,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTypography.of(context)
+                          .buttonPrimary
+                          .copyWith(color: Colors.white),
                     ),
                   ),
                 ),
@@ -682,21 +669,18 @@ class _EmptyState extends StatelessWidget {
           Text(
             'supervision_incoming_empty_title'.tr,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF132A4A),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A), fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
             'supervision_incoming_empty_body'.tr,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 13,
-            ),
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -727,7 +711,9 @@ class _ErrorState extends StatelessWidget {
               message,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF132A4A)),
+              style: AppTypography.of(context)
+                  .bodyDefault
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -738,10 +724,9 @@ class _ErrorState extends StatelessWidget {
               ),
               label: Text(
                 'profile_qr_retry'.tr,
-                style: const TextStyle(
-                  color: Color(0xFF132A4A),
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.of(context)
+                    .buttonSecondary
+                    .copyWith(color: const Color(0xFF132A4A)),
               ),
             ),
           ],

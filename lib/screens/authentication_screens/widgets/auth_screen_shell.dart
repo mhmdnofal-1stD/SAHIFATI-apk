@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 
 class AuthScreenShell extends StatelessWidget {
   const AuthScreenShell({
@@ -134,25 +134,25 @@ class AuthScreenShell extends StatelessWidget {
                                     Text(
                                       title,
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: AppFonts.primaryFont,
-                                        fontSize: titleFontSize,
-                                        fontWeight: FontWeight.w800,
-                                        color: const Color(0xFF132A4A),
-                                        height: 1.15,
-                                      ),
+                                      style: AppTypography.of(context)
+                                          .pageHeading
+                                          .copyWith(
+                                            fontSize: titleFontSize,
+                                            color: const Color(0xFF132A4A),
+                                            height: 1.15,
+                                          ),
                                     ),
                                     if (hasSubtitle) ...[
                                       SizedBox(height: titleSpacing),
                                       Text(
                                         subtitle,
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontFamily: AppFonts.primaryFont,
-                                          fontSize: 14,
-                                          color: const Color(0xFF556277),
-                                          height: 1.5,
-                                        ),
+                                        style: AppTypography.of(context)
+                                            .bodySecondary
+                                            .copyWith(
+                                              color: const Color(0xFF556277),
+                                              height: 1.5,
+                                            ),
                                       ),
                                     ],
                                     SizedBox(height: contentSpacing),
@@ -207,13 +207,12 @@ class _BrandHeader extends StatelessWidget {
         Expanded(
           child: Text(
             'SAHIFATI',
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.4,
-              color: const Color(0xFF173054),
-            ),
+            style: AppTypography.of(context).badgeLabel.copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.4,
+                  color: const Color(0xFF173054),
+                ),
           ),
         ),
         Container(
@@ -316,14 +315,12 @@ class _ModeItem extends StatelessWidget {
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected
-                        ? Colors.white
-                        : const Color(0xFF5E6A7E),
-                  ),
+                  style: AppTypography.of(context).buttonSecondary.copyWith(
+                        fontSize: 13,
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFF5E6A7E),
+                      ),
                 ),
               ),
             ],

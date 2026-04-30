@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 
 class CustomButton extends StatelessWidget {
   const CustomButton({
@@ -58,11 +59,10 @@ class CustomButton extends StatelessWidget {
               maxLines: 1,
               softWrap: false,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: labelFontSize,
-                fontWeight: FontWeight.bold,
-                color: foregroundColor,
-              ),
+              style: AppTypography.of(context).buttonPrimary.copyWith(
+                    fontSize: labelFontSize,
+                    color: foregroundColor,
+                  ),
             ),
           )
               : null,

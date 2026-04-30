@@ -10,6 +10,8 @@ import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
 import 'core/constants/colors.dart';
+import 'core/typography/app_typography.dart';
+import 'core/typography/typography_config.dart';
 import 'providers/ayat_provider.dart';
 import 'providers/evaluations_provider.dart';
 import 'providers/general_provider.dart';
@@ -30,6 +32,7 @@ import 'screens/welcome_screen/welcome_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
 import 'screens/settings_screen/my_licenses_screen.dart';
 import 'services/localization_service.dart';
+import 'services/typography_config_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +40,13 @@ Future<void> main() async {
   // Initialize the LocalizationService before running the app
   await LocalizationService().init();
   Locale initialLocale = await LocalizationService.getCurrentLocale();
+
+  // Load cached/seed typography config so the first paint already uses the
+  // admin-tunable styles. Remote refresh runs after the app is up.
+  final TypographyConfig initialTypography =
+      await TypographyConfigService.loadCachedOrSeed();
+  final TypographyConfigController typographyController =
+      TypographyConfigController(initialTypography);
 
   await SystemChrome.setPreferredOrientations(
     kIsWeb
@@ -61,6 +71,9 @@ Future<void> main() async {
             initialLangCode: initialLocale.languageCode,
           ),
         ),
+        ChangeNotifierProvider<TypographyConfigController>.value(
+          value: typographyController,
+        ),
       ],
       child: MyApp(initialLocale: initialLocale),
     ),
@@ -70,6 +83,14 @@ Future<void> main() async {
   // the background. Failures (offline, server down) are swallowed so the app
   // keeps using the cached/seed copy without blocking startup.
   unawaited(LocalizationService.refreshFromRemote());
+
+  // Pull the latest typography config in the background and update the
+  // controller so live text styles re-render with the admin's overrides.
+  unawaited(
+    TypographyConfigService.refreshInBackground(
+      onUpdated: typographyController.update,
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

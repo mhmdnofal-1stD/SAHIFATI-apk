@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import '../../controllers/evaluations_controller.dart';
@@ -67,6 +68,7 @@ class BarChartWidget extends StatelessWidget {
               final reservedLabelHeight = isDesktop ? 72.0 : 58.0;
               final chartHeight = isDesktop ? 360.0 : 300.0;
               final barWidth = isDesktop ? 24.0 : 16.0;
+              final t = AppTypography.of(context);
 
               return SizedBox(
                 height: chartHeight,
@@ -87,20 +89,12 @@ class BarChartWidget extends StatelessWidget {
                                 .chartEvaluationData[group.x.toInt()];
                             return BarTooltipItem(
                               '${rod.toY.toStringAsFixed(2)}%\n',
-                              const TextStyle(
-                                color: Colors.blueGrey,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
+                              t.chartTooltip,
                               children: [
                                 TextSpan(
                                   text:
                                       '${evaluation.verseCount} ${'verses'.tr}',
-                                  style: const TextStyle(
-                                    color: Colors.blueGrey,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: t.chartTooltip,
                                 ),
                               ],
                             );
@@ -131,11 +125,8 @@ class BarChartWidget extends StatelessWidget {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: labelFontSize,
-                                    ),
+                                    style: t.chartAxisLabel
+                                        .copyWith(fontSize: labelFontSize),
                                   ),
                                 ),
                               );
@@ -153,11 +144,8 @@ class BarChartWidget extends StatelessWidget {
                             getTitlesWidget: (value, meta) {
                               return Text(
                                 '${value.toInt()}%',
-                                style: TextStyle(
-                                  color: Colors.blueGrey,
-                                  fontSize: isDesktop ? 11 : 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: t.chartAxisTick
+                                    .copyWith(fontSize: isDesktop ? 11 : 10),
                               );
                             },
                           ),

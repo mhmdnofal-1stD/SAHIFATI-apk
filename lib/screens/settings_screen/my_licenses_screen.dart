@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/colors.dart';
-import '../../core/constants/fonts.dart';
+import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
 
@@ -235,12 +235,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
           children: [
             Text(
               value,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontWeight: FontWeight.w700,
-                fontSize: 20,
-                color: accent,
-              ),
+              style: AppTypography.of(context)
+                  .pageHeading
+                  .copyWith(color: accent, fontSize: 20),
             ),
             const SizedBox(height: 2),
             Text(
@@ -249,11 +246,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 12,
-                color: AppColors.hintTextColor,
-              ),
+              style: AppTypography.of(context)
+                  .badgeLabel
+                  .copyWith(color: AppColors.hintTextColor),
             ),
           ],
         ),
@@ -277,22 +272,17 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
         children: [
           Text(
             value,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: accent,
-            ),
+            style: AppTypography.of(context)
+                .badgeCount
+                .copyWith(color: accent),
           ),
           const SizedBox(width: 6),
           Text(
             label,
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 11,
-              color: AppColors.hintTextColor,
-            ),
+            style: AppTypography.of(context)
+                .badgeLabel
+                .copyWith(color: AppColors.hintTextColor, fontSize: 11),
           ),
         ],
       ),
@@ -328,14 +318,12 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                 child: SelectableText(
                   displayCode,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: hasRawCode
-                        ? AppColors.buttonColor
-                        : AppColors.blackFontColor,
-                  ),
+                  style: AppTypography.of(context).listTileTitle.copyWith(
+                        fontSize: 18,
+                        color: hasRawCode
+                            ? AppColors.buttonColor
+                            : AppColors.blackFontColor,
+                      ),
                 ),
               ),
               Container(
@@ -352,13 +340,11 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   isRevoked
                       ? 'license_hub_code_status_revoked'.tr
                       : 'license_hub_code_status_active'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontWeight: FontWeight.w700,
-                    color: isRevoked
-                        ? AppColors.hintTextColor
-                        : AppColors.successColor,
-                  ),
+                  style: AppTypography.of(context).badgeLabel.copyWith(
+                        color: isRevoked
+                            ? AppColors.hintTextColor
+                            : AppColors.successColor,
+                      ),
                 ),
               ),
             ],
@@ -373,30 +359,27 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   'count': (promoCode['usedCount'] ?? 0).toString(),
                 }),
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  color: AppColors.hintTextColor,
-                ),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: AppColors.hintTextColor),
               ),
               Text(
                 'license_hub_code_remaining'.trParams({
                   'count': remainingUses.toString(),
                 }),
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  color: AppColors.hintTextColor,
-                ),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: AppColors.hintTextColor),
               ),
               Text(
                 'license_hub_code_created'.trParams({
                   'date': _formatDate(promoCode['createdAt']),
                 }),
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  color: AppColors.hintTextColor,
-                ),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: AppColors.hintTextColor),
               ),
               Text(
                 'license_hub_code_expiry'.trParams({
@@ -405,10 +388,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                       : _formatDate(promoCode['expiresAt']),
                 }),
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  color: AppColors.hintTextColor,
-                ),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: AppColors.hintTextColor),
               ),
             ],
           ),
@@ -417,11 +399,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
             Text(
               'license_hub_legacy_code_hidden'.tr,
               textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                color: AppColors.hintTextColor,
-                fontSize: 12,
-              ),
+              style: AppTypography.of(context)
+                  .bodySmall
+                  .copyWith(color: AppColors.hintTextColor),
             ),
           ],
           const SizedBox(height: 14),
@@ -484,11 +464,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
         leading: const CustomBackButton(),
         title: Text(
           'license_hub_title'.tr,
-          style: TextStyle(
-            fontFamily: AppFonts.primaryFont,
-            fontWeight: FontWeight.w700,
-            color: AppColors.blackFontColor,
-          ),
+          style: AppTypography.of(context)
+              .appBarTitle
+              .copyWith(color: AppColors.blackFontColor),
         ),
       ),
       body: FutureBuilder<void>(
@@ -560,11 +538,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                     child: Text(
                       'license_hub_status_pending'.tr,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 12,
-                        color: AppColors.blackFontColor,
-                      ),
+                      style: AppTypography.of(context)
+                          .bodySmall
+                          .copyWith(color: AppColors.blackFontColor),
                     ),
                   ),
                 ],
@@ -583,11 +559,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                     child: Text(
                       usersProvider.promoWorkspaceError!,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 12,
-                        color: Colors.red.shade700,
-                      ),
+                      style: AppTypography.of(context)
+                          .inputError
+                          .copyWith(color: Colors.red.shade700),
                     ),
                   ),
                 ],
@@ -599,12 +573,12 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                 Text(
                   'license_hub_codes_title'.tr,
                   textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: AppColors.blackFontColor,
-                  ),
+                  style: AppTypography.of(context)
+                      .sectionTitle
+                      .copyWith(
+                        color: AppColors.blackFontColor,
+                        fontSize: 16,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 if (promoCodes.isEmpty)
@@ -621,11 +595,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                     child: Text(
                       'license_hub_no_codes'.tr,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(
-                        fontFamily: AppFonts.primaryFont,
-                        fontSize: 12,
-                        color: AppColors.hintTextColor,
-                      ),
+                      style: AppTypography.of(context)
+                          .bodySmall
+                          .copyWith(color: AppColors.hintTextColor),
                     ),
                   )
                 else
@@ -662,12 +634,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
           Text(
             'license_hub_create_title'.tr,
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: AppColors.blackFontColor,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: AppColors.blackFontColor, fontSize: 15),
           ),
           const SizedBox(height: 10),
           Row(
@@ -728,23 +697,23 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   Text(
                     'license_hub_recent_code_title'.tr,
                     textDirection: TextDirection.rtl,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primaryFont,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: AppColors.blackFontColor,
-                    ),
+                    style: AppTypography.of(context)
+                        .listTileTitle
+                        .copyWith(
+                          color: AppColors.blackFontColor,
+                          fontSize: 13,
+                        ),
                   ),
                   const SizedBox(height: 6),
                   SelectableText(
                     _recentRawCode!,
                     textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      fontFamily: AppFonts.primaryFont,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.buttonColor,
-                    ),
+                    style: AppTypography.of(context)
+                        .listTileTitle
+                        .copyWith(
+                          fontSize: 16,
+                          color: AppColors.buttonColor,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -793,12 +762,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
           title: Text(
             'license_hub_gift_pool_title'.tr,
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: AppColors.blackFontColor,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: AppColors.blackFontColor, fontSize: 15),
           ),
           children: [
             Container(
@@ -811,12 +777,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
               child: Text(
                 'license_hub_gift_pool_irreversible'.tr,
                 textDirection: TextDirection.rtl,
-                style: TextStyle(
-                  fontFamily: AppFonts.primaryFont,
-                  fontSize: 12,
-                  color: AppColors.blackFontColor,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.of(context).badgeLabel.copyWith(
+                      color: AppColors.blackFontColor,
+                    ),
               ),
             ),
             const SizedBox(height: 10),

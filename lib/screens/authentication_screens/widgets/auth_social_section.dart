@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 
 enum AuthSocialStatusTone { error, info }
 
@@ -73,12 +73,9 @@ class AuthSocialSection extends StatelessWidget {
                 alignment: AlignmentDirectional.centerEnd,
                 child: Text(
                   _sectionLabel(),
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF58657A),
-                  ),
+                  style: AppTypography.of(context).inputLabel.copyWith(
+                        color: const Color(0xFF58657A),
+                      ),
                 ),
               ),
               Wrap(
@@ -202,12 +199,10 @@ class _StaticMethodIcon extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF5D697D),
-              ),
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF5D697D),
+                  ),
             ),
           ],
         ),
@@ -254,11 +249,9 @@ class _SocialStatusBanner extends StatelessWidget {
             child: Text(
               message,
               textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 13,
-                color: borderColor,
-              ),
+              style: AppTypography.of(context).bannerBody.copyWith(
+                    color: borderColor,
+                  ),
             ),
           ),
         ],

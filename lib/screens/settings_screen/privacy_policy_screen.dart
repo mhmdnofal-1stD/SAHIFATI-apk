@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/no_pop_scope.dart';
 
@@ -64,7 +65,9 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             leading: const CustomBackButton(),
             title: Text(
               "privacy_policy_title".tr,
-              style: const TextStyle(color: AppColors.blackFontColor),
+              style: AppTypography.of(context)
+                  .appBarTitle
+                  .copyWith(color: AppColors.blackFontColor),
             ),
             centerTitle: true,
           ),
@@ -77,20 +80,16 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           children: [
             Text(
               "privacy_policy_last_update".tr,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+              style: AppTypography.of(context)
+                  .bodySecondary
+                  .copyWith(color: Colors.grey[600]),
             ),
             const SizedBox(height: 20),
             Text(
               "privacy_policy_intro".tr,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.6,
-                color: AppColors.blackFontColor,
-              ),
+              style: AppTypography.of(context)
+                  .bodyDefault
+                  .copyWith(color: AppColors.blackFontColor),
             ),
             const SizedBox(height: 25),
             _buildSection(
@@ -151,32 +150,28 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryPurple,
-            ),
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: AppColors.primaryPurple),
           ),
           if (content.isNotEmpty) ...[
             const SizedBox(height: 10),
             if (isContact)
               RichText(
                 text: TextSpan(
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.6,
-                    color: AppColors.blackFontColor,
-                  ),
+                  style: AppTypography.of(context)
+                      .bodyDefault
+                      .copyWith(color: AppColors.blackFontColor),
                   children: [
                     TextSpan(text: content),
                     const TextSpan(text: "\n"),
                     TextSpan(
                       text: "info@sahifati.com",
-                      style: const TextStyle(
-                        color: Colors.red,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: AppTypography.of(context).bodyDefault.copyWith(
+                            color: Colors.red,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.bold,
+                          ),
                       recognizer: _emailRecognizer,
                     ),
                   ],
@@ -185,11 +180,9 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             else
               Text(
                 content,
-                style: const TextStyle(
-                  fontSize: 15,
-                  height: 1.6,
-                  color: AppColors.blackFontColor,
-                ),
+                style: AppTypography.of(context)
+                    .bodyDefault
+                    .copyWith(color: AppColors.blackFontColor),
               ),
           ],
         ],
@@ -205,20 +198,16 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.blackFontColor,
-            ),
+            style: AppTypography.of(context)
+                .listTileTitle
+                .copyWith(color: AppColors.blackFontColor),
           ),
           const SizedBox(height: 8),
           Text(
             content,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.6,
-              color: AppColors.blackFontColor,
-            ),
+            style: AppTypography.of(context)
+                .bodyDefault
+                .copyWith(color: AppColors.blackFontColor),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/core/utils/size_config.dart';
 
 class SocialLoginButton extends StatelessWidget {
@@ -55,11 +56,11 @@ class SocialLoginButton extends StatelessWidget {
               SizedBox(width: SizeConfig.getProportionalWidth(10)),
             Text(
               text,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: textColor ?? Colors.black,
-              ),
+              style: AppTypography.of(context).buttonSecondary.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: textColor ?? Colors.black,
+                  ),
             ),
           ],
         ),

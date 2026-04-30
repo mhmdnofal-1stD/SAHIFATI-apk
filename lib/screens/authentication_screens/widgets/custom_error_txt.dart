@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/colors.dart';
 import '../../../core/constants/fonts.dart';
+import '../../../core/typography/app_typography.dart';
 import '../../../core/utils/size_config.dart';
 
 class CustomErrorTxt extends StatelessWidget {
@@ -16,11 +16,9 @@ class CustomErrorTxt extends StatelessWidget {
         padding:  EdgeInsets.only(right: SizeConfig.getProportionalWidth(35)),
         child: Text(
           text,
-          style: TextStyle(
-            fontSize: 12,
-            fontFamily: AppFonts.primaryFont,
-            color: AppColors.errorColor,
-          ),
+          style: AppTypography.of(context)
+              .inputError
+              .copyWith(fontFamily: AppFonts.primaryFont),
         ),
       ),
     );

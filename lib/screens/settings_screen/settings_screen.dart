@@ -6,6 +6,7 @@ import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../providers/general_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/users_provider.dart';
@@ -70,7 +71,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const CustomBackButton(),
             title: Text(
               'settings'.tr,
-              style: const TextStyle(color: AppColors.blackFontColor),
+              style: AppTypography.of(context)
+                  .appBarTitle
+                  .copyWith(color: AppColors.blackFontColor),
             ),
             centerTitle: true,
           ),
@@ -87,7 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(Icons.language),
                     title: Text(
                       'language'.tr,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTypography.of(context).listTileTitle,
                     ),
                     trailing: languageProvider.isLoadingLanguages
                         ? const SizedBox(
@@ -129,7 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   return SwitchListTile(
                     title: Text(
                       'dark_mode'.tr,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: AppTypography.of(context).listTileTitle,
                     ),
                     value: generalProvider.themeMode == ThemeMode.dark,
                     onChanged: (_) {
@@ -146,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 title: Text(
                   'privacy_policy_title'.tr,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: AppTypography.of(context).listTileTitle,
                 ),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
@@ -158,10 +161,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 leading: const Icon(Icons.delete_forever, color: Colors.red),
                 title: Text(
                   'delete_account'.tr,
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: AppTypography.of(context)
+                      .listTileTitle
+                      .copyWith(color: Colors.red),
                 ),
                 onTap: () async {
                   final confirmed = await showDialog<bool>(
@@ -225,19 +227,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                    ),
+                    style: AppTypography.of(context)
+                        .bodyDefault
+                        .copyWith(color: Colors.black),
                     children: [
                       TextSpan(text: '${'feedback'.tr} '),
                       TextSpan(
                         text: '  info@sahifati.com',
-                        style: const TextStyle(
-                          decoration: TextDecoration.underline,
-                          color: Colors.red,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTypography.of(context).bodyDefault.copyWith(
+                              decoration: TextDecoration.underline,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                            ),
                         recognizer: _emailRecognizer,
                       ),
                     ],

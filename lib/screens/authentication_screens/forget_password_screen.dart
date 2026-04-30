@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/colors.dart';
-import '../../core/constants/fonts.dart';
+import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
 import 'login_screen.dart';
 import 'sign_up_screen.dart';
@@ -293,24 +293,21 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   title,
                   textAlign: _isArabic ? TextAlign.right : TextAlign.left,
                   textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF132A4A),
-                  ),
+                  style: AppTypography.of(context).sectionTitle.copyWith(
+                        fontSize: 15,
+                        color: const Color(0xFF132A4A),
+                      ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   body,
                   textAlign: _isArabic ? TextAlign.right : TextAlign.left,
                   textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 12.5,
-                    height: 1.55,
-                    color: const Color(0xFF566173),
-                  ),
+                  style: AppTypography.of(context).bodySecondary.copyWith(
+                        fontSize: 12.5,
+                        height: 1.55,
+                        color: const Color(0xFF566173),
+                      ),
                 ),
               ],
             ),
@@ -360,12 +357,11 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               text,
               textAlign: _isArabic ? TextAlign.right : TextAlign.left,
               textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 12.5,
-                height: 1.5,
-                color: const Color(0xFF5D697D),
-              ),
+              style: AppTypography.of(context).bodySecondary.copyWith(
+                    fontSize: 12.5,
+                    height: 1.5,
+                    color: const Color(0xFF5D697D),
+                  ),
             ),
           ),
         ],
@@ -396,11 +392,9 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: Text(
               message,
               textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 13,
-                color: accent,
-              ),
+              style: AppTypography.of(context).bannerBody.copyWith(
+                    color: accent,
+                  ),
             ),
           ),
         ],
@@ -439,12 +433,10 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             : Icon(icon, color: Colors.white),
         label: Text(
           label,
-          style: TextStyle(
-            fontFamily: AppFonts.primaryFont,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+          style: AppTypography.of(context).buttonPrimary.copyWith(
+                fontSize: 16,
+                color: Colors.white,
+              ),
         ),
       ),
     );
@@ -468,12 +460,10 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       icon: Icon(icon, size: 18),
       label: Text(
         label,
-        style: TextStyle(
-          fontFamily: AppFonts.primaryFont,
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF132A4A),
-        ),
+        style: AppTypography.of(context).buttonSecondary.copyWith(
+              fontSize: 14,
+              color: const Color(0xFF132A4A),
+            ),
       ),
     );
   }

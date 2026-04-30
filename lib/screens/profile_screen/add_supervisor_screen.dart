@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../core/typography/app_typography.dart';
 import '../../services/teacher_supervisions_services.dart';
 
 /// Resolves the human-facing identity for a supervision owner payload.
@@ -180,18 +181,16 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
         title: Text(
           titleKey.tr,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(
-            color: Color(0xFF132A4A),
-            fontWeight: FontWeight.w800,
-          ),
+          style: AppTypography.of(ctx)
+              .dialogTitle
+              .copyWith(color: const Color(0xFF132A4A)),
         ),
         content: Text(
           bodyKey.tr,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(
-            color: Color(0xFF374151),
-            height: 1.55,
-          ),
+          style: AppTypography.of(ctx)
+              .bodyDefault
+              .copyWith(color: const Color(0xFF374151)),
         ),
         actions: [
           TextButton(
@@ -201,10 +200,9 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
             },
             child: Text(
               'supervision_scan_result_dismiss'.tr,
-              style: const TextStyle(
-                color: Color(0xFF132A4A),
-                fontWeight: FontWeight.w700,
-              ),
+              style: AppTypography.of(ctx)
+                  .buttonSecondary
+                  .copyWith(color: const Color(0xFF132A4A)),
             ),
           ),
         ],
@@ -237,7 +235,7 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
         elevation: 0,
         title: Text(
           'supervision_scan_screen_title'.tr,
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          style: AppTypography.of(context).appBarTitle,
         ),
         actions: [
           IconButton(
@@ -307,10 +305,9 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
                       'supervision_scan_hint'.tr,
                       textAlign: TextAlign.center,
                       textDirection: TextDirection.rtl,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        height: 1.5,
-                      ),
+                      style: AppTypography.of(context)
+                          .bodyDefault
+                          .copyWith(color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -331,10 +328,9 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
                       ),
                       label: Text(
                         'supervision_scan_pick_from_gallery'.tr,
-                        style: const TextStyle(
-                          color: Color(0xFF132A4A),
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppTypography.of(context)
+                            .buttonPrimary
+                            .copyWith(color: const Color(0xFF132A4A)),
                       ),
                     ),
                   ),
@@ -422,31 +418,26 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                       Text(
                         'supervision_preview_title'.tr,
                         textDirection: TextDirection.rtl,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: AppTypography.of(context)
+                            .badgeLabel
+                            .copyWith(color: const Color(0xFF6B7280)),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         ownerDisplayName,
                         textDirection: TextDirection.rtl,
-                        style: const TextStyle(
-                          color: Color(0xFF132A4A),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: AppTypography.of(context)
+                            .userDisplayName
+                            .copyWith(color: const Color(0xFF132A4A)),
                       ),
                       if (email.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
                           email,
                           textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 12,
-                          ),
+                          style: AppTypography.of(context)
+                              .bodySmall
+                              .copyWith(color: const Color(0xFF6B7280)),
                         ),
                       ],
                     ],
@@ -476,11 +467,9 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                       child: Text(
                         warningKey.tr,
                         textDirection: TextDirection.rtl,
-                        style: const TextStyle(
-                          color: Color(0xFF92400E),
-                          fontSize: 13,
-                          height: 1.55,
-                        ),
+                        style: AppTypography.of(context)
+                            .bodySecondary
+                            .copyWith(color: const Color(0xFF92400E)),
                       ),
                     ),
                   ],
@@ -490,11 +479,9 @@ class _SupervisorPreviewSheet extends StatelessWidget {
               Text(
                 'supervision_preview_body'.tr,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  color: Color(0xFF4B5563),
-                  fontSize: 13,
-                  height: 1.6,
-                ),
+                style: AppTypography.of(context)
+                    .bodySecondary
+                    .copyWith(color: const Color(0xFF4B5563)),
               ),
             const SizedBox(height: 16),
             Row(
@@ -511,10 +498,9 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                     ),
                     child: Text(
                       'supervision_preview_cancel'.tr,
-                      style: const TextStyle(
-                        color: Color(0xFF132A4A),
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.of(context)
+                          .buttonSecondary
+                          .copyWith(color: const Color(0xFF132A4A)),
                     ),
                   ),
                 ),
@@ -534,10 +520,9 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                     ),
                     child: Text(
                       'supervision_preview_send'.tr,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                      style: AppTypography.of(context)
+                          .buttonPrimary
+                          .copyWith(color: Colors.white),
                     ),
                   ),
                 ),

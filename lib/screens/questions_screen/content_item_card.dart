@@ -16,6 +16,7 @@ import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
 import '../widgets/assessment_input_dialog.dart';
@@ -475,16 +476,19 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                   Text(
                                     ayah.text,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: AppColors.whiteFontColor,
-                                      fontSize: 18,
-                                      fontFamily: 'UthmanicHafs',
-                                      decoration:
-                                          _isUnderlined(ayah.userEvaluation)
-                                              ? TextDecoration.underline
-                                              : TextDecoration.none,
-                                      decorationColor: AppColors.whiteFontColor,
-                                    ),
+                                    style: AppTypography.of(context)
+                                        .quranVerse
+                                        .copyWith(
+                                          color: AppColors.whiteFontColor,
+                                          fontSize: 18,
+                                          fontFamily: 'UthmanicHafs',
+                                          decoration:
+                                              _isUnderlined(ayah.userEvaluation)
+                                                  ? TextDecoration.underline
+                                                  : TextDecoration.none,
+                                          decorationColor:
+                                              AppColors.whiteFontColor,
+                                        ),
                                   ),
                                   const SizedBox(height: 10),
                                   Row(
@@ -633,9 +637,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                         title: Text(
                                           surah.nameAr,
                                           textAlign: TextAlign.right,
-                                          style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold),
+                                          style: AppTypography.of(context)
+                                              .listTileTitle,
                                         ),
                                         subtitle: Text(
                                           "${'surah_number'.tr} ${surah.id}",
@@ -811,14 +814,16 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                     Text(
                                       ayah.text,
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontFamily: 'UthmanicHafs',
-                                        decoration:
-                                            _isUnderlined(ayah.userEvaluation)
-                                                ? TextDecoration.underline
-                                                : TextDecoration.none,
-                                      ),
+                                      style: AppTypography.of(context)
+                                          .quranVerse
+                                          .copyWith(
+                                            fontSize: 18,
+                                            fontFamily: 'UthmanicHafs',
+                                            decoration: _isUnderlined(
+                                                        ayah.userEvaluation)
+                                                    ? TextDecoration.underline
+                                                    : TextDecoration.none,
+                                          ),
                                     ),
                                     const SizedBox(height: 10),
                                     Row(
@@ -1010,11 +1015,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
-              color: titleColor,
-            ),
+            style: AppTypography.of(context)
+                .buttonPrimary
+                .copyWith(color: titleColor, fontSize: 13.5),
           ),
         ),
       ],
@@ -1101,11 +1104,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                     title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryPurple,
-                    ),
+                    style: AppTypography.of(context)
+                        .sectionTitle
+                        .copyWith(color: AppColors.primaryPurple),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1131,11 +1132,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                       const SizedBox(width: 6),
                       Text(
                         _statusLabel(),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primaryPurple,
-                        ),
+                        style: AppTypography.of(context)
+                            .badgeLabel
+                            .copyWith(color: AppColors.primaryPurple),
                       ),
                     ],
                   ),
@@ -1175,10 +1174,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
               const SizedBox(height: 10),
               Text(
                 'content_item_card_juz_hint'.tr,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.mutedText,
-                ),
+                style: AppTypography.of(context)
+                    .bodySmall
+                    .copyWith(color: AppColors.mutedText),
               ),
             ],
           ],

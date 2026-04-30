@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quran/quran.dart' as quran;
+import '../../core/typography/app_typography.dart';
 import '../widgets/no_pop_scope.dart';
 
 void main() => runApp(const MyApp());
@@ -48,6 +49,7 @@ class _SurahPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Padding(
@@ -59,10 +61,7 @@ class _SurahPage extends StatelessWidget {
               return Center(
                 child: Text(
                   quran.getSurahNameArabic(surahNumber),
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: t.surahHeading,
                 ),
               );
             }
@@ -76,7 +75,7 @@ class _SurahPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text(
                 '${quran.getVerse(surahNumber, verse)} ﴿$verse﴾',
-                style: const TextStyle(fontSize: 24, height: 1.7),
+                style: t.quranVerse,
                 textAlign: TextAlign.justify,
               ),
             );

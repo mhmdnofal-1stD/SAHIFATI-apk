@@ -6,7 +6,7 @@ import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/auth/social_auth_config.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import '../../controllers/users_controller.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
@@ -260,11 +260,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             child: Text(
               message,
               textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 13,
-                color: AppColors.errorColor,
-              ),
+              style: AppTypography.of(context).inputError.copyWith(
+                    fontSize: 13,
+                    color: AppColors.errorColor,
+                  ),
             ),
           ),
         ],
@@ -412,12 +411,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         color: Colors.white),
                 label: Text(
                   'create_account'.tr,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                  style: AppTypography.of(context).buttonPrimary.copyWith(
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
                 ),
               ),
             ),

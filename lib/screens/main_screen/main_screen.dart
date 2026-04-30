@@ -8,6 +8,7 @@ import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
 import '../../core/constants/colors.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
@@ -166,18 +167,12 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             'main_screen_gateway_badge'.tr,
-                            style: const TextStyle(
-                              color: AppColors.buttonColor,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: AppTypography.of(context).badgeLabel,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '${"well_done".tr} ${usersProvider.selectedUser?.username ?? usersProvider.selectedUser?.email ?? ''}',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: AppTypography.of(context).pageHeading,
                           ),
                         ],
                       ),
@@ -211,7 +206,7 @@ class _MainScreenState extends State<MainScreen> {
                               child: Text(
                                 'main_screen_chart_empty'.tr,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(height: 1.5),
+                                style: AppTypography.of(context).bodyDefault,
                               ),
                             )
                     else
@@ -228,7 +223,7 @@ class _MainScreenState extends State<MainScreen> {
                         child: Text(
                           'main_screen_chart_intro_first'.tr,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(height: 1.5),
+                          style: AppTypography.of(context).bodyDefault,
                         ),
                       ),
                     SizedBox(height: SizeConfig.getProportionalHeight(20)),
@@ -250,9 +245,7 @@ class _MainScreenState extends State<MainScreen> {
                             icon: const Icon(Icons.play_arrow_rounded),
                             label: Text(
                               'main_screen_resume_action'.tr,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: AppTypography.of(context).buttonPrimary,
                             ),
                           );
                           final pickBtn = OutlinedButton.icon(
@@ -272,10 +265,9 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                             label: Text(
                               'main_screen_pick_surah'.tr,
-                              style: const TextStyle(
-                                color: AppColors.buttonColor,
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: AppTypography.of(context)
+                                  .buttonSecondary
+                                  .copyWith(color: AppColors.buttonColor),
                             ),
                           );
                           if (isWide) {

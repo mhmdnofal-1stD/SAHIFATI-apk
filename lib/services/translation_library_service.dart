@@ -38,12 +38,13 @@ class TranslationLibraryService {
   static Future<Map<String, String>> loadCachedOrSeed(
     String languageCode,
   ) async {
+    final seed = await _loadAssetSeed(languageCode);
     final cached = await _readCachedBundle(languageCode);
     if (cached != null && cached.isNotEmpty) {
-      return cached;
+      return _mergeBundles(seed, cached);
     }
 
-    return _loadAssetSeed(languageCode);
+    return seed;
   }
 
   /// Refreshes one or more language bundles from the API in the background.
@@ -65,14 +66,17 @@ class TranslationLibraryService {
           continue;
         }
 
+        final seed = await _loadAssetSeed(languageCode);
+        final mergedTranslations = _mergeBundles(seed, fetched.translations);
+
         await _writeCachedBundle(
           languageCode,
-          translations: fetched.translations,
+          translations: mergedTranslations,
           version: fetched.version,
           updatedAt: fetched.updatedAt,
         );
 
-        onUpdated(languageCode, fetched.translations);
+        onUpdated(languageCode, mergedTranslations);
       } catch (error, stackTrace) {
         if (kDebugMode) {
           debugPrint(
@@ -131,6 +135,16 @@ class TranslationLibraryService {
     }
 
     return <String, String>{};
+  }
+
+  static Map<String, String> _mergeBundles(
+    Map<String, String> seed,
+    Map<String, String> override,
+  ) {
+    if (seed.isEmpty) {
+      return Map<String, String>.from(override);
+    }
+    return <String, String>{...seed, ...override};
   }
 
   static Future<_FetchedBundle?> _fetchBundle(String languageCode) async {

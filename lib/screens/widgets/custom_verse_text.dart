@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
-import '../../core/constants/fonts.dart';
+import '../../core/typography/app_typography.dart';
 
 class CustomVerseText extends StatelessWidget {
   final String text;
@@ -44,13 +44,12 @@ class CustomVerseText extends StatelessWidget {
               text,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.start,
-              style:  TextStyle(
-                fontSize: 14,
-                height: 2,
-                color: AppColors.whiteFontColor,
-                fontWeight: FontWeight.bold,
-                fontFamily: AppFonts.versesFont,
-              ),
+              style: AppTypography.of(context)
+                  .quranVerse
+                  .copyWith(
+                    fontSize: 14,
+                    color: AppColors.whiteFontColor,
+                  ),
             ),
           ),
         ],
@@ -74,18 +73,13 @@ class CustomVerseText2 extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTypography.of(context);
     return Text.rich(
       TextSpan(
         children: [
           TextSpan(
             text: text,
-            style: TextStyle(
-              fontSize: 20,
-              height: 2.1,
-              color: backgroundColor,
-              fontWeight: FontWeight.w600,
-              fontFamily: AppFonts.versesFont,
-            ),
+            style: t.quranVerse.copyWith(color: backgroundColor),
           ),
 
           WidgetSpan(
@@ -101,11 +95,7 @@ class CustomVerseText2 extends StatelessWidget {
                 child: Text(
                   _toArabicNumber(verseNumber),
                   textDirection: TextDirection.rtl,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black87,
-                    fontFamily: 'Amiri', // or your Arabic font
-                  ),
+                  style: t.quranAyahMarker,
                 ),
               ),
             ),

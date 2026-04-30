@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -230,12 +230,9 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
             child: Text(
               title,
               textDirection: TextDirection.rtl,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.blackFontColor,
-              ),
+              style: AppTypography.of(context).listTileTitle.copyWith(
+                    color: AppColors.blackFontColor,
+                  ),
             ),
           ),
           Container(
@@ -247,12 +244,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
             child: Text(
               price,
               textDirection: TextDirection.ltr,
-              style: TextStyle(
-                fontFamily: AppFonts.primaryFont,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: accent,
-              ),
+              style: AppTypography.of(context).badgeLabel.copyWith(
+                    fontSize: 14,
+                    color: accent,
+                  ),
             ),
           ),
         ],
@@ -304,12 +299,11 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                 child: Text(
                   title,
                   textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.blackFontColor,
-                  ),
+                  style: AppTypography.of(context).sectionTitle.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.blackFontColor,
+                      ),
                 ),
               ),
             ],
@@ -318,12 +312,11 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
           Text(
             body,
             textDirection: TextDirection.rtl,
-            style: TextStyle(
-              fontFamily: AppFonts.primaryFont,
-              fontSize: 13,
-              height: 1.6,
-              color: AppColors.hintTextColor,
-            ),
+            style: AppTypography.of(context).bodySecondary.copyWith(
+                  fontSize: 13,
+                  height: 1.6,
+                  color: AppColors.hintTextColor,
+                ),
           ),
           if (child != null) ...[
             const SizedBox(height: 14),
@@ -348,11 +341,9 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                           ? 'license_activation_continue'.tr
                           : 'license_activation_coming_soon'.tr),
                   textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    fontFamily: AppFonts.primaryFont,
-                    fontWeight: FontWeight.w700,
-                    color: enabled ? Colors.white : const Color(0xFF7E8795),
-                  ),
+                  style: AppTypography.of(context).buttonPrimary.copyWith(
+                        color: enabled ? Colors.white : const Color(0xFF7E8795),
+                      ),
                 ),
               ),
             ),
@@ -401,23 +392,24 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                             Text(
                               'license_activation_title'.tr,
                               textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
+                              style: AppTypography.of(context)
+                                  .pageHeading
+                                  .copyWith(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
                             ),
                             const SizedBox(height: 12),
                             Text(
                               'license_activation_body'.tr,
                               textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 14,
-                                height: 1.7,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
+                              style: AppTypography.of(context)
+                                  .bodySecondary
+                                  .copyWith(
+                                    height: 1.7,
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
                             ),
                             const SizedBox(height: 18),
                             Container(
@@ -432,12 +424,13 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                               child: Text(
                                 'license_activation_status_pending'.tr,
                                 textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
+                                style: AppTypography.of(context)
+                                    .bodySecondary
+                                    .copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
                               ),
                             ),
                           ],
@@ -458,10 +451,9 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                           child: Text(
                             _inlineError!,
                             textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontFamily: AppFonts.primaryFont,
-                              color: AppColors.errorColor,
-                            ),
+                            style: AppTypography.of(context).bodyDefault.copyWith(
+                                  color: AppColors.errorColor,
+                                ),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -494,17 +486,15 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                           enableSuggestions: false,
                           textCapitalization: TextCapitalization.characters,
                           textDirection: TextDirection.ltr,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.blackFontColor,
-                          ),
+                          style: AppTypography.of(context).bodyDefault.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.blackFontColor,
+                              ),
                           decoration: InputDecoration(
                             hintText: 'license_activation_promo_hint'.tr,
-                            hintStyle: TextStyle(
-                              fontFamily: AppFonts.primaryFont,
-                              color: AppColors.hintTextColor,
-                            ),
+                            hintStyle: AppTypography.of(context)
+                                .inputHint
+                                .copyWith(color: AppColors.hintTextColor),
                             filled: true,
                             fillColor: const Color(0xFFF8F4EA),
                             border: OutlineInputBorder(
@@ -545,25 +535,23 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                                 'license_activation_purchase_deferred_notice'
                                     .tr,
                                 textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                  fontFamily: AppFonts.primaryFont,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF5B3DA1),
-                                  height: 1.6,
-                                ),
+                                style: AppTypography.of(context)
+                                    .bodySecondary
+                                    .copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF5B3DA1),
+                                      height: 1.6,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 12),
                             Text(
                               'license_activation_purchase_pricing_label'.tr,
                               textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.blackFontColor,
-                              ),
+                              style: AppTypography.of(context).inputLabel.copyWith(
+                                    color: AppColors.blackFontColor,
+                                  ),
                             ),
                             const SizedBox(height: 10),
                             _buildPurchaseTierRow(
@@ -624,12 +612,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                             Text(
                               'license_activation_purchase_footer_note'.tr,
                               textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontFamily: AppFonts.primaryFont,
-                                fontSize: 12,
-                                color: AppColors.hintTextColor,
-                                height: 1.6,
-                              ),
+                              style: AppTypography.of(context).bodySmall.copyWith(
+                                    color: AppColors.hintTextColor,
+                                    height: 1.6,
+                                  ),
                             ),
                             const SizedBox(height: 12),
                             SizedBox(
@@ -658,11 +644,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                         child: Text(
                           'license_activation_logout'.tr,
                           textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                            fontFamily: AppFonts.primaryFont,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryPurple,
-                          ),
+                          style: AppTypography.of(context).buttonSecondary.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primaryPurple,
+                              ),
                         ),
                       ),
                     ],

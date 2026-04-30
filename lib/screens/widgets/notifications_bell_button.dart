@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/user_notification_item.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -70,11 +71,9 @@ class _NotificationsBellButtonState extends State<NotificationsBellButton> {
                     ),
                     child: Text(
                       unreadCount > 99 ? '99+' : '$unreadCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: AppTypography.of(context)
+                          .badgeCount
+                          .copyWith(color: Colors.white, fontSize: 10),
                     ),
                   ),
                 ),
@@ -107,10 +106,7 @@ class _NotificationsSheet extends StatelessWidget {
                       Expanded(
                         child: Text(
                           'notifications_title'.tr,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                          ),
+                          style: AppTypography.of(context).pageHeading.copyWith(fontSize: 20),
                         ),
                       ),
                       TextButton.icon(
@@ -131,10 +127,9 @@ class _NotificationsSheet extends StatelessWidget {
                       'notifications_unread_count'.trParams({
                         'count': usersProvider.unreadNotificationsCount.toString(),
                       }),
-                      style: const TextStyle(
-                        color: Color(0xFF5A645E),
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: AppTypography.of(context)
+                          .bodyDefault
+                          .copyWith(color: const Color(0xFF5A645E), fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -149,10 +144,9 @@ class _NotificationsSheet extends StatelessWidget {
                                 child: Text(
                                   'notifications_empty'.tr,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Color(0xFF5A645E),
-                                    height: 1.6,
-                                  ),
+                                  style: AppTypography.of(context)
+                                      .bodyDefault
+                                      .copyWith(color: const Color(0xFF5A645E)),
                                 ),
                               ),
                             )
@@ -245,10 +239,9 @@ class _NotificationCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             notification.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                            ),
+                            style: AppTypography.of(context)
+                                .listTileTitle
+                                .copyWith(fontSize: 15),
                           ),
                         ),
                         if (!notification.isRead)
@@ -265,20 +258,17 @@ class _NotificationCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       notification.body,
-                      style: const TextStyle(
-                        height: 1.55,
-                        color: Color(0xFF39433D),
-                      ),
+                      style: AppTypography.of(context)
+                          .bodyDefault
+                          .copyWith(color: const Color(0xFF39433D)),
                     ),
                     if (subtitleParts.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
                         subtitleParts.join(' • '),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF6E786F),
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: AppTypography.of(context)
+                            .badgeLabel
+                            .copyWith(color: const Color(0xFF6E786F)),
                       ),
                     ],
                     if (!notification.isRead || ctaUrl != null) ...[
