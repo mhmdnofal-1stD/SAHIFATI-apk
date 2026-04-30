@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -144,6 +145,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   OverlayEntry? _menuEntry;
   final List<Ayat> _navigationScopeAyat = [];
   final List<Ayat> _ayat = [];
+  final List<Ayat> _allAyat = [];
+  final Map<int, List<Ayat>> _allAyatByPage = <int, List<Ayat>>{};
   _ReadingNavigationMode _navigationMode = _ReadingNavigationMode.hizbQuarter;
   List<int> _pageSequence = <int>[];
   int? _currentPage;
@@ -154,19 +157,26 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   int? _initialHizbQuarter;
   final ScrollController _scrollController =
       ScrollController(keepScrollOffset: true);
+  final GlobalKey _pageViewportKey = GlobalKey();
+  final Map<int, GlobalKey> _pageItemKeys = <int, GlobalKey>{};
+  final Set<int> _hydratedEvaluationPages = <int>{};
+  final Set<int> _hydratedRecommendationPages = <int>{};
   bool _isInitialLoad = true;
   bool _hasConnection = true;
   bool _isConnectivityResolved = false;
   bool _showMemorizationColors = true;
   bool _showComprehensionUnderline = true;
   bool _canOpenAssessment = true;
+  bool _hasLoadedAllEvaluationCoverage = false;
   String? _readingNotice;
+  double _estimatedPageExtent = 940;
   final Map<int, TapGestureRecognizer> _ayahTapRecognizers =
       <int, TapGestureRecognizer>{};
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
   final UsersServices _usersService = UsersServices();
   User? _viewerUser;
+  Surah? _activeSurah;
 
   // Reading display filter (fades non-matching ayahs in the rendered text).
   final Set<String> _filterAyahTypes = <String>{};
@@ -189,6 +199,50 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       _filterSchoolLevelIds.isNotEmpty ||
       _filterMemoEvaluationIds.isNotEmpty ||
       _filterCompreEvaluationIds.isNotEmpty;
+
+  bool get _hasActiveScopeFilter =>
+      _filterThirds.isNotEmpty ||
+      _filterJuzs.isNotEmpty ||
+      _filterSurahIds.isNotEmpty;
+
+  bool get _hasAnyActiveReaderFilter =>
+      _hasActiveDisplayFilter || _hasActiveScopeFilter;
+
+  bool _ayahMatchesScopeFilter(Ayat ayah) {
+    if (_filterSurahIds.isNotEmpty) {
+      return _filterSurahIds.contains(ayah.surah.id);
+    }
+
+    if (_filterJuzs.isNotEmpty) {
+      final juz = ayah.juz;
+      return juz != null && _filterJuzs.contains(juz);
+    }
+
+    if (_filterThirds.isNotEmpty) {
+      final juz = ayah.juz;
+      if (juz == null) {
+        return false;
+      }
+      return _filterThirds.contains(_ReaderScopeData.thirdOfJuz(juz));
+    }
+
+    return true;
+  }
+
+  bool _ayahMatchesActiveReaderSelection(
+    Ayat ayah,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (!_ayahMatchesScopeFilter(ayah)) {
+      return false;
+    }
+
+    if (!_hasActiveDisplayFilter) {
+      return true;
+    }
+
+    return _ayahMatchesDisplayFilter(ayah, evaluationsProvider);
+  }
 
   bool _ayahMatchesDisplayFilter(
     Ayat ayah,
@@ -372,7 +426,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return labels;
   }
 
-  Future<List<UnifiedFilterSchoolGroup>> _resolveSchoolFilterGroups() async {
+  Future<List<UnifiedFilterSchoolGroup>> _resolveSchoolFilterGroups(
+    Iterable<Ayat> sourceAyat,
+  ) async {
     final schoolsById = <int, School>{};
     try {
       final schools = await SchoolServices().getAllSchools();
@@ -388,7 +444,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final groupTitles = <int, String>{};
     final groupedLevels = <int, Map<String, UnifiedFilterSchoolLevel>>{};
 
-    for (final ayah in _ayat) {
+    for (final ayah in sourceAyat) {
       final schoolLevels = ayah.schoolLevels ?? const <SchoolLevel>[];
       for (final level in schoolLevels) {
         final schoolId = level.schoolId;
@@ -400,8 +456,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         groupTitles[schoolId] = _resolveSchoolName(level, schoolsById);
         final filterKey = _schoolLevelFilterKey(schoolId, levelNumber);
         groupedLevels
-            .putIfAbsent(
-                schoolId, () => <String, UnifiedFilterSchoolLevel>{})
+            .putIfAbsent(schoolId, () => <String, UnifiedFilterSchoolLevel>{})
             .putIfAbsent(
               filterKey,
               () => UnifiedFilterSchoolLevel(
@@ -503,8 +558,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   int? get _currentNavigationJuz {
-    if (_ayat.isNotEmpty) {
-      return _ayat.first.juz;
+    final currentPage = _currentPage;
+    if (currentPage != null) {
+      final currentPageAyat = _ayatForPage(currentPage);
+      if (currentPageAyat.isNotEmpty) {
+        return currentPageAyat.first.juz;
+      }
     }
     return widget.juz;
   }
@@ -527,6 +586,346 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     return left.ayahNo.compareTo(right.ayahNo);
+  }
+
+  Future<void> _ensureAllAyatIndexedByPage() async {
+    if (_allAyat.isNotEmpty && _allAyatByPage.isNotEmpty) {
+      return;
+    }
+
+    final allAyat = await AyatController().loadAllAyat();
+    allAyat.sort(_compareAyatOrder);
+
+    final byPage = <int, List<Ayat>>{};
+    for (final ayah in allAyat) {
+      final page = ayah.page;
+      if (page == null) {
+        continue;
+      }
+      (byPage[page] ??= <Ayat>[]).add(ayah);
+    }
+
+    _allAyat
+      ..clear()
+      ..addAll(allAyat);
+    _allAyatByPage
+      ..clear()
+      ..addAll(byPage);
+  }
+
+  List<Ayat> _ayatForPage(int page) => _allAyatByPage[page] ?? const <Ayat>[];
+
+  GlobalKey _pageKeyFor(int page) =>
+      _pageItemKeys.putIfAbsent(page, () => GlobalKey());
+
+  int? get _currentPageSequenceIndex {
+    final currentPage = _currentPage;
+    if (currentPage == null) {
+      return null;
+    }
+    final index = _pageSequence.indexOf(currentPage);
+    return index == -1 ? null : index;
+  }
+
+  List<int> _pagesAroundIndex(int index, {int radius = 2}) {
+    if (_pageSequence.isEmpty) {
+      return const <int>[];
+    }
+
+    final start = math.max(0, index - radius);
+    final end = math.min(_pageSequence.length - 1, index + radius);
+    return _pageSequence.sublist(start, end + 1);
+  }
+
+  List<int> _pagesAroundCurrentPage({int radius = 2}) {
+    final currentIndex = _currentPageSequenceIndex;
+    if (currentIndex == null) {
+      return const <int>[];
+    }
+
+    return _pagesAroundIndex(currentIndex, radius: radius);
+  }
+
+  Surah? _resolveSurahForPage(int? page) {
+    if (page == null) {
+      return null;
+    }
+
+    final pageAyat = _ayatForPage(page);
+    if (pageAyat.isEmpty) {
+      return null;
+    }
+
+    final firstAyah = pageAyat.first;
+    return Surah(
+      id: firstAyah.surah.id,
+      nameAr: firstAyah.surah.nameAr,
+      ayahCount: quran.getVerseCount(firstAyah.surah.id),
+    );
+  }
+
+  void _updateActivePageState(int page) {
+    _currentPage = page;
+    _activeSurah = _resolveSurahForPage(page) ?? _activeSurah ?? widget.surah;
+    _ayat
+      ..clear()
+      ..addAll(_ayatForPage(page));
+  }
+
+  void _recordEstimatedPageExtent(int page) {
+    final pageContext = _pageKeyFor(page).currentContext;
+    if (pageContext == null) {
+      return;
+    }
+
+    final renderBox = pageContext.findRenderObject() as RenderBox?;
+    if (renderBox == null || !renderBox.hasSize) {
+      return;
+    }
+
+    final extent = renderBox.size.height;
+    if (extent <= 0) {
+      return;
+    }
+
+    _estimatedPageExtent = ((_estimatedPageExtent * 4) + extent) / 5;
+  }
+
+  Future<void> _jumpToCurrentPageInList({bool animated = false}) async {
+    final currentPage = _currentPage;
+    if (currentPage == null ||
+        _pageSequence.isEmpty ||
+        !_scrollController.hasClients) {
+      return;
+    }
+
+    final index = _pageSequence.indexOf(currentPage);
+    if (index == -1) {
+      return;
+    }
+
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final targetOffset = (_estimatedPageExtent * index).clamp(0.0, maxExtent);
+
+    if (animated) {
+      await _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _scrollController.jumpTo(targetOffset);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pageContext = _pageKeyFor(currentPage).currentContext;
+      if (pageContext == null) {
+        return;
+      }
+
+      Scrollable.ensureVisible(
+        pageContext,
+        alignment: 0,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  void _syncCurrentPageFromVisiblePages() {
+    final viewportContext = _pageViewportKey.currentContext;
+    if (viewportContext == null) {
+      return;
+    }
+
+    final viewportBox = viewportContext.findRenderObject() as RenderBox?;
+    if (viewportBox == null || !viewportBox.hasSize) {
+      return;
+    }
+
+    final viewportTop = viewportBox.localToGlobal(Offset.zero).dy;
+    final viewportBottom = viewportTop + viewportBox.size.height;
+    int? nextPage;
+    var closestDistance = double.infinity;
+
+    for (final page in _pageSequence) {
+      final pageContext = _pageKeyFor(page).currentContext;
+      if (pageContext == null) {
+        continue;
+      }
+
+      final renderBox = pageContext.findRenderObject() as RenderBox?;
+      if (renderBox == null || !renderBox.attached || !renderBox.hasSize) {
+        continue;
+      }
+
+      final pageTop = renderBox.localToGlobal(Offset.zero).dy;
+      final pageBottom = pageTop + renderBox.size.height;
+      if (pageBottom <= viewportTop || pageTop >= viewportBottom) {
+        continue;
+      }
+
+      final distance = (pageTop - viewportTop).abs();
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        nextPage = page;
+      }
+    }
+
+    if (nextPage == null || nextPage == _currentPage || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _updateActivePageState(nextPage!);
+    });
+    unawaited(_persistReadingSession());
+  }
+
+  Future<void> _ensureVisiblePageDataLoaded(
+    int userId,
+    EvaluationsProvider evaluationsProvider, {
+    Iterable<int>? pages,
+  }) async {
+    final targetPages = (pages ?? _pagesAroundCurrentPage())
+        .where((page) => _allAyatByPage.containsKey(page))
+        .toSet()
+        .toList()
+      ..sort();
+
+    if (targetPages.isEmpty) {
+      return;
+    }
+
+    final evaluationPages = targetPages
+        .where((page) => !_hydratedEvaluationPages.contains(page))
+        .toList();
+    if (evaluationPages.isNotEmpty) {
+      final ayatIds = evaluationPages
+          .expand(_ayatForPage)
+          .map((ayah) => ayah.id)
+          .whereType<int>()
+          .toList();
+      if (ayatIds.isNotEmpty) {
+        await evaluationsProvider.mergeUserEvaluationsForAyatIds(
+            userId, ayatIds);
+      }
+
+      for (final page in evaluationPages) {
+        for (final ayah in _ayatForPage(page)) {
+          ayah.userEvaluation =
+              evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+        }
+      }
+      _hydratedEvaluationPages.addAll(evaluationPages);
+    }
+
+    final recommendationPages = targetPages
+        .where((page) => !_hydratedRecommendationPages.contains(page))
+        .toList();
+    if (_hasConnection && recommendationPages.isNotEmpty) {
+      final recommendationAyat =
+          recommendationPages.expand(_ayatForPage).toList();
+      final loadedRecommendations =
+          await _loadTeacherRecommendations(userId, recommendationAyat);
+      if (loadedRecommendations) {
+        _hydratedRecommendationPages.addAll(recommendationPages);
+      }
+    }
+
+    if (mounted && _currentPage != null) {
+      setState(() {
+        _ayat
+          ..clear()
+          ..addAll(_ayatForPage(_currentPage!));
+      });
+    }
+  }
+
+  Future<void> _ensureFilterEvaluationCoverage(
+    int userId,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    if (_hasLoadedAllEvaluationCoverage ||
+        (_filterMemoEvaluationIds.isEmpty &&
+            _filterCompreEvaluationIds.isEmpty)) {
+      return;
+    }
+
+    final ayatIds = _allAyat.map((ayah) => ayah.id).whereType<int>().toList();
+    await evaluationsProvider.mergeUserEvaluationsForAyatIds(userId, ayatIds);
+    for (final ayah in _allAyat) {
+      ayah.userEvaluation =
+          evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+    }
+    _hasLoadedAllEvaluationCoverage = true;
+  }
+
+  List<int> _computeNavigablePages(EvaluationsProvider evaluationsProvider) {
+    if (!_hasAnyActiveReaderFilter) {
+      return List<int>.generate(
+        _mushafLastPage,
+        (index) => _mushafFirstPage + index,
+      );
+    }
+
+    final pages = <int>[];
+    for (var page = _mushafFirstPage; page <= _mushafLastPage; page++) {
+      final pageAyat = _ayatForPage(page);
+      if (pageAyat.isEmpty) {
+        continue;
+      }
+
+      final hasMatch = pageAyat.any(
+        (ayah) => _ayahMatchesActiveReaderSelection(ayah, evaluationsProvider),
+      );
+      if (hasMatch) {
+        pages.add(page);
+      }
+    }
+
+    return pages;
+  }
+
+  Future<bool> _rebuildNavigablePages({
+    required int userId,
+    required EvaluationsProvider evaluationsProvider,
+    bool jumpToFirstMatch = false,
+  }) async {
+    await _ensureAllAyatIndexedByPage();
+    await _ensureFilterEvaluationCoverage(userId, evaluationsProvider);
+
+    final nextPageSequence = _computeNavigablePages(evaluationsProvider);
+    if (nextPageSequence.isEmpty) {
+      return false;
+    }
+
+    final preferredPage = jumpToFirstMatch
+        ? nextPageSequence.first
+        : (_currentPage ??
+            widget.restoredPage ??
+            widget.page ??
+            nextPageSequence.first);
+    final resolvedPage = _resolveClosestAvailableValue(
+      nextPageSequence,
+      preferredPage,
+    );
+
+    if (!mounted) {
+      _pageSequence = nextPageSequence;
+      _navigationMode = _ReadingNavigationMode.page;
+      _updateActivePageState(resolvedPage);
+      _initialPage ??= resolvedPage;
+      return true;
+    }
+
+    setState(() {
+      _pageSequence = nextPageSequence;
+      _navigationMode = _ReadingNavigationMode.page;
+      _updateActivePageState(resolvedPage);
+      _initialPage ??= resolvedPage;
+    });
+    return true;
   }
 
   Future<List<Ayat>> _loadNavigationScopeAyat() async {
@@ -736,24 +1135,26 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evalProvider = context.read<EvaluationsProvider>();
 
     if (_isPageNavigation) {
-      final currentPage = _currentPage;
-      if (currentPage == null) {
+      final currentIndex = _currentPageSequenceIndex;
+      if (currentIndex == null) {
         return;
       }
 
-      final nextPage = forward ? currentPage + 1 : currentPage - 1;
-      if (nextPage < _scopeFirstPage || nextPage > _scopeLastPage) {
+      final nextIndex = forward ? currentIndex + 1 : currentIndex - 1;
+      if (nextIndex < 0 || nextIndex >= _pageSequence.length) {
         return;
       }
 
       setState(() {
-        _currentPage = nextPage;
-        if (!_pageSequence.contains(nextPage)) {
-          _pageSequence = <int>[..._pageSequence, nextPage]..sort();
-        }
+        _updateActivePageState(_pageSequence[nextIndex]);
       });
-      await _loadAyat(userId, evalProvider);
+      await _ensureVisiblePageDataLoaded(
+        userId,
+        evalProvider,
+        pages: _pagesAroundIndex(nextIndex),
+      );
       _scheduleReadingScrollResetToTop();
+      await _persistReadingSession();
       return;
     }
 
@@ -777,10 +1178,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   void _scheduleReadingScrollResetToTop() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scrollController.hasClients) {
+      if (!mounted || _currentPage == null) {
         return;
       }
-      _scrollController.jumpTo(0);
+      unawaited(_jumpToCurrentPageInList());
     });
   }
 
@@ -1200,10 +1601,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
+    final activeSurah = _activeSurah ?? widget.surah;
+
     await _readingSessionStore.save(
       ReadingSession(
         userId: selectedUser.id,
-        surah: widget.surah,
+        surah: activeSurah,
         filterTypeId: widget.filterTypeId,
         juz: widget.juz,
         hizb: widget.hizb,
@@ -1233,73 +1636,50 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Get.off(const MainScreen());
   }
 
-  void _replaceWithRoute({
-    required Surah surah,
-    required int filterTypeId,
-    int? juz,
-    int? page,
-  }) {
-    final parameters = IndexPage.routeParameters(
-      surah: surah,
-      filterTypeId: filterTypeId,
-      juz: juz,
-      page: page,
-    );
-    Get.offNamed(IndexPage.routeName, parameters: parameters);
+  Future<void> _navigateToJuz(int juz) async {
+    await _ensureAllAyatIndexedByPage();
+    int? targetPage;
+    for (final ayah in _allAyat) {
+      if (ayah.juz == juz && ayah.page != null) {
+        targetPage = ayah.page;
+        break;
+      }
+    }
+
+    if (targetPage != null) {
+      await _navigateToPage(targetPage);
+    }
   }
 
-  void _navigateToJuz(int juz) {
-    final firstSurahNumber = quran.getSurahAndVersesFromJuz(juz).keys.first;
-    _replaceWithRoute(
-      surah: Surah(
-        id: firstSurahNumber,
-        nameAr: quran.getSurahNameArabic(firstSurahNumber),
-        ayahCount: quran.getVerseCount(firstSurahNumber),
-      ),
-      filterTypeId: FilterTypes.parts,
-      juz: juz,
-    );
-  }
-
-  void _navigateToSurah(int surahNumber) {
-    _replaceWithRoute(
-      surah: Surah(
-        id: surahNumber,
-        nameAr: quran.getSurahNameArabic(surahNumber),
-        ayahCount: quran.getVerseCount(surahNumber),
-      ),
-      filterTypeId: FilterTypes.thirds,
-    );
+  Future<void> _navigateToSurah(int surahNumber) async {
+    await _navigateToPage(quran.getPageNumber(surahNumber, 1));
   }
 
   Future<void> _navigateToPage(int targetPage) async {
-    if (targetPage < 1 || targetPage > 604) {
+    if (targetPage < 1 ||
+        targetPage > 604 ||
+        !_pageSequence.contains(targetPage)) {
       return;
     }
 
-    // Locate the first surah covered on this mushaf page so that the route
-    // carries a sensible surah id, then load page-mode navigation around it.
-    int? resolvedSurahId;
-    try {
-      final pageAyat = await AyatController().loadAyatByPage(targetPage);
-      if (pageAyat.isNotEmpty) {
-        pageAyat.sort(_compareAyatOrder);
-        resolvedSurahId = pageAyat.first.surah.id;
-      }
-    } catch (_) {
-      // Fall back to the current surah if the lookup fails.
+    final selectedUser = context.read<UsersProvider>().selectedUser;
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    final targetIndex = _pageSequence.indexOf(targetPage);
+
+    setState(() {
+      _updateActivePageState(targetPage);
+    });
+
+    if (selectedUser != null && targetIndex != -1) {
+      await _ensureVisiblePageDataLoaded(
+        selectedUser.id,
+        evaluationsProvider,
+        pages: _pagesAroundIndex(targetIndex),
+      );
     }
 
-    final surahNumber = resolvedSurahId ?? widget.surah.id;
-    _replaceWithRoute(
-      surah: Surah(
-        id: surahNumber,
-        nameAr: quran.getSurahNameArabic(surahNumber),
-        ayahCount: quran.getVerseCount(surahNumber),
-      ),
-      filterTypeId: widget.filterTypeId,
-      page: targetPage,
-    );
+    _scheduleReadingScrollResetToTop();
+    await _persistReadingSession();
   }
 
   Future<void> _openJuzPicker() async {
@@ -1316,7 +1696,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
 
     if (selected != null && mounted) {
-      _navigateToJuz(selected);
+      await _navigateToJuz(selected);
     }
   }
 
@@ -1334,7 +1714,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
 
     if (selected != null && mounted) {
-      _navigateToSurah(selected);
+      await _navigateToSurah(selected);
     }
   }
 
@@ -1353,6 +1733,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       ),
       builder: (sheetContext) => _ReaderPagePicker(
         currentPage: currentPage,
+        availablePages: _pageSequence,
       ),
     );
 
@@ -1363,11 +1744,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   Future<void> _openDisplayFilter() async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
+    await _ensureAllAyatIndexedByPage();
 
     // Snapshot the dimensions available across the loaded ayat so the picker
     // only offers values the user can actually act on right now.
     final availableSubjectKeys = <String>{};
-    for (final ayah in _ayat) {
+    for (final ayah in _allAyat) {
       if (ayah.subjects != null) {
         availableSubjectKeys.addAll(ayah.subjects!);
       }
@@ -1376,7 +1758,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final availableSubjects = await _resolveSubjectDisplayLabels(
       availableSubjectKeys,
     );
-    final availableSchoolGroups = await _resolveSchoolFilterGroups();
+    final availableSchoolGroups = await _resolveSchoolFilterGroups(_allAyat);
     if (!mounted) {
       return;
     }
@@ -1432,14 +1814,26 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         _recomputeScopePageRange();
       });
 
-      // If the active page falls outside the new scope, snap to scope start.
-      final currentPage = _currentPage;
-      final range = _scopePageRange;
-      if (range != null &&
-          currentPage != null &&
-          (currentPage < range.$1 || currentPage > range.$2)) {
-        await _navigateToPage(range.$1);
+      final selectedUser = context.read<UsersProvider>().selectedUser;
+      if (selectedUser == null) {
+        return;
       }
+
+      final rebuilt = await _rebuildNavigablePages(
+        userId: selectedUser.id,
+        evaluationsProvider: evaluationsProvider,
+        jumpToFirstMatch: _hasAnyActiveReaderFilter,
+      );
+      if (!rebuilt) {
+        return;
+      }
+
+      await _ensureVisiblePageDataLoaded(
+        selectedUser.id,
+        evaluationsProvider,
+      );
+      _scheduleReadingScrollResetToTop();
+      await _persistReadingSession();
     }
   }
 
@@ -1478,19 +1872,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   Future<void> _loadAyat(
       int userId, EvaluationsProvider evaluationsProvider) async {
     await _refreshConnectivity();
-
-    List<Ayat> ayat = await _loadCurrentNavigationAyat();
-
-    if (_isInitialLoad &&
-        !_isPageNavigation &&
-        (widget.filterTypeId == FilterTypes.parts ||
-            widget.filterTypeId == FilterTypes.thirds)) {
-      ayat = ayat.where((a) => a.surah.id >= widget.surah.id).toList();
-    }
-    _isInitialLoad = false;
-
-    final ayatIds =
-        ayat.where((ayah) => ayah.id != null).map((ayah) => ayah.id!).toList();
     var canOpenAssessment = _hasConnection;
     String? readingNotice = _hasConnection
         ? null
@@ -1509,43 +1890,43 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           );
         }
       }
+    }
 
-      if (canOpenAssessment) {
-        try {
-          await evaluationsProvider.getAllUserEvaluations(userId, ayatIds);
-        } catch (_) {
-          readingNotice ??= _tr(
-            'quran_reading_previous_assessments_error',
-          );
-        }
-      }
+    await _ensureNavigationInitialized();
+    await _ensureAllAyatIndexedByPage();
 
-      for (final ayah in ayat) {
-        ayah.userEvaluation =
-            evaluationsProvider.getUserEvaluationForAyah(ayah.id);
-      }
+    final rebuilt = await _rebuildNavigablePages(
+      userId: userId,
+      evaluationsProvider: evaluationsProvider,
+    );
+    if (!rebuilt) {
+      return;
+    }
 
-      final loadedRecommendations =
-          await _loadTeacherRecommendations(userId, ayat);
-      if (!loadedRecommendations) {
-        readingNotice ??= _tr(
-          'quran_reading_teacher_recommendations_error',
-        );
-      }
-    } else {
-      for (final ayah in ayat) {
-        ayah.userEvaluation =
-            evaluationsProvider.getUserEvaluationForAyah(ayah.id);
-        ayah.teacherRecommendations = [];
-      }
+    await _ensureVisiblePageDataLoaded(
+      userId,
+      evaluationsProvider,
+    );
+
+    if (_isInitialLoad && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_jumpToCurrentPageInList());
+      });
+    }
+    _isInitialLoad = false;
+
+    if (!mounted) {
+      return;
     }
 
     setState(() {
       _canOpenAssessment = canOpenAssessment;
       _readingNotice = readingNotice;
-      _ayat
-        ..clear()
-        ..addAll(ayat);
+      if (_currentPage != null) {
+        _ayat
+          ..clear()
+          ..addAll(_ayatForPage(_currentPage!));
+      }
     });
 
     await _persistReadingSession();
@@ -1644,6 +2025,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _activeSurah = widget.surah;
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -1769,7 +2151,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           ),
                           const SizedBox(width: 8),
                           _ReaderSurahPill(
-                            surahName: widget.surah.nameAr,
+                            surahName: (_activeSurah ?? widget.surah).nameAr,
                             isDarkMode: isDarkMode,
                             tooltip: _tr('quran_reading_surah_picker_tooltip'),
                             onTap: _openSurahPicker,
@@ -1779,7 +2161,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             icon: Icons.tune_rounded,
                             tooltip: _tr('quran_reading_filters_tooltip'),
                             isDarkMode: isDarkMode,
-                            isActive: _hasActiveDisplayFilter,
+                            isActive: _hasAnyActiveReaderFilter,
                             onTap: _openDisplayFilter,
                           ),
                           const Spacer(),
@@ -1866,9 +2248,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               }
 
                               if (velocity > 0) {
-                                _loadAdjacentChunk(forward: false);
-                              } else {
                                 _loadAdjacentChunk(forward: true);
+                              } else {
+                                _loadAdjacentChunk(forward: false);
                               }
                             },
                             child: Padding(
@@ -1879,21 +2261,137 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               child: Column(
                                 children: [
                                   Expanded(
-                                    child: SingleChildScrollView(
-                                      controller: _scrollController,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 10,
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: _buildAyatWidgets(
-                                          languageProvider,
-                                          evaluationProvider,
-                                          _hasConnection,
-                                          isDarkMode,
-                                        ),
+                                    child: Container(
+                                      key: _pageViewportKey,
+                                      child: Stack(
+                                        children: [
+                                          NotificationListener<
+                                              ScrollNotification>(
+                                            onNotification: (notification) {
+                                              if (notification
+                                                  is ScrollEndNotification) {
+                                                _syncCurrentPageFromVisiblePages();
+                                                final selectedUser = context
+                                                    .read<UsersProvider>()
+                                                    .selectedUser;
+                                                if (selectedUser != null) {
+                                                  unawaited(
+                                                    _ensureVisiblePageDataLoaded(
+                                                      selectedUser.id,
+                                                      evaluationProvider,
+                                                    ),
+                                                  );
+                                                }
+                                              }
+                                              return false;
+                                            },
+                                            child: Scrollbar(
+                                              controller: _scrollController,
+                                              thumbVisibility: true,
+                                              interactive: true,
+                                              thickness: 4,
+                                              radius: const Radius.circular(6),
+                                              child: ListView.builder(
+                                                controller: _scrollController,
+                                                physics:
+                                                    const BouncingScrollPhysics(
+                                                  parent:
+                                                      AlwaysScrollableScrollPhysics(),
+                                                ),
+                                                cacheExtent:
+                                                    MediaQuery.sizeOf(context)
+                                                            .height *
+                                                        2,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                  vertical: 10,
+                                                ),
+                                                itemCount: _pageSequence.length,
+                                                itemBuilder: (context, index) {
+                                                  final page =
+                                                      _pageSequence[index];
+                                                  final pageAyat =
+                                                      _ayatForPage(page);
+                                                  WidgetsBinding.instance
+                                                      .addPostFrameCallback(
+                                                          (_) {
+                                                    _recordEstimatedPageExtent(
+                                                        page);
+                                                  });
+
+                                                  return KeyedSubtree(
+                                                    key: _pageKeyFor(page),
+                                                    child: _ReaderRenderedPage(
+                                                      pageNumber: page,
+                                                      isDarkMode: isDarkMode,
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .stretch,
+                                                        children:
+                                                            _buildAyatWidgets(
+                                                          pageAyat,
+                                                          languageProvider,
+                                                          evaluationProvider,
+                                                          _hasConnection,
+                                                          isDarkMode,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          if (_pageSequence.length > 1)
+                                            PositionedDirectional(
+                                              end: 0,
+                                              top: 18,
+                                              bottom: 18,
+                                              child: _ReaderPageRail(
+                                                isDarkMode: isDarkMode,
+                                                currentIndex:
+                                                    (_currentPageSequenceIndex ??
+                                                            0)
+                                                        .clamp(
+                                                          0,
+                                                          math.max(
+                                                            0,
+                                                            _pageSequence
+                                                                    .length -
+                                                                1,
+                                                          ),
+                                                        )
+                                                        .toDouble(),
+                                                maxIndex: math
+                                                    .max(
+                                                        0,
+                                                        _pageSequence.length -
+                                                            1)
+                                                    .toDouble(),
+                                                currentPageLabel:
+                                                    _currentPage?.toString() ??
+                                                        '1',
+                                                onChangeEnd: (value) {
+                                                  final targetIndex =
+                                                      value.round();
+                                                  if (targetIndex < 0 ||
+                                                      targetIndex >=
+                                                          _pageSequence
+                                                              .length) {
+                                                    return;
+                                                  }
+                                                  unawaited(
+                                                    _navigateToPage(
+                                                      _pageSequence[
+                                                          targetIndex],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -1931,12 +2429,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                   ),
                                                   const SizedBox(width: 8),
                                                   Text(
-                                                    _currentNavigationJuz != null
+                                                    _currentNavigationJuz !=
+                                                            null
                                                         ? _trParams(
                                                             'quran_reading_juz_indicator',
                                                             {
-                                                              'juz': _currentNavigationJuz
-                                                                  .toString(),
+                                                              'juz':
+                                                                  _currentNavigationJuz
+                                                                      .toString(),
                                                             },
                                                           )
                                                         : widget.surah.nameAr,
@@ -1976,12 +2476,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_left_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: _canTapNavigationControls
-                                                        ? () =>
-                                                            _loadAdjacentChunk(
-                                                              forward: false,
-                                                            )
-                                                        : null,
+                                                    onTap:
+                                                        _canTapNavigationControls
+                                                            ? () =>
+                                                                _loadAdjacentChunk(
+                                                                  forward:
+                                                                      false,
+                                                                )
+                                                            : null,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   _ReaderProgressLabel(
@@ -2002,12 +2504,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                     icon: Icons
                                                         .chevron_right_rounded,
                                                     isDarkMode: isDarkMode,
-                                                    onTap: _canTapNavigationControls
-                                                        ? () =>
-                                                            _loadAdjacentChunk(
-                                                              forward: true,
-                                                            )
-                                                        : null,
+                                                    onTap:
+                                                        _canTapNavigationControls
+                                                            ? () =>
+                                                                _loadAdjacentChunk(
+                                                                  forward: true,
+                                                                )
+                                                            : null,
                                                   ),
                                                 ],
                                               ),
@@ -2034,18 +2537,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   List<Widget> _buildAyatWidgets(
+      List<Ayat> ayat,
       LanguageProvider languageProvider,
       EvaluationsProvider evaluationProvider,
       bool hasConnection,
       bool isDarkMode) {
     List<Widget> widgets = [];
-    if (_ayat.isEmpty) return widgets;
+    if (ayat.isEmpty) return widgets;
 
     List<List<Ayat>> groups = [];
     List<Ayat> currentGroup = [];
     int? currentSurahId;
 
-    for (var ayah in _ayat) {
+    for (var ayah in ayat) {
       if (currentSurahId != null && ayah.surah.id != currentSurahId) {
         groups.add(currentGroup);
         currentGroup = [];
@@ -2113,8 +2617,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               final fadedColor = isDarkMode
                   ? const Color(0xFF4A4A4A)
                   : const Color(0xFFCFCFCF);
-              final isFiltered = _hasActiveDisplayFilter &&
-                  !_ayahMatchesDisplayFilter(ayah, evaluationProvider);
+              final isFiltered = _hasAnyActiveReaderFilter &&
+                  !_ayahMatchesActiveReaderSelection(ayah, evaluationProvider);
 
               final memoEvaluation = userEvaluation?.memoEvaluation ??
                   evaluationProvider.findEvaluationById(userEvaluation?.memoId);
@@ -2424,6 +2928,129 @@ class _ReaderBottomChip extends StatelessWidget {
   }
 }
 
+class _ReaderRenderedPage extends StatelessWidget {
+  const _ReaderRenderedPage({
+    required this.pageNumber,
+    required this.isDarkMode,
+    required this.child,
+  });
+
+  final int pageNumber;
+  final bool isDarkMode;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dividerColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.06);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 12, 18, 18),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: dividerColor),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'صفحة $pageNumber',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : const Color(0xFF132A4A),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _ReaderPageRail extends StatelessWidget {
+  const _ReaderPageRail({
+    required this.isDarkMode,
+    required this.currentIndex,
+    required this.maxIndex,
+    required this.currentPageLabel,
+    required this.onChangeEnd,
+  });
+
+  final bool isDarkMode;
+  final double currentIndex;
+  final double maxIndex;
+  final String currentPageLabel;
+  final ValueChanged<double> onChangeEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final clampedValue = currentIndex
+        .clamp(0.0, math.max(0.0, maxIndex))
+        .toDouble();
+
+    return Container(
+      width: 36,
+      margin: const EdgeInsetsDirectional.only(end: 2),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.black.withValues(alpha: 0.18)
+            : Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(
+            currentPageLabel,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
+          ),
+          Expanded(
+            child: RotatedBox(
+              quarterTurns: 3,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 3,
+                  thumbShape:
+                      const RoundSliderThumbShape(enabledThumbRadius: 7),
+                  overlayShape:
+                      const RoundSliderOverlayShape(overlayRadius: 12),
+                ),
+                child: Slider(
+                  min: 0,
+                  max: math.max(1.0, maxIndex),
+                  value: clampedValue,
+                  onChanged: (_) {},
+                  onChangeEnd: onChangeEnd,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ReaderProgressLabel extends StatelessWidget {
   const _ReaderProgressLabel({
     required this.label,
@@ -2508,6 +3135,8 @@ class _ReaderInlineChevron extends StatelessWidget {
 class _ReaderScopeData {
   static const int _juzsPerThird = 10;
   static Map<int, List<int>>? _juzToSurahs;
+
+  static int thirdOfJuz(int juz) => ((juz - 1) ~/ _juzsPerThird) + 1;
 
   static Iterable<int> juzsInThird(int third) {
     final start = (third - 1) * _juzsPerThird + 1;
@@ -2737,9 +3366,13 @@ class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
 }
 
 class _ReaderPagePicker extends StatefulWidget {
-  const _ReaderPagePicker({required this.currentPage});
+  const _ReaderPagePicker({
+    required this.currentPage,
+    required this.availablePages,
+  });
 
   final int currentPage;
+  final List<int> availablePages;
 
   @override
   State<_ReaderPagePicker> createState() => _ReaderPagePickerState();
@@ -2754,7 +3387,9 @@ class _ReaderPagePickerState extends State<_ReaderPagePicker> {
   void initState() {
     super.initState();
     _input = TextEditingController(text: widget.currentPage.toString());
-    final initialIndex = (widget.currentPage - 1).clamp(0, 603);
+    final availableIndex = widget.availablePages.indexOf(widget.currentPage);
+    final initialIndex = (availableIndex == -1 ? 0 : availableIndex)
+        .clamp(0, math.max(0, widget.availablePages.length - 1));
     _controller = ScrollController(
       initialScrollOffset:
           (initialIndex * 48.0 - 160).clamp(0, double.infinity).toDouble(),
@@ -2776,7 +3411,10 @@ class _ReaderPagePickerState extends State<_ReaderPagePicker> {
   void _submit() {
     final raw = _input.text.trim();
     final parsed = int.tryParse(raw);
-    if (parsed == null || parsed < 1 || parsed > 604) {
+    if (parsed == null ||
+        parsed < 1 ||
+        parsed > 604 ||
+        !widget.availablePages.contains(parsed)) {
       setState(() {
         _errorText = _tr('quran_reading_page_picker_invalid');
       });
@@ -2842,10 +3480,10 @@ class _ReaderPagePickerState extends State<_ReaderPagePicker> {
               height: 280,
               child: ListView.builder(
                 controller: _controller,
-                itemCount: 604,
+                itemCount: widget.availablePages.length,
                 itemExtent: 48,
                 itemBuilder: (context, index) {
-                  final page = index + 1;
+                  final page = widget.availablePages[index];
                   final isCurrent = page == widget.currentPage;
                   return ListTile(
                     dense: true,

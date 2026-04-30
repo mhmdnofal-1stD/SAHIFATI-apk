@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -358,6 +359,37 @@ class EvaluationsProvider with ChangeNotifier {
     } finally {
       resetLoading();
     }
+  }
+
+  Future<void> mergeUserEvaluationsForAyatIds(
+    int userId,
+    List<int> ayatIds, {
+    int batchSize = 250,
+  }) async {
+    final normalizedIds = ayatIds.toSet().toList();
+    if (normalizedIds.isEmpty) {
+      return;
+    }
+
+    final mergedByAyahId = <int, UserEvaluation>{
+      for (final evaluation in userEvaluations)
+        if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
+          (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
+    };
+
+    for (var start = 0; start < normalizedIds.length; start += batchSize) {
+      final end = math.min(start + batchSize, normalizedIds.length);
+      final batch = normalizedIds.sublist(start, end);
+      final batchEvaluations = await _loadUserEvaluationsByAyahId(
+        userId,
+        batch,
+      );
+      mergedByAyahId.addAll(batchEvaluations);
+    }
+
+    userEvaluations = mergedByAyahId.values.toList();
+    _refreshUserEvaluationMetadata();
+    notifyListeners();
   }
 
   Future<void> preloadQuestionLevelData(

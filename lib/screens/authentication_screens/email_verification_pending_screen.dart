@@ -9,6 +9,7 @@ import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
 
 class EmailVerificationPendingScreen extends StatefulWidget {
   const EmailVerificationPendingScreen({
@@ -128,8 +129,8 @@ class _EmailVerificationPendingScreenState
     final remainingSeconds = _remainingSeconds(usersProvider);
     final resendEnabled = remainingSeconds == 0 && !_isResending;
     final maskedEmail = email.isEmpty
-      ? 'email_verification_pending_email_fallback'.tr
-      : maskEmailAddress(email);
+        ? 'email_verification_pending_email_fallback'.tr
+        : maskEmailAddress(email);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
@@ -166,7 +167,8 @@ class _EmailVerificationPendingScreenState
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 460),
                   child: Container(
@@ -248,11 +250,24 @@ class _EmailVerificationPendingScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Center(
-                                child: SvgPicture.asset(
-                                  Assets.logoSvg,
-                                  width: 64,
-                                  height: 64,
+                              SizedBox(
+                                height: 64,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Center(
+                                      child: SvgPicture.asset(
+                                        Assets.logoSvg,
+                                        width: 64,
+                                        height: 64,
+                                      ),
+                                    ),
+                                    const Positioned(
+                                      top: 0,
+                                      left: 0,
+                                      child: AuthLanguageSwitch(),
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -296,21 +311,24 @@ class _EmailVerificationPendingScreenState
                               const SizedBox(height: 18),
                               const _StepLine(
                                 icon: Icons.mark_email_read_outlined,
-                                titleKey: 'email_verification_pending_step_1_title',
+                                titleKey:
+                                    'email_verification_pending_step_1_title',
                                 subtitleKey:
                                     'email_verification_pending_step_1_subtitle',
                               ),
                               const SizedBox(height: 12),
                               const _StepLine(
                                 icon: Icons.verified_outlined,
-                                titleKey: 'email_verification_pending_step_2_title',
+                                titleKey:
+                                    'email_verification_pending_step_2_title',
                                 subtitleKey:
                                     'email_verification_pending_step_2_subtitle',
                               ),
                               const SizedBox(height: 12),
                               const _StepLine(
                                 icon: Icons.rocket_launch_outlined,
-                                titleKey: 'email_verification_pending_step_3_title',
+                                titleKey:
+                                    'email_verification_pending_step_3_title',
                                 subtitleKey:
                                     'email_verification_pending_step_3_subtitle',
                               ),
@@ -327,17 +345,17 @@ class _EmailVerificationPendingScreenState
                             decoration: BoxDecoration(
                               color: const Color(0xFFF7FBF9),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0x220B503D)),
+                              border:
+                                  Border.all(color: const Color(0x220B503D)),
                             ),
                             child: Text(
                               _feedbackMessage!,
                               textDirection: TextDirection.rtl,
-                              style: AppTypography.of(context)
-                                  .bannerBody
-                                  .copyWith(
-                                    color: const Color(0xFF184C3A),
-                                    height: 1.5,
-                                  ),
+                              style:
+                                  AppTypography.of(context).bannerBody.copyWith(
+                                        color: const Color(0xFF184C3A),
+                                        height: 1.5,
+                                      ),
                             ),
                           ),
                         ],
@@ -350,8 +368,8 @@ class _EmailVerificationPendingScreenState
                                 : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryPurple,
-                              disabledBackgroundColor:
-                                  AppColors.primaryPurple.withValues(alpha: 0.42),
+                              disabledBackgroundColor: AppColors.primaryPurple
+                                  .withValues(alpha: 0.42),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(18),
                               ),
@@ -367,13 +385,13 @@ class _EmailVerificationPendingScreenState
                                   )
                                 : Text(
                                     resendEnabled
-                                    ? 'email_verification_pending_resend_action'
-                                      .tr
-                                    : 'email_verification_pending_resend_wait'
-                                      .trParams({
-                                      'seconds':
-                                        remainingSeconds.toString(),
-                                      }),
+                                        ? 'email_verification_pending_resend_action'
+                                            .tr
+                                        : 'email_verification_pending_resend_wait'
+                                            .trParams({
+                                            'seconds':
+                                                remainingSeconds.toString(),
+                                          }),
                                     textDirection: TextDirection.rtl,
                                     style: AppTypography.of(context)
                                         .buttonPrimary

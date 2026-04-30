@@ -1,9 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/providers/language_provider.dart';
+
+class AuthLanguageSwitch extends StatelessWidget {
+  const AuthLanguageSwitch({
+    super.key,
+    this.backgroundColor = const Color(0xFFFFFCF8),
+    this.borderColor = const Color(0xFFD7D8DE),
+    this.foregroundColor = const Color(0xFF132A4A),
+    this.shadowColor = const Color(0x0813284A),
+    this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  });
+
+  final Color backgroundColor;
+  final Color borderColor;
+  final Color foregroundColor;
+  final Color shadowColor;
+  final EdgeInsetsGeometry padding;
+
+  String _targetLanguageCode(String currentCode) {
+    return currentCode.toLowerCase() == 'en' ? 'ar' : 'en';
+  }
+
+  String _targetLanguageLabel(String languageCode) {
+    return languageCode == 'ar' ? 'العربية' : 'English';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, _) {
+        final targetCode = _targetLanguageCode(languageProvider.langCode);
+        final targetLabel = _targetLanguageLabel(targetCode);
+
+        return Tooltip(
+          message: 'language'.tr,
+          child: Material(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
+                await languageProvider.changeLanguage(targetCode);
+              },
+              child: Container(
+                padding: padding,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    if (shadowColor.alpha > 0)
+                      BoxShadow(
+                        color: shadowColor,
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
+                ),
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.language_rounded,
+                        size: 16,
+                        color: foregroundColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        targetLabel,
+                        style: AppTypography.of(context).badgeLabel.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: foregroundColor,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class AuthScreenShell extends StatelessWidget {
   const AuthScreenShell({
@@ -65,15 +153,14 @@ class AuthScreenShell extends StatelessWidget {
               onTap: () => FocusScope.of(context).unfocus(),
               child: LayoutBuilder(
                 builder: (context, viewportConstraints) {
-                  final minViewportHeight = fillViewport &&
-                          viewportConstraints.maxHeight.isFinite
-                      ? viewportConstraints.maxHeight -
-                          outerTopPadding -
-                          outerBottomPadding
-                      : 0.0;
-                  final normalizedMinViewportHeight = minViewportHeight > 0
-                      ? minViewportHeight
-                      : 0.0;
+                  final minViewportHeight =
+                      fillViewport && viewportConstraints.maxHeight.isFinite
+                          ? viewportConstraints.maxHeight -
+                              outerTopPadding -
+                              outerBottomPadding
+                          : 0.0;
+                  final normalizedMinViewportHeight =
+                      minViewportHeight > 0 ? minViewportHeight : 0.0;
 
                   return SingleChildScrollView(
                     keyboardDismissBehavior:
@@ -215,19 +302,7 @@ class _BrandHeader extends StatelessWidget {
                 ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE9F3ED),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFD4E3DA)),
-          ),
-          child: const Icon(
-            Icons.auto_awesome_rounded,
-            color: AppColors.buttonColor,
-            size: 18,
-          ),
-        ),
+        const AuthLanguageSwitch(),
       ],
     );
   }
@@ -307,8 +382,7 @@ class _ModeItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 17,
-                color:
-                    isSelected ? Colors.white : const Color(0xFF5E6A7E),
+                color: isSelected ? Colors.white : const Color(0xFF5E6A7E),
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -317,9 +391,8 @@ class _ModeItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.of(context).buttonSecondary.copyWith(
                         fontSize: 13,
-                        color: isSelected
-                            ? Colors.white
-                            : const Color(0xFF5E6A7E),
+                        color:
+                            isSelected ? Colors.white : const Color(0xFF5E6A7E),
                       ),
                 ),
               ),

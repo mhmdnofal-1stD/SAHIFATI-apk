@@ -476,6 +476,18 @@ class UsersProvider with ChangeNotifier {
     return error.toString().replaceFirst('Exception: ', '');
   }
 
+  bool _isUnauthorizedError(Object error) {
+    if (error is Map) {
+      final statusCode = error['statusCode'];
+      if (statusCode == 401) {
+        return true;
+      }
+    }
+
+    final raw = _extractRawMessage(error).toLowerCase();
+    return raw.contains('unauthorized') || raw.contains('unauthenticated');
+  }
+
   String _providerLabel(String provider) {
     switch (provider) {
       case 'google':
@@ -858,6 +870,15 @@ class UsersProvider with ChangeNotifier {
       myPromoCodes = promoCodes;
       promoWorkspaceError = null;
     } catch (error) {
+      if (_isUnauthorizedError(error)) {
+        await clearPersistedSession();
+        promoWorkspaceError = 'service_api_unauthorized'.tr;
+        return;
+      }
+
+      licenseBalanceSummary = null;
+      giftPoolSummary = null;
+      myPromoCodes = <Map<String, dynamic>>[];
       promoWorkspaceError = extractErrorMessage(error);
     } finally {
       isPromoCodesLoading = false;

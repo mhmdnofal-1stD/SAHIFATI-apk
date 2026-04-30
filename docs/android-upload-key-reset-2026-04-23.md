@@ -6,7 +6,7 @@
 
 ## Generated Files
 
-- New keystore: `android/sahifati_upload_reset_2026.jks`
+- Current local keystore path: `C:\1stD\Public-data\UP.Key.jks`
 - Public certificate for Play reset request: `android/upload_certificate_reset_2026.pem`
 - Active signing properties: `android/key.properties`
 
@@ -31,13 +31,13 @@
 Export PEM again if needed:
 
 ```powershell
-keytool -export -rfc -keystore android/sahifati_upload_reset_2026.jks -storepass "Mn.123123" -alias sahifati_upload_reset_2026 -file android/upload_certificate_reset_2026.pem
+keytool -export -rfc -keystore C:\1stD\Public-data\UP.Key.jks -storepass "Mn.123123" -alias sahifati_upload_reset_2026 -file android/upload_certificate_reset_2026.pem
 ```
 
 Check the new key fingerprint:
 
 ```powershell
-keytool -list -v -keystore android/sahifati_upload_reset_2026.jks -storepass "Mn.123123" -alias sahifati_upload_reset_2026
+keytool -list -v -keystore C:\1stD\Public-data\UP.Key.jks -storepass "Mn.123123" -alias sahifati_upload_reset_2026
 ```
 
 Build a release bundle after Play approves the reset:
@@ -49,4 +49,5 @@ keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab
 
 ## Important Note
 
-- Builds signed with this new upload key will still be rejected by Play until the reset request is approved on Google's side.
+- Builds signed with this upload key will still be rejected by Play until the reset request is approved on Google's side.
+- The local workspace now resolves signing from `android/key.properties`, which points to `C:\1stD\Public-data\UP.Key.jks` outside the repo tree.

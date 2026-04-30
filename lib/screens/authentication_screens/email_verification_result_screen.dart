@@ -5,6 +5,7 @@ import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
 
 enum VerificationResultState {
   success,
@@ -55,20 +56,33 @@ class EmailVerificationResultScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: 86,
-                        height: 86,
-                        decoration: BoxDecoration(
-                          color: config.badgeColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          config.icon,
-                          size: 40,
-                          color: config.iconColor,
-                        ),
+                    SizedBox(
+                      height: 86,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Align(
+                            alignment: Alignment.center,
+                            child: Container(
+                              width: 86,
+                              height: 86,
+                              decoration: BoxDecoration(
+                                color: config.badgeColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                config.icon,
+                                size: 40,
+                                color: config.iconColor,
+                              ),
+                            ),
+                          ),
+                          const Positioned(
+                            top: 0,
+                            left: 0,
+                            child: AuthLanguageSwitch(),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -192,11 +206,12 @@ class EmailVerificationResultScreen extends StatelessWidget {
                             ? 'email_verification_result_back_to_login'.tr
                             : 'email_verification_result_back_to_signup'.tr,
                         textDirection: TextDirection.rtl,
-                        style: AppTypography.of(context).buttonSecondary.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primaryPurple,
-                            ),
+                        style:
+                            AppTypography.of(context).buttonSecondary.copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryPurple,
+                                ),
                       ),
                     ),
                   ],

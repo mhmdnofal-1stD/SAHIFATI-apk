@@ -445,6 +445,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     final balance = usersProvider.licenseBalanceSummary;
     final giftPool = usersProvider.giftPoolSummary;
     final promoCodes = usersProvider.myPromoCodes;
+    final hasBalanceData = balance != null;
     final ownedCount = ((balance?['ownedCount'] ?? 0) as num).toInt();
     final reservedCount = ((balance?['reservedCount'] ?? 0) as num).toInt();
     final giftAvailable =
@@ -484,21 +485,41 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               children: [
-                Row(
-                  children: [
-                    _buildSummaryTile(
-                      label: 'license_hub_owned_count'.tr,
-                      value: ownedCount.toString(),
-                      accent: AppColors.buttonColor,
+                if (hasBalanceData)
+                  Row(
+                    children: [
+                      _buildSummaryTile(
+                        label: 'license_hub_owned_count'.tr,
+                        value: ownedCount.toString(),
+                        accent: AppColors.buttonColor,
+                      ),
+                      const SizedBox(width: 10),
+                      _buildSummaryTile(
+                        label: 'license_hub_reserved_count'.tr,
+                        value: reservedCount.toString(),
+                        accent: AppColors.primaryPurple,
+                      ),
+                    ],
+                  ),
+                if (!hasBalanceData && usersProvider.promoWorkspaceError != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                    const SizedBox(width: 10),
-                    _buildSummaryTile(
-                      label: 'license_hub_reserved_count'.tr,
-                      value: reservedCount.toString(),
-                      accent: AppColors.primaryPurple,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.lineColor),
                     ),
-                  ],
-                ),
+                    child: Text(
+                      'license_hub_loading'.tr,
+                      textDirection: TextDirection.rtl,
+                      style: AppTypography.of(context)
+                          .bodySmall
+                          .copyWith(color: AppColors.hintTextColor),
+                    ),
+                  ),
                 if (giftAvailable + giftContributed + giftConsumed > 0) ...[
                   const SizedBox(height: 10),
                   Wrap(
