@@ -300,7 +300,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   }
 }
 
-class _SubjectData implements Object {
+class _SubjectData {
   const _SubjectData({required this.labels, required this.hierarchy});
   final Map<String, String> labels;
   final List<SubjectHierarchyItem> hierarchy;

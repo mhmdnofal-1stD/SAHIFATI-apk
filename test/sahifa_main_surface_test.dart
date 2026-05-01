@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +15,6 @@ import 'package:sahifaty/providers/school_provider.dart';
 import 'package:sahifaty/providers/surahs_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
-import 'package:sahifaty/screens/sahifa_screen/sahifa_screen.dart';
 import 'package:sahifaty/screens/widgets/assessment_dimension_toggle.dart';
 import 'package:sahifaty/screens/widgets/custom_hizbs_dropdown.dart';
 
@@ -141,7 +140,7 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const SahifaScreen(firstScreen: false),
+      child: const MainScreen(comesFirst: false),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
@@ -157,7 +156,7 @@ void main() {
     await ReadingSessionStore().save(
       const ReadingSession(
         userId: 1,
-        surah: Surah(id: 2, nameAr: 'البقرة', ayahCount: 286),
+        surah: Surah(id: 2, nameAr: 'Ø§Ù„Ø¨Ù‚Ø±Ø©', ayahCount: 286),
         filterTypeId: FilterTypes.parts,
         juz: 1,
         currentHizbQuarter: 3,
@@ -174,7 +173,7 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const SahifaScreen(firstScreen: false),
+      child: const MainScreen(comesFirst: false),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
@@ -194,7 +193,7 @@ void main() {
       ..chartEvaluationData = [
         ChartEvaluationData(
           evaluationId: 1,
-          name: const {'en': 'Strong', 'ar': 'قوي'},
+          name: const {'en': 'Strong', 'ar': 'Ù‚ÙˆÙŠ'},
           code: 'STRONG',
           characterCount: 100,
           verseCount: 12,
@@ -202,7 +201,7 @@ void main() {
         ),
         ChartEvaluationData(
           evaluationId: 0,
-          name: const {'en': 'Uncategorized', 'ar': 'غير مصنف'},
+          name: const {'en': 'Uncategorized', 'ar': 'ØºÙŠØ± Ù…ØµÙ†Ù'},
           code: 'UNCAT',
           characterCount: 50,
           verseCount: 8,
@@ -212,7 +211,7 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const SahifaScreen(firstScreen: false),
+      child: const MainScreen(comesFirst: false),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
@@ -245,7 +244,7 @@ void main() {
     await ReadingSessionStore().save(
       const ReadingSession(
         userId: 1,
-        surah: Surah(id: 36, nameAr: 'يس', ayahCount: 83),
+        surah: Surah(id: 36, nameAr: 'ÙŠØ³', ayahCount: 83),
         filterTypeId: FilterTypes.thirds,
         juz: 3,
         currentHizbQuarter: 18,

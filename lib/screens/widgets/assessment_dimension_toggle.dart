@@ -1,28 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-
-import '../../controllers/evaluations_controller.dart';
-
-class AssessmentDimensionToggle extends StatelessWidget {
-  const AssessmentDimensionToggle({
-    super.key,
-    required this.selectedDimension,
-    required this.onChanged,
-  });
-
-  final String selectedDimension;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    String label(String dimension) {
-      if (dimension == EvaluationsController.comprehensionDimension) {
-        return 'assessment_dimension_comprehension'.tr;
-      }
-      return 'assessment_dimension_memorization'.tr;
-    }
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/evaluations_controller.dart';

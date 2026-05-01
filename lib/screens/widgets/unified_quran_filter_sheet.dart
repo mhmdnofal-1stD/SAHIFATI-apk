@@ -110,6 +110,28 @@ class UnifiedFilterSelection {
     );
   }
 
+  UnifiedFilterSelection copyWith({
+    Set<int>? thirds,
+    Set<int>? juzs,
+    Set<int>? surahIds,
+    Set<String>? ayahTypes,
+    Set<String>? subjectKeys,
+    Set<String>? schoolLevelIds,
+    Set<int>? memoEvaluationIds,
+    Set<int>? compreEvaluationIds,
+  }) {
+    return UnifiedFilterSelection(
+      thirds: thirds ?? Set.from(this.thirds),
+      juzs: juzs ?? Set.from(this.juzs),
+      surahIds: surahIds ?? Set.from(this.surahIds),
+      ayahTypes: ayahTypes ?? Set.from(this.ayahTypes),
+      subjectKeys: subjectKeys ?? Set.from(this.subjectKeys),
+      schoolLevelIds: schoolLevelIds ?? Set.from(this.schoolLevelIds),
+      memoEvaluationIds: memoEvaluationIds ?? Set.from(this.memoEvaluationIds),
+      compreEvaluationIds: compreEvaluationIds ?? Set.from(this.compreEvaluationIds),
+    );
+  }
+
   final Set<int> thirds;
   final Set<int> juzs;
   final Set<int> surahIds;
