@@ -155,10 +155,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   int? _minHizbQuarter;
   int? _maxHizbQuarter;
   int? _initialHizbQuarter;
-  final ScrollController _scrollController =
-      ScrollController(keepScrollOffset: true);
-  final GlobalKey _pageViewportKey = GlobalKey();
-  final Map<int, GlobalKey> _pageItemKeys = <int, GlobalKey>{};
+  final PageController _pageController = PageController();
   final Set<int> _hydratedEvaluationPages = <int>{};
   final Set<int> _hydratedRecommendationPages = <int>{};
   bool _isInitialLoad = true;
@@ -169,7 +166,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _canOpenAssessment = true;
   bool _hasLoadedAllEvaluationCoverage = false;
   String? _readingNotice;
-  double _estimatedPageExtent = 940;
   final Map<int, TapGestureRecognizer> _ayahTapRecognizers =
       <int, TapGestureRecognizer>{};
   final TeacherRecommendationsService _teacherRecommendationsService =
@@ -215,14 +211,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     if (_filterJuzs.isNotEmpty) {
       final juz = ayah.juz;
-      return juz != null && _filterJuzs.contains(juz);
+      return _filterJuzs.contains(juz);
     }
 
     if (_filterThirds.isNotEmpty) {
       final juz = ayah.juz;
-      if (juz == null) {
-        return false;
-      }
       return _filterThirds.contains(_ReaderScopeData.thirdOfJuz(juz));
     }
 
@@ -615,9 +608,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   List<Ayat> _ayatForPage(int page) => _allAyatByPage[page] ?? const <Ayat>[];
 
-  GlobalKey _pageKeyFor(int page) =>
-      _pageItemKeys.putIfAbsent(page, () => GlobalKey());
-
   int? get _currentPageSequenceIndex {
     final currentPage = _currentPage;
     if (currentPage == null) {
@@ -672,114 +662,26 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       ..addAll(_ayatForPage(page));
   }
 
-  void _recordEstimatedPageExtent(int page) {
-    final pageContext = _pageKeyFor(page).currentContext;
-    if (pageContext == null) {
-      return;
-    }
-
-    final renderBox = pageContext.findRenderObject() as RenderBox?;
-    if (renderBox == null || !renderBox.hasSize) {
-      return;
-    }
-
-    final extent = renderBox.size.height;
-    if (extent <= 0) {
-      return;
-    }
-
-    _estimatedPageExtent = ((_estimatedPageExtent * 4) + extent) / 5;
-  }
-
   Future<void> _jumpToCurrentPageInList({bool animated = false}) async {
     final currentPage = _currentPage;
-    if (currentPage == null ||
-        _pageSequence.isEmpty ||
-        !_scrollController.hasClients) {
+    if (currentPage == null || _pageSequence.isEmpty) {
       return;
     }
 
     final index = _pageSequence.indexOf(currentPage);
-    if (index == -1) {
+    if (index == -1 || !_pageController.hasClients) {
       return;
     }
 
-    final maxExtent = _scrollController.position.maxScrollExtent;
-    final targetOffset = (_estimatedPageExtent * index).clamp(0.0, maxExtent);
-
     if (animated) {
-      await _scrollController.animateTo(
-        targetOffset,
+      await _pageController.animateToPage(
+        index,
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
       );
     } else {
-      _scrollController.jumpTo(targetOffset);
+      _pageController.jumpToPage(index);
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final pageContext = _pageKeyFor(currentPage).currentContext;
-      if (pageContext == null) {
-        return;
-      }
-
-      Scrollable.ensureVisible(
-        pageContext,
-        alignment: 0,
-        duration: const Duration(milliseconds: 140),
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
-  void _syncCurrentPageFromVisiblePages() {
-    final viewportContext = _pageViewportKey.currentContext;
-    if (viewportContext == null) {
-      return;
-    }
-
-    final viewportBox = viewportContext.findRenderObject() as RenderBox?;
-    if (viewportBox == null || !viewportBox.hasSize) {
-      return;
-    }
-
-    final viewportTop = viewportBox.localToGlobal(Offset.zero).dy;
-    final viewportBottom = viewportTop + viewportBox.size.height;
-    int? nextPage;
-    var closestDistance = double.infinity;
-
-    for (final page in _pageSequence) {
-      final pageContext = _pageKeyFor(page).currentContext;
-      if (pageContext == null) {
-        continue;
-      }
-
-      final renderBox = pageContext.findRenderObject() as RenderBox?;
-      if (renderBox == null || !renderBox.attached || !renderBox.hasSize) {
-        continue;
-      }
-
-      final pageTop = renderBox.localToGlobal(Offset.zero).dy;
-      final pageBottom = pageTop + renderBox.size.height;
-      if (pageBottom <= viewportTop || pageTop >= viewportBottom) {
-        continue;
-      }
-
-      final distance = (pageTop - viewportTop).abs();
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        nextPage = page;
-      }
-    }
-
-    if (nextPage == null || nextPage == _currentPage || !mounted) {
-      return;
-    }
-
-    setState(() {
-      _updateActivePageState(nextPage!);
-    });
-    unawaited(_persistReadingSession());
   }
 
   Future<void> _ensureVisiblePageDataLoaded(
@@ -1145,16 +1047,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         return;
       }
 
-      setState(() {
-        _updateActivePageState(_pageSequence[nextIndex]);
-      });
-      await _ensureVisiblePageDataLoaded(
-        userId,
-        evalProvider,
-        pages: _pagesAroundIndex(nextIndex),
-      );
-      _scheduleReadingScrollResetToTop();
-      await _persistReadingSession();
+      if (_pageController.hasClients) {
+        await _pageController.animateToPage(
+          nextIndex,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+        );
+      }
+      // State update (setState + evaluations load + persist) handled in
+      // PageView.onPageChanged when the animation completes.
       return;
     }
 
@@ -1538,7 +1439,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     _removeMenu();
 
     final savedScrollOffset =
-        _scrollController.hasClients ? _scrollController.offset : 0.0;
+        _pageController.hasClients ? _pageController.offset : 0.0;
     final selection = await showAssessmentInputDialog(
       context: context,
       evaluationsProvider: evaluationsProvider,
@@ -1589,8 +1490,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(savedScrollOffset);
+      if (_pageController.hasClients) {
+        _pageController.jumpTo(savedScrollOffset);
       }
     });
   }
@@ -2018,7 +1919,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     _removeMenu();
     _setWakelockEnabled(false);
     WidgetsBinding.instance.removeObserver(this);
-    _scrollController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -2239,21 +2140,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             color: _readingSurfaceColor(isDarkMode),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onHorizontalDragEnd: (details) {
-                              final velocity = details.primaryVelocity;
-                              if (velocity == null || velocity.abs() < 250) {
-                                return;
-                              }
-
-                              if (velocity > 0) {
-                                _loadAdjacentChunk(forward: true);
-                              } else {
-                                _loadAdjacentChunk(forward: false);
-                              }
-                            },
-                            child: Padding(
+                          child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 vertical: 5,
                                 horizontal: 4,
@@ -2261,138 +2148,57 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                               child: Column(
                                 children: [
                                   Expanded(
-                                    child: Container(
-                                      key: _pageViewportKey,
-                                      child: Stack(
-                                        children: [
-                                          NotificationListener<
-                                              ScrollNotification>(
-                                            onNotification: (notification) {
-                                              if (notification
-                                                  is ScrollEndNotification) {
-                                                _syncCurrentPageFromVisiblePages();
-                                                final selectedUser = context
-                                                    .read<UsersProvider>()
-                                                    .selectedUser;
-                                                if (selectedUser != null) {
-                                                  unawaited(
-                                                    _ensureVisiblePageDataLoaded(
-                                                      selectedUser.id,
-                                                      evaluationProvider,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                              return false;
-                                            },
-                                            child: Scrollbar(
-                                              controller: _scrollController,
-                                              thumbVisibility: true,
-                                              interactive: true,
-                                              thickness: 4,
-                                              radius: const Radius.circular(6),
-                                              child: ListView.builder(
-                                                controller: _scrollController,
-                                                physics:
-                                                    const BouncingScrollPhysics(
-                                                  parent:
-                                                      AlwaysScrollableScrollPhysics(),
-                                                ),
-                                                cacheExtent:
-                                                    MediaQuery.sizeOf(context)
-                                                            .height *
-                                                        2,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 4,
-                                                  vertical: 10,
-                                                ),
-                                                itemCount: _pageSequence.length,
-                                                itemBuilder: (context, index) {
-                                                  final page =
-                                                      _pageSequence[index];
-                                                  final pageAyat =
-                                                      _ayatForPage(page);
-                                                  WidgetsBinding.instance
-                                                      .addPostFrameCallback(
-                                                          (_) {
-                                                    _recordEstimatedPageExtent(
-                                                        page);
-                                                  });
-
-                                                  return KeyedSubtree(
-                                                    key: _pageKeyFor(page),
-                                                    child: _ReaderRenderedPage(
-                                                      pageNumber: page,
-                                                      isDarkMode: isDarkMode,
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .stretch,
-                                                        children:
-                                                            _buildAyatWidgets(
-                                                          pageAyat,
-                                                          languageProvider,
-                                                          evaluationProvider,
-                                                          _hasConnection,
-                                                          isDarkMode,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
+                                    child: PageView.builder(
+                                      controller: _pageController,
+                                      onPageChanged: (index) {
+                                        if (index < 0 ||
+                                            index >= _pageSequence.length) {
+                                          return;
+                                        }
+                                        final page = _pageSequence[index];
+                                        if (page == _currentPage) return;
+                                        setState(() {
+                                          _updateActivePageState(page);
+                                        });
+                                        final selectedUser = context
+                                            .read<UsersProvider>()
+                                            .selectedUser;
+                                        if (selectedUser != null) {
+                                          unawaited(
+                                            _ensureVisiblePageDataLoaded(
+                                              selectedUser.id,
+                                              evaluationProvider,
+                                              pages:
+                                                  _pagesAroundIndex(index),
+                                            ),
+                                          );
+                                        }
+                                        unawaited(_persistReadingSession());
+                                      },
+                                      itemCount: _pageSequence.length,
+                                      itemBuilder: (context, index) {
+                                        final page = _pageSequence[index];
+                                        final pageAyat = _ayatForPage(page);
+                                        return SingleChildScrollView(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              4, 10, 4, 10),
+                                          child: _ReaderRenderedPage(
+                                            pageNumber: page,
+                                            isDarkMode: isDarkMode,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: _buildAyatWidgets(
+                                                pageAyat,
+                                                languageProvider,
+                                                evaluationProvider,
+                                                _hasConnection,
+                                                isDarkMode,
                                               ),
                                             ),
                                           ),
-                                          if (_pageSequence.length > 1)
-                                            PositionedDirectional(
-                                              end: 0,
-                                              top: 18,
-                                              bottom: 18,
-                                              child: _ReaderPageRail(
-                                                isDarkMode: isDarkMode,
-                                                currentIndex:
-                                                    (_currentPageSequenceIndex ??
-                                                            0)
-                                                        .clamp(
-                                                          0,
-                                                          math.max(
-                                                            0,
-                                                            _pageSequence
-                                                                    .length -
-                                                                1,
-                                                          ),
-                                                        )
-                                                        .toDouble(),
-                                                maxIndex: math
-                                                    .max(
-                                                        0,
-                                                        _pageSequence.length -
-                                                            1)
-                                                    .toDouble(),
-                                                currentPageLabel:
-                                                    _currentPage?.toString() ??
-                                                        '1',
-                                                onChangeEnd: (value) {
-                                                  final targetIndex =
-                                                      value.round();
-                                                  if (targetIndex < 0 ||
-                                                      targetIndex >=
-                                                          _pageSequence
-                                                              .length) {
-                                                    return;
-                                                  }
-                                                  unawaited(
-                                                    _navigateToPage(
-                                                      _pageSequence[
-                                                          targetIndex],
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                        ],
-                                      ),
+                                        );
+                                      },
                                     ),
                                   ),
                                   if (_hasNavigationControls)
@@ -2524,7 +2330,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -2685,14 +2490,36 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   decorationThickness: showUnderline ? 1.8 : null,
                 ),
                 children: [
-                  TextSpan(
-                    text: '${gc.ayahMarker(ayah.ayahNo)} ',
-                    recognizer: ayahTapRecognizer,
-                    style: TextStyle(
-                      fontSize: 22,
-                      height: 1.8,
-                      color: accentColor,
-                      fontFamily: AppFonts.versesFont,
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding:
+                          const EdgeInsetsDirectional.only(start: 4, end: 4),
+                      child: GestureDetector(
+                        onTap: ayahTapRecognizer.onTap,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border:
+                                Border.all(color: accentColor, width: 1.5),
+                          ),
+                          child: Center(
+                            child: Text(
+                              ayah.ayahNo.toString(),
+                              textDirection: TextDirection.ltr,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                height: 1.0,
+                                color: accentColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   if (!isFiltered && ayah.teacherRecommendations.isNotEmpty)
@@ -2985,26 +2812,6 @@ class _ReaderRenderedPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
             child: child,
-          ),
-          Container(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: borderColor.withValues(alpha: 0.45),
-                ),
-              ),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              pageNumber.toString(),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFFB7852A),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                letterSpacing: 0.5,
-              ),
-            ),
           ),
         ],
       ),

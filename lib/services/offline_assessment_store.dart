@@ -269,4 +269,46 @@ class OfflineAssessmentStore {
     final normalizedScope = scopeKey.trim().isEmpty ? 'default' : scopeKey.trim();
     return '$prefix$normalizedScope';
   }
+
+  /// Removes all per-account cached data for [accountKey].
+  /// Call this when a user is removed from the device so their offline
+  /// data is cleaned up immediately.
+  Future<void> clearAllForAccountKey(String accountKey) async {
+    final trimmed = accountKey.trim();
+    if (trimmed.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    // Remove every key whose scoped segment starts with this accountKey.
+    final scopedPrefixes = [
+      _quranChartKeyPrefix + trimmed,
+      _currentUserProfileKeyPrefix + trimmed,
+      _supervisionCodeKeyPrefix + trimmed,
+      _notificationsKeyPrefix + trimmed,
+      _teacherRecommendationsKeyPrefix + trimmed,
+    ];
+    final toRemove = prefs
+        .getKeys()
+        .where((k) => scopedPrefixes.any((p) => k.startsWith(p)))
+        .toList();
+    for (final key in toRemove) {
+      await prefs.remove(key);
+    }
+
+    // Strip pending evaluation sync items that belong to this account.
+    final rawSync = prefs.getString(_pendingEvaluationSyncKey);
+    if (rawSync != null && rawSync.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawSync);
+        if (decoded is List) {
+          final filtered = decoded
+              .whereType<Map>()
+              .where((item) => item['accountKey'] != trimmed)
+              .toList();
+          await prefs.setString(
+              _pendingEvaluationSyncKey, jsonEncode(filtered));
+        }
+      } catch (_) {}
+    }
+  }
 }

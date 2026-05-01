@@ -14,6 +14,16 @@ class User {
   String? educationLevel;
   String? workType;
   String? specializationType;
+  // Fields present in API schema that were previously silently dropped
+  String? firstName;
+  String? familyName;
+  String? nationality;
+  String? language;
+  bool? emailVerified;
+  // Reading display preferences — stored in API and synced on profile fetch
+  bool showMemorizationColors;
+  bool showComprehensionUnderline;
+  List<String> allowedSubjectKeys;
 
   User({
     required this.id,
@@ -31,6 +41,14 @@ class User {
     this.educationLevel,
     this.workType,
     this.specializationType,
+    this.firstName,
+    this.familyName,
+    this.nationality,
+    this.language,
+    this.emailVerified,
+    this.showMemorizationColors = true,
+    this.showComprehensionUnderline = true,
+    this.allowedSubjectKeys = const [],
   }) : username = (username ?? '').trim();
 
   // from JSON
@@ -53,6 +71,17 @@ class User {
       educationLevel: json['educationLevel'] as String?,
       workType: json['workType'] as String?,
       specializationType: json['specializationType'] as String?,
+      firstName: json['firstName'] as String?,
+      familyName: json['familyName'] as String?,
+      nationality: json['nationality'] as String?,
+      language: json['language'] as String?,
+      emailVerified: json['emailVerified'] as bool?,
+      showMemorizationColors:
+          json['showMemorizationColors'] as bool? ?? true,
+      showComprehensionUnderline:
+          json['showComprehensionUnderline'] as bool? ?? true,
+      allowedSubjectKeys: List<String>.from(
+          (json['allowedSubjectKeys'] as List?) ?? []),
     );
   }
 
@@ -73,11 +102,36 @@ class User {
       'educationLevel': educationLevel,
       'workType': workType,
       'specializationType': specializationType,
+      'firstName': firstName,
+      'familyName': familyName,
+      'nationality': nationality,
+      'language': language,
+      'emailVerified': emailVerified,
+      'showMemorizationColors': showMemorizationColors,
+      'showComprehensionUnderline': showComprehensionUnderline,
+      'allowedSubjectKeys': allowedSubjectKeys,
     };
+  }
+
+  /// Display name: prefers firstName+familyName when available, falls back to username.
+  String get displayName {
+    final first = firstName?.trim() ?? '';
+    final family = familyName?.trim() ?? '';
+    if (first.isNotEmpty || family.isNotEmpty) {
+      return '$first $family'.trim();
+    }
+    return username;
   }
 
   @override
   String toString() {
-    return 'User(id: $id, username: $username, email: $email, userRoleId: $userRoleId, licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, countryCode: $countryCode, country: $country, city: $city, state: $state, mobile: $mobile, educationLevel: $educationLevel, workType: $workType, specializationType: $specializationType)';
+    return 'User(id: $id, username: $username, email: $email, userRoleId: $userRoleId, '
+        'licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, '
+        'countryCode: $countryCode, country: $country, city: $city, state: $state, '
+        'mobile: $mobile, educationLevel: $educationLevel, workType: $workType, '
+        'specializationType: $specializationType, firstName: $firstName, '
+        'familyName: $familyName, nationality: $nationality, '
+        'showMemorizationColors: $showMemorizationColors, '
+        'showComprehensionUnderline: $showComprehensionUnderline)';
   }
 }

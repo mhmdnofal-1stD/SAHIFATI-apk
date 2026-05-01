@@ -2,8 +2,8 @@
 <!--
     Production posture: HTTPS only.
     Cleartext is permitted ONLY for loopback addresses to support
-    `--dart-define=USE_LOCAL_API_ON_WEB=true` style local development
-    builds. All real domains (sahifati.org, etc.) require TLS.
+    local development builds (e.g. dart-define USE_LOCAL_API_ON_WEB=true).
+    All real domains (sahifati.org, etc.) require TLS.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">

@@ -10,6 +10,51 @@ class SahifatyApi {
   final String _baseURL = '${ApiConfig.baseUrl}/';
   final Duration _timeout = const Duration(seconds: 30);
 
+  // Coalesces concurrent 401 refresh attempts: all callers share the same
+  // in-flight future so the refresh token is only used once.
+  static Future<bool>? _pendingRefresh;
+
+  static Future<bool> _tryRefreshTokens() {
+    return _pendingRefresh ??= _doRefresh().whenComplete(() {
+      _pendingRefresh = null;
+    });
+  }
+
+  static Future<bool> _doRefresh() async {
+    try {
+      final refreshToken = await SecureSessionStorage.readRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) return false;
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}/auth/refresh');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json', 'accept': '*/*'},
+        body: json.encode({'refreshToken': refreshToken}),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode != 200) return false;
+
+      final data = json.decode(response.body);
+      final newAccessToken =
+          data is Map ? data['accessToken'] as String? : null;
+      final newRefreshToken =
+          data is Map ? data['refreshToken'] as String? : null;
+      if (newAccessToken == null || newAccessToken.isEmpty) return false;
+
+      final accountKey = await SecureSessionStorage.readActiveAccountKey();
+      if (accountKey == null || accountKey.isEmpty) return false;
+
+      await SecureSessionStorage.writeAccountSessionTokens(
+        accountKey: accountKey,
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken ?? refreshToken,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Get headers with token
   Future<Map<String, String>> _getHeaders({bool auth = true}) async {
     if (!auth) return {'Content-Type': 'application/json'};
@@ -31,6 +76,7 @@ class SahifatyApi {
     String method = 'GET',
     dynamic body,
     bool auth = true,
+    bool isRetry = false,
   }) async {
     try {
       final headers = await _getHeaders(auth: auth);
@@ -61,6 +107,29 @@ class SahifatyApi {
               'method': method,
             }),
           );
+      }
+
+      // Intercept 401: attempt a silent token refresh, then retry once.
+      // Not triggered for unauthenticated requests or the retry itself.
+      if (response.statusCode == 401 && auth && !isRetry) {
+        final refreshed = await _tryRefreshTokens();
+        if (refreshed) {
+          return _request(
+            url,
+            method: method,
+            body: body,
+            auth: auth,
+            isRetry: true,
+          );
+        }
+        // Refresh failed: clear stored tokens for active account and redirect
+        // to the account-selection screen (WhatsApp-style re-auth).
+        final accountKey = await SecureSessionStorage.readActiveAccountKey();
+        if (accountKey != null && accountKey.isNotEmpty) {
+          await SecureSessionStorage.deleteAccountSessionTokens(accountKey);
+        }
+        Get.offAllNamed('/select-user');
+        throw Exception('service_api_unauthorized'.tr);
       }
 
       return response;

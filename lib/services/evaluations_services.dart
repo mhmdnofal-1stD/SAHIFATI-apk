@@ -230,6 +230,19 @@ class EvaluationsServices {
     }
   }
 
+  Future<http.Response> batchFlushEvaluations(
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      return await _sahifatyApi.post(
+        url: 'user-evaluations/batch-flush',
+        body: {'items': items},
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
   List<Evaluation> _parseEvaluations(String rawJson) {
     final List<dynamic> data = jsonDecode(rawJson);
     return data.map<Evaluation>((e) => Evaluation.fromJson(e)).toList();

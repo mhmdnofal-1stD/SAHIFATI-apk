@@ -307,6 +307,37 @@ class UsersServices with ChangeNotifier {
 
   Future<void> logout() async {}
 
+  /// Exchanges [refreshToken] for a new access + refresh token pair.
+  /// Returns null if the token is invalid / expired or the request fails.
+  Future<AuthData?> refreshTokens(String refreshToken) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/refresh'),
+            headers: {
+              'Content-Type': 'application/json',
+              'accept': 'application/json',
+            },
+            body: json.encode({'refreshToken': refreshToken}),
+          )
+          .timeout(_timeout);
+
+      if (response.statusCode == 200) {
+        return AuthData.fromJson(
+          Map<String, dynamic>.from(json.decode(response.body) as Map),
+        );
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Clears all per-account offline cached data for [accountKey].
+  Future<void> clearOfflineCacheForAccountKey(String accountKey) {
+    return _offlineStore.clearAllForAccountKey(accountKey);
+  }
+
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     final scopeKey = await _resolveActiveCacheScopeKey();
     try {

@@ -567,6 +567,11 @@ class UsersProvider with ChangeNotifier {
     showMemorizationColors = profile['showMemorizationColors'] as bool? ?? true;
     showComprehensionUnderline =
         profile['showComprehensionUnderline'] as bool? ?? true;
+    // Mirror back into the typed User model so all readers stay in sync
+    if (selectedUser != null) {
+      selectedUser!.showMemorizationColors = showMemorizationColors;
+      selectedUser!.showComprehensionUnderline = showComprehensionUnderline;
+    }
   }
 
   void _resetReadingDisplayPreferencesState() {
@@ -1537,9 +1542,31 @@ class UsersProvider with ChangeNotifier {
       final accessToken = await SecureSessionStorage.readAccessToken(
         accountKey: activeAccountKey,
       );
+      // When the access token is absent, attempt a silent refresh before
+      // giving up (handles cold-start after server-side token rotation).
       if (accessToken == null || accessToken.isEmpty) {
-        await _removeStoredSessionByAccountKey(activeAccountKey, notify: true);
-        return false;
+        final refreshToken = await SecureSessionStorage.readRefreshToken(
+          accountKey: activeAccountKey,
+        );
+        if (refreshToken != null && refreshToken.isNotEmpty) {
+          final refreshed = await _usersService.refreshTokens(refreshToken);
+          if (refreshed?.accessToken != null &&
+              refreshed!.accessToken!.isNotEmpty) {
+            await SecureSessionStorage.writeAccountSessionTokens(
+              accountKey: activeAccountKey,
+              accessToken: refreshed.accessToken!,
+              refreshToken: refreshed.refreshToken ?? refreshToken,
+            );
+          } else {
+            await _removeStoredSessionByAccountKey(
+                activeAccountKey, notify: true);
+            return false;
+          }
+        } else {
+          await _removeStoredSessionByAccountKey(
+              activeAccountKey, notify: true);
+          return false;
+        }
       }
 
       final rawUserData = sessionRecord['user'];
@@ -1551,6 +1578,9 @@ class UsersProvider with ChangeNotifier {
       final extractedUserData = Map<String, dynamic>.from(rawUserData);
 
       selectedUser = User.fromJson(extractedUserData);
+      // Sync provider-level preference booleans from the newly parsed model
+      showMemorizationColors = selectedUser!.showMemorizationColors;
+      showComprehensionUnderline = selectedUser!.showComprehensionUnderline;
       _resetNotificationsState();
       await _setActiveUserSnapshot(selectedUser!);
       await checkFirstLogin(user: selectedUser);
@@ -1790,6 +1820,7 @@ class UsersProvider with ChangeNotifier {
         );
         if (accountKey != null) {
           await _removeStoredSessionByAccountKey(accountKey, notify: true);
+          await _usersService.clearOfflineCacheForAccountKey(accountKey);
         }
       }
     }

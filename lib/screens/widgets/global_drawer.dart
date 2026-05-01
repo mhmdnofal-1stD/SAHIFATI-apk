@@ -12,6 +12,8 @@ import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
 import 'custom_text.dart';
 
+import '../cards_screen/cards_list_screen.dart';
+
 class GlobalDrawer extends StatelessWidget {
   const GlobalDrawer({super.key});
 
@@ -131,6 +133,31 @@ class GlobalDrawer extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              Consumer<UsersProvider>(
+                builder: (context, usersProvider, _) {
+                  final role = usersProvider.selectedUser?.userRoleId ?? 0;
+                  if (role == 0) return const SizedBox.shrink();
+                  return ListTile(
+                    onTap: () {
+                      Get.toNamed(CardsListScreen.routeName);
+                    },
+                    title: Row(
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        const Icon(
+                          Icons.library_books_outlined,
+                          size: 30,
+                        ),
+                        const SizedBox(width: 10),
+                        CustomText(
+                          text: 'البطاقات العلمية',
+                          withBackground: false,
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               ListTile(
                 onTap: () async {

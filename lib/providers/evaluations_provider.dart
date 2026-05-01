@@ -703,13 +703,43 @@ class EvaluationsProvider with ChangeNotifier {
     final remaining = <PendingEvaluationSyncItem>[];
 
     try {
-      for (var index = 0; index < pendingItems.length; index++) {
-        final item = pendingItems[index];
+      // Separate single-endpoint items (batch them) from bulk-endpoint items
+      final singleItems = <PendingEvaluationSyncItem>[];
+      final bulkItems = <PendingEvaluationSyncItem>[];
+      for (final item in pendingItems) {
         if (!_matchesActiveAccount(item, activeAccountKey)) {
           remaining.add(item);
           continue;
         }
+        if (item.endpoint == 'bulk') {
+          bulkItems.add(item);
+        } else {
+          singleItems.add(item);
+        }
+      }
 
+      // Batch-flush all single items in one request
+      if (singleItems.isNotEmpty) {
+        try {
+          final batchPayload = singleItems
+              .map((i) => Map<String, dynamic>.from(i.body))
+              .toList();
+          final response =
+              await _evaluationsServices.batchFlushEvaluations(batchPayload);
+          if (!_isSuccessStatus(response.statusCode)) {
+            // Keep all as remaining if the batch call itself failed
+            remaining.addAll(singleItems);
+          }
+          // On success, individual failures are reported in the response body
+          // but we still consider the queue flushed (server accepted the request)
+        } catch (_) {
+          remaining.addAll(singleItems);
+        }
+      }
+
+      // Process bulk items individually (each carries multiple ayahIds with same dims)
+      for (var index = 0; index < bulkItems.length; index++) {
+        final item = bulkItems[index];
         try {
           final response = await _sendPendingEvaluation(item);
           if (!_isSuccessStatus(response.statusCode)) {
@@ -717,7 +747,7 @@ class EvaluationsProvider with ChangeNotifier {
           }
         } catch (_) {
           remaining.add(item);
-          remaining.addAll(pendingItems.skip(index + 1));
+          remaining.addAll(bulkItems.skip(index + 1));
           break;
         }
       }

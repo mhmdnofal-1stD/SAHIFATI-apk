@@ -13,6 +13,7 @@ import 'core/constants/colors.dart';
 import 'core/typography/app_typography.dart';
 import 'core/typography/typography_config.dart';
 import 'providers/ayat_provider.dart';
+import 'providers/cards_provider.dart';
 import 'providers/evaluations_provider.dart';
 import 'providers/general_provider.dart';
 import 'providers/school_provider.dart';
@@ -26,6 +27,8 @@ import 'screens/authentication_screens/license_activation_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
+import 'screens/cards_screen/card_detail_screen.dart';
+import 'screens/cards_screen/cards_list_screen.dart';
 import 'screens/main_screen/main_screen.dart';
 import 'screens/quran_view/index_page.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
@@ -65,6 +68,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SchoolProvider()),
         ChangeNotifierProvider(create: (_) => AyatProvider()),
         ChangeNotifierProvider(create: (_) => EvaluationsProvider()),
+        ChangeNotifierProvider(create: (_) => CardsProvider()),
         ChangeNotifierProvider(create: (_) => SurahsProvider()),
         ChangeNotifierProvider(
           create: (_) => LanguageProvider(
@@ -239,6 +243,23 @@ class MyApp extends StatelessWidget {
           page: () => const AuthenticatedRouteGate(
             child: MainScreen(),
           ),
+        ),
+        GetPage(
+          name: CardsListScreen.routeName,
+          page: () => const AuthenticatedRouteGate(
+            child: CardsListScreen(),
+          ),
+        ),
+        GetPage(
+          name: CardDetailScreen.routeName,
+          page: () {
+            final idStr = Get.parameters['id'] ?? '';
+            final id = int.tryParse(idStr);
+            if (id == null) return const InitialScreen();
+            return AuthenticatedRouteGate(
+              child: CardDetailScreen(cardId: id),
+            );
+          },
         ),
         GetPage(
           name: IndexPage.routeName,
