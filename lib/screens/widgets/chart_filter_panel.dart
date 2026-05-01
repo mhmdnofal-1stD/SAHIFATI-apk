@@ -44,15 +44,17 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     setState(() => _availableDataLoading = true);
     try {
       final results = await Future.wait(<Future<Object>>[
-        _loadSubjectLabels(),
+        _loadSubjectData(),
         _loadSchoolGroups(),
       ]);
       if (!mounted) return;
-      final subjects = results[0] as Map<String, String>;
+      final subjectData =
+          results[0] as _SubjectData;
       final schoolGroups = results[1] as List<UnifiedFilterSchoolGroup>;
       setState(() {
         _availableData = UnifiedFilterAvailableData(
-          subjects: subjects,
+          subjects: subjectData.labels,
+          subjectHierarchy: subjectData.hierarchy,
           schoolGroups: schoolGroups,
           memorizationEvaluations: provider.memorizationEvaluations,
           comprehensionEvaluations: provider.comprehensionEvaluations,
@@ -76,7 +78,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     }
   }
 
-  Future<Map<String, String>> _loadSubjectLabels() async {
+  Future<_SubjectData> _loadSubjectData() async {
     final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
     final locale = Get.locale?.languageCode ?? 'ar';
     final entries = <String, String>{};
@@ -86,7 +88,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
       final label = subject.displayName(locale).trim();
       entries[key] = label.isEmpty ? key : label;
     }
-    return entries;
+    return _SubjectData(labels: entries, hierarchy: hierarchy);
   }
 
   Future<List<UnifiedFilterSchoolGroup>> _loadSchoolGroups() async {
@@ -100,9 +102,10 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
       final groupLabel = _localizedSchoolName(school, locale);
       final levels = <UnifiedFilterSchoolLevel>[];
 
-      for (final level in school.levels) {
-        final number = level.level;
-        if (number == null) continue;
+      for (var i = 0; i < school.levels.length; i++) {
+        final level = school.levels[i];
+        // Use the `level` integer if present, otherwise fall back to 1-based index.
+        final number = level.level ?? (i + 1);
         final translationKey = 'level_$number';
         final translated = translationKey.tr;
         final levelLabel = _localizedLevelName(level.name, locale) ??
@@ -295,4 +298,10 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
       ),
     );
   }
+}
+
+class _SubjectData implements Object {
+  const _SubjectData({required this.labels, required this.hierarchy});
+  final Map<String, String> labels;
+  final List<SubjectHierarchyItem> hierarchy;
 }

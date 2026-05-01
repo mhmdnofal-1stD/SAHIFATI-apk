@@ -14,6 +14,7 @@ import '../../services/users_services.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/file_download.dart';
 import '../widgets/custom_back_button.dart';
+import '../widgets/info_icon_button.dart';
 import 'add_supervisor_screen.dart';
 import 'incoming_requests_screen.dart';
 import 'profile_details_form.dart';
@@ -389,20 +390,23 @@ class _QrShareCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'profile_qr_card_title'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'profile_qr_card_subtitle'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .bodySecondary
-                .copyWith(color: const Color(0xFF4B5563)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  'profile_qr_card_title'.tr,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.of(context)
+                      .sectionTitle
+                      .copyWith(color: const Color(0xFF132A4A)),
+                ),
+              ),
+              InfoIconButton(
+                message: 'profile_qr_card_subtitle'.tr,
+                color: const Color(0xFF9AA3B2),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           RepaintBoundary(
@@ -411,62 +415,61 @@ class _QrShareCard extends StatelessWidget {
               color: Colors.white,
               padding: const EdgeInsets.all(18),
               child: Center(
-                child: SizedBox.square(
-                  dimension: 240,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      QrImageView(
-                        data: shareUrl,
-                        version: QrVersions.auto,
-                        size: 240,
-                        backgroundColor: Colors.white,
-                        eyeStyle: const QrEyeStyle(
-                          eyeShape: QrEyeShape.square,
-                          color: Color(0xFF132A4A),
-                        ),
-                        dataModuleStyle: const QrDataModuleStyle(
-                          dataModuleShape: QrDataModuleShape.square,
-                          color: Color(0xFF132A4A),
-                        ),
-                        errorCorrectionLevel: QrErrorCorrectLevel.H,
-                      ),
-                      IgnorePointer(
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 96),
-                          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox.square(
+                      dimension: 240,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          QrImageView(
+                            data: shareUrl,
+                            version: QrVersions.auto,
+                            size: 240,
+                            backgroundColor: Colors.white,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Color(0xFF132A4A),
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.square,
+                              color: Color(0xFF132A4A),
+                            ),
+                            errorCorrectionLevel: QrErrorCorrectLevel.H,
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
+                          IgnorePointer(
+                            child: Container(
+                              constraints: const BoxConstraints(maxWidth: 96),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Image.asset(
                                 'assets/images/clean_logo.png',
-                                width: 24,
-                                height: 24,
+                                width: 52,
+                                height: 52,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                username,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textDirection: TextDirection.rtl,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Color(0xFF132A4A),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.15,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      username,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Color(0xFF132A4A),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

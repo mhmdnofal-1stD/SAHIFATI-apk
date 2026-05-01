@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
+import 'package:sahifaty/core/auth/purchase_return_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
+import 'package:sahifaty/screens/widgets/info_icon_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class LicenseActivationScreen extends StatefulWidget {
@@ -17,22 +21,116 @@ class LicenseActivationScreen extends StatefulWidget {
       _LicenseActivationScreenState();
 }
 
-class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
+class _LicenseActivationScreenState extends State<LicenseActivationScreen>
+    with WidgetsBindingObserver {
   late final Future<void> _bootstrapFuture;
   final TextEditingController _promoCodeController = TextEditingController();
   int _selectedPurchaseQuantity = 20;
   String? _inlineError;
+  String? _purchaseNotice;
+  Color _purchaseNoticeAccent = const Color(0xFF2A638B);
+  IconData _purchaseNoticeIcon = Icons.info_outline_rounded;
+  bool _awaitingPurchaseReturn = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrapFuture = _bootstrap();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _promoCodeController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !_awaitingPurchaseReturn) {
+      return;
+    }
+
+    _awaitingPurchaseReturn = false;
+    unawaited(_refreshLicenseAfterPurchase(showCheckingNotice: true));
+  }
+
+  void _showPurchaseNotice(
+    String message, {
+    Color accent = const Color(0xFF2A638B),
+    IconData icon = Icons.info_outline_rounded,
+  }) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _purchaseNotice = message;
+      _purchaseNoticeAccent = accent;
+      _purchaseNoticeIcon = icon;
+    });
+  }
+
+  PurchaseReturnIntent _resolvePurchaseReturnIntent() {
+    return resolvePurchaseReturnRoute(
+      Uri.base,
+      explicitStatus: Get.parameters['purchase'],
+    );
+  }
+
+  Future<void> _applyPurchaseReturnIntent() async {
+    final purchaseReturnIntent = _resolvePurchaseReturnIntent();
+    switch (purchaseReturnIntent.kind) {
+      case PurchaseReturnKind.none:
+        return;
+      case PurchaseReturnKind.success:
+        await _refreshLicenseAfterPurchase(showCheckingNotice: true);
+        return;
+      case PurchaseReturnKind.failure:
+        _showPurchaseNotice(
+          'license_activation_purchase_return_failed'.tr,
+          accent: AppColors.errorColor,
+          icon: Icons.error_outline_rounded,
+        );
+        return;
+      case PurchaseReturnKind.cancelled:
+        _showPurchaseNotice(
+          'license_activation_purchase_return_cancelled'.tr,
+          accent: const Color(0xFF8A5A12),
+          icon: Icons.remove_circle_outline_rounded,
+        );
+        return;
+    }
+  }
+
+  Widget _buildPurchaseNotice() {
+    final foregroundColor = _purchaseNoticeAccent;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _purchaseNoticeAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _purchaseNoticeAccent.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(_purchaseNoticeIcon, color: foregroundColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _purchaseNotice!,
+              textDirection: TextDirection.rtl,
+              style: AppTypography.of(context).bodyDefault.copyWith(
+                    color: foregroundColor,
+                    height: 1.6,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _bootstrap() async {
@@ -52,7 +150,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
     await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
     if (usersProvider.hasActiveLicense && mounted) {
       await _continueWithActiveLicense(usersProvider, evaluationsProvider);
+      return;
     }
+
+    await _applyPurchaseReturnIntent();
   }
 
   Future<void> _continueWithActiveLicense(
@@ -132,6 +233,7 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
 
     setState(() {
       _inlineError = null;
+      _purchaseNotice = null;
     });
 
     try {
@@ -165,8 +267,11 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('license_activation_purchase_launched'.tr)),
+      _awaitingPurchaseReturn = true;
+      _showPurchaseNotice(
+        'license_activation_purchase_launched'.tr,
+        accent: const Color(0xFF2A638B),
+        icon: Icons.open_in_new_rounded,
       );
     } catch (error) {
       if (!mounted) {
@@ -179,13 +284,23 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
     }
   }
 
-  Future<void> _refreshLicenseAfterPurchase() async {
+  Future<void> _refreshLicenseAfterPurchase({
+    bool showCheckingNotice = false,
+  }) async {
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
 
     setState(() {
       _inlineError = null;
     });
+
+    if (showCheckingNotice) {
+      _showPurchaseNotice(
+        'license_activation_purchase_return_checking'.tr,
+        accent: const Color(0xFF2A638B),
+        icon: Icons.autorenew_rounded,
+      );
+    }
 
     try {
       await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
@@ -199,9 +314,11 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
         return;
       }
 
-      setState(() {
-        _inlineError = 'license_activation_purchase_pending_after_check'.tr;
-      });
+      _showPurchaseNotice(
+        'license_activation_purchase_pending_after_check'.tr,
+        accent: const Color(0xFFB26A12),
+        icon: Icons.hourglass_top_rounded,
+      );
     } catch (error) {
       if (!mounted) {
         return;
@@ -307,18 +424,13 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                       ),
                 ),
               ),
+              InfoIconButton(
+                message: body,
+                color: accent.withValues(alpha: 0.6),
+              ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            body,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context).bodySecondary.copyWith(
-                  fontSize: 13,
-                  height: 1.6,
-                  color: AppColors.hintTextColor,
-                ),
-          ),
           if (child != null) ...[
             const SizedBox(height: 14),
             child,
@@ -453,6 +565,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
+                      if (_purchaseNotice != null) ...[
+                        _buildPurchaseNotice(),
+                        const SizedBox(height: 12),
+                      ],
                       if (_inlineError != null) ...[
                         Container(
                           padding: const EdgeInsets.all(14),
@@ -539,28 +655,34 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF5F0FF),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'license_activation_purchase_deferred_notice'
-                                    .tr,
-                                textDirection: TextDirection.rtl,
-                                style: AppTypography.of(context)
-                                    .bodySecondary
-                                    .copyWith(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF5B3DA1),
-                                      height: 1.6,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
                                     ),
-                              ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF5F0FF),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      'license_activation_purchase_deferred_notice'
+                                          .tr,
+                                      textDirection: TextDirection.rtl,
+                                      style: AppTypography.of(context)
+                                          .bodySecondary
+                                          .copyWith(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF5B3DA1),
+                                            height: 1.6,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -627,26 +749,29 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen> {
                                     },
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              'license_activation_purchase_footer_note'.tr,
-                              textDirection: TextDirection.rtl,
-                              style:
-                                  AppTypography.of(context).bodySmall.copyWith(
-                                        color: AppColors.hintTextColor,
-                                        height: 1.6,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 46,
+                                    child: OutlinedButton(
+                                      onPressed: usersProvider.isLicenseLoading
+                                          ? null
+                                          : _refreshLicenseAfterPurchase,
+                                      child: Text(
+                                        'license_activation_purchase_refresh'
+                                            .tr,
                                       ),
-                            ),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              height: 46,
-                              child: OutlinedButton(
-                                onPressed: usersProvider.isLicenseLoading
-                                    ? null
-                                    : _refreshLicenseAfterPurchase,
-                                child: Text(
-                                  'license_activation_purchase_refresh'.tr,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                InfoIconButton(
+                                  message:
+                                      'license_activation_purchase_footer_note'
+                                          .tr,
+                                  color: const Color(0xFF9AA3B2),
+                                ),
+                              ],
                             ),
                           ],
                         ),

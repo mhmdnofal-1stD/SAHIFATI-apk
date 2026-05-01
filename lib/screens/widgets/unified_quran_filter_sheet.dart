@@ -7,6 +7,7 @@ import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/evaluation.dart';
 import '../../services/evaluations_services.dart';
+import '../../services/subjects_lookup_service.dart';
 
 /// Single school in the unified filter — labelled by school name with the
 /// list of selectable levels under it.
@@ -44,10 +45,13 @@ class UnifiedFilterAvailableData {
     required this.memorizationEvaluations,
     required this.comprehensionEvaluations,
     this.showRevelation = true,
+    this.subjectHierarchy = const <SubjectHierarchyItem>[],
   });
 
   /// Subject key → localized display label.
   final Map<String, String> subjects;
+  /// Full subject hierarchy (includes level and parent info).
+  final List<SubjectHierarchyItem> subjectHierarchy;
   final List<UnifiedFilterSchoolGroup> schoolGroups;
   final List<Evaluation> memorizationEvaluations;
   final List<Evaluation> comprehensionEvaluations;
@@ -495,71 +499,103 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   ],
                 ),
               ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_thirds')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+              // ── Thirds row ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: ToggleButtons(
+                    isSelected: [
+                      _draft.thirds.contains(1),
+                      _draft.thirds.contains(2),
+                      _draft.thirds.contains(3),
+                    ],
+                    onPressed: (index) {
+                      final t = index + 1;
+                      setState(() {
+                        if (_draft.thirds.contains(t)) {
+                          _draft = _draft.copyWith(
+                            thirds: Set.from(_draft.thirds)..remove(t),
+                          );
+                          // Remove juzs that belonged to this third
+                          final removed = _ScopeData.juzsInThird(t);
+                          _draft = _draft.copyWith(
+                            juzs: Set.from(_draft.juzs)
+                              ..removeAll(removed),
+                          );
+                        } else {
+                          _draft = _draft.copyWith(
+                            thirds: Set.from(_draft.thirds)..add(t),
+                          );
+                        }
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    constraints: const BoxConstraints(minHeight: 36),
+                    fillColor: theme.colorScheme.primary
+                        .withValues(alpha: 0.12),
+                    selectedColor: theme.colorScheme.primary,
+                    color: theme.hintColor,
+                    borderColor: theme.dividerColor,
+                    selectedBorderColor: theme.colorScheme.primary,
                     children: [
                       for (var t = 1; t <= 3; t++)
-                        _filterChipInt(
-                          _tr('quran_reading_filter_third_$t'),
-                          t,
-                          _draft.thirds,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_juzs')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (var j = 1; j <= 30; j++)
-                        if (_draft.thirds.isEmpty ||
-                            _draft.thirds
-                                .contains(_ScopeData.thirdOfJuz(j)))
-                          _filterChipInt(
-                            _trParams('quran_reading_filter_juz_n', {
-                              'juz': j.toString(),
-                            }),
-                            j,
-                            _draft.juzs,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: Text(
+                            _tr('quran_reading_filter_third_$t'),
+                            style: const TextStyle(fontSize: 13),
                           ),
-                    ],
-                  ),
-                ],
-              ),
-              ExpansionTile(
-                title: Text(_tr('quran_reading_filter_dim_surahs')),
-                tilePadding:
-                    const EdgeInsetsDirectional.only(start: 12, end: 8),
-                childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                children: [
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final s in _availableSurahIds)
-                        _filterChipInt(
-                          quran.getSurahNameArabic(s),
-                          s,
-                          _draft.surahIds,
                         ),
                     ],
                   ),
-                ],
+                ),
               ),
+              const SizedBox(height: 8),
+              // ── Juz grid (filtered by selected thirds) ──────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (var j = 1; j <= 30; j++)
+                      if (_draft.thirds.isEmpty ||
+                          _draft.thirds
+                              .contains(_ScopeData.thirdOfJuz(j)))
+                        _filterChipInt(
+                          _trParams('quran_reading_filter_juz_n', {
+                            'juz': j.toString(),
+                          }),
+                          j,
+                          _draft.juzs,
+                        ),
+                  ],
+                ),
+              ),
+              // ── Surahs (filtered by selected juzs / thirds) ─────────────
+              if (_availableSurahIds.isNotEmpty)
+                ExpansionTile(
+                  title: Text(_tr('quran_reading_filter_dim_surahs')),
+                  tilePadding:
+                      const EdgeInsetsDirectional.only(start: 12, end: 8),
+                  childrenPadding:
+                      const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  children: [
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final s in _availableSurahIds)
+                          _filterChipInt(
+                            quran.getSurahNameArabic(s),
+                            s,
+                            _draft.surahIds,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -683,6 +719,90 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     });
   }
 
+  Widget _hierarchicalSubjectSection() {
+    final locale = Get.locale?.languageCode ?? 'ar';
+    final theme = Theme.of(context);
+    final hierarchy = widget.available.subjectHierarchy;
+
+    // Separate main subjects (level 0) from children (level 1+)
+    final mainSubjects =
+        hierarchy.where((s) => s.level == 0).toList();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              _tr('quran_reading_filter_dim_subject'),
+              style: AppTypography.of(context)
+                  .sectionTitle
+                  .copyWith(fontSize: 15),
+            ),
+          ),
+          Theme(
+            data: theme.copyWith(dividerColor: Colors.transparent),
+            child: Column(
+              children: mainSubjects.map((main) {
+                final children = hierarchy
+                    .where((s) => s.level == 1 && s.parent == main.key)
+                    .toList();
+                final mainLabel = main.displayName(locale);
+
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: theme.dividerColor.withValues(alpha: 0.4),
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ExpansionTile(
+                    initiallyExpanded: _draft.subjectKeys.contains(main.key) ||
+                        children.any((c) =>
+                            _draft.subjectKeys.contains(c.key)),
+                    tilePadding: const EdgeInsetsDirectional.only(
+                      start: 12,
+                      end: 8,
+                    ),
+                    childrenPadding:
+                        const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    title: _filterChipString(
+                      mainLabel,
+                      main.key,
+                      _draft.subjectKeys,
+                    ),
+                    children: children.isEmpty
+                        ? const []
+                        : [
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: children
+                                    .map((child) => _filterChipString(
+                                          child.displayName(locale),
+                                          child.key,
+                                          _draft.subjectKeys,
+                                        ))
+                                    .toList(),
+                              ),
+                            ),
+                          ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContentColumn(BuildContext context) {
     final isSheet = widget.headerStyle == UnifiedFilterHeaderStyle.bottomSheet;
     final theme = Theme.of(context);
@@ -740,16 +860,19 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                     ))
                 .toList(),
           ),
-        _dimensionSection(
-          title: _tr('quran_reading_filter_dim_subject'),
-          chips: subjectEntries
-              .map((entry) => _filterChipString(
-                    entry.value,
-                    entry.key,
-                    _draft.subjectKeys,
-                  ))
-              .toList(),
-        ),
+        if (widget.available.subjectHierarchy.isNotEmpty)
+          _hierarchicalSubjectSection()
+        else
+          _dimensionSection(
+            title: _tr('quran_reading_filter_dim_subject'),
+            chips: subjectEntries
+                .map((entry) => _filterChipString(
+                      entry.value,
+                      entry.key,
+                      _draft.subjectKeys,
+                    ))
+                .toList(),
+          ),
         _schoolDimensionSection(),
         _dimensionSection(
           title: _tr('quran_reading_filter_dim_memorization'),

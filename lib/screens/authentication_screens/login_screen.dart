@@ -14,6 +14,7 @@ import 'package:sahifaty/models/auth_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import '../../controllers/users_controller.dart';
 import '../../providers/users_provider.dart';
+import '../widgets/info_icon_button.dart';
 import '../widgets/no_pop_scope.dart';
 import 'forget_password_screen.dart';
 import 'sign_up_screen.dart';
@@ -405,7 +406,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return NoPopScope(
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
-        subtitle: 'surface_quick_login_hint'.tr,
+        subtitle: '',
         isSignup: false,
         fillViewport: true,
         preferCompactMobileLayout: true,
@@ -490,39 +491,49 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildInlineErrorBanner(_inlineError!),
             ],
             SizedBox(height: primaryActionGap),
-            SizedBox(
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: usersProvider.isLoading
-                    ? null
-                    : () => _handleLogin(usersProvider, evaluationsProvider),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF132A4A),
-                  disabledBackgroundColor:
-                      const Color(0xFF132A4A).withValues(alpha: 0.45),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  elevation: 0,
-                ),
-                icon: usersProvider.isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.2,
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: usersProvider.isLoading
+                          ? null
+                          : () => _handleLogin(usersProvider, evaluationsProvider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF132A4A),
+                        disabledBackgroundColor:
+                            const Color(0xFF132A4A).withValues(alpha: 0.45),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                      )
-                    : const Icon(Icons.login_rounded, color: Colors.white),
-                label: Text(
-                  'login'.tr,
-                  style: AppTypography.of(context).buttonPrimary.copyWith(
-                        fontFamily: AppFonts.primaryFont,
-                        color: Colors.white,
+                        elevation: 0,
                       ),
+                      icon: usersProvider.isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.2,
+                              ),
+                            )
+                          : const Icon(Icons.login_rounded, color: Colors.white),
+                      label: Text(
+                        'login'.tr,
+                        style: AppTypography.of(context).buttonPrimary.copyWith(
+                              fontFamily: AppFonts.primaryFont,
+                              color: Colors.white,
+                            ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                InfoIconButton(
+                  message: 'surface_quick_login_hint'.tr,
+                  color: const Color(0xFF9AA3B2),
+                ),
+              ],
             ),
             SizedBox(height: sectionGap),
             AuthSocialSection(

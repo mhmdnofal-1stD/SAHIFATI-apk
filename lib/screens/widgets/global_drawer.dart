@@ -10,6 +10,8 @@ import '../questions_screen/questions_screen.dart';
 import '../settings_screen/settings_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
+import '../welcome_screen/welcome_screen.dart';
+import '../main_screen/main_screen.dart';
 import 'custom_text.dart';
 
 import '../cards_screen/cards_list_screen.dart';
@@ -193,11 +195,48 @@ class GlobalDrawer extends StatelessWidget {
                 ),
               ),
               ListTile(
+                onTap: () {
+                  Get.offAllNamed(WelcomeScreen.routeName);
+                },
+                title: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    const Icon(
+                      Icons.home_outlined,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 10),
+                    CustomText(
+                      text: 'drawer_home'.tr,
+                      withBackground: false,
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
+                onTap: () {
+                  Get.offAllNamed(MainScreen.routeName);
+                },
+                title: Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    const Icon(
+                      Icons.auto_stories_outlined,
+                      size: 30,
+                    ),
+                    const SizedBox(width: 10),
+                    CustomText(
+                      text: 'drawer_browse'.tr,
+                      withBackground: false,
+                    ),
+                  ],
+                ),
+              ),
+              ListTile(
                 onTap: () async {
                   final usersProvider = context.read<UsersProvider>();
                   await UsersController().logout(usersProvider);
-                },
-                title: Row(
+                },                title: Row(
                   textDirection: TextDirection.rtl,
                   children: [
                     const Icon(

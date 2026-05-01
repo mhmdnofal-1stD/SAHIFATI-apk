@@ -12,9 +12,12 @@ import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import 'package:sahifaty/screens/questions_screen/questions_screen.dart';
 import 'package:sahifaty/screens/widgets/assessment_dimension_toggle.dart';
+import 'package:sahifaty/screens/widgets/info_icon_button.dart';
 import 'package:sahifaty/screens/widgets/no_pop_scope.dart';
 
 class WelcomeScreen extends StatefulWidget {
+  static const String routeName = '/welcome';
+
   const WelcomeScreen({super.key});
 
   @override
@@ -438,87 +441,93 @@ class _WelcomeStoryCard extends StatelessWidget {
             _InlineFeedbackBanner(message: errorMessage!),
             const SizedBox(height: 16),
           ],
-          SizedBox(
-            height: 54,
-            child: ElevatedButton.icon(
-              onPressed: busy ? null : onPrimaryPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF132A4A),
-                disabledBackgroundColor:
-                    const Color(0xFF132A4A).withValues(alpha: 0.45),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: busy ? null : onPrimaryPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF132A4A),
+                      disabledBackgroundColor:
+                          const Color(0xFF132A4A).withValues(alpha: 0.45),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    icon: isBusy
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                    label: Text(
+                      isBusy
+                          ? 'welcome_primary_cta_loading'.tr
+                          : 'start_evaluation'.tr,
+                      textDirection: TextDirection.rtl,
+                      style: AppTypography.of(context)
+                          .buttonPrimary
+                          .copyWith(color: Colors.white),
+                    ),
+                  ),
                 ),
               ),
-              icon: isBusy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.play_arrow_rounded, color: Colors.white),
-              label: Text(
-                isBusy
-                    ? 'welcome_primary_cta_loading'.tr
-                    : 'start_evaluation'.tr,
-                textDirection: TextDirection.rtl,
-                style: AppTypography.of(context)
-                    .buttonPrimary
-                    .copyWith(color: Colors.white),
+              InfoIconButton(
+                message: 'welcome_primary_cta_caption'.tr,
+                color: const Color(0xFF9AA3B2),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'welcome_primary_cta_caption'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .bodySecondary
-                .copyWith(color: const Color(0xFF6B7280)),
+            ],
           ),
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: busy ? null : onSecondaryPressed,
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              side: const BorderSide(color: Color(0x40132A4A)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            icon: isOpeningSahifa
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF132A4A),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onSecondaryPressed,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    side: const BorderSide(color: Color(0x40132A4A)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
                     ),
-                  )
-                : const Icon(
-                    Icons.menu_book_rounded,
-                    color: Color(0xFF132A4A),
                   ),
-            label: Text(
-              isOpeningSahifa
-                  ? 'welcome_secondary_cta_loading'.tr
-                  : 'welcome_secondary_cta'.tr,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
-                  .buttonSecondary
-                  .copyWith(color: const Color(0xFF132A4A)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'welcome_secondary_cta_caption'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .bodySecondary
-                .copyWith(color: const Color(0xFF6B7280)),
+                  icon: isOpeningSahifa
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFF132A4A),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.menu_book_rounded,
+                          color: Color(0xFF132A4A),
+                        ),
+                  label: Text(
+                    isOpeningSahifa
+                        ? 'welcome_secondary_cta_loading'.tr
+                        : 'welcome_secondary_cta'.tr,
+                    textDirection: TextDirection.rtl,
+                    style: AppTypography.of(context)
+                        .buttonSecondary
+                        .copyWith(color: const Color(0xFF132A4A)),
+                  ),
+                ),
+              ),
+              InfoIconButton(
+                message: 'welcome_secondary_cta_caption'.tr,
+                color: const Color(0xFF9AA3B2),
+              ),
+            ],
           ),
         ],
       ),
@@ -557,20 +566,23 @@ class _WelcomeMetricsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'welcome_chart_title'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'welcome_chart_subtitle'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .bodyDefault
-                .copyWith(color: const Color(0xFF6B7280)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  'welcome_chart_title'.tr,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.of(context)
+                      .sectionTitle
+                      .copyWith(color: const Color(0xFF132A4A)),
+                ),
+              ),
+              InfoIconButton(
+                message: 'welcome_chart_subtitle'.tr,
+                color: const Color(0xFF9AA3B2),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           if (isChartLoading && !hasResolvedChartState)
@@ -595,17 +607,20 @@ class _WelcomeMetricsCard extends StatelessWidget {
               bodyKey: 'welcome_chart_empty_body',
             )
           else ...[
-            AssessmentDimensionToggle(
-              selectedDimension: evaluationsProvider.chartDimension,
-              onChanged: onDimensionChanged,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'welcome_dimension_hint'.tr,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
-                  .bodySmall
-                  .copyWith(color: const Color(0xFF6B7280)),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: AssessmentDimensionToggle(
+                    selectedDimension: evaluationsProvider.chartDimension,
+                    onChanged: onDimensionChanged,
+                  ),
+                ),
+                InfoIconButton(
+                  message: 'welcome_dimension_hint'.tr,
+                  color: const Color(0xFF9AA3B2),
+                ),
+              ],
             ),
             const SizedBox(height: 14),
             SizedBox(

@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:sahifaty/core/auth/purchase_return_flow.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
+import '../widgets/info_icon_button.dart';
 
 class MyLicensesScreen extends StatefulWidget {
   const MyLicensesScreen({super.key});
@@ -16,25 +21,50 @@ class MyLicensesScreen extends StatefulWidget {
   State<MyLicensesScreen> createState() => _MyLicensesScreenState();
 }
 
-class _MyLicensesScreenState extends State<MyLicensesScreen> {
+class _MyLicensesScreenState extends State<MyLicensesScreen>
+    with WidgetsBindingObserver {
   late final Future<void> _loadFuture;
   final TextEditingController _maxUsesController =
       TextEditingController(text: '1');
   final TextEditingController _giftContributionController =
       TextEditingController(text: '1');
   String? _recentRawCode;
+  int _selectedPurchaseQuantity = 20;
+  String? _purchaseError;
+  String? _purchaseNotice;
+  Color _purchaseNoticeAccent = const Color(0xFF2A638B);
+  IconData _purchaseNoticeIcon = Icons.info_outline_rounded;
+  bool _awaitingPurchaseReturn = false;
+  int? _purchaseOwnedBaseline;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadFuture = _bootstrap();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _maxUsesController.dispose();
     _giftContributionController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed || !_awaitingPurchaseReturn) {
+      return;
+    }
+
+    _awaitingPurchaseReturn = false;
+    unawaited(
+      _refreshPurchaseWorkspace(
+        showCheckingNotice: true,
+        showReviewNoticeWhenUnchanged: false,
+      ),
+    );
   }
 
   Future<void> _bootstrap() async {
@@ -49,6 +79,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
       }
     }
     await usersProvider.loadPromoWorkspace(forceRefresh: true);
+    await _applyPurchaseReturnIntent();
   }
 
   String _formatDate(dynamic rawValue) {
@@ -76,6 +107,152 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
       );
   }
 
+  void _showPurchaseNotice(
+    String message, {
+    Color accent = const Color(0xFF2A638B),
+    IconData icon = Icons.info_outline_rounded,
+  }) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _purchaseNotice = message;
+      _purchaseNoticeAccent = accent;
+      _purchaseNoticeIcon = icon;
+    });
+  }
+
+  Widget _buildPurchaseNotice() {
+    final foregroundColor = _purchaseNoticeAccent;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _purchaseNoticeAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _purchaseNoticeAccent.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(_purchaseNoticeIcon, color: foregroundColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _purchaseNotice!,
+              textDirection: TextDirection.rtl,
+              style: AppTypography.of(context).bodyDefault.copyWith(
+                    color: foregroundColor,
+                    height: 1.6,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PurchaseReturnIntent _resolvePurchaseReturnIntent() {
+    return resolvePurchaseReturnRoute(
+      Uri.base,
+      explicitStatus: Get.parameters['purchase'],
+    );
+  }
+
+  int _currentOwnedCount(UsersProvider usersProvider) {
+    return ((usersProvider.licenseBalanceSummary?['ownedCount'] ?? 0) as num)
+        .toInt();
+  }
+
+  Future<void> _applyPurchaseReturnIntent() async {
+    final purchaseReturnIntent = _resolvePurchaseReturnIntent();
+    switch (purchaseReturnIntent.kind) {
+      case PurchaseReturnKind.none:
+        return;
+      case PurchaseReturnKind.success:
+        await _refreshPurchaseWorkspace(
+          showCheckingNotice: true,
+          showReviewNoticeWhenUnchanged: true,
+        );
+        return;
+      case PurchaseReturnKind.failure:
+        _showPurchaseNotice(
+          'license_activation_purchase_return_failed'.tr,
+          accent: AppColors.errorColor,
+          icon: Icons.error_outline_rounded,
+        );
+        return;
+      case PurchaseReturnKind.cancelled:
+        _showPurchaseNotice(
+          'license_activation_purchase_return_cancelled'.tr,
+          accent: const Color(0xFF8A5A12),
+          icon: Icons.remove_circle_outline_rounded,
+        );
+        return;
+    }
+  }
+
+  Future<void> _refreshPurchaseWorkspace({
+    bool showCheckingNotice = false,
+    bool showReviewNoticeWhenUnchanged = false,
+  }) async {
+    final usersProvider = context.read<UsersProvider>();
+    final baselineOwnedCount =
+        _purchaseOwnedBaseline ?? _currentOwnedCount(usersProvider);
+
+    setState(() {
+      _purchaseError = null;
+    });
+
+    if (showCheckingNotice) {
+      _showPurchaseNotice(
+        'license_activation_purchase_return_checking'.tr,
+        accent: const Color(0xFF2A638B),
+        icon: Icons.autorenew_rounded,
+      );
+    }
+
+    await usersProvider.loadPromoWorkspace(forceRefresh: true);
+
+    if (!mounted) {
+      return;
+    }
+
+    final workspaceError = usersProvider.promoWorkspaceError;
+    if (workspaceError != null && workspaceError.isNotEmpty) {
+      setState(() {
+        _purchaseError = workspaceError;
+      });
+      return;
+    }
+
+    final refreshedOwnedCount = _currentOwnedCount(usersProvider);
+    if (refreshedOwnedCount > baselineOwnedCount) {
+      _purchaseOwnedBaseline = refreshedOwnedCount;
+      _showPurchaseNotice(
+        'license_activation_purchase_return_balance_updated'.tr,
+        accent: AppColors.successColor,
+        icon: Icons.check_circle_outline_rounded,
+      );
+      return;
+    }
+
+    if (showReviewNoticeWhenUnchanged) {
+      _showPurchaseNotice(
+        'license_activation_purchase_return_review_balance'.tr,
+        accent: const Color(0xFF2A638B),
+        icon: Icons.account_balance_wallet_outlined,
+      );
+      return;
+    }
+
+    _showPurchaseNotice(
+      'license_activation_purchase_pending_after_check'.tr,
+      accent: const Color(0xFFB26A12),
+      icon: Icons.hourglass_top_rounded,
+    );
+  }
+
   Future<void> _createPromoCode(int ownedCount) async {
     final usersProvider = context.read<UsersProvider>();
     final value = int.tryParse(_maxUsesController.text.trim()) ?? 0;
@@ -94,8 +271,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     }
 
     try {
-      final createdPromo =
-          await usersProvider.createPromoCode(maxUses: value);
+      final createdPromo = await usersProvider.createPromoCode(maxUses: value);
       if (!mounted) return;
       setState(() {
         _recentRawCode = createdPromo['rawCode'] as String?;
@@ -110,8 +286,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
 
   Future<void> _contributeToGiftPool(int ownedCount) async {
     final usersProvider = context.read<UsersProvider>();
-    final quantity =
-        int.tryParse(_giftContributionController.text.trim()) ?? 0;
+    final quantity = int.tryParse(_giftContributionController.text.trim()) ?? 0;
 
     if (quantity < 1) {
       _showSnack('license_hub_max_uses_invalid'.tr, isError: true);
@@ -167,8 +342,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
   }
 
   Future<void> _shareCode(String code) async {
-    final message =
-        'license_hub_share_message'.trParams({'code': code});
+    final message = 'license_hub_share_message'.trParams({'code': code});
     await SharePlus.instance.share(ShareParams(text: message));
   }
 
@@ -180,9 +354,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
         title: Text('license_hub_revoke_confirm_title'.tr),
         content: Text(
           'license_hub_revoke_confirm_body'.trParams({
-            'code': (promoCode['rawCode'] ??
-                    promoCode['codePreview'] ??
-                    '')
+            'code': (promoCode['rawCode'] ?? promoCode['codePreview'] ?? '')
                 .toString(),
           }),
           textDirection: TextDirection.rtl,
@@ -272,9 +444,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
         children: [
           Text(
             value,
-            style: AppTypography.of(context)
-                .badgeCount
-                .copyWith(color: accent),
+            style: AppTypography.of(context).badgeCount.copyWith(color: accent),
           ),
           const SizedBox(width: 6),
           Text(
@@ -296,11 +466,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     final isRevoked = (promoCode['status'] ?? '') == 'revoked';
     final rawCode = (promoCode['rawCode'] ?? '').toString();
     final hasRawCode = !isRevoked && rawCode.isNotEmpty;
-    final displayCode = hasRawCode
-        ? rawCode
-        : (promoCode['codePreview'] ?? '').toString();
-    final remainingUses =
-        ((promoCode['remainingUses'] ?? 0) as num).toInt();
+    final displayCode =
+        hasRawCode ? rawCode : (promoCode['codePreview'] ?? '').toString();
+    final remainingUses = ((promoCode['remainingUses'] ?? 0) as num).toInt();
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -394,22 +562,17 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
               ),
             ],
           ),
-          if (!isRevoked && !hasRawCode) ...[
-            const SizedBox(height: 10),
-            Text(
-              'license_hub_legacy_code_hidden'.tr,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
-                  .bodySmall
-                  .copyWith(color: AppColors.hintTextColor),
-            ),
-          ],
           const SizedBox(height: 14),
           Wrap(
             alignment: WrapAlignment.end,
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (!isRevoked && !hasRawCode)
+                InfoIconButton(
+                  message: 'license_hub_legacy_code_hidden'.tr,
+                  color: AppColors.hintTextColor,
+                ),
               if (hasRawCode)
                 OutlinedButton.icon(
                   onPressed: () => _copyCode(rawCode),
@@ -448,12 +611,10 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
     final hasBalanceData = balance != null;
     final ownedCount = ((balance?['ownedCount'] ?? 0) as num).toInt();
     final reservedCount = ((balance?['reservedCount'] ?? 0) as num).toInt();
-    final giftAvailable =
-        ((giftPool?['availableCount'] ?? 0) as num).toInt();
+    final giftAvailable = ((giftPool?['availableCount'] ?? 0) as num).toInt();
     final giftContributed =
         ((giftPool?['lifetimeContributed'] ?? 0) as num).toInt();
-    final giftConsumed =
-        ((giftPool?['lifetimeConsumed'] ?? 0) as num).toInt();
+    final giftConsumed = ((giftPool?['lifetimeConsumed'] ?? 0) as num).toInt();
     final licenseStatus =
         usersProvider.selectedUser?.licenseStatus ?? 'pending';
 
@@ -501,7 +662,8 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                       ),
                     ],
                   ),
-                if (!hasBalanceData && usersProvider.promoWorkspaceError != null)
+                if (!hasBalanceData &&
+                    usersProvider.promoWorkspaceError != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -594,9 +756,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                 Text(
                   'license_hub_codes_title'.tr,
                   textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
-                      .sectionTitle
-                      .copyWith(
+                  style: AppTypography.of(context).sectionTitle.copyWith(
                         color: AppColors.blackFontColor,
                         fontSize: 16,
                       ),
@@ -628,6 +788,8 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                       child: _buildPromoCard(promoCode, usersProvider),
                     ),
                   ),
+                const SizedBox(height: 20),
+                _buildBuyMoreSection(usersProvider),
               ],
             ),
           );
@@ -718,9 +880,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   Text(
                     'license_hub_recent_code_title'.tr,
                     textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .listTileTitle
-                        .copyWith(
+                    style: AppTypography.of(context).listTileTitle.copyWith(
                           color: AppColors.blackFontColor,
                           fontSize: 13,
                         ),
@@ -729,9 +889,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                   SelectableText(
                     _recentRawCode!,
                     textDirection: TextDirection.ltr,
-                    style: AppTypography.of(context)
-                        .listTileTitle
-                        .copyWith(
+                    style: AppTypography.of(context).listTileTitle.copyWith(
                           fontSize: 16,
                           color: AppColors.buttonColor,
                         ),
@@ -789,8 +947,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
           ),
           children: [
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.warmSurface,
                 borderRadius: BorderRadius.circular(10),
@@ -818,8 +975,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
                     decoration: InputDecoration(
                       isDense: true,
                       labelText: 'license_hub_gift_pool_quantity'.tr,
-                      helperText:
-                          'license_hub_max_uses_helper'.trParams({
+                      helperText: 'license_hub_max_uses_helper'.trParams({
                         'max': ownedCount.toString(),
                       }),
                       border: OutlineInputBorder(
@@ -849,6 +1005,241 @@ class _MyLicensesScreenState extends State<MyLicensesScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _startPurchaseCheckout() async {
+    final usersProvider = context.read<UsersProvider>();
+    setState(() {
+      _purchaseError = null;
+      _purchaseNotice = null;
+    });
+    try {
+      _purchaseOwnedBaseline = _currentOwnedCount(usersProvider);
+      final purchase = await usersProvider.createPurchaseIntent(
+        quantity: _selectedPurchaseQuantity,
+      );
+      final checkoutUrl = (purchase['checkoutUrl'] ?? '').toString().trim();
+      if (checkoutUrl.isEmpty) {
+        throw Exception('service_users_purchase_intent_failed'.tr);
+      }
+      final checkoutUri = Uri.tryParse(checkoutUrl);
+      if (checkoutUri == null) {
+        throw Exception('service_users_purchase_intent_failed'.tr);
+      }
+      final launched =
+          await launchUrl(checkoutUri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      if (!launched) {
+        setState(() =>
+            _purchaseError = 'license_activation_purchase_open_failed'.tr);
+        return;
+      }
+      _awaitingPurchaseReturn = true;
+      _showPurchaseNotice(
+        'license_activation_purchase_launched'.tr,
+        accent: const Color(0xFF2A638B),
+        icon: Icons.open_in_new_rounded,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _purchaseError = usersProvider.extractErrorMessage(error));
+    }
+  }
+
+  Widget _buildBuyMoreSection(UsersProvider usersProvider) {
+    const accent = Color(0xFF5B3DA1);
+    final tiers = [
+      {
+        'qty': 20,
+        'titleKey': 'license_activation_bundle_20_title',
+        'priceKey': 'license_activation_bundle_20_price'
+      },
+      {
+        'qty': 100,
+        'titleKey': 'license_activation_bundle_100_title',
+        'priceKey': 'license_activation_bundle_100_price'
+      },
+      {
+        'qty': 1000,
+        'titleKey': 'license_activation_bundle_1000_title',
+        'priceKey': 'license_activation_bundle_1000_price'
+      },
+      {
+        'qty': 10000,
+        'titleKey': 'license_activation_bundle_10000_title',
+        'priceKey': 'license_activation_bundle_10000_price'
+      },
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withValues(alpha: 0.14)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.shopping_cart_checkout_outlined,
+                    color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'license_activation_purchase_title'.tr,
+                  textDirection: TextDirection.rtl,
+                  style: AppTypography.of(context).sectionTitle.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.blackFontColor,
+                      ),
+                ),
+              ),
+              InfoIconButton(
+                message: 'license_activation_purchase_body'.tr,
+                color: accent.withValues(alpha: 0.6),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'license_activation_purchase_pricing_label'.tr,
+            textDirection: TextDirection.rtl,
+            style: AppTypography.of(context).inputLabel.copyWith(
+                  color: AppColors.blackFontColor,
+                ),
+          ),
+          const SizedBox(height: 10),
+          ...tiers.map((tier) {
+            final qty = tier['qty'] as int;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: () => setState(() => _selectedPurchaseQuantity = qty),
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _selectedPurchaseQuantity == qty
+                        ? accent.withValues(alpha: 0.12)
+                        : accent.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _selectedPurchaseQuantity == qty
+                          ? accent
+                          : accent.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          (tier['titleKey'] as String).tr,
+                          textDirection: TextDirection.rtl,
+                          style: AppTypography.of(context)
+                              .listTileTitle
+                              .copyWith(color: AppColors.blackFontColor),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          (tier['priceKey'] as String).tr,
+                          textDirection: TextDirection.ltr,
+                          style: AppTypography.of(context)
+                              .badgeLabel
+                              .copyWith(fontSize: 14, color: accent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          if (_purchaseNotice != null) ...[
+            const SizedBox(height: 10),
+            _buildPurchaseNotice(),
+          ],
+          if (_purchaseError != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.errorColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppColors.errorColor.withValues(alpha: 0.24)),
+              ),
+              child: Text(
+                _purchaseError!,
+                textDirection: TextDirection.rtl,
+                style: AppTypography.of(context)
+                    .bodyDefault
+                    .copyWith(color: AppColors.errorColor),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: usersProvider.isLicenseLoading
+                  ? null
+                  : _startPurchaseCheckout,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accent,
+                disabledBackgroundColor: const Color(0xFFE8EBF1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                usersProvider.isLicenseLoading
+                    ? 'license_activation_purchase_loading'.tr
+                    : 'license_activation_purchase_action'.tr,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: usersProvider.isPromoCodesLoading
+                  ? null
+                  : () => _refreshPurchaseWorkspace(
+                        showCheckingNotice: true,
+                        showReviewNoticeWhenUnchanged: false,
+                      ),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text('license_activation_purchase_refresh_balance'.tr),
+            ),
+          ),
+        ],
       ),
     );
   }

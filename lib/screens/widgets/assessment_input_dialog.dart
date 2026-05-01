@@ -7,6 +7,7 @@ import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../services/subjects_lookup_service.dart';
+import 'info_icon_button.dart';
 
 class AssessmentSelection {
   const AssessmentSelection({
@@ -321,19 +322,18 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           const SizedBox(height: 16),
                         ],
                         if (hasMemoOptions || hasCompreOptions)
-                          Text(
-                            'assessment_dialog_hint'.tr,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.of(context)
-                                .bodySmall
-                                .copyWith(color: Colors.grey.shade700),
-                          ),
+                          const SizedBox.shrink(),
                       ],
                     ],
                   ),
                 ),
               ),
               actions: [
+                if (hasMemoOptions || hasCompreOptions)
+                  InfoIconButton(
+                    message: 'assessment_dialog_hint'.tr,
+                    color: Colors.grey.shade600,
+                  ),
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   child: Text('cancel'.tr),

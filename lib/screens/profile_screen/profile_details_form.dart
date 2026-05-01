@@ -651,22 +651,30 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                 'settings_profile_gender'.tr,
                 style: AppTypography.of(context).inputLabel,
               ),
-              RadioGroup<String>(
-                groupValue: _selectedGender,
-                onChanged: (value) {
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: _genderOptions
+                    .map(
+                      (option) => ButtonSegment<String>(
+                        value: option['value']!,
+                        label: Text(_optionLabel(option)),
+                      ),
+                    )
+                    .toList(),
+                selected: _selectedGender != null
+                    ? {_selectedGender!}
+                    : const <String>{},
+                emptySelectionAllowed: true,
+                onSelectionChanged: (set) {
                   setState(() {
-                    _selectedGender = value;
+                    _selectedGender = set.isEmpty ? null : set.first;
                   });
                 },
-                child: Column(
-                  children: _genderOptions.map((option) {
-                    return RadioListTile<String>(
-                      value: option['value']!,
-                      title: Text(_optionLabel(option)),
-                      contentPadding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
-                    );
-                  }).toList(),
+                style: SegmentedButton.styleFrom(
+                  selectedBackgroundColor:
+                      Theme.of(context).colorScheme.primary,
+                  selectedForegroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 16),

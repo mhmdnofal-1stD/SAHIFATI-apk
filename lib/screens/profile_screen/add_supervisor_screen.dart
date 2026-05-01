@@ -8,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/typography/app_typography.dart';
 import '../../services/teacher_supervisions_services.dart';
+import '../widgets/info_icon_button.dart';
 
 /// Resolves the human-facing identity for a supervision owner payload.
 ///
@@ -292,47 +293,38 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xCC000000),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'supervision_scan_hint'.tr,
-                      textAlign: TextAlign.center,
-                      textDirection: TextDirection.rtl,
-                      style: AppTypography.of(context)
-                          .bodyDefault
-                          .copyWith(color: Colors.white),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : _pickFromGallery,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton.icon(
+                            onPressed: _isProcessing ? null : _pickFromGallery,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.photo_library_rounded,
+                              color: Color(0xFF132A4A),
+                            ),
+                            label: Text(
+                              'supervision_scan_pick_from_gallery'.tr,
+                              style: AppTypography.of(context)
+                                  .buttonPrimary
+                                  .copyWith(color: const Color(0xFF132A4A)),
+                            ),
+                          ),
                         ),
                       ),
-                      icon: const Icon(
-                        Icons.photo_library_rounded,
-                        color: Color(0xFF132A4A),
+                      InfoIconButton(
+                        message: 'supervision_scan_hint'.tr,
+                        color: const Color(0xFF9AA3B2),
                       ),
-                      label: Text(
-                        'supervision_scan_pick_from_gallery'.tr,
-                        style: AppTypography.of(context)
-                            .buttonPrimary
-                            .copyWith(color: const Color(0xFF132A4A)),
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -476,13 +468,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                 ),
               )
             else
-              Text(
-                'supervision_preview_body'.tr,
-                textDirection: TextDirection.rtl,
-                style: AppTypography.of(context)
-                    .bodySecondary
-                    .copyWith(color: const Color(0xFF4B5563)),
-              ),
+              const SizedBox.shrink(),
             const SizedBox(height: 16),
             Row(
               children: [

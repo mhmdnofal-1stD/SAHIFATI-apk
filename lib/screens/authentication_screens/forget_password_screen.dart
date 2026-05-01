@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
+import '../widgets/info_icon_button.dart';
 import 'login_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/auth_screen_shell.dart';
@@ -495,19 +496,27 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             }
           },
         ),
-        const SizedBox(height: 10),
-        _buildCaptionNote('forgot_password_request_caption'.tr),
         if (_inlineMessage != null) ...[
           const SizedBox(height: 14),
           _buildInlineBanner(_inlineMessage!, isError: _inlineIsError),
         ],
         const SizedBox(height: 20),
-        _buildPrimaryButton(
-          label: 'forgot_password_request_submit'.tr,
-          icon: Icons.send_rounded,
-          isLoading: usersProvider.isLoading,
-          onPressed:
-              usersProvider.isLoading ? null : () => _handleRequest(usersProvider),
+        Row(
+          children: [
+            Expanded(
+              child: _buildPrimaryButton(
+                label: 'forgot_password_request_submit'.tr,
+                icon: Icons.send_rounded,
+                isLoading: usersProvider.isLoading,
+                onPressed:
+                    usersProvider.isLoading ? null : () => _handleRequest(usersProvider),
+              ),
+            ),
+            InfoIconButton(
+              message: 'forgot_password_request_caption'.tr,
+              color: const Color(0xFF9AA3B2),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
         Center(
@@ -593,19 +602,27 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             }
           },
         ),
-        const SizedBox(height: 10),
-        _buildCaptionNote('forgot_password_password_rules'.tr),
         if (_inlineMessage != null) ...[
           const SizedBox(height: 14),
           _buildInlineBanner(_inlineMessage!, isError: _inlineIsError),
         ],
         const SizedBox(height: 20),
-        _buildPrimaryButton(
-          label: 'forgot_password_reset_submit'.tr,
-          icon: Icons.check_circle_outline_rounded,
-          isLoading: usersProvider.isLoading,
-          onPressed:
-              usersProvider.isLoading ? null : () => _handleReset(usersProvider),
+        Row(
+          children: [
+            Expanded(
+              child: _buildPrimaryButton(
+                label: 'forgot_password_reset_submit'.tr,
+                icon: Icons.check_circle_outline_rounded,
+                isLoading: usersProvider.isLoading,
+                onPressed:
+                    usersProvider.isLoading ? null : () => _handleReset(usersProvider),
+              ),
+            ),
+            InfoIconButton(
+              message: 'forgot_password_password_rules'.tr,
+              color: const Color(0xFF9AA3B2),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
         Center(

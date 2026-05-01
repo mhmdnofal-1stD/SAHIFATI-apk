@@ -9,6 +9,7 @@ import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/info_icon_button.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/responsive_content_shell.dart';
 import 'content_item_card.dart';
@@ -627,15 +628,6 @@ class _QuestionsFooter extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            footerHint,
-            style: const TextStyle(
-              fontSize: 15,
-              height: 1.5,
-              color: AppColors.mutedText,
-            ),
-          ),
-          const SizedBox(height: 14),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -654,6 +646,10 @@ class _QuestionsFooter extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 ),
                 label: Text(nextLabel),
+              ),
+              InfoIconButton(
+                message: footerHint,
+                color: AppColors.mutedText,
               ),
               TextButton(
                 onPressed: isBusy ? null : onFinishForNow,

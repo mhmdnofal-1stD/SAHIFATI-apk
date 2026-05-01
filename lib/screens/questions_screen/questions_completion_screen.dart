@@ -8,6 +8,7 @@ import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/info_icon_button.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/responsive_content_shell.dart';
 
@@ -222,17 +223,6 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'questions_completion_meaning_title'.tr,
-                            style: AppTypography.of(context).sectionTitle,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            widget.skipped
-                                ? 'questions_completion_meaning_body_skipped'.tr
-                                : 'questions_completion_meaning_body_complete'.tr,
-                            style: AppTypography.of(context).bodyDefault,
-                          ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
                             Text(
@@ -273,6 +263,12 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                                       ? 'questions_completion_opening_label'.tr
                                       : 'questions_completion_continue_label'.tr,
                                 ),
+                              ),
+                              InfoIconButton(
+                                message: widget.skipped
+                                    ? 'questions_completion_meaning_body_skipped'.tr
+                                    : 'questions_completion_meaning_body_complete'.tr,
+                                color: AppColors.mutedText,
                               ),
                               OutlinedButton.icon(
                                 onPressed: _isOpeningReadingBrowser
