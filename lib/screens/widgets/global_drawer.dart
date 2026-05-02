@@ -10,6 +10,7 @@ import '../questions_screen/questions_screen.dart';
 import '../settings_screen/settings_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
+import '../supervision_screen/incoming_requests_screen.dart';
 import '../welcome_screen/welcome_screen.dart';
 import '../main_screen/main_screen.dart';
 import 'custom_text.dart';
@@ -154,6 +155,32 @@ class GlobalDrawer extends StatelessWidget {
                         const SizedBox(width: 10),
                         CustomText(
                           text: 'البطاقات العلمية',
+                          withBackground: false,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              Consumer<UsersProvider>(
+                builder: (context, usersProvider, _) {
+                  final role = usersProvider.selectedUser?.userRoleId ?? 0;
+                  final canAccessSupervision = role == 1 || role == 2;
+                  if (!canAccessSupervision) return const SizedBox.shrink();
+                  return ListTile(
+                    onTap: () {
+                      Get.toNamed(IncomingRequestsScreen.routeName);
+                    },
+                    title: Row(
+                      textDirection: TextDirection.rtl,
+                      children: [
+                        const Icon(
+                          Icons.space_dashboard_rounded,
+                          size: 30,
+                        ),
+                        const SizedBox(width: 10),
+                        CustomText(
+                          text: 'supervision_dashboard_screen_title'.tr,
                           withBackground: false,
                         ),
                       ],

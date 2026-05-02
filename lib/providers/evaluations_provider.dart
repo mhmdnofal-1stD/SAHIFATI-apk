@@ -249,7 +249,7 @@ class EvaluationsProvider with ChangeNotifier {
   Future<String> _resolveChartCacheScopeKey(int userId) async {
     final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
     if (activeAccountKey != null && activeAccountKey.trim().isNotEmpty) {
-      return activeAccountKey.trim();
+      return '${activeAccountKey.trim()}.user_$userId';
     }
 
     return 'user_$userId';

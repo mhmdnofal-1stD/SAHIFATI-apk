@@ -736,6 +736,61 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     });
   }
 
+  Set<String> _expandedSubjectSelection() {
+    final selectedKeys = _draft.subjectKeys
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    if (selectedKeys.isEmpty) {
+      return const <String>{};
+    }
+
+    final availableKeys = widget.available.subjects.keys
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    final childrenByParent = <String, List<String>>{};
+    for (final item in widget.available.subjectHierarchy) {
+      final key = item.key.trim();
+      if (key.isEmpty) {
+        continue;
+      }
+      final parent = item.parent?.trim();
+      if (parent == null || parent.isEmpty || parent == '0') {
+        continue;
+      }
+      childrenByParent.putIfAbsent(parent, () => <String>[]).add(key);
+    }
+
+    final expanded = <String>{};
+
+    void collect(String key) {
+      if (!expanded.add(key)) {
+        return;
+      }
+      for (final child in childrenByParent[key] ?? const <String>[]) {
+        collect(child);
+      }
+    }
+
+    final descendants = <String>{};
+    for (final key in selectedKeys) {
+      collect(key);
+    }
+    descendants.addAll(expanded.where(availableKeys.contains));
+
+    if (descendants.isEmpty) {
+      return selectedKeys;
+    }
+    return descendants;
+  }
+
+  UnifiedFilterSelection _normalizedSelection() {
+    return UnifiedFilterSelection.copy(_draft).copyWith(
+      subjectKeys: _expandedSubjectSelection(),
+    );
+  }
+
   Widget _hierarchicalSubjectSection() {
     final locale = Get.locale?.languageCode ?? 'ar';
     final theme = Theme.of(context);
@@ -843,10 +898,13 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   )
                 else
                   Expanded(
-                    child: Text(
-                      label,
-                      textDirection: TextDirection.rtl,
-                      style: AppTypography.of(context).listTileTitle,
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _filterChipString(
+                        label,
+                        nodeKey,
+                        _draft.subjectKeys,
+                      ),
                     ),
                   ),
               ],
@@ -886,10 +944,24 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                           .copyWith(color: theme.hintColor),
                     ),
                   )
-                : Column(
-                    children: [
-                      for (final node in rootNodes) buildNode(node, depth: 0),
-                    ],
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                    const totalSpacing = 16.0;
+                      final itemWidth =
+                          ((constraints.maxWidth - totalSpacing) / 3)
+                              .clamp(96.0, constraints.maxWidth);
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final node in rootNodes)
+                            SizedBox(
+                              width: itemWidth,
+                              child: buildNode(node, depth: 0),
+                            ),
+                        ],
+                      );
+                    },
                   ),
           ),
         ],
@@ -1025,7 +1097,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                 onPressed: widget.applyInProgress
                     ? null
                     : () => widget.onApply(
-                          UnifiedFilterSelection.copy(_draft),
+                          _normalizedSelection(),
                         ),
                 child: widget.applyInProgress
                     ? const SizedBox(

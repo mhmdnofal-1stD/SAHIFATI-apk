@@ -33,6 +33,7 @@ import 'screens/main_screen/main_screen.dart';
 import 'screens/quran_view/index_page.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
+import 'screens/supervision_screen/incoming_requests_screen.dart';
 import 'screens/settings_screen/my_licenses_screen.dart';
 import 'services/localization_service.dart';
 import 'services/typography_config_service.dart';
@@ -218,6 +219,12 @@ class MyApp extends StatelessWidget {
           name: '/profile',
           page: () => const AuthenticatedRouteGate(
             child: ProfileScreen(),
+          ),
+        ),
+        GetPage(
+          name: IncomingRequestsScreen.routeName,
+          page: () => const AuthenticatedRouteGate(
+            child: IncomingRequestsScreen(),
           ),
         ),
         GetPage(

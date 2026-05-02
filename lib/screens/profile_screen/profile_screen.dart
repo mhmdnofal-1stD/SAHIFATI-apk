@@ -16,7 +16,6 @@ import '../../core/utils/file_download.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/info_icon_button.dart';
 import 'add_supervisor_screen.dart';
-import 'incoming_requests_screen.dart';
 import 'profile_details_form.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -161,10 +160,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Get.to(() => const AddSupervisorScreen());
   }
 
-  void _handleOpenSupervisionDashboard() {
-    Get.to(() => const IncomingRequestsScreen());
-  }
-
   @override
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();
@@ -187,19 +182,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .copyWith(color: const Color(0xFF132A4A)),
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 4),
-            child: Tooltip(
-              message: 'supervision_dashboard_screen_title'.tr,
-              child: IconButton(
-                onPressed: _handleOpenSupervisionDashboard,
-                icon: const Icon(
-                  Icons.inbox_outlined,
-                  color: Color(0xFF132A4A),
-                ),
-              ),
-            ),
-          ),
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
             child: Tooltip(
@@ -273,7 +255,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     _SupervisorIntroCard(
-                      onOpenDashboard: _handleOpenSupervisionDashboard,
                       onAddSupervisor: _handleAddSupervisor,
                     ),
                     const SizedBox(height: 16),
@@ -650,11 +631,9 @@ class _QrCardError extends StatelessWidget {
 
 class _SupervisorIntroCard extends StatelessWidget {
   const _SupervisorIntroCard({
-    required this.onOpenDashboard,
     required this.onAddSupervisor,
   });
 
-  final VoidCallback onOpenDashboard;
   final VoidCallback onAddSupervisor;
 
   @override
@@ -702,55 +681,28 @@ class _SupervisorIntroCard extends StatelessWidget {
                       .copyWith(color: const Color(0xFF4B5563)),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: onOpenDashboard,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF132A4A),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(
-                          Icons.space_dashboard_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                        label: Text(
-                          'supervision_dashboard_screen_title'.tr,
-                          style: AppTypography.of(context)
-                              .buttonPrimary
-                              .copyWith(color: Colors.white),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onAddSupervisor,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0x40132A4A)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: onAddSupervisor,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0x40132A4A)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(
-                          Icons.qr_code_scanner_rounded,
-                          color: Color(0xFF132A4A),
-                          size: 18,
-                        ),
-                        label: Text(
-                          'profile_add_supervisor_tooltip'.tr,
-                          style: AppTypography.of(context)
-                              .buttonSecondary
-                              .copyWith(color: const Color(0xFF132A4A)),
-                        ),
-                      ),
+                    icon: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Color(0xFF132A4A),
+                      size: 18,
                     ),
-                  ],
+                    label: Text(
+                      'profile_add_supervisor_tooltip'.tr,
+                      style: AppTypography.of(context)
+                          .buttonSecondary
+                          .copyWith(color: const Color(0xFF132A4A)),
+                    ),
+                  ),
                 ),
               ],
             ),

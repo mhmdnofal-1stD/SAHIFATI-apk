@@ -17,13 +17,13 @@ class GeneralController {
   ];
 
   List<Map<String, dynamic>> get parts => List.generate(30, (index) {
-    final juzNumber = index + 1;
-    final surahRange = _getSurahRangeInJuz(juzNumber);
-    return {
-      'id': juzNumber,
-      'name': '${"juz_prefix".tr} $juzNumber\n$surahRange'
-    };
-  });
+        final juzNumber = index + 1;
+        final surahRange = _getSurahRangeInJuz(juzNumber);
+        return {
+          'id': juzNumber,
+          'name': '${"juz_prefix".tr} $juzNumber\n$surahRange'
+        };
+      });
 
   String _getSurahRangeInJuz(int juzNumber) {
     try {
@@ -35,9 +35,8 @@ class GeneralController {
       bool isArabic = Get.locale?.languageCode == 'ar';
       String separator = isArabic ? "، " : ", ";
 
-      List<String> surahNames = surahNumbers.map((s) => 
-        quran.getSurahNameArabic(s)
-      ).toList();
+      List<String> surahNames =
+          surahNumbers.map((s) => quran.getSurahNameArabic(s)).toList();
 
       return "(${surahNames.join(separator)})";
     } catch (e) {
@@ -49,16 +48,13 @@ class GeneralController {
   List<Map<String, dynamic>> get secondThird => parts.sublist(10, 20);
   List<Map<String, dynamic>> get thirdThird => parts.sublist(20, 30);
 
-  List<Map<String, dynamic>> get hizbList => List.generate(60, (index) => {
-    'id': index + 1,
-    'name': '${"hizb_prefix".tr} ${index + 1}'
-  });
+  List<Map<String, dynamic>> get hizbList => List.generate(60,
+      (index) => {'id': index + 1, 'name': '${"hizb_prefix".tr} ${index + 1}'});
 
-  List<Map<String, dynamic>> get quranSurahs => List.generate(114, (index) => {
-    'id': index + 1,
-    'name':  quran.getSurahNameArabic(index + 1)
-  });
-
+  List<Map<String, dynamic>> get quranSurahs => List.generate(
+      114,
+      (index) =>
+          {'id': index + 1, 'name': quran.getSurahNameArabic(index + 1)});
 
   String toArabicDigits(int n) => n
       .toString()
@@ -119,12 +115,14 @@ class GeneralController {
   }
 
   Color getOnColor(Color backgroundColor) {
-    return backgroundColor.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+    return backgroundColor.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
   }
 
   Future<bool> checkConnectivity() async {
     final List<ConnectivityResult> connectivityResult =
-    await Connectivity().checkConnectivity();
+        await Connectivity().checkConnectivity();
 
     if (connectivityResult.contains(ConnectivityResult.none)) {
       return false;
@@ -134,7 +132,8 @@ class GeneralController {
   }
 
   String getSurahNameByNumber(int number) {
-    if (number < 1 || number > 114) return 'surah_not_found'.tr; // Need key or hardcode? 'Not Found'
+    if (number < 1 || number > 114)
+      return 'surah_not_found'.tr; // Need key or hardcode? 'Not Found'
     return quran.getSurahNameArabic(number);
   }
 
@@ -142,5 +141,4 @@ class GeneralController {
     if (number < 1 || number > 114) return "";
     return quran.getSurahNameArabic(number);
   }
- }
-
+}

@@ -70,7 +70,6 @@ class BarChartWidget extends StatelessWidget {
       barGroups.add(
         BarChartGroupData(
           x: i,
-          showingTooltipIndicators: [0],
           barRods: [
             BarChartRodData(
               toY: value,
@@ -162,31 +161,40 @@ class BarChartWidget extends StatelessWidget {
                         return SideTitleWidget(
                           meta: meta,
                           space: 6,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'verse_count'.trParams({
-                                  'count':
-                                      (evaluation.verseCount ?? 0).toString(),
-                                }),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.chartAxisTick.copyWith(
-                                  fontSize: isDesktop ? 10 : 9,
-                                  fontWeight: FontWeight.w700,
+                          child: SizedBox(
+                            width: labelWidth,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'verse_count'.trParams({
+                                      'count': (evaluation.verseCount ?? 0)
+                                          .toString(),
+                                    }),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.chartAxisTick.copyWith(
+                                      fontSize: isDesktop ? 10 : 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${_formatPercent(evaluation.percentage)}%',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: t.chartAxisTick.copyWith(
-                                  fontSize: isDesktop ? 10 : 9,
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '${_formatPercent(evaluation.percentage)}%',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.chartAxisTick.copyWith(
+                                      fontSize: isDesktop ? 10 : 9,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },

@@ -196,8 +196,8 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   Future<List<UnifiedFilterSchoolGroup>> _loadSchoolGroups(
     List<Ayat> scopedAyat,
   ) async {
-    final schools = await SchoolServices().getAllSchools();
     final locale = Get.locale?.languageCode ?? 'ar';
+    final schools = await SchoolServices().getAllSchools();
     final schoolById = <int, School>{
       for (final school in schools)
         if (school.id != null) school.id!: school,
@@ -230,8 +230,75 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
 
     final groups = <UnifiedFilterSchoolGroup>[];
 
+    for (final school in schools) {
+      final schoolId = school.id;
+      if (schoolId == null) {
+        continue;
+      }
+
+      final levels = <UnifiedFilterSchoolLevel>[];
+      final seenLevels = <int>{};
+      final catalogLevels = school.levels.toList()
+        ..sort((left, right) {
+          final leftValue = left.level ?? 0;
+          final rightValue = right.level ?? 0;
+          return leftValue.compareTo(rightValue);
+        });
+
+      for (final level in catalogLevels) {
+        final number = level.level;
+        if (number == null || !seenLevels.add(number)) {
+          continue;
+        }
+        final translationKey = 'level_$number';
+        final translated = translationKey.tr;
+        final levelLabel = _localizedLevelName(level.name, locale) ??
+            levelLabelFallbacks['$schoolId:$number'] ??
+            (translated == translationKey ? number.toString() : translated);
+        levels.add(
+          UnifiedFilterSchoolLevel(
+            key: '$schoolId:$number',
+            label: levelLabel,
+            level: number,
+          ),
+        );
+      }
+
+      final extraLevels = (levelsBySchool[schoolId] ?? const <int>{})
+          .where((number) => !seenLevels.contains(number))
+          .toList()
+        ..sort();
+      for (final number in extraLevels) {
+        final translationKey = 'level_$number';
+        final translated = translationKey.tr;
+        final levelLabel = levelLabelFallbacks['$schoolId:$number'] ??
+            (translated == translationKey ? number.toString() : translated);
+        levels.add(
+          UnifiedFilterSchoolLevel(
+            key: '$schoolId:$number',
+            label: levelLabel,
+            level: number,
+          ),
+        );
+      }
+
+      if (levels.isEmpty) {
+        continue;
+      }
+
+      groups.add(
+        UnifiedFilterSchoolGroup(
+          label: _localizedSchoolName(school, locale),
+          levels: levels,
+        ),
+      );
+    }
+
     for (final entry in levelsBySchool.entries) {
       final schoolId = entry.key;
+      if (schoolById.containsKey(schoolId)) {
+        continue;
+      }
       final school = schoolById[schoolId];
       final groupLabel = school != null
           ? _localizedSchoolName(school, locale)

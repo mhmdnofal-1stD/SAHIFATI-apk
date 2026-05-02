@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/typography/app_typography.dart';
+import '../../models/user.dart';
+import '../../providers/evaluations_provider.dart';
+import '../../providers/users_provider.dart';
+import '../main_screen/main_screen.dart';
+import '../../services/evaluations_services.dart';
 import '../../services/teacher_supervisions_services.dart';
 
 /// Resolves the human-facing identity for a supervision student payload.
@@ -30,6 +36,8 @@ String resolveSupervisionStudentName(
 }
 
 class IncomingRequestsScreen extends StatefulWidget {
+  static const String routeName = '/supervision-dashboard';
+
   const IncomingRequestsScreen({super.key});
 
   @override
@@ -106,6 +114,9 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         .toList(growable: false);
     if (teacherLinks.isEmpty) {
       _showSnack('supervision_teacher_no_links'.tr);
+      return;
+    }
+    if (!mounted) {
       return;
     }
     final selected = await showModalBottomSheet<int>(
@@ -204,6 +215,43 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
     }
   }
 
+  Future<void> _openStudentWorkspace(Map<String, dynamic> link) async {
+    final student =
+        Map<String, dynamic>.from((link['student'] as Map?) ?? const {});
+    final rawId = student['id'] ?? student['_id'];
+    final studentId =
+        rawId is num ? rawId.toInt() : int.tryParse('${rawId ?? ''}');
+    if (studentId == null) {
+      _showSnack('profile_unknown_user'.tr);
+      return;
+    }
+
+    final selectedStudent = User(
+      id: studentId,
+      username: (student['username'] as String?)?.trim(),
+      email: (student['email'] as String?)?.trim() ?? '',
+      userRoleId: student['userRoleId'] is num
+          ? (student['userRoleId'] as num).toInt()
+          : (student['roleNum'] is num
+              ? (student['roleNum'] as num).toInt()
+              : null),
+      firstName: student['firstName'] as String?,
+      familyName: student['familyName'] as String?,
+    );
+
+    final usersProvider = context.read<UsersProvider>();
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    usersProvider.setSelectedUser(selectedStudent);
+    try {
+      await evaluationsProvider.getQuranChartData(studentId);
+    } catch (_) {}
+    if (!mounted) {
+      return;
+    }
+
+    await Get.toNamed(MainScreen.routeName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -298,7 +346,11 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                     ...teacherLinks.map(
                       (link) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _LinkCard(link: link),
+                        child: _LinkCard(
+                          link: link,
+                          onOpenStudentWorkspace: () =>
+                              _openStudentWorkspace(link),
+                        ),
                       ),
                     ),
                   const SizedBox(height: 20),
@@ -636,9 +688,10 @@ class _RequestCard extends StatelessWidget {
 }
 
 class _LinkCard extends StatelessWidget {
-  const _LinkCard({required this.link});
+  const _LinkCard({required this.link, this.onOpenStudentWorkspace});
 
   final Map<String, dynamic> link;
+  final VoidCallback? onOpenStudentWorkspace;
 
   @override
   Widget build(BuildContext context) {
@@ -651,11 +704,15 @@ class _LinkCard extends StatelessWidget {
       counterpart,
       fallback: 'profile_unknown_user'.tr,
     );
-    final email = (counterpart['email'] as String?)?.trim() ?? '';
     final secondaryLabelKey = roleInLink == 'teacher'
         ? 'supervision_active_student_badge'
         : 'supervision_active_teacher_badge';
     final acceptedAt = _formatAcceptedAt(link['acceptedAt']);
+    final studentId = counterpart['_id'] is num
+      ? (counterpart['_id'] as num).toInt()
+      : (counterpart['id'] is num
+        ? (counterpart['id'] as num).toInt()
+        : int.tryParse('${counterpart['_id'] ?? counterpart['id'] ?? ''}'));
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -716,16 +773,6 @@ class _LinkCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (email.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    email,
-                    textDirection: TextDirection.ltr,
-                    style: AppTypography.of(context)
-                        .bodySmall
-                        .copyWith(color: const Color(0xFF6B7280)),
-                  ),
-                ],
                 if (acceptedAt != null) ...[
                   const SizedBox(height: 8),
                   Text(
@@ -737,9 +784,31 @@ class _LinkCard extends StatelessWidget {
                         .copyWith(color: const Color(0xFF4B5563)),
                   ),
                 ],
+                if (roleInLink == 'teacher' && studentId != null) ...[
+                  const SizedBox(height: 8),
+                  _StudentMemorizationStats(studentId: studentId),
+                ],
               ],
             ),
           ),
+          if (roleInLink == 'teacher' && onOpenStudentWorkspace != null) ...[
+            const SizedBox(width: 12),
+            IconButton(
+              onPressed: onOpenStudentWorkspace,
+              style: IconButton.styleFrom(
+                backgroundColor: const Color(0xFFEFEAE0),
+                minimumSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(
+                Icons.person_search_rounded,
+                color: Color(0xFF132A4A),
+              ),
+              tooltip: 'supervision_limits_students_label'.tr,
+            ),
+          ],
         ],
       ),
     );
@@ -758,6 +827,116 @@ class _LinkCard extends StatelessWidget {
     final day = local.day.toString().padLeft(2, '0');
     return '${local.year}-$month-$day';
   }
+}
+
+class _StudentMemorizationStats extends StatefulWidget {
+  const _StudentMemorizationStats({required this.studentId});
+
+  final int studentId;
+
+  @override
+  State<_StudentMemorizationStats> createState() =>
+      _StudentMemorizationStatsState();
+}
+
+class _StudentMemorizationStatsState extends State<_StudentMemorizationStats> {
+  late Future<_StudentMemorizationSnapshot> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<_StudentMemorizationSnapshot> _load() async {
+    final payload = await EvaluationsServices().getQuranChartData(
+      widget.studentId,
+      dimension: 'memorization',
+    );
+    final totalVerses = (payload['totalVerses'] as num?)?.toInt() ?? 0;
+    final rawEvaluations = payload['evaluations'] as List? ?? const [];
+
+    int proficientCount = 0;
+    num proficientPercentage = 0;
+    int revisionCount = 0;
+    num revisionPercentage = 0;
+
+    for (final item in rawEvaluations.whereType<Map>()) {
+      final normalized = Map<String, dynamic>.from(item);
+      final code = (normalized['code']?.toString() ?? '').trim().toLowerCase();
+      if (code == 'g') {
+        proficientCount = (normalized['verseCount'] as num?)?.toInt() ?? 0;
+        proficientPercentage = (normalized['percentage'] as num?) ?? 0;
+      } else if (code == 's') {
+        revisionCount = (normalized['verseCount'] as num?)?.toInt() ?? 0;
+        revisionPercentage = (normalized['percentage'] as num?) ?? 0;
+      }
+    }
+
+    return _StudentMemorizationSnapshot(
+      totalVerses: totalVerses,
+      proficientCount: proficientCount,
+      proficientPercentage: proficientPercentage,
+      revisionCount: revisionCount,
+      revisionPercentage: revisionPercentage,
+    );
+  }
+
+  String _formatPercent(num value) {
+    final text = value.toStringAsFixed(1);
+    return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_StudentMemorizationSnapshot>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Text(
+            '...',
+            textDirection: TextDirection.rtl,
+            style: AppTypography.of(context)
+                .bodySecondary
+                .copyWith(color: const Color(0xFF4B5563)),
+          );
+        }
+
+        final data = snapshot.data;
+        if (data == null) {
+          return const SizedBox.shrink();
+        }
+
+        final summary =
+            'متمكن ${data.proficientCount} آية (${_formatPercent(data.proficientPercentage)}%) / '
+            'مراجعة ${data.revisionCount} آية (${_formatPercent(data.revisionPercentage)}%)';
+
+        return Text(
+          summary,
+          textDirection: TextDirection.rtl,
+          style: AppTypography.of(context)
+              .bodySecondary
+              .copyWith(color: const Color(0xFF4B5563)),
+        );
+      },
+    );
+  }
+}
+
+class _StudentMemorizationSnapshot {
+  const _StudentMemorizationSnapshot({
+    required this.totalVerses,
+    required this.proficientCount,
+    required this.proficientPercentage,
+    required this.revisionCount,
+    required this.revisionPercentage,
+  });
+
+  final int totalVerses;
+  final int proficientCount;
+  final num proficientPercentage;
+  final int revisionCount;
+  final num revisionPercentage;
 }
 
 class _PickStudentToRemoveSheet extends StatefulWidget {

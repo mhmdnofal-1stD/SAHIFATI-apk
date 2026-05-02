@@ -29,6 +29,7 @@ import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
+import '../../core/typography/app_typography.dart';
 import '../../core/reading/reading_session.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
@@ -482,8 +483,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Iterable<Ayat> sourceAyat,
   ) async {
     final schoolsById = <int, School>{};
+    final catalogSchools = <School>[];
     try {
       final schools = await SchoolServices().getAllSchools();
+      catalogSchools.addAll(schools);
       for (final school in schools) {
         final schoolId = school.id;
         if (schoolId == null) {
@@ -520,18 +523,77 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       }
     }
 
-    final groups = groupedLevels.entries
-        .map((entry) {
-          final levels = entry.value.values.toList()
-            ..sort((left, right) => left.level.compareTo(right.level));
-          return UnifiedFilterSchoolGroup(
-            label: groupTitles[entry.key] ?? entry.key.toString(),
-            levels: levels,
-          );
-        })
-        .where((group) => group.levels.isNotEmpty)
-        .toList()
-      ..sort((left, right) => left.label.compareTo(right.label));
+    final groups = <UnifiedFilterSchoolGroup>[];
+
+    for (final school in catalogSchools) {
+      final schoolId = school.id;
+      if (schoolId == null) {
+        continue;
+      }
+
+      final levels = <UnifiedFilterSchoolLevel>[];
+      final seenLevels = <int>{};
+      final catalogLevels = school.levels.toList()
+        ..sort((left, right) {
+          final leftValue = left.level ?? 0;
+          final rightValue = right.level ?? 0;
+          return leftValue.compareTo(rightValue);
+        });
+
+      for (final level in catalogLevels) {
+        final levelNumber = level.level;
+        if (levelNumber == null || !seenLevels.add(levelNumber)) {
+          continue;
+        }
+        levels.add(
+          UnifiedFilterSchoolLevel(
+            key: _schoolLevelFilterKey(schoolId, levelNumber),
+            label: _resolveSchoolLevelName(level),
+            level: levelNumber,
+          ),
+        );
+      }
+
+      final embeddedExtras = groupedLevels[schoolId]?.values.toList() ??
+          const <UnifiedFilterSchoolLevel>[];
+      for (final level in embeddedExtras) {
+        if (!seenLevels.add(level.level)) {
+          continue;
+        }
+        levels.add(level);
+      }
+
+      if (levels.isEmpty) {
+        continue;
+      }
+
+      levels.sort((left, right) => left.level.compareTo(right.level));
+      groups.add(
+        UnifiedFilterSchoolGroup(
+          label: _resolveLocalizedMapValue(school.schoolName),
+          levels: levels,
+        ),
+      );
+    }
+
+    groupedLevels.forEach((schoolId, levelMap) {
+      if (schoolsById.containsKey(schoolId)) {
+        return;
+      }
+      final levels = levelMap.values.toList()
+        ..sort((left, right) => left.level.compareTo(right.level));
+      if (levels.isEmpty) {
+        return;
+      }
+      groups.add(
+        UnifiedFilterSchoolGroup(
+          label: groupTitles[schoolId] ?? schoolId.toString(),
+          levels: levels,
+        ),
+      );
+    });
+
+    groups.sort((left, right) => left.label.compareTo(right.label));
 
     return groups;
   }
@@ -2719,54 +2781,40 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 languageProvider,
               );
 
+              final verseTextStyle = TextStyle(
+                fontSize: 21,
+                height: 1.8,
+                color: verseColor,
+                backgroundColor: selectedBackgroundColor,
+                fontFamily: AppFonts.versesFont,
+                decoration: showUnderline
+                    ? TextDecoration.underline
+                    : TextDecoration.none,
+                decorationColor: showUnderline ? accentColor : null,
+                decorationThickness: showUnderline ? 1.8 : null,
+              );
+
               return TextSpan(
-                text: '${ayah.text} ',
-                recognizer: ayahTapRecognizer,
-                style: TextStyle(
-                  fontSize: 19,
-                  height: 1.8,
-                  color: verseColor,
-                  backgroundColor: selectedBackgroundColor,
-                  fontFamily: AppFonts.versesFont,
-                  decoration: showUnderline
-                      ? TextDecoration.underline
-                      : TextDecoration.none,
-                  decorationColor: showUnderline ? accentColor : null,
-                  decorationThickness: showUnderline ? 1.8 : null,
-                ),
                 children: [
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding:
-                          const EdgeInsetsDirectional.only(start: 4, end: 4),
-                      child: GestureDetector(
-                        onTap: ayahTapRecognizer.onTap,
-                        child: Container(
-                          width: 26,
-                          height: 26,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:
-                                isSelected ? accentColor : Colors.transparent,
-                            border: Border.all(color: accentColor, width: 1.5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              gc.toArabicDigits(ayah.ayahNo),
-                              textDirection: TextDirection.rtl,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 11,
-                                height: 1.0,
-                                color: selectedBadgeTextColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
+                  TextSpan(
+                    text: '${ayah.text} ',
+                    recognizer: ayahTapRecognizer,
+                    style: verseTextStyle,
+                  ),
+                  TextSpan(
+                    text: '${gc.ayahMarker(ayah.ayahNo)} ',
+                    recognizer: ayahTapRecognizer,
+                    style: AppTypography.of(context).quranAyahMarker.copyWith(
+                          fontSize: 20.0,
+                          height: 5.15,
+                          fontWeight: FontWeight.w600,
+                          color: selectedBadgeTextColor,
+                          backgroundColor: isSelected
+                              ? accentColor.withValues(
+                                  alpha: isDarkMode ? 0.22 : 0.12,
+                                )
+                              : null,
                         ),
-                      ),
-                    ),
                   ),
                   if (!isFiltered && ayah.teacherRecommendations.isNotEmpty)
                     WidgetSpan(
@@ -2782,6 +2830,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+                  const TextSpan(text: ' '),
                 ],
               );
             }).toList(),
