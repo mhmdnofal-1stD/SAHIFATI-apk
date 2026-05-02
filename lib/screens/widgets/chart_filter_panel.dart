@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../../controllers/ayat_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
+import '../../models/ayat.dart';
 import '../../models/school.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../services/evaluations_services.dart';
@@ -35,21 +37,31 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   bool _applying = false;
   bool _availableDataLoading = false;
   UnifiedFilterAvailableData? _availableData;
+  String? _availableDataScopeKey;
 
   Future<void> _ensureAvailableDataLoaded() async {
-    if (_availableData != null || _availableDataLoading) {
+    final provider = context.read<EvaluationsProvider>();
+    final scopeKey = _availableDataKey(provider.chartFilters);
+    if ((_availableData != null && _availableDataScopeKey == scopeKey) ||
+        _availableDataLoading) {
       return;
     }
-    final provider = context.read<EvaluationsProvider>();
     setState(() => _availableDataLoading = true);
     try {
+      if (provider.evaluations.isEmpty) {
+        try {
+          await provider.getAllEvaluations();
+        } catch (_) {
+          // Keep going so the filter can still render any locally available data.
+        }
+      }
+      final scopedAyat = await _loadScopedAyat(provider.chartFilters);
       final results = await Future.wait(<Future<Object>>[
-        _loadSubjectData(),
-        _loadSchoolGroups(),
+        _loadSubjectData(scopedAyat),
+        _loadSchoolGroups(scopedAyat),
       ]);
       if (!mounted) return;
-      final subjectData =
-          results[0] as _SubjectData;
+      final subjectData = results[0] as _SubjectData;
       final schoolGroups = results[1] as List<UnifiedFilterSchoolGroup>;
       setState(() {
         _availableData = UnifiedFilterAvailableData(
@@ -59,6 +71,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
           memorizationEvaluations: provider.memorizationEvaluations,
           comprehensionEvaluations: provider.comprehensionEvaluations,
         );
+        _availableDataScopeKey = scopeKey;
       });
     } catch (_) {
       // Fall back to evaluation-only filters if subject/school lookups fail.
@@ -70,6 +83,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
           memorizationEvaluations: provider.memorizationEvaluations,
           comprehensionEvaluations: provider.comprehensionEvaluations,
         );
+        _availableDataScopeKey = scopeKey;
       });
     } finally {
       if (mounted) {
@@ -78,37 +92,158 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     }
   }
 
-  Future<_SubjectData> _loadSubjectData() async {
+  String _availableDataKey(QuranChartFilters filters) {
+    final scopeFilters = QuranChartFilters(
+      thirds: filters.thirds,
+      surahIds: filters.surahIds,
+      juzs: filters.juzs,
+      ayahTypes: filters.ayahTypes,
+    );
+    return '${Get.locale?.languageCode ?? 'ar'}:${scopeFilters.toCacheKey()}';
+  }
+
+  List<int> _effectiveJuzs(QuranChartFilters filters) {
+    final selectedJuzs = filters.juzs.toSet();
+    final thirdsJuzs = <int>{};
+
+    for (final third in filters.thirds) {
+      switch (third) {
+        case 'first':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 1));
+          break;
+        case 'second':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 11));
+          break;
+        case 'third':
+          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 21));
+          break;
+      }
+    }
+
+    if (thirdsJuzs.isEmpty) {
+      final result = selectedJuzs.toList(growable: false);
+      result.sort();
+      return result;
+    }
+
+    final result = selectedJuzs.isEmpty
+        ? thirdsJuzs.toList(growable: false)
+        : thirdsJuzs.intersection(selectedJuzs).toList(growable: false);
+    result.sort();
+    return result;
+  }
+
+  Future<List<Ayat>> _loadScopedAyat(QuranChartFilters filters) async {
+    final allAyat = await AyatController().loadAllAyat();
+    final effectiveJuzs = _effectiveJuzs(filters).toSet();
+    final surahIds = filters.surahIds.toSet();
+    final ayahTypes = filters.ayahTypes.toSet();
+
+    return allAyat.where((ayah) {
+      if (surahIds.isNotEmpty && !surahIds.contains(ayah.surah.id)) {
+        return false;
+      }
+      if (effectiveJuzs.isNotEmpty && !effectiveJuzs.contains(ayah.juz)) {
+        return false;
+      }
+      if (ayahTypes.isNotEmpty && !ayahTypes.contains(ayah.ayahType ?? '')) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
+  Future<_SubjectData> _loadSubjectData(List<Ayat> scopedAyat) async {
     final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
     final locale = Get.locale?.languageCode ?? 'ar';
+    final availableKeys = <String>{};
+    for (final ayah in scopedAyat) {
+      availableKeys.addAll(ayah.subjects ?? const <String>[]);
+    }
+
+    final hierarchyByKey = {
+      for (final subject in hierarchy) subject.key.trim(): subject,
+    };
     final entries = <String, String>{};
-    for (final subject in hierarchy) {
-      final key = subject.key.trim();
-      if (key.isEmpty) continue;
-      final label = subject.displayName(locale).trim();
-      entries[key] = label.isEmpty ? key : label;
+    for (final key in availableKeys) {
+      final normalizedKey = key.trim();
+      if (normalizedKey.isEmpty) continue;
+      final subject = hierarchyByKey[normalizedKey];
+      final label = subject?.displayName(locale).trim() ?? normalizedKey;
+      entries[normalizedKey] = label.isEmpty ? normalizedKey : label;
     }
     return _SubjectData(labels: entries, hierarchy: hierarchy);
   }
 
-  Future<List<UnifiedFilterSchoolGroup>> _loadSchoolGroups() async {
+  String? _schoolLevelNameFromCatalog(
+    School? school,
+    int levelNumber,
+    String locale,
+  ) {
+    if (school == null) {
+      return null;
+    }
+
+    for (final level in school.levels) {
+      if (level.level == levelNumber) {
+        return _localizedLevelName(level.name, locale);
+      }
+    }
+
+    return null;
+  }
+
+  Future<List<UnifiedFilterSchoolGroup>> _loadSchoolGroups(
+    List<Ayat> scopedAyat,
+  ) async {
     final schools = await SchoolServices().getAllSchools();
     final locale = Get.locale?.languageCode ?? 'ar';
+    final schoolById = <int, School>{
+      for (final school in schools)
+        if (school.id != null) school.id!: school,
+    };
+    final levelsBySchool = <int, Set<int>>{};
+    final schoolLabelFallbacks = <int, String>{};
+    final levelLabelFallbacks = <String, String>{};
+
+    for (final ayah in scopedAyat) {
+      for (final level in ayah.schoolLevels ?? const []) {
+        final schoolId = level.schoolId;
+        final number = level.level;
+        if (schoolId == null || number == null) {
+          continue;
+        }
+
+        (levelsBySchool[schoolId] ??= <int>{}).add(number);
+
+        final schoolName = level.schoolName?.trim();
+        if (schoolName != null && schoolName.isNotEmpty) {
+          schoolLabelFallbacks.putIfAbsent(schoolId, () => schoolName);
+        }
+
+        final localizedLevel = _localizedLevelName(level.name, locale)?.trim();
+        if (localizedLevel != null && localizedLevel.isNotEmpty) {
+          levelLabelFallbacks['$schoolId:$number'] = localizedLevel;
+        }
+      }
+    }
+
     final groups = <UnifiedFilterSchoolGroup>[];
 
-    for (final school in schools) {
-      final schoolId = school.id;
-      if (schoolId == null) continue;
-      final groupLabel = _localizedSchoolName(school, locale);
+    for (final entry in levelsBySchool.entries) {
+      final schoolId = entry.key;
+      final school = schoolById[schoolId];
+      final groupLabel = school != null
+          ? _localizedSchoolName(school, locale)
+          : (schoolLabelFallbacks[schoolId] ?? schoolId.toString());
       final levels = <UnifiedFilterSchoolLevel>[];
 
-      for (var i = 0; i < school.levels.length; i++) {
-        final level = school.levels[i];
-        // Use the `level` integer if present, otherwise fall back to 1-based index.
-        final number = level.level ?? (i + 1);
+      final sortedLevels = entry.value.toList()..sort();
+      for (final number in sortedLevels) {
         final translationKey = 'level_$number';
         final translated = translationKey.tr;
-        final levelLabel = _localizedLevelName(level.name, locale) ??
+        final levelLabel = levelLabelFallbacks['$schoolId:$number'] ??
+            _schoolLevelNameFromCatalog(school, number, locale) ??
             (translated == translationKey ? number.toString() : translated);
         levels.add(UnifiedFilterSchoolLevel(
           key: '$schoolId:$number',
@@ -118,7 +253,6 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
       }
 
       if (levels.isEmpty) continue;
-      levels.sort((a, b) => a.level.compareTo(b.level));
       groups.add(UnifiedFilterSchoolGroup(label: groupLabel, levels: levels));
     }
 
@@ -192,6 +326,12 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   Widget build(BuildContext context) {
     final provider = context.watch<EvaluationsProvider>();
     final activeCount = _activeCount(provider.chartFilters);
+
+    if (_expanded &&
+        _availableDataScopeKey != _availableDataKey(provider.chartFilters) &&
+        !_availableDataLoading) {
+      unawaited(_ensureAvailableDataLoaded());
+    }
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 920),

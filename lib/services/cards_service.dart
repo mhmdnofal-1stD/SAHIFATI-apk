@@ -36,19 +36,24 @@ class CardsService {
     final response = await _api.get('cards?$query');
 
     if (response.statusCode == 200) {
-      final body = json.decode(response.body) as Map<String, dynamic>;
-      final data = body['data'] as List? ?? [];
+      final decoded = json.decode(response.body);
+      final body = decoded is Map<String, dynamic>
+          ? decoded
+          : <String, dynamic>{'data': decoded};
+      final rawData =
+          body['data'] ?? body['items'] ?? body['cards'] ?? const [];
+      final data = rawData is List ? rawData : const [];
       return (
         cards: data
             .whereType<Map>()
             .map((e) => CardModel.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
-        total: (body['total'] as int?) ?? data.length,
-        page: (body['page'] as int?) ?? page,
-        pages: (body['pages'] as int?) ?? 1,
+        total: _asInt(body['total']) ?? data.length,
+        page: _asInt(body['page']) ?? page,
+        pages: _asInt(body['totalPages']) ?? _asInt(body['pages']) ?? 1,
       );
     }
-    throw Exception('cards_load_failed');
+    throw Exception(_extractMessage(response, fallback: 'cards_load_failed'));
   }
 
   Future<CardModel> getCard(int id) async {
@@ -98,13 +103,30 @@ class CardsService {
     throw Exception(_extractMessage(response));
   }
 
-  String _extractMessage(http.Response response) {
+  int? _asInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    return int.tryParse('${value ?? ''}');
+  }
+
+  String _extractMessage(
+    http.Response response, {
+    String fallback = 'request_failed',
+  }) {
     try {
       final body = json.decode(response.body);
       if (body is Map && body['message'] != null) {
-        return body['message'].toString();
+        final message = body['message'];
+        if (message is List && message.isNotEmpty) {
+          return message.first.toString();
+        }
+        return message.toString();
       }
     } catch (_) {}
-    return 'request_failed';
+    return fallback;
   }
 }

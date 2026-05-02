@@ -50,6 +50,7 @@ class UnifiedFilterAvailableData {
 
   /// Subject key → localized display label.
   final Map<String, String> subjects;
+
   /// Full subject hierarchy (includes level and parent info).
   final List<SubjectHierarchyItem> subjectHierarchy;
   final List<UnifiedFilterSchoolGroup> schoolGroups;
@@ -59,6 +60,7 @@ class UnifiedFilterAvailableData {
 
   static const empty = UnifiedFilterAvailableData(
     subjects: <String, String>{},
+    subjectHierarchy: <SubjectHierarchyItem>[],
     schoolGroups: <UnifiedFilterSchoolGroup>[],
     memorizationEvaluations: <Evaluation>[],
     comprehensionEvaluations: <Evaluation>[],
@@ -128,7 +130,8 @@ class UnifiedFilterSelection {
       subjectKeys: subjectKeys ?? Set.from(this.subjectKeys),
       schoolLevelIds: schoolLevelIds ?? Set.from(this.schoolLevelIds),
       memoEvaluationIds: memoEvaluationIds ?? Set.from(this.memoEvaluationIds),
-      compreEvaluationIds: compreEvaluationIds ?? Set.from(this.compreEvaluationIds),
+      compreEvaluationIds:
+          compreEvaluationIds ?? Set.from(this.compreEvaluationIds),
     );
   }
 
@@ -214,10 +217,8 @@ UnifiedFilterSelection unifiedSelectionFromChartFilters(
   QuranChartFilters filters,
 ) {
   return UnifiedFilterSelection(
-    thirds: filters.thirds
-        .map((s) => _kThirdKeyToInt[s])
-        .whereType<int>()
-        .toSet(),
+    thirds:
+        filters.thirds.map((s) => _kThirdKeyToInt[s]).whereType<int>().toSet(),
     juzs: filters.juzs.toSet(),
     surahIds: filters.surahIds.toSet(),
     ayahTypes: filters.ayahTypes.map((v) => v.toLowerCase()).toSet(),
@@ -460,9 +461,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               title,
-              style: AppTypography.of(context)
-                  .sectionTitle
-                  .copyWith(fontSize: 15),
+              style:
+                  AppTypography.of(context).sectionTitle.copyWith(fontSize: 15),
             ),
           ),
           if (chips.isEmpty)
@@ -542,8 +542,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                           // Remove juzs that belonged to this third
                           final removed = _ScopeData.juzsInThird(t);
                           _draft = _draft.copyWith(
-                            juzs: Set.from(_draft.juzs)
-                              ..removeAll(removed),
+                            juzs: Set.from(_draft.juzs)..removeAll(removed),
                           );
                         } else {
                           _draft = _draft.copyWith(
@@ -554,8 +553,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                     },
                     borderRadius: BorderRadius.circular(8),
                     constraints: const BoxConstraints(minHeight: 36),
-                    fillColor: theme.colorScheme.primary
-                        .withValues(alpha: 0.12),
+                    fillColor:
+                        theme.colorScheme.primary.withValues(alpha: 0.12),
                     selectedColor: theme.colorScheme.primary,
                     color: theme.hintColor,
                     borderColor: theme.dividerColor,
@@ -583,8 +582,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   children: [
                     for (var j = 1; j <= 30; j++)
                       if (_draft.thirds.isEmpty ||
-                          _draft.thirds
-                              .contains(_ScopeData.thirdOfJuz(j)))
+                          _draft.thirds.contains(_ScopeData.thirdOfJuz(j)))
                         _filterChipInt(
                           _trParams('quran_reading_filter_juz_n', {
                             'juz': j.toString(),
@@ -601,8 +599,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   title: Text(_tr('quran_reading_filter_dim_surahs')),
                   tilePadding:
                       const EdgeInsetsDirectional.only(start: 12, end: 8),
-                  childrenPadding:
-                      const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                   children: [
                     Wrap(
                       spacing: 6,
@@ -643,9 +640,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               _tr('quran_reading_filter_dim_school'),
-              style: AppTypography.of(context)
-                  .sectionTitle
-                  .copyWith(fontSize: 15),
+              style:
+                  AppTypography.of(context).sectionTitle.copyWith(fontSize: 15),
             ),
           ),
           Theme(
@@ -670,8 +666,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                         start: 12,
                         end: 8,
                       ),
-                      childrenPadding:
-                          const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                      childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       title: Text(
                         group.label,
                         style: AppTypography.of(context).listTileTitle,
@@ -745,10 +740,126 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     final locale = Get.locale?.languageCode ?? 'ar';
     final theme = Theme.of(context);
     final hierarchy = widget.available.subjectHierarchy;
+    final availableKeys = widget.available.subjects.keys
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    final nodesByKey = <String, SubjectHierarchyItem>{
+      for (final item in hierarchy)
+        if (item.key.trim().isNotEmpty) item.key.trim(): item,
+    };
+    final visibleKeys = <String>{};
 
-    // Separate main subjects (level 0) from children (level 1+)
-    final mainSubjects =
-        hierarchy.where((s) => s.level == 0).toList();
+    void markVisibleChain(String key) {
+      final trimmedKey = key.trim();
+      if (trimmedKey.isEmpty || !visibleKeys.add(trimmedKey)) {
+        return;
+      }
+      final parent = nodesByKey[trimmedKey]?.parent?.trim();
+      if (parent != null && parent.isNotEmpty && parent != '0') {
+        markVisibleChain(parent);
+      }
+    }
+
+    for (final key in availableKeys) {
+      markVisibleChain(key);
+    }
+
+    List<SubjectHierarchyItem> childrenOf(String? parentKey) {
+      final normalizedParent = parentKey?.trim();
+      final isRoot = normalizedParent == null || normalizedParent.isEmpty;
+      return hierarchy.where((item) {
+        final itemKey = item.key.trim();
+        if (itemKey.isEmpty || !visibleKeys.contains(itemKey)) {
+          return false;
+        }
+
+        final parent = item.parent?.trim();
+        if (isRoot) {
+          return parent == null || parent.isEmpty || parent == '0';
+        }
+        return parent == normalizedParent;
+      }).toList()
+        ..sort((left, right) {
+          final levelCompare = left.level.compareTo(right.level);
+          if (levelCompare != 0) {
+            return levelCompare;
+          }
+          return left.displayName(locale).compareTo(right.displayName(locale));
+        });
+    }
+
+    Widget buildNode(SubjectHierarchyItem node, {required int depth}) {
+      final nodeKey = node.key.trim();
+      final label = node.displayName(locale).trim().isEmpty
+          ? nodeKey
+          : node.displayName(locale).trim();
+      final children = childrenOf(nodeKey);
+      final hasDirectContent = availableKeys.contains(nodeKey);
+      final selected = _draft.subjectKeys.contains(nodeKey);
+      final hasSelectedDescendant = children.any(
+        (child) =>
+            _draft.subjectKeys.contains(child.key.trim()) ||
+            _nodeHasSelectedDescendant(child, childrenOf),
+      );
+
+      if (children.isEmpty) {
+        return Padding(
+          padding: EdgeInsetsDirectional.only(start: depth * 14.0, bottom: 6),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: _filterChipString(label, nodeKey, _draft.subjectKeys),
+          ),
+        );
+      }
+
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: 0.4),
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Theme(
+          data: theme.copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            initiallyExpanded: selected || hasSelectedDescendant,
+            tilePadding: EdgeInsetsDirectional.only(
+              start: 12 + (depth * 14.0),
+              end: 8,
+            ),
+            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
+                if (hasDirectContent)
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child:
+                          _filterChipString(label, nodeKey, _draft.subjectKeys),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: Text(
+                      label,
+                      textDirection: TextDirection.rtl,
+                      style: AppTypography.of(context).listTileTitle,
+                    ),
+                  ),
+              ],
+            ),
+            children: [
+              for (final child in children) buildNode(child, depth: depth + 1),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final rootNodes = childrenOf(null);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -759,70 +870,44 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               _tr('quran_reading_filter_dim_subject'),
-              style: AppTypography.of(context)
-                  .sectionTitle
-                  .copyWith(fontSize: 15),
+              style:
+                  AppTypography.of(context).sectionTitle.copyWith(fontSize: 15),
             ),
           ),
           Theme(
             data: theme.copyWith(dividerColor: Colors.transparent),
-            child: Column(
-              children: mainSubjects.map((main) {
-                final children = hierarchy
-                    .where((s) => s.level == 1 && s.parent == main.key)
-                    .toList();
-                final mainLabel = main.displayName(locale);
-
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: theme.dividerColor.withValues(alpha: 0.4),
+            child: rootNodes.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      _tr('quran_reading_filter_empty_dimension'),
+                      style: AppTypography.of(context)
+                          .badgeLabel
+                          .copyWith(color: theme.hintColor),
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                  )
+                : Column(
+                    children: [
+                      for (final node in rootNodes) buildNode(node, depth: 0),
+                    ],
                   ),
-                  child: ExpansionTile(
-                    initiallyExpanded: _draft.subjectKeys.contains(main.key) ||
-                        children.any((c) =>
-                            _draft.subjectKeys.contains(c.key)),
-                    tilePadding: const EdgeInsetsDirectional.only(
-                      start: 12,
-                      end: 8,
-                    ),
-                    childrenPadding:
-                        const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    title: _filterChipString(
-                      mainLabel,
-                      main.key,
-                      _draft.subjectKeys,
-                    ),
-                    children: children.isEmpty
-                        ? const []
-                        : [
-                            Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: children
-                                    .map((child) => _filterChipString(
-                                          child.displayName(locale),
-                                          child.key,
-                                          _draft.subjectKeys,
-                                        ))
-                                    .toList(),
-                              ),
-                            ),
-                          ],
-                  ),
-                );
-              }).toList(),
-            ),
           ),
         ],
       ),
     );
+  }
+
+  bool _nodeHasSelectedDescendant(
+    SubjectHierarchyItem node,
+    List<SubjectHierarchyItem> Function(String? parentKey) childrenOf,
+  ) {
+    for (final child in childrenOf(node.key)) {
+      if (_draft.subjectKeys.contains(child.key.trim()) ||
+          _nodeHasSelectedDescendant(child, childrenOf)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Widget _buildContentColumn(BuildContext context) {
@@ -856,9 +941,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
           Text(
             _tr('quran_reading_filter_title'),
             textAlign: TextAlign.center,
-            style: AppTypography.of(context)
-                .sectionTitle
-                .copyWith(fontSize: 16),
+            style:
+                AppTypography.of(context).sectionTitle.copyWith(fontSize: 16),
           ),
           const SizedBox(height: 6),
           Text(

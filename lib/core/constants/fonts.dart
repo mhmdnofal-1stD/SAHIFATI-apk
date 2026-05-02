@@ -1,11 +1,8 @@
-
-
-
 import 'dart:ui';
 
 class AppFonts {
   static String primaryFont = 'Roboto';
-  static String versesFont = 'KFGQPCDot';
+  static String versesFont = 'KFGQPC';
 
   //FontWeights
   static FontWeight thin = FontWeight.w100;

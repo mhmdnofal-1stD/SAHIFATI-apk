@@ -50,10 +50,12 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
     final results = await Future.wait([
       _service.listIncomingRequests(),
       _service.getLimits(),
+      _service.listLinks(),
     ]);
     return _RequestsBundle(
       requests: results[0] as List<Map<String, dynamic>>,
       limits: results[1] as Map<String, dynamic>,
+      links: results[2] as List<Map<String, dynamic>>,
     );
   }
 
@@ -212,7 +214,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
         centerTitle: true,
         title: Text(
-          'supervision_incoming_screen_title'.tr,
+          'supervision_dashboard_screen_title'.tr,
           style: AppTypography.of(context)
               .appBarTitle
               .copyWith(color: const Color(0xFF132A4A)),
@@ -234,6 +236,20 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
               );
             }
             final bundle = snapshot.data!;
+            final teacherLinks = bundle.links
+                .where(
+                  (link) =>
+                      link['roleInLink'] == 'teacher' &&
+                      link['status'] == 'active',
+                )
+                .toList(growable: false);
+            final studentLinks = bundle.links
+                .where(
+                  (link) =>
+                      link['roleInLink'] == 'student' &&
+                      link['status'] == 'active',
+                )
+                .toList(growable: false);
             return RefreshIndicator(
               onRefresh: _reload,
               child: ListView(
@@ -241,8 +257,18 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                 children: [
                   _LimitsCard(limits: bundle.limits),
                   const SizedBox(height: 16),
+                  _SectionHeader(
+                    title: 'supervision_incoming_screen_title'.tr,
+                    icon: Icons.inbox_outlined,
+                    count: bundle.requests.length,
+                  ),
+                  const SizedBox(height: 12),
                   if (bundle.requests.isEmpty)
-                    const _EmptyState()
+                    const _EmptyState(
+                      icon: Icons.inbox_outlined,
+                      titleKey: 'supervision_incoming_empty_title',
+                      bodyKey: 'supervision_incoming_empty_body',
+                    )
                   else
                     ...bundle.requests.map(
                       (r) => Padding(
@@ -253,6 +279,46 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
                           onReject: () => _handleReject(r),
                           onOneTimeReview: () => _handleOneTimeReview(r),
                         ),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _SectionHeader(
+                    title: 'supervision_limits_students_label'.tr,
+                    icon: Icons.groups_rounded,
+                    count: teacherLinks.length,
+                  ),
+                  const SizedBox(height: 12),
+                  if (teacherLinks.isEmpty)
+                    const _EmptyState(
+                      icon: Icons.groups_rounded,
+                      titleKey: 'supervision_students_empty_title',
+                      bodyKey: 'supervision_students_empty_body',
+                    )
+                  else
+                    ...teacherLinks.map(
+                      (link) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _LinkCard(link: link),
+                      ),
+                    ),
+                  const SizedBox(height: 20),
+                  _SectionHeader(
+                    title: 'supervision_limits_teachers_label'.tr,
+                    icon: Icons.school_rounded,
+                    count: studentLinks.length,
+                  ),
+                  const SizedBox(height: 12),
+                  if (studentLinks.isEmpty)
+                    const _EmptyState(
+                      icon: Icons.school_rounded,
+                      titleKey: 'supervision_teachers_empty_title',
+                      bodyKey: 'supervision_teachers_empty_body',
+                    )
+                  else
+                    ...studentLinks.map(
+                      (link) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _LinkCard(link: link),
                       ),
                     ),
                 ],
@@ -266,9 +332,66 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
 }
 
 class _RequestsBundle {
-  const _RequestsBundle({required this.requests, required this.limits});
+  const _RequestsBundle({
+    required this.requests,
+    required this.limits,
+    required this.links,
+  });
   final List<Map<String, dynamic>> requests;
   final Map<String, dynamic> limits;
+  final List<Map<String, dynamic>> links;
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.icon,
+    required this.count,
+  });
+
+  final String title;
+  final IconData icon;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFEAE0),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: const Color(0xFF132A4A)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            title,
+            textDirection: TextDirection.rtl,
+            style: AppTypography.of(context)
+                .sectionTitle
+                .copyWith(color: const Color(0xFF132A4A), fontSize: 16),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF132A4A),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            count.toString(),
+            style: AppTypography.of(context)
+                .badgeCount
+                .copyWith(color: Colors.white, fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _LimitsCard extends StatelessWidget {
@@ -512,6 +635,131 @@ class _RequestCard extends StatelessWidget {
   }
 }
 
+class _LinkCard extends StatelessWidget {
+  const _LinkCard({required this.link});
+
+  final Map<String, dynamic> link;
+
+  @override
+  Widget build(BuildContext context) {
+    final roleInLink = (link['roleInLink'] as String?) ?? '';
+    final counterpart = Map<String, dynamic>.from(
+      ((roleInLink == 'teacher' ? link['student'] : link['teacher']) as Map?) ??
+          const {},
+    );
+    final title = resolveSupervisionStudentName(
+      counterpart,
+      fallback: 'profile_unknown_user'.tr,
+    );
+    final email = (counterpart['email'] as String?)?.trim() ?? '';
+    final secondaryLabelKey = roleInLink == 'teacher'
+        ? 'supervision_active_student_badge'
+        : 'supervision_active_teacher_badge';
+    final acceptedAt = _formatAcceptedAt(link['acceptedAt']);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE7DFD2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFEAE0),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              roleInLink == 'teacher'
+                  ? Icons.person_search_rounded
+                  : Icons.school_rounded,
+              color: const Color(0xFF132A4A),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        textDirection: TextDirection.rtl,
+                        style: AppTypography.of(context)
+                            .listTileTitle
+                            .copyWith(color: const Color(0xFF132A4A)),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F0FB),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        secondaryLabelKey.tr,
+                        textDirection: TextDirection.rtl,
+                        style: AppTypography.of(context)
+                            .badgeLabel
+                            .copyWith(color: const Color(0xFF132A4A)),
+                      ),
+                    ),
+                  ],
+                ),
+                if (email.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    textDirection: TextDirection.ltr,
+                    style: AppTypography.of(context)
+                        .bodySmall
+                        .copyWith(color: const Color(0xFF6B7280)),
+                  ),
+                ],
+                if (acceptedAt != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'supervision_link_active_since'
+                        .trParams({'date': acceptedAt}),
+                    textDirection: TextDirection.rtl,
+                    style: AppTypography.of(context)
+                        .bodySecondary
+                        .copyWith(color: const Color(0xFF4B5563)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _formatAcceptedAt(dynamic rawValue) {
+    if (rawValue is! String || rawValue.trim().isEmpty) {
+      return null;
+    }
+    final parsed = DateTime.tryParse(rawValue);
+    if (parsed == null) {
+      return null;
+    }
+    final local = parsed.toLocal();
+    final month = local.month.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    return '${local.year}-$month-$day';
+  }
+}
+
 class _PickStudentToRemoveSheet extends StatefulWidget {
   const _PickStudentToRemoveSheet({required this.links});
   final List<Map<String, dynamic>> links;
@@ -646,7 +894,15 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({
+    required this.icon,
+    required this.titleKey,
+    required this.bodyKey,
+  });
+
+  final IconData icon;
+  final String titleKey;
+  final String bodyKey;
 
   @override
   Widget build(BuildContext context) {
@@ -660,14 +916,14 @@ class _EmptyState extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.inbox_outlined,
+          Icon(
+            icon,
             color: Color(0xFF132A4A),
             size: 40,
           ),
           const SizedBox(height: 8),
           Text(
-            'supervision_incoming_empty_title'.tr,
+            titleKey.tr,
             textDirection: TextDirection.rtl,
             style: AppTypography.of(context)
                 .sectionTitle
@@ -675,7 +931,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'supervision_incoming_empty_body'.tr,
+            bodyKey.tr,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,
             style: AppTypography.of(context)

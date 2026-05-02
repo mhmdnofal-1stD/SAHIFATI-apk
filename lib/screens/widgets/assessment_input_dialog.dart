@@ -42,6 +42,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   String? initialComment,
   Iterable<Object?> subjectKeys = const <Object?>[],
   bool enableCommentField = false,
+  bool showSubjectSummary = true,
+  String? subjectSummaryLabel,
   String? title,
 }) async {
   if (evaluationsProvider.evaluations.isEmpty) {
@@ -62,12 +64,13 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
       .map((key) => key?.toString().trim() ?? '')
       .where((key) => key.isNotEmpty)
       .toList(growable: false);
-  final subjectNamesFuture = enableCommentField && normalizedSubjectKeys.isNotEmpty
-      ? SubjectsLookupService.instance.resolveSubjectNames(
-          normalizedSubjectKeys,
-          localeCode: languageProvider.langCode,
-        )
-      : null;
+  final subjectNamesFuture =
+      showSubjectSummary && normalizedSubjectKeys.isNotEmpty
+          ? SubjectsLookupService.instance.resolveSubjectNames(
+              normalizedSubjectKeys,
+              localeCode: languageProvider.langCode,
+            )
+          : null;
   final commentController = TextEditingController(
     text: normalizedInitialComment,
   );
@@ -79,8 +82,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
       return localizedName;
     }
 
-    final fallbackName =
-        evaluation.name[Get.locale?.languageCode]?.trim() ??
+    final fallbackName = evaluation.name[Get.locale?.languageCode]?.trim() ??
         evaluation.name['ar']?.trim() ??
         evaluation.name['en']?.trim() ??
         '';
@@ -93,12 +95,12 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
 
   final effectiveTitle = title ??
       (hasMemoOptions && hasCompreOptions
-      ? 'assessment_dialog_title_both'.tr
+          ? 'assessment_dialog_title_both'.tr
           : hasMemoOptions
-        ? 'assessment_dialog_title_memorization'.tr
+              ? 'assessment_dialog_title_memorization'.tr
               : hasCompreOptions
-          ? 'assessment_dialog_title_comprehension'.tr
-          : 'assessment_dialog_title_unavailable'.tr);
+                  ? 'assessment_dialog_title_comprehension'.tr
+                  : 'assessment_dialog_title_unavailable'.tr);
 
   try {
     return await showDialog<AssessmentSelection>(
@@ -118,8 +120,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
               required VoidCallback onTap,
             }) {
               final color = controller.getColorForEvaluationModel(evaluation);
-              final isDark =
-                  ThemeData.estimateBrightnessForColor(color) == Brightness.dark;
+              final isDark = ThemeData.estimateBrightnessForColor(color) ==
+                  Brightness.dark;
 
               return ChoiceChip(
                 label: Text(
@@ -153,7 +155,9 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!hasMemoOptions && !hasCompreOptions && !enableCommentField)
+                      if (!hasMemoOptions &&
+                          !hasCompreOptions &&
+                          !enableCommentField)
                         Text(
                           'assessment_dialog_no_values'.tr,
                           textAlign: TextAlign.center,
@@ -231,7 +235,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                         ],
                         if (subjectNamesFuture != null) ...[
                           Text(
-                            'assessment_dialog_subjects_label'.tr,
+                            subjectSummaryLabel ??
+                                'assessment_dialog_subjects_label'.tr,
                             style: AppTypography.of(context).subsectionTitle,
                             textAlign: TextAlign.right,
                           ),
@@ -244,7 +249,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                 return Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    Text('assessment_dialog_subjects_loading'.tr),
+                                    Text('assessment_dialog_subjects_loading'
+                                        .tr),
                                     const SizedBox(width: 8),
                                     const SizedBox(
                                       width: 16,
@@ -314,8 +320,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                             onChanged: (value) {
                               final normalizedComment = value.trim();
                               setDialogState(() {
-                                commentChanged =
-                                    normalizedComment != normalizedInitialComment;
+                                commentChanged = normalizedComment !=
+                                    normalizedInitialComment;
                               });
                             },
                           ),
@@ -341,8 +347,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF132A4A),
-                    disabledBackgroundColor: const Color(0xFF132A4A)
-                        .withValues(alpha: 0.32),
+                    disabledBackgroundColor:
+                        const Color(0xFF132A4A).withValues(alpha: 0.32),
                     foregroundColor: Colors.white,
                     disabledForegroundColor: Colors.white70,
                   ),
@@ -361,8 +367,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                               compreChanged: compreChanged,
                               commentChanged:
                                   normalizedComment != normalizedInitialComment,
-                              memoEvaluation:
-                                  evaluationsProvider.findEvaluationById(memoId),
+                              memoEvaluation: evaluationsProvider
+                                  .findEvaluationById(memoId),
                               compreEvaluation: evaluationsProvider
                                   .findEvaluationById(compreId),
                             ),

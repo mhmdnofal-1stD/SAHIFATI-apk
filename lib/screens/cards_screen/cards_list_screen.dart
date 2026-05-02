@@ -123,6 +123,9 @@ class _CardsListScreenState extends State<CardsListScreen> {
                 }
 
                 if (provider.hasError && provider.cards.isEmpty) {
+                  final message = provider.errorMessage
+                      .replaceFirst('Exception: ', '')
+                      .trim();
                   return Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -134,13 +137,13 @@ class _CardsListScreenState extends State<CardsListScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'تعذّر تحميل البطاقات',
+                          message.isEmpty ? 'تعذّر تحميل البطاقات' : message,
+                          textAlign: TextAlign.center,
                           style: AppTypography.of(context).bodyDefault,
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
-                          onPressed: () =>
-                              provider.loadCards(reset: true),
+                          onPressed: () => provider.loadCards(reset: true),
                           child: const Text('إعادة المحاولة'),
                         ),
                       ],

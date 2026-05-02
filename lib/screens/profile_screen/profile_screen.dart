@@ -95,8 +95,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _handleShare(String shareUrl, String username) async {
     final bytes = await _captureCardImage();
-    final shareText =
-        '$username\n${'profile_qr_share_caption'.tr}\n$shareUrl';
+    final shareText = '$username\n${'profile_qr_share_caption'.tr}\n$shareUrl';
     if (bytes == null) {
       await SharePlus.instance.share(
         ShareParams(
@@ -162,6 +161,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Get.to(() => const AddSupervisorScreen());
   }
 
+  void _handleOpenSupervisionDashboard() {
+    Get.to(() => const IncomingRequestsScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();
@@ -187,11 +190,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 4),
             child: Tooltip(
-              message: 'supervision_incoming_screen_title'.tr,
+              message: 'supervision_dashboard_screen_title'.tr,
               child: IconButton(
-                onPressed: () => Get.to(
-                  () => const IncomingRequestsScreen(),
-                ),
+                onPressed: _handleOpenSupervisionDashboard,
                 icon: const Icon(
                   Icons.inbox_outlined,
                   color: Color(0xFF132A4A),
@@ -271,7 +272,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    const _SupervisorIntroCard(),
+                    _SupervisorIntroCard(
+                      onOpenDashboard: _handleOpenSupervisionDashboard,
+                      onAddSupervisor: _handleAddSupervisor,
+                    ),
                     const SizedBox(height: 16),
                     const ProfileDetailsForm(),
                   ],
@@ -440,33 +444,38 @@ class _QrShareCard extends StatelessWidget {
                           ),
                           IgnorePointer(
                             child: Container(
-                              constraints: const BoxConstraints(maxWidth: 96),
-                              padding: const EdgeInsets.all(10),
+                              constraints: const BoxConstraints(maxWidth: 108),
+                              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(18),
                               ),
-                              child: Image.asset(
-                                'assets/images/clean_logo.png',
-                                width: 52,
-                                height: 52,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/clean_logo.png',
+                                    width: 44,
+                                    height: 44,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    username,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFF132A4A),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      username,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF132A4A),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
                       ),
                     ),
                   ],
@@ -549,7 +558,8 @@ class _QrActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        icon: const Icon(Icons.download_rounded, color: Color(0xFF132A4A), size: 18),
+        icon: const Icon(Icons.download_rounded,
+            color: Color(0xFF132A4A), size: 18),
         label: Text(
           label,
           style: AppTypography.of(context)
@@ -639,7 +649,13 @@ class _QrCardError extends StatelessWidget {
 }
 
 class _SupervisorIntroCard extends StatelessWidget {
-  const _SupervisorIntroCard();
+  const _SupervisorIntroCard({
+    required this.onOpenDashboard,
+    required this.onAddSupervisor,
+  });
+
+  final VoidCallback onOpenDashboard;
+  final VoidCallback onAddSupervisor;
 
   @override
   Widget build(BuildContext context) {
@@ -684,6 +700,57 @@ class _SupervisorIntroCard extends StatelessWidget {
                   style: AppTypography.of(context)
                       .bodySecondary
                       .copyWith(color: const Color(0xFF4B5563)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: onOpenDashboard,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF132A4A),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.space_dashboard_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: Text(
+                          'supervision_dashboard_screen_title'.tr,
+                          style: AppTypography.of(context)
+                              .buttonPrimary
+                              .copyWith(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onAddSupervisor,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0x40132A4A)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.qr_code_scanner_rounded,
+                          color: Color(0xFF132A4A),
+                          size: 18,
+                        ),
+                        label: Text(
+                          'profile_add_supervisor_tooltip'.tr,
+                          style: AppTypography.of(context)
+                              .buttonSecondary
+                              .copyWith(color: const Color(0xFF132A4A)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
