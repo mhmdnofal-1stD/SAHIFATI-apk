@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -34,7 +33,6 @@ class UsersProvider with ChangeNotifier {
   UsersProvider._internal();
 
   User? selectedUser;
-  User? _previousUser;
   String? pendingVerificationEmail;
   DateTime? pendingVerificationSentAt;
 
@@ -1404,21 +1402,6 @@ class UsersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void pushSelectedUser(User user) {
-    _previousUser = selectedUser;
-    setSelectedUser(user);
-  }
-
-  void popSelectedUser() {
-    final previousUser = _previousUser;
-    if (previousUser == null) {
-      return;
-    }
-
-    _previousUser = null;
-    setSelectedUser(previousUser);
-  }
-
   Future<void> _persistSelectedUser(User user) async {
     final prefs = await SharedPreferences.getInstance();
     selectedUser = user;
@@ -1842,6 +1825,4 @@ class UsersProvider with ChangeNotifier {
       }
     }
   }
-
 }
-

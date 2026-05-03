@@ -39,6 +39,9 @@ class GlobalDrawer extends StatelessWidget {
             children: [
               ListTile(
                 onTap: () {
+                  final usersProvider = context.read<UsersProvider>();
+                  // إذا كنت في سياق طالب، استرجع المستخدم الأصلي
+                  usersProvider.popSelectedUser();
                   Get.to(() => const ProfileScreen());
                 },
                 title: Row(
@@ -263,7 +266,8 @@ class GlobalDrawer extends StatelessWidget {
                 onTap: () async {
                   final usersProvider = context.read<UsersProvider>();
                   await UsersController().logout(usersProvider);
-                },                title: Row(
+                },
+                title: Row(
                   textDirection: TextDirection.rtl,
                   children: [
                     const Icon(

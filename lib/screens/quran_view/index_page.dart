@@ -2802,19 +2802,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                     style: verseTextStyle,
                   ),
                   TextSpan(
-                    text: '${gc.ayahMarker(ayah.ayahNo)} ',
-                    recognizer: ayahTapRecognizer,
-                    style: AppTypography.of(context).quranAyahMarker.copyWith(
-                          fontSize: 20.0,
-                          height: 5.15,
-                          fontWeight: FontWeight.w600,
-                          color: selectedBadgeTextColor,
-                          backgroundColor: isSelected
-                              ? accentColor.withValues(
-                                  alpha: isDarkMode ? 0.22 : 0.12,
-                                )
-                              : null,
-                        ),
+                    text: gc.ayahMarker(ayah.ayahNo),
+                    style: verseTextStyle.copyWith(
+                      color: selectedBadgeTextColor,
+                      decoration: TextDecoration.none,
+                      decorationColor: null,
+                    ),
                   ),
                   if (!isFiltered && ayah.teacherRecommendations.isNotEmpty)
                     WidgetSpan(
@@ -2845,6 +2838,96 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     return widgets;
+  }
+}
+
+class _AyahMarkerInline extends StatelessWidget {
+  const _AyahMarkerInline({
+    required this.number,
+    required this.textColor,
+    required this.borderColor,
+    required this.fillColor,
+  });
+
+  final String number;
+  final Color textColor;
+  final Color borderColor;
+  final Color fillColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final markerStyle = AppTypography.of(context).quranAyahMarker.copyWith(
+          fontSize: 18,
+          height: 1,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+        );
+
+    return SizedBox(
+      width: 30,
+      height: 30,
+      child: CustomPaint(
+        painter: _AyahMarkerPainter(
+          borderColor: borderColor,
+          fillColor: fillColor,
+        ),
+        child: Center(
+          child: Text(
+            number,
+            textDirection: TextDirection.rtl,
+            style: markerStyle,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AyahMarkerPainter extends CustomPainter {
+  const _AyahMarkerPainter({
+    required this.borderColor,
+    required this.fillColor,
+  });
+
+  final Color borderColor;
+  final Color fillColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final outerRadius = size.width / 2 - 1;
+    final innerRadius = outerRadius - 3;
+
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
+    final strokePaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawCircle(center, outerRadius, fillPaint);
+    canvas.drawCircle(center, outerRadius, strokePaint);
+    canvas.drawCircle(center, innerRadius, strokePaint);
+
+    for (var i = 0; i < 8; i++) {
+      final angle = (math.pi / 4) * i;
+      final start = Offset(
+        center.dx + math.cos(angle) * innerRadius,
+        center.dy + math.sin(angle) * innerRadius,
+      );
+      final end = Offset(
+        center.dx + math.cos(angle) * outerRadius,
+        center.dy + math.sin(angle) * outerRadius,
+      );
+      canvas.drawLine(start, end, strokePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AyahMarkerPainter oldDelegate) {
+    return oldDelegate.borderColor != borderColor ||
+        oldDelegate.fillColor != fillColor;
   }
 }
 

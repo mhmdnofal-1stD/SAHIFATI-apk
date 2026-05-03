@@ -425,6 +425,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       selectedColor: selectedColor,
       checkmarkColor: checkmarkColor,
       side: side,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       onSelected: (_) => _toggleString(selectionSet, value),
     );
   }
@@ -444,7 +448,57 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       selectedColor: selectedColor,
       checkmarkColor: checkmarkColor,
       side: side,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       onSelected: (_) => _toggleInt(selectionSet, value),
+    );
+  }
+
+  Widget _thirdChip(int third) {
+    final selected = _draft.thirds.contains(third);
+    return FilterChip(
+      label: Text(
+        _tr('quran_reading_filter_third_$third'),
+        style: const TextStyle(fontSize: 13),
+      ),
+      selected: selected,
+      selectedColor: Theme.of(context)
+          .colorScheme
+          .primary
+          .withValues(alpha: 0.12),
+      checkmarkColor: Theme.of(context).colorScheme.primary,
+      color: WidgetStatePropertyAll<Color?>(
+        Theme.of(context).scaffoldBackgroundColor,
+      ),
+      side: BorderSide(
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).dividerColor,
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      onSelected: (_) {
+        final t = third;
+        setState(() {
+          if (_draft.thirds.contains(t)) {
+            _draft = _draft.copyWith(
+              thirds: Set.from(_draft.thirds)..remove(t),
+            );
+            final removed = _ScopeData.juzsInThird(t);
+            _draft = _draft.copyWith(
+              juzs: Set.from(_draft.juzs)..removeAll(removed),
+            );
+          } else {
+            _draft = _draft.copyWith(
+              thirds: Set.from(_draft.thirds)..add(t),
+            );
+          }
+        });
+      },
     );
   }
 
@@ -526,49 +580,23 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
                 child: Directionality(
                   textDirection: TextDirection.rtl,
-                  child: ToggleButtons(
-                    isSelected: [
-                      _draft.thirds.contains(1),
-                      _draft.thirds.contains(2),
-                      _draft.thirds.contains(3),
-                    ],
-                    onPressed: (index) {
-                      final t = index + 1;
-                      setState(() {
-                        if (_draft.thirds.contains(t)) {
-                          _draft = _draft.copyWith(
-                            thirds: Set.from(_draft.thirds)..remove(t),
-                          );
-                          // Remove juzs that belonged to this third
-                          final removed = _ScopeData.juzsInThird(t);
-                          _draft = _draft.copyWith(
-                            juzs: Set.from(_draft.juzs)..removeAll(removed),
-                          );
-                        } else {
-                          _draft = _draft.copyWith(
-                            thirds: Set.from(_draft.thirds)..add(t),
-                          );
-                        }
-                      });
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 640;
+                      return Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (var t = 1; t <= 3; t++)
+                            SizedBox(
+                              width: compact
+                                  ? (constraints.maxWidth - 6) / 2
+                                  : null,
+                              child: _thirdChip(t),
+                            ),
+                        ],
+                      );
                     },
-                    borderRadius: BorderRadius.circular(8),
-                    constraints: const BoxConstraints(minHeight: 36),
-                    fillColor:
-                        theme.colorScheme.primary.withValues(alpha: 0.12),
-                    selectedColor: theme.colorScheme.primary,
-                    color: theme.hintColor,
-                    borderColor: theme.dividerColor,
-                    selectedBorderColor: theme.colorScheme.primary,
-                    children: [
-                      for (var t = 1; t <= 3; t++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            _tr('quran_reading_filter_third_$t'),
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                    ],
                   ),
                 ),
               ),
@@ -870,7 +898,6 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
 
       return Container(
         width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           border: Border.all(
             color: theme.dividerColor.withValues(alpha: 0.4),
@@ -880,12 +907,13 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
         child: Theme(
           data: theme.copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
+            dense: true,
             initiallyExpanded: selected || hasSelectedDescendant,
             tilePadding: EdgeInsetsDirectional.only(
-              start: 12 + (depth * 14.0),
-              end: 8,
+              start: 10 + (depth * 10.0),
+              end: 6,
             ),
-            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             title: Row(
               children: [
                 if (hasDirectContent)
@@ -946,13 +974,20 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                    const totalSpacing = 16.0;
+                      final maxWidth = constraints.maxWidth;
+                      final columns = maxWidth >= 980
+                          ? 3
+                          : maxWidth >= 520
+                              ? 2
+                              : 1;
+                      final spacing = maxWidth >= 520 ? 8.0 : 6.0;
+                      final totalSpacing = spacing * (columns - 1);
                       final itemWidth =
-                          ((constraints.maxWidth - totalSpacing) / 3)
-                              .clamp(96.0, constraints.maxWidth);
+                          ((maxWidth - totalSpacing) / columns)
+                              .clamp(columns == 1 ? 180.0 : 150.0, maxWidth);
                       return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: spacing,
+                        runSpacing: spacing,
                         children: [
                           for (final node in rootNodes)
                             SizedBox(

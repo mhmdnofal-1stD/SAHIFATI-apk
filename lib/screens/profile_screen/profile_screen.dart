@@ -173,7 +173,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: const Color(0xFFF7F4ED),
         elevation: 0,
         centerTitle: true,
-        leading: const CustomBackButton(),
+        leading: CustomBackButton(
+          onPressed: () {
+            context.read<UsersProvider>().popSelectedUser();
+            Navigator.of(context).maybePop();
+          },
+        ),
         iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
         title: Text(
           'profile_screen_title'.tr,

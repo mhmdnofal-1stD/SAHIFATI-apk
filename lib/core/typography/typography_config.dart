@@ -318,31 +318,31 @@ class TypographyConfig {
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.quranAyahMarker: TypographyRoleStyle(
-        fontSize: 12,
+        fontSize: 19.2,
         fontWeight: FontWeight.w700,
         fontFamilyKey: TypographyFontFamilies.quranAmiri,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.basmala: TypographyRoleStyle(
-        fontSize: 28,
+        fontSize: 19.28,
         fontWeight: FontWeight.w600,
-        height: 1.8,
+        height: 1.08,
         fontFamilyKey: TypographyFontFamilies.quranAmiri,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.surahHeading: TypographyRoleStyle(
-        fontSize: 28,
+        fontSize: 19.28,
         fontWeight: FontWeight.w700,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.pageHeading: TypographyRoleStyle(
-        fontSize: 28,
+        fontSize: 19.28,
         fontWeight: FontWeight.w800,
-        height: 1.35,
+        height: 1.035,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.sectionTitle: TypographyRoleStyle(
-        fontSize: 22,
+        fontSize: 19.22,
         fontWeight: FontWeight.w800,
         colorKey: TypographyColorTokens.primaryText,
       ),
@@ -359,13 +359,13 @@ class TypographyConfig {
       TypographyRole.bodyDefault: TypographyRoleStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
-        height: 1.5,
+        height: 1.05,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.bodySecondary: TypographyRoleStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        height: 1.45,
+        height: 1.045,
         colorKey: TypographyColorTokens.secondaryText,
       ),
       TypographyRole.bodySmall: TypographyRoleStyle(
@@ -376,7 +376,7 @@ class TypographyConfig {
       TypographyRole.emptyStateBody: TypographyRoleStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        height: 1.5,
+        height: 1.05,
         colorKey: TypographyColorTokens.secondaryText,
       ),
       TypographyRole.inputLabel: TypographyRoleStyle(

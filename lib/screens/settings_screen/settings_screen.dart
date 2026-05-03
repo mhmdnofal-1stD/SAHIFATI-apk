@@ -12,6 +12,7 @@ import '../../providers/language_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
 import 'privacy_policy_screen.dart';
+import 'terms_of_service_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -154,6 +155,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   Get.to(() => const PrivacyPolicyScreen());
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(
+                  Icons.gavel,
+                  color: AppColors.primaryPurple,
+                ),
+                title: Text(
+                  'terms_of_service_title'.tr,
+                  style: AppTypography.of(context).listTileTitle,
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Get.to(() => const TermsOfServiceScreen());
                 },
               ),
               const Divider(),
