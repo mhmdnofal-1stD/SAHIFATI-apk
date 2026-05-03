@@ -2,9 +2,9 @@
   "appKey": "frontend-users-ui",
   "version": 1,
   "styles": {
-    "quranVerse": { "fontSize": 22, "fontWeight": 600, "height": 2.0, "fontFamilyKey": "amiri", "colorKey": "primaryText" },
-    "quranAyahMarker": { "fontSize": 12, "fontWeight": 700, "fontFamilyKey": "amiri", "colorKey": "primaryText" },
-    "basmala": { "fontSize": 28, "fontWeight": 600, "height": 1.8, "fontFamilyKey": "amiri", "colorKey": "primaryText" },
+    "quranVerse": { "fontSize": 22, "fontWeight": 600, "height": 2.0, "fontFamilyKey": "quran-uthmanic-script-hafs", "colorKey": "primaryText" },
+    "quranAyahMarker": { "fontSize": 12, "fontWeight": 700, "fontFamilyKey": "quran-uthmanic-script-hafs", "colorKey": "primaryText" },
+    "basmala": { "fontSize": 28, "fontWeight": 600, "height": 1.8, "fontFamilyKey": "quran-uthmanic-script-hafs", "colorKey": "primaryText" },
     "surahHeading": { "fontSize": 28, "fontWeight": 700, "colorKey": "primaryText" },
 
     "pageHeading": { "fontSize": 28, "fontWeight": 800, "height": 1.35, "colorKey": "primaryText" },

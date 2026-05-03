@@ -485,7 +485,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final schoolsById = <int, School>{};
     final catalogSchools = <School>[];
     try {
-      final schools = await SchoolServices().getAllSchools();
+      final schools = await SchoolServices().getAllSchools(
+        forceRefresh: true,
+      );
       catalogSchools.addAll(schools);
       for (final school in schools) {
         final schoolId = school.id;

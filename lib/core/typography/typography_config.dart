@@ -75,14 +75,14 @@ class TypographyFontFamilies {
   TypographyFontFamilies._();
 
   static const String defaultUi = 'default-ui';
-  static const String quranAmiri = 'amiri';
+  static const String quranUthmanicScriptHafs = 'quran-uthmanic-script-hafs';
   static const String dinNextArabic = 'din-next-arabic';
 
   /// Resolves an admin-supplied font family key to the Flutter font family
   /// (or `null` when the platform default should be used).
   static String? resolveFamily(String? key) {
     switch (key) {
-      case quranAmiri:
+      case quranUthmanicScriptHafs:
         return AppFonts.versesFont;
       case dinNextArabic:
         return 'DIN NEXT ARABIC';
@@ -96,7 +96,7 @@ class TypographyFontFamilies {
 
   static const List<String> whitelist = <String>[
     defaultUi,
-    quranAmiri,
+    quranUthmanicScriptHafs,
     dinNextArabic,
   ];
 }
@@ -132,7 +132,8 @@ class TypographyColorTokens {
     mutedText: AppColors.mutedText,
   };
 
-  static Color resolve(String? key, {Color fallback = AppColors.blackFontColor}) {
+  static Color resolve(String? key,
+      {Color fallback = AppColors.blackFontColor}) {
     if (key == null || key.isEmpty) return fallback;
     return palette[key] ?? fallback;
   }
@@ -314,20 +315,20 @@ class TypographyConfig {
         fontSize: 19,
         fontWeight: FontWeight.w600,
         height: 1.8,
-        fontFamilyKey: TypographyFontFamilies.quranAmiri,
+        fontFamilyKey: TypographyFontFamilies.quranUthmanicScriptHafs,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.quranAyahMarker: TypographyRoleStyle(
         fontSize: 19.2,
         fontWeight: FontWeight.w700,
-        fontFamilyKey: TypographyFontFamilies.quranAmiri,
+        fontFamilyKey: TypographyFontFamilies.quranUthmanicScriptHafs,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.basmala: TypographyRoleStyle(
         fontSize: 19.28,
         fontWeight: FontWeight.w600,
         height: 1.08,
-        fontFamilyKey: TypographyFontFamilies.quranAmiri,
+        fontFamilyKey: TypographyFontFamilies.quranUthmanicScriptHafs,
         colorKey: TypographyColorTokens.primaryText,
       ),
       TypographyRole.surahHeading: TypographyRoleStyle(
@@ -508,8 +509,8 @@ class TypographyConfig {
   /// Unknown roles are ignored; missing roles fall back to defaults.
   static TypographyConfig fromJson(Map<String, dynamic> json) {
     final raw = json['styles'];
-    final Map<TypographyRole, TypographyRoleStyle> next = <TypographyRole,
-        TypographyRoleStyle>{};
+    final Map<TypographyRole, TypographyRoleStyle> next =
+        <TypographyRole, TypographyRoleStyle>{};
     if (raw is Map) {
       for (final entry in raw.entries) {
         final role = _roleByName(entry.key.toString());
@@ -530,9 +531,8 @@ class TypographyConfig {
 
     return TypographyConfig(
       styles: merged,
-      version: (json['version'] is num)
-          ? (json['version'] as num).toInt()
-          : null,
+      version:
+          (json['version'] is num) ? (json['version'] as num).toInt() : null,
       updatedAt: json['updatedAt']?.toString(),
     );
   }

@@ -36,11 +36,13 @@ class SchoolServices {
     }
   }
 
-  Future<List<School>> getAllSchools() async {
-    final cachedSchools = await _loadCachedSchools();
-    if (cachedSchools.isNotEmpty) {
-      unawaited(_refreshAllSchoolsInBackground());
-      return cachedSchools;
+  Future<List<School>> getAllSchools({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedSchools = await _loadCachedSchools();
+      if (cachedSchools.isNotEmpty) {
+        unawaited(_refreshAllSchoolsInBackground());
+        return cachedSchools;
+      }
     }
 
     return _fetchAllSchools();

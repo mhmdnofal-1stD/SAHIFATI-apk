@@ -197,7 +197,9 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     List<Ayat> scopedAyat,
   ) async {
     final locale = Get.locale?.languageCode ?? 'ar';
-    final schools = await SchoolServices().getAllSchools();
+    final schools = await SchoolServices().getAllSchools(
+      forceRefresh: true,
+    );
     final schoolById = <int, School>{
       for (final school in schools)
         if (school.id != null) school.id!: school,

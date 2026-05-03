@@ -61,9 +61,6 @@ flutter:
     - assets/json/typography_frontend-users-ui.json
 
   fonts:
-    - family: Amiri
+    - family: KFGQPC Uthmanic Script HAFS
       fonts:
-        - asset: fonts/Amiri.ttf
-    - family: KFGQPC
-      fonts:
-        - asset: fonts/KFGQPC-Uthmanic-Hafs.otf
+        - asset: "../Public-data-/KFGQPC Uthmanic Script HAFS.otf"

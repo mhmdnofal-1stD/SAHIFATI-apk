@@ -33,6 +33,8 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  bool _hasRequestedChartBootstrap = false;
+
   bool _hasInAppBackTarget(BuildContext context) {
     final canPop = Navigator.maybeOf(context)?.canPop() ?? false;
     if (canPop) {
@@ -92,6 +94,37 @@ class _MainScreenState extends State<MainScreen> {
     if (widget.comesFirst) {
       final evaluationsProvider = context.read<EvaluationsProvider>();
       evaluationsProvider.getAllEvaluations();
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bootstrapChartDataIfNeeded();
+    });
+  }
+
+  Future<void> _bootstrapChartDataIfNeeded() async {
+    if (!mounted || _hasRequestedChartBootstrap) {
+      return;
+    }
+
+    _hasRequestedChartBootstrap = true;
+
+    final usersProvider = context.read<UsersProvider>();
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    final selectedUserId = usersProvider.selectedUser?.id;
+
+    if (selectedUserId == null) {
+      return;
+    }
+
+    if (!widget.comesFirst &&
+        evaluationsProvider.chartEvaluationData.isNotEmpty) {
+      return;
+    }
+
+    try {
+      await evaluationsProvider.getQuranChartData(selectedUserId);
+    } catch (_) {
+      // The chart widget already shows its own error state if needed.
     }
   }
 
@@ -181,16 +214,7 @@ class _MainScreenState extends State<MainScreen> {
                           constraints: const BoxConstraints(maxWidth: 920),
                           child: ChartFilterPanel(userId: selectedUserId),
                         ),
-                      if (!widget.comesFirst)
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 920),
-                          child: BarChartWidget(
-                            evaluationsProvider: evaluationsProvider,
-                            languageProvider: languageProvider,
-                            includeUncategorized: false,
-                          ),
-                        )
-                      else
+                      if (widget.comesFirst)
                         Container(
                           constraints: const BoxConstraints(maxWidth: 920),
                           width: double.infinity,
@@ -207,6 +231,14 @@ class _MainScreenState extends State<MainScreen> {
                             style: AppTypography.of(context).bodyDefault,
                           ),
                         ),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 920),
+                        child: BarChartWidget(
+                          evaluationsProvider: evaluationsProvider,
+                          languageProvider: languageProvider,
+                          includeUncategorized: false,
+                        ),
+                      ),
                       SizedBox(height: SizeConfig.getProportionalHeight(20)),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 920),
