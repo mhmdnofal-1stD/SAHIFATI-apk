@@ -63,4 +63,4 @@ flutter:
   fonts:
     - family: KFGQPC Uthmanic Script HAFS
       fonts:
-        - asset: "../Public-data-/KFGQPC Uthmanic Script HAFS.otf"
+        - asset: fonts/KFGQPC-Uthmanic-Hafs.otf
