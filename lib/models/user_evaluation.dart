@@ -41,6 +41,17 @@ class UserEvaluation {
     );
   }
 
+  factory UserEvaluation.fromCacheJson(Map<String, dynamic> json) {
+    return UserEvaluation(
+      id: json['_id'],
+      ayahId: json['ayahId'],
+      ayahIds: json['ayahIds'] != null ? List<int>.from(json['ayahIds']) : null,
+      memoId: json['memo_id'],
+      compreId: json['compre_id'],
+      comment: json['comment'],
+    );
+  }
+
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'ayahId': ayahId,
@@ -52,6 +63,17 @@ class UserEvaluation {
 
     map.removeWhere((key, value) => value == null);
     return map;
+  }
+
+  Map<String, dynamic> toCacheJson() {
+    return {
+      '_id': _id,
+      'ayahId': ayah?.id ?? ayahId,
+      'ayahIds': ayahIds,
+      'memo_id': memoId,
+      'compre_id': compreId,
+      'comment': comment,
+    }..removeWhere((key, value) => value == null);
   }
 
   @override

@@ -15,10 +15,12 @@ class UnifiedFilterSchoolGroup {
   const UnifiedFilterSchoolGroup({
     required this.label,
     required this.levels,
+    this.availableAyahCount = 0,
   });
 
   final String label;
   final List<UnifiedFilterSchoolLevel> levels;
+  final int availableAyahCount;
 }
 
 class UnifiedFilterSchoolLevel {
@@ -26,6 +28,7 @@ class UnifiedFilterSchoolLevel {
     required this.key,
     required this.label,
     required this.level,
+    this.availableAyahCount = 0,
   });
 
   /// Composite "schoolId:level" key used for selection equality and for
@@ -33,6 +36,7 @@ class UnifiedFilterSchoolLevel {
   final String key;
   final String label;
   final int level;
+  final int availableAyahCount;
 }
 
 /// All "what is selectable" data the unified sheet needs in order to render
@@ -44,12 +48,14 @@ class UnifiedFilterAvailableData {
     required this.schoolGroups,
     required this.memorizationEvaluations,
     required this.comprehensionEvaluations,
+    this.subjectAyahCounts = const <String, int>{},
     this.showRevelation = true,
     this.subjectHierarchy = const <SubjectHierarchyItem>[],
   });
 
   /// Subject key → localized display label.
   final Map<String, String> subjects;
+  final Map<String, int> subjectAyahCounts;
 
   /// Full subject hierarchy (includes level and parent info).
   final List<SubjectHierarchyItem> subjectHierarchy;
@@ -60,6 +66,7 @@ class UnifiedFilterAvailableData {
 
   static const empty = UnifiedFilterAvailableData(
     subjects: <String, String>{},
+    subjectAyahCounts: <String, int>{},
     subjectHierarchy: <SubjectHierarchyItem>[],
     schoolGroups: <UnifiedFilterSchoolGroup>[],
     memorizationEvaluations: <Evaluation>[],
@@ -175,11 +182,10 @@ const Map<String, int> _kThirdKeyToInt = {
 /// Convert a [UnifiedFilterSelection] to a [QuranChartFilters] suitable for
 /// `EvaluationsProvider.applyChartFilters`. Performs the encoding translations
 /// (int thirds → string, lowercase ayahTypes → capitalised, composite school
-/// keys → schoolIds + schoolLevelPairs).
+/// keys → schoolLevelPairs).
 QuranChartFilters unifiedSelectionToChartFilters(
   UnifiedFilterSelection selection,
 ) {
-  final schoolIds = <int>{};
   final schoolLevelPairs = <String>{};
   for (final composite in selection.schoolLevelIds) {
     final parts = composite.split(':');
@@ -187,7 +193,6 @@ QuranChartFilters unifiedSelectionToChartFilters(
     final schoolId = int.tryParse(parts[0]);
     final level = int.tryParse(parts[1]);
     if (schoolId == null || level == null) continue;
-    schoolIds.add(schoolId);
     schoolLevelPairs.add('$schoolId:$level');
   }
 
@@ -204,7 +209,6 @@ QuranChartFilters unifiedSelectionToChartFilters(
             : '${value[0].toUpperCase()}${value.substring(1).toLowerCase()}')
         .toList(),
     subjectKeys: selection.subjectKeys.toList(),
-    schoolIds: schoolIds.toList(),
     schoolLevelPairs: schoolLevelPairs.toList(),
     memoEvaluationIds: selection.memoEvaluationIds.toList(),
     comprehensionEvaluationIds: selection.compreEvaluationIds.toList(),
@@ -239,8 +243,6 @@ class _ScopeData {
     final end = third * _juzsPerThird;
     return Iterable<int>.generate(end - start + 1, (i) => start + i);
   }
-
-  static int thirdOfJuz(int juz) => ((juz - 1) ~/ _juzsPerThird) + 1;
 
   static Map<int, List<int>> _ensureJuzToSurahs() {
     final cached = _juzToSurahs;
@@ -280,6 +282,8 @@ class _ScopeData {
 ///   panel (e.g. the chart filter panel on /browse).
 enum UnifiedFilterHeaderStyle { bottomSheet, inline }
 
+enum UnifiedFilterActionBarPosition { top, bottom }
+
 typedef UnifiedFilterApplyCallback = void Function(
   UnifiedFilterSelection selection,
 );
@@ -300,6 +304,7 @@ class UnifiedQuranFilterBody extends StatefulWidget {
     this.applyButtonLabel,
     this.applyInProgress = false,
     this.maxHeightFactor = 0.85,
+    this.actionBarPosition = UnifiedFilterActionBarPosition.bottom,
   });
 
   final UnifiedFilterSelection initial;
@@ -317,6 +322,7 @@ class UnifiedQuranFilterBody extends StatefulWidget {
 
   /// Bottom-sheet only: how much of the screen height the body may occupy.
   final double maxHeightFactor;
+  final UnifiedFilterActionBarPosition actionBarPosition;
 
   @override
   State<UnifiedQuranFilterBody> createState() => _UnifiedQuranFilterBodyState();
@@ -324,6 +330,7 @@ class UnifiedQuranFilterBody extends StatefulWidget {
 
 class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
   late UnifiedFilterSelection _draft;
+  final Set<int> _expandedThirds = <int>{};
 
   @override
   void initState() {
@@ -342,6 +349,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
   String _tr(String key) => key.tr;
   String _trParams(String key, Map<String, String> params) =>
       key.trParams(params);
+
+  String _labelWithCount(String label, int count) => '$label ($count)';
 
   void _toggleString(Set<String> set, String value) {
     setState(() {
@@ -391,23 +400,9 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     return scoped;
   }
 
-  String _scopeBadgeText() {
-    if (_draft.surahIds.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_surahs_count', {
-        'count': _draft.surahIds.length.toString(),
-      });
-    }
-    if (_draft.juzs.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_juzs_count', {
-        'count': _draft.juzs.length.toString(),
-      });
-    }
-    if (_draft.thirds.isNotEmpty) {
-      return _trParams('quran_reading_filter_scope_thirds_count', {
-        'count': _draft.thirds.length.toString(),
-      });
-    }
-    return _tr('quran_reading_filter_scope_full_mushaf');
+  String _thirdLabel(int third) {
+    final translated = _tr('quran_reading_filter_third_$third');
+    return translated.replaceFirst(RegExp(r'\s*\([^)]*\)\s*$'), '').trim();
   }
 
   FilterChip _filterChipString(
@@ -419,12 +414,23 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     BorderSide? side,
   }) {
     final selected = selectionSet.contains(value);
+    final theme = Theme.of(context);
     return FilterChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : theme.colorScheme.onSurface,
+        ),
+      ),
       selected: selected,
-      selectedColor: selectedColor,
-      checkmarkColor: checkmarkColor,
-      side: side,
+      selectedColor: selectedColor ?? theme.colorScheme.primary,
+      checkmarkColor: checkmarkColor ?? Colors.white,
+      side: side ??
+          BorderSide(
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.dividerColor.withValues(alpha: 0.7),
+          ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
       labelPadding: const EdgeInsets.symmetric(horizontal: 6),
@@ -442,12 +448,23 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     BorderSide? side,
   }) {
     final selected = selectionSet.contains(value);
+    final theme = Theme.of(context);
     return FilterChip(
-      label: Text(label),
+      label: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : theme.colorScheme.onSurface,
+        ),
+      ),
       selected: selected,
-      selectedColor: selectedColor,
-      checkmarkColor: checkmarkColor,
-      side: side,
+      selectedColor: selectedColor ?? theme.colorScheme.primary,
+      checkmarkColor: checkmarkColor ?? Colors.white,
+      side: side ??
+          BorderSide(
+            color: selected
+                ? theme.colorScheme.primary
+                : theme.dividerColor.withValues(alpha: 0.7),
+          ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
       labelPadding: const EdgeInsets.symmetric(horizontal: 6),
@@ -458,24 +475,25 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
 
   Widget _thirdChip(int third) {
     final selected = _draft.thirds.contains(third);
+    final theme = Theme.of(context);
     return FilterChip(
       label: Text(
-        _tr('quran_reading_filter_third_$third'),
-        style: const TextStyle(fontSize: 13),
+        _thirdLabel(third),
+        style: TextStyle(
+          fontSize: 13,
+          color: selected ? Colors.white : theme.colorScheme.onSurface,
+        ),
       ),
       selected: selected,
-      selectedColor: Theme.of(context)
-          .colorScheme
-          .primary
-          .withValues(alpha: 0.12),
-      checkmarkColor: Theme.of(context).colorScheme.primary,
+      selectedColor: theme.colorScheme.primary,
+      checkmarkColor: Colors.white,
       color: WidgetStatePropertyAll<Color?>(
-        Theme.of(context).scaffoldBackgroundColor,
+        theme.scaffoldBackgroundColor,
       ),
       side: BorderSide(
         color: selected
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).dividerColor,
+            ? theme.colorScheme.primary
+            : theme.dividerColor,
       ),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
@@ -499,6 +517,79 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
           }
         });
       },
+    );
+  }
+
+  Widget _thirdSectionCard(int third) {
+    final isExpanded = _expandedThirds.contains(third);
+    final isSelected = _draft.thirds.contains(third);
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.dividerColor.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                IconButton(
+                  visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
+                  padding: EdgeInsets.zero,
+                  icon: Icon(
+                    isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedThirds.remove(third);
+                      } else {
+                        _expandedThirds.add(third);
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(width: 4),
+                Expanded(child: _thirdChip(third)),
+              ],
+            ),
+          ),
+          if (isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final juz in _ScopeData.juzsInThird(third))
+                      _filterChipInt(
+                        _trParams(
+                          'quran_reading_filter_juz_n',
+                          {'juz': juz.toString()},
+                        ),
+                        juz,
+                        _draft.juzs,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -555,44 +646,30 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _tr('quran_reading_filter_scope_title'),
-                        style: AppTypography.of(context)
-                            .sectionTitle
-                            .copyWith(fontSize: 15),
-                      ),
-                    ),
-                    Text(
-                      _scopeBadgeText(),
-                      style: AppTypography.of(context)
-                          .badgeLabel
-                          .copyWith(color: theme.hintColor),
-                    ),
-                  ],
-                ),
-              ),
-              // ── Thirds row ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
                 child: Directionality(
                   textDirection: TextDirection.rtl,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 640;
+                      const spacing = 6.0;
+                      final columns = constraints.maxWidth >= 780
+                          ? 3
+                          : constraints.maxWidth >= 520
+                              ? 2
+                              : 1;
+                      final targetWidth = columns == 1
+                          ? constraints.maxWidth
+                          : ((constraints.maxWidth - (spacing * (columns - 1))) /
+                                  columns)
+                              .clamp(150.0, 240.0);
                       return Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                        spacing: spacing,
+                        runSpacing: spacing,
                         children: [
                           for (var t = 1; t <= 3; t++)
                             SizedBox(
-                              width: compact
-                                  ? (constraints.maxWidth - 6) / 2
-                                  : null,
-                              child: _thirdChip(t),
+                              width: targetWidth,
+                              child: _thirdSectionCard(t),
                             ),
                         ],
                       );
@@ -601,26 +678,6 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                 ),
               ),
               const SizedBox(height: 8),
-              // ── Juz grid (filtered by selected thirds) ──────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                child: Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (var j = 1; j <= 30; j++)
-                      if (_draft.thirds.isEmpty ||
-                          _draft.thirds.contains(_ScopeData.thirdOfJuz(j)))
-                        _filterChipInt(
-                          _trParams('quran_reading_filter_juz_n', {
-                            'juz': j.toString(),
-                          }),
-                          j,
-                          _draft.juzs,
-                        ),
-                  ],
-                ),
-              ),
               // ── Surahs (filtered by selected juzs / thirds) ─────────────
               if (_availableSurahIds.isNotEmpty)
                 ExpansionTile(
@@ -651,7 +708,23 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
   }
 
   Widget _schoolDimensionSection() {
-    if (widget.available.schoolGroups.isEmpty) {
+    final visibleGroups = widget.available.schoolGroups
+        .map(
+          (group) => UnifiedFilterSchoolGroup(
+            label: group.label,
+            levels: group.levels
+                .where((level) => level.availableAyahCount > 0)
+                .toList(),
+            availableAyahCount: group.availableAyahCount,
+          ),
+        )
+        .where(
+          (group) =>
+              group.availableAyahCount > 0 && group.levels.isNotEmpty,
+        )
+        .toList();
+
+    if (visibleGroups.isEmpty) {
       return _dimensionSection(
         title: _tr('quran_reading_filter_dim_school'),
         chips: const <Widget>[],
@@ -676,7 +749,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             data: theme.copyWith(dividerColor: Colors.transparent),
             child: Column(
               children: [
-                for (final group in widget.available.schoolGroups)
+                for (final group in visibleGroups)
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 8),
@@ -696,7 +769,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                       ),
                       childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       title: Text(
-                        group.label,
+                        _labelWithCount(
+                          group.label,
+                          group.availableAyahCount,
+                        ),
                         style: AppTypography.of(context).listTileTitle,
                       ),
                       children: [
@@ -708,7 +784,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                             children: group.levels
                                 .map(
                                   (level) => _filterChipString(
-                                    level.label,
+                                    _labelWithCount(
+                                      level.label,
+                                      level.availableAyahCount,
+                                    ),
                                     level.key,
                                     _draft.schoolLevelIds,
                                   ),
@@ -762,6 +841,49 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       _draft.memoEvaluationIds.clear();
       _draft.compreEvaluationIds.clear();
     });
+  }
+
+  Widget _buildActionBar() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: widget.applyInProgress ? null : _resetAll,
+              child: Text(_tr('quran_reading_filter_clear')),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryPurple,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: widget.applyInProgress
+                  ? null
+                  : () => widget.onApply(
+                        _normalizedSelection(),
+                      ),
+              child: widget.applyInProgress
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      widget.applyButtonLabel ??
+                          _tr('quran_reading_filter_apply'),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Set<String> _expandedSubjectSelection() {
@@ -825,7 +947,11 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     final hierarchy = widget.available.subjectHierarchy;
     final availableKeys = widget.available.subjects.keys
         .map((key) => key.trim())
-        .where((key) => key.isNotEmpty)
+      .where(
+        (key) =>
+          key.isNotEmpty &&
+          (widget.available.subjectAyahCounts[key] ?? 0) > 0,
+      )
         .toSet();
     final nodesByKey = <String, SubjectHierarchyItem>{
       for (final item in hierarchy)
@@ -877,6 +1003,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       final label = node.displayName(locale).trim().isEmpty
           ? nodeKey
           : node.displayName(locale).trim();
+      final labelWithCount = _labelWithCount(
+        label,
+        widget.available.subjectAyahCounts[nodeKey] ?? 0,
+      );
       final children = childrenOf(nodeKey);
       final hasDirectContent = availableKeys.contains(nodeKey);
       final selected = _draft.subjectKeys.contains(nodeKey);
@@ -891,7 +1021,11 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
           padding: EdgeInsetsDirectional.only(start: depth * 14.0, bottom: 6),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: _filterChipString(label, nodeKey, _draft.subjectKeys),
+            child: _filterChipString(
+              labelWithCount,
+              nodeKey,
+              _draft.subjectKeys,
+            ),
           ),
         );
       }
@@ -920,8 +1054,11 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   Expanded(
                     child: Align(
                       alignment: AlignmentDirectional.centerStart,
-                      child:
-                          _filterChipString(label, nodeKey, _draft.subjectKeys),
+                      child: _filterChipString(
+                        labelWithCount,
+                        nodeKey,
+                        _draft.subjectKeys,
+                      ),
                     ),
                   )
                 else
@@ -929,7 +1066,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                     child: Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: _filterChipString(
-                        label,
+                        labelWithCount,
                         nodeKey,
                         _draft.subjectKeys,
                       ),
@@ -974,17 +1111,17 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final maxWidth = constraints.maxWidth;
-                      final columns = maxWidth >= 980
+                      final columns = constraints.maxWidth >= 880
                           ? 3
-                          : maxWidth >= 520
+                          : constraints.maxWidth >= 520
                               ? 2
                               : 1;
-                      final spacing = maxWidth >= 520 ? 8.0 : 6.0;
+                      const spacing = 6.0;
                       final totalSpacing = spacing * (columns - 1);
                       final itemWidth =
-                          ((maxWidth - totalSpacing) / columns)
-                              .clamp(columns == 1 ? 180.0 : 150.0, maxWidth);
+                          ((constraints.maxWidth - totalSpacing) / columns)
+                          .clamp(180.0, constraints.maxWidth);
+
                       return Wrap(
                         spacing: spacing,
                         runSpacing: spacing,
@@ -1017,7 +1154,11 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     return false;
   }
 
-  Widget _buildContentColumn(BuildContext context) {
+  Widget _buildContentColumn(
+    BuildContext context, {
+    bool includeTopActionBar = true,
+    bool includeBottomActionBar = true,
+  }) {
     final isSheet = widget.headerStyle == UnifiedFilterHeaderStyle.bottomSheet;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -1045,22 +1186,11 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          Text(
-            _tr('quran_reading_filter_title'),
-            textAlign: TextAlign.center,
-            style:
-                AppTypography.of(context).sectionTitle.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _tr('quran_reading_filter_subtitle'),
-            textAlign: TextAlign.center,
-            style: AppTypography.of(context)
-                .badgeLabel
-                .copyWith(color: theme.hintColor),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
         ],
+        if (includeTopActionBar &&
+            widget.actionBarPosition == UnifiedFilterActionBarPosition.top)
+          _buildActionBar(),
         _scopeTreeSection(),
         if (widget.available.showRevelation)
           _dimensionSection(
@@ -1114,43 +1244,9 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   .copyWith(color: theme.hintColor),
             ),
           ),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: widget.applyInProgress ? null : _resetAll,
-                child: Text(_tr('quran_reading_filter_clear')),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryPurple,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: widget.applyInProgress
-                    ? null
-                    : () => widget.onApply(
-                          _normalizedSelection(),
-                        ),
-                child: widget.applyInProgress
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        widget.applyButtonLabel ??
-                            _tr('quran_reading_filter_apply'),
-                      ),
-              ),
-            ),
-          ],
-        ),
+        if (includeBottomActionBar &&
+            widget.actionBarPosition == UnifiedFilterActionBarPosition.bottom)
+          _buildActionBar(),
       ],
     );
   }
@@ -1160,6 +1256,27 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     final isSheet = widget.headerStyle == UnifiedFilterHeaderStyle.bottomSheet;
 
     if (!isSheet) {
+      if (widget.actionBarPosition == UnifiedFilterActionBarPosition.top) {
+        return LayoutBuilder(
+          builder: (context, constraints) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildActionBar(),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: _buildContentColumn(
+                    context,
+                    includeTopActionBar: false,
+                    includeBottomActionBar: false,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
       return _buildContentColumn(context);
     }
 
@@ -1207,5 +1324,44 @@ Future<UnifiedFilterSelection?> showUnifiedQuranFilterSheet(
       headerStyle: UnifiedFilterHeaderStyle.bottomSheet,
       onApply: (selection) => Navigator.of(sheetContext).pop(selection),
     ),
+  );
+}
+
+Future<UnifiedFilterSelection?> showUnifiedQuranFilterPopup(
+  BuildContext context, {
+  required UnifiedFilterSelection initial,
+  required UnifiedFilterAvailableData available,
+  String? applyButtonLabel,
+}) {
+  return showDialog<UnifiedFilterSelection>(
+    context: context,
+    barrierDismissible: true,
+    builder: (dialogContext) {
+      final width = MediaQuery.of(dialogContext).size.width;
+      return Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 920,
+            maxHeight: MediaQuery.of(dialogContext).size.height * 0.86,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: UnifiedQuranFilterBody(
+              initial: initial,
+              available: available,
+              headerStyle: width >= 700
+                  ? UnifiedFilterHeaderStyle.inline
+                  : UnifiedFilterHeaderStyle.bottomSheet,
+              actionBarPosition: UnifiedFilterActionBarPosition.top,
+              applyButtonLabel: applyButtonLabel,
+              onApply: (selection) =>
+                  Navigator.of(dialogContext).pop(selection),
+            ),
+          ),
+        ),
+      );
+    },
   );
 }

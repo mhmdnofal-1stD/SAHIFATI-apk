@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sahifaty/screens/profile_screen/add_supervisor_screen.dart';
-import 'package:sahifaty/screens/profile_screen/incoming_requests_screen.dart';
+import 'package:sahifaty/screens/supervision_screen/incoming_requests_screen.dart';
 
 /// Locks the username-first / email-secondary contract for supervision
 /// identity surfaces (`_SupervisorPreviewSheet`, `_RequestCard`, and

@@ -182,6 +182,15 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
         totalItems: totalItems,
         completedItems: completedItems,
         lastReachedLevel: selectedIndex + 1,
+        browseSchoolLevelPair: (() {
+          final currentLevel = levels[selectedIndex];
+          final schoolId = currentLevel.schoolId;
+          final levelNumber = currentLevel.level;
+          if (schoolId == null || levelNumber == null) {
+            return null;
+          }
+          return '$schoolId:$levelNumber';
+        })(),
       ),
     );
   }

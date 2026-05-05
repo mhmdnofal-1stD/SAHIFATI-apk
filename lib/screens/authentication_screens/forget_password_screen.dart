@@ -286,14 +286,14 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ],
           Expanded(
             child: Column(
-              crossAxisAlignment: _isArabic
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  _isArabic ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
                   textAlign: _isArabic ? TextAlign.right : TextAlign.left,
-                  textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+                  textDirection:
+                      _isArabic ? TextDirection.rtl : TextDirection.ltr,
                   style: AppTypography.of(context).sectionTitle.copyWith(
                         fontSize: 15,
                         color: const Color(0xFF132A4A),
@@ -303,7 +303,8 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 Text(
                   body,
                   textAlign: _isArabic ? TextAlign.right : TextAlign.left,
-                  textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
+                  textDirection:
+                      _isArabic ? TextDirection.rtl : TextDirection.ltr,
                   style: AppTypography.of(context).bodySecondary.copyWith(
                         fontSize: 12.5,
                         height: 1.55,
@@ -332,41 +333,6 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         border: Border.all(color: accent.withValues(alpha: 0.18)),
       ),
       child: Icon(icon, color: accent, size: 22),
-    );
-  }
-
-  Widget _buildCaptionNote(String text) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F1E7),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2D8C8)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            size: 16,
-            color: Color(0xFF66758A),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              textAlign: _isArabic ? TextAlign.right : TextAlign.left,
-              textDirection: _isArabic ? TextDirection.rtl : TextDirection.ltr,
-              style: AppTypography.of(context).bodySecondary.copyWith(
-                    fontSize: 12.5,
-                    height: 1.5,
-                    color: const Color(0xFF5D697D),
-                  ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -508,8 +474,9 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 label: 'forgot_password_request_submit'.tr,
                 icon: Icons.send_rounded,
                 isLoading: usersProvider.isLoading,
-                onPressed:
-                    usersProvider.isLoading ? null : () => _handleRequest(usersProvider),
+                onPressed: usersProvider.isLoading
+                    ? null
+                    : () => _handleRequest(usersProvider),
               ),
             ),
             InfoIconButton(
@@ -614,8 +581,9 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 label: 'forgot_password_reset_submit'.tr,
                 icon: Icons.check_circle_outline_rounded,
                 isLoading: usersProvider.isLoading,
-                onPressed:
-                    usersProvider.isLoading ? null : () => _handleReset(usersProvider),
+                onPressed: usersProvider.isLoading
+                    ? null
+                    : () => _handleReset(usersProvider),
               ),
             ),
             InfoIconButton(
@@ -696,21 +664,20 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final usersProvider = Provider.of<UsersProvider>(context);
 
     final title = switch (_stage) {
-      _RecoveryStage.requestForm || _RecoveryStage.requestAccepted =>
+      _RecoveryStage.requestForm ||
+      _RecoveryStage.requestAccepted =>
         'forgot_password_stage_title_request'.tr,
-      _RecoveryStage.resetForm || _RecoveryStage.resetSuccess =>
+      _RecoveryStage.resetForm ||
+      _RecoveryStage.resetSuccess =>
         'forgot_password_stage_title_reset'.tr,
-      _RecoveryStage.resetExpired =>
-        'forgot_password_stage_title_link'.tr,
+      _RecoveryStage.resetExpired => 'forgot_password_stage_title_link'.tr,
     };
 
     final subtitle = switch (_stage) {
-      _RecoveryStage.requestForm =>
-        'forgot_password_stage_subtitle_request'.tr,
+      _RecoveryStage.requestForm => 'forgot_password_stage_subtitle_request'.tr,
       _RecoveryStage.requestAccepted =>
         'forgot_password_stage_subtitle_request_accepted'.tr,
-      _RecoveryStage.resetForm =>
-        'forgot_password_stage_subtitle_reset'.tr,
+      _RecoveryStage.resetForm => 'forgot_password_stage_subtitle_reset'.tr,
       _RecoveryStage.resetSuccess =>
         'forgot_password_stage_subtitle_reset_success'.tr,
       _RecoveryStage.resetExpired =>

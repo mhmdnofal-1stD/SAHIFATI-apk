@@ -65,6 +65,9 @@ class UsersProvider with ChangeNotifier {
   int? _lastRegisteredPushUserId;
   bool _pushTokenSyncInFlight = false;
 
+  @visibleForTesting
+  Future<AuthData?> Function(String refreshToken)? debugRefreshTokensOverride;
+
   String _accountKeyForUser(User user) => user.id.toString();
 
   String _onboardingCompletionKeyForUser(User user) =>
@@ -229,6 +232,50 @@ class UsersProvider with ChangeNotifier {
       setActive: true,
     );
     await _setActiveUserSnapshot(user);
+  }
+
+  Future<AuthData?> _refreshTokensForSession(String refreshToken) {
+    final override = debugRefreshTokensOverride;
+    if (override != null) {
+      return override(refreshToken);
+    }
+
+    return _usersService.refreshTokens(refreshToken);
+  }
+
+  Future<String?> _ensureValidAccessTokenForAccount(
+    String accountKey, {
+    bool notifyOnFailure = true,
+  }) async {
+    final accessToken = await SecureSessionStorage.readAccessToken(
+      accountKey: accountKey,
+    );
+    if (accessToken != null && accessToken.isNotEmpty) {
+      return accessToken;
+    }
+
+    final refreshToken = await SecureSessionStorage.readRefreshToken(
+      accountKey: accountKey,
+    );
+    if (refreshToken == null || refreshToken.isEmpty) {
+      await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
+      return null;
+    }
+
+    final refreshed = await _refreshTokensForSession(refreshToken);
+    final refreshedAccessToken = refreshed?.accessToken;
+    if (refreshedAccessToken == null || refreshedAccessToken.isEmpty) {
+      await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
+      return null;
+    }
+
+    await SecureSessionStorage.writeAccountSessionTokens(
+      accountKey: accountKey,
+      accessToken: refreshedAccessToken,
+      refreshToken: refreshed?.refreshToken ?? refreshToken,
+      setActive: false,
+    );
+    return refreshedAccessToken;
   }
 
   String extractErrorMessage(Object error) {
@@ -1556,34 +1603,11 @@ class UsersProvider with ChangeNotifier {
         return false;
       }
 
-      final accessToken = await SecureSessionStorage.readAccessToken(
-        accountKey: activeAccountKey,
+      final accessToken = await _ensureValidAccessTokenForAccount(
+        activeAccountKey,
       );
-      // When the access token is absent, attempt a silent refresh before
-      // giving up (handles cold-start after server-side token rotation).
       if (accessToken == null || accessToken.isEmpty) {
-        final refreshToken = await SecureSessionStorage.readRefreshToken(
-          accountKey: activeAccountKey,
-        );
-        if (refreshToken != null && refreshToken.isNotEmpty) {
-          final refreshed = await _usersService.refreshTokens(refreshToken);
-          if (refreshed?.accessToken != null &&
-              refreshed!.accessToken!.isNotEmpty) {
-            await SecureSessionStorage.writeAccountSessionTokens(
-              accountKey: activeAccountKey,
-              accessToken: refreshed.accessToken!,
-              refreshToken: refreshed.refreshToken ?? refreshToken,
-            );
-          } else {
-            await _removeStoredSessionByAccountKey(
-                activeAccountKey, notify: true);
-            return false;
-          }
-        } else {
-          await _removeStoredSessionByAccountKey(
-              activeAccountKey, notify: true);
-          return false;
-        }
+        return false;
       }
 
       final rawUserData = sessionRecord['user'];
@@ -1698,11 +1722,8 @@ class UsersProvider with ChangeNotifier {
       return false;
     }
 
-    final accessToken = await SecureSessionStorage.readAccessToken(
-      accountKey: accountKey,
-    );
+    final accessToken = await _ensureValidAccessTokenForAccount(accountKey);
     if (accessToken == null || accessToken.isEmpty) {
-      await _removeStoredSessionByAccountKey(accountKey, notify: true);
       return false;
     }
 

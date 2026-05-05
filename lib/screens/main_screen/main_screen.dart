@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -12,10 +13,12 @@ import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
+import '../../services/evaluations_services.dart';
 import '../widgets/bar_chart_widget.dart';
 import '../widgets/chart_filter_panel.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/info_icon_button.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/notifications_bell_button.dart';
 import '../widgets/responsive_content_shell.dart';
@@ -24,16 +27,43 @@ import '../widgets/surah_picker_dialog.dart';
 class MainScreen extends StatefulWidget {
   static const String routeName = '/browse';
 
-  const MainScreen({super.key, this.comesFirst = false});
+  const MainScreen({
+    super.key,
+    this.comesFirst = false,
+    this.initialChartFilters = const QuranChartFilters(),
+  });
 
   final bool comesFirst;
+  final QuranChartFilters initialChartFilters;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<MainScreen> {
-  bool _hasRequestedChartBootstrap = false;
+  bool _isChartBootstrapInFlight = false;
+  int? _chartBootstrapUserId;
+
+  void _debugChartBootstrap(
+    String event, {
+    int? selectedUserId,
+    EvaluationsProvider? evaluationsProvider,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    final buffer = StringBuffer('[chart-bootstrap] $event');
+    if (selectedUserId != null) {
+      buffer.write(' user=$selectedUserId');
+    }
+    if (evaluationsProvider != null) {
+      buffer.write(' loading=${evaluationsProvider.isLoading}');
+      buffer.write(' entries=${evaluationsProvider.chartEvaluationData.length}');
+      buffer.write(' hasError=${(evaluationsProvider.chartLoadError ?? '').isNotEmpty}');
+    }
+    debugPrint(buffer.toString());
+  }
 
   bool _hasInAppBackTarget(BuildContext context) {
     final canPop = Navigator.maybeOf(context)?.canPop() ?? false;
@@ -101,30 +131,69 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  Future<void> _bootstrapChartDataIfNeeded() async {
-    if (!mounted || _hasRequestedChartBootstrap) {
-      return;
+  bool _needsChartBootstrap(
+    EvaluationsProvider evaluationsProvider,
+    int? selectedUserId,
+  ) {
+    if (!mounted || selectedUserId == null || _isChartBootstrapInFlight) {
+      return false;
     }
 
-    _hasRequestedChartBootstrap = true;
+    final sameUser = _chartBootstrapUserId == selectedUserId;
+    if (!sameUser) {
+      return true;
+    }
+
+    return evaluationsProvider.chartEvaluationData.isEmpty &&
+        evaluationsProvider.chartLoadError == null &&
+        !evaluationsProvider.isLoading;
+  }
+
+  Future<void> _bootstrapChartDataIfNeeded() async {
+    if (!mounted || _isChartBootstrapInFlight) {
+      return;
+    }
 
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final selectedUserId = usersProvider.selectedUser?.id;
 
     if (selectedUserId == null) {
+      _debugChartBootstrap('skip:no-user');
       return;
     }
 
-    if (!widget.comesFirst &&
-        evaluationsProvider.chartEvaluationData.isNotEmpty) {
+    if (!_needsChartBootstrap(evaluationsProvider, selectedUserId)) {
+      _debugChartBootstrap(
+        'skip:not-needed',
+        selectedUserId: selectedUserId,
+        evaluationsProvider: evaluationsProvider,
+      );
       return;
     }
+
+    _isChartBootstrapInFlight = true;
+    _chartBootstrapUserId = selectedUserId;
+    _debugChartBootstrap(
+      'request:start',
+      selectedUserId: selectedUserId,
+      evaluationsProvider: evaluationsProvider,
+    );
 
     try {
-      await evaluationsProvider.getQuranChartData(selectedUserId);
+      await evaluationsProvider.getQuranChartData(
+        selectedUserId,
+        filters: widget.initialChartFilters,
+      );
     } catch (_) {
       // The chart widget already shows its own error state if needed.
+    } finally {
+      _isChartBootstrapInFlight = false;
+      _debugChartBootstrap(
+        'request:end',
+        selectedUserId: selectedUserId,
+        evaluationsProvider: evaluationsProvider,
+      );
     }
   }
 
@@ -136,12 +205,19 @@ class _MainScreenState extends State<MainScreen> {
     final showBackButton = _hasInAppBackTarget(context);
     final selectedUserId = usersProvider.selectedUser?.id;
 
-    return evaluationsProvider.isLoading == true
-        ? const Center(
-            child: CircularProgressIndicator(),
-          )
-        : NoPopScope(
-            child: Scaffold(
+    if (_needsChartBootstrap(evaluationsProvider, selectedUserId)) {
+      _debugChartBootstrap(
+        'schedule:post-frame',
+        selectedUserId: selectedUserId,
+        evaluationsProvider: evaluationsProvider,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _bootstrapChartDataIfNeeded();
+      });
+    }
+
+    return NoPopScope(
+      child: Scaffold(
               appBar: PreferredSize(
                 preferredSize: const Size.fromHeight(kToolbarHeight),
                 child: Directionality(
@@ -175,135 +251,157 @@ class _MainScreenState extends State<MainScreen> {
                   ? null
                   : const GlobalDrawer(),
               body: ResponsiveContentShell(
-                builder: (context) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        constraints: const BoxConstraints(maxWidth: 980),
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFF5F2EA), Color(0xFFE9F0E7)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: const Color(0xFFDCE2DA)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'main_screen_gateway_badge'.tr,
-                              style: AppTypography.of(context).badgeLabel,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${"well_done".tr} ${usersProvider.selectedUser?.username ?? usersProvider.selectedUser?.email ?? ''}',
-                              style: AppTypography.of(context).pageHeading,
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(height: SizeConfig.getProportionalHeight(20)),
-                      if (selectedUserId != null)
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 920),
-                          child: ChartFilterPanel(userId: selectedUserId),
-                        ),
-                      if (widget.comesFirst)
-                        Container(
-                          constraints: const BoxConstraints(maxWidth: 920),
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(top: 12),
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F8F4),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: const Color(0xFFDCE2DA)),
-                          ),
-                          child: Text(
-                            'main_screen_chart_intro_first'.tr,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.of(context).bodyDefault,
-                          ),
-                        ),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 920),
-                        child: BarChartWidget(
-                          evaluationsProvider: evaluationsProvider,
-                          languageProvider: languageProvider,
-                          includeUncategorized: false,
-                        ),
-                      ),
-                      SizedBox(height: SizeConfig.getProportionalHeight(20)),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 920),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 520;
-                            final resumeBtn = FilledButton.icon(
-                              onPressed: () =>
-                                  _resumeReading(context, selectedUserId),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.buttonColor,
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              icon: const Icon(Icons.play_arrow_rounded),
-                              label: Text(
-                                'main_screen_resume_action'.tr,
-                                style: AppTypography.of(context).buttonPrimary,
-                              ),
-                            );
-                            final pickBtn = OutlinedButton.icon(
-                              onPressed: () => _pickSurah(context),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(52),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                side: const BorderSide(
-                                  color: AppColors.buttonColor,
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.menu_book_outlined,
-                                color: AppColors.buttonColor,
-                              ),
-                              label: Text(
-                                'main_screen_pick_surah'.tr,
-                                style: AppTypography.of(context)
-                                    .buttonSecondary
-                                    .copyWith(color: AppColors.buttonColor),
-                              ),
-                            );
-                            if (isWide) {
-                              return Row(
-                                children: [
-                                  Expanded(child: resumeBtn),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: pickBtn),
-                                ],
-                              );
-                            }
-                            return Column(
+                builder: (context) => LayoutBuilder(
+                  builder: (context, shellConstraints) {
+                    final topRowMaxWidth = shellConstraints.maxWidth >= 920
+                        ? 920.0
+                        : shellConstraints.maxWidth;
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: topRowMaxWidth),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                resumeBtn,
-                                const SizedBox(height: 10),
-                                pickBtn,
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFF5F2EA),
+                                          Color(0xFFE9F0E7),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: const Color(0xFFDCE2DA),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        InfoIconButton(
+                                          message:
+                                              'main_screen_chart_intro_first'.tr,
+                                          color: const Color(0xFF7B8794),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            '${"well_done".tr} ${usersProvider.selectedUser?.username ?? usersProvider.selectedUser?.email ?? ''}',
+                                            textAlign: TextAlign.right,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTypography.of(context)
+                                                .pageHeading,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (selectedUserId != null) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ChartFilterPanel(
+                                      userId: selectedUserId,
+                                      margin: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
                               ],
-                            );
-                          },
-                        ),
+                            ),
+                          ),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 920),
+                            child: BarChartWidget(
+                              evaluationsProvider: evaluationsProvider,
+                              languageProvider: languageProvider,
+                              includeUncategorized: false,
+                            ),
+                          ),
+                          SizedBox(
+                            height: SizeConfig.getProportionalHeight(20),
+                          ),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 920),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isWide = constraints.maxWidth >= 520;
+                                final resumeBtn = FilledButton.icon(
+                                  onPressed: () =>
+                                      _resumeReading(context, selectedUserId),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.buttonColor,
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.play_arrow_rounded),
+                                  label: Text(
+                                    'main_screen_resume_action'.tr,
+                                    style:
+                                        AppTypography.of(context).buttonPrimary,
+                                  ),
+                                );
+                                final pickBtn = OutlinedButton.icon(
+                                  onPressed: () => _pickSurah(context),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    side: const BorderSide(
+                                      color: AppColors.buttonColor,
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.menu_book_outlined,
+                                    color: AppColors.buttonColor,
+                                  ),
+                                  label: Text(
+                                    'main_screen_pick_surah'.tr,
+                                    style: AppTypography.of(context)
+                                        .buttonSecondary
+                                        .copyWith(
+                                          color: AppColors.buttonColor,
+                                        ),
+                                  ),
+                                );
+                                if (isWide) {
+                                  return Row(
+                                    children: [
+                                      Expanded(child: resumeBtn),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: pickBtn),
+                                    ],
+                                  );
+                                }
+                                return Column(
+                                  children: [
+                                    resumeBtn,
+                                    const SizedBox(height: 10),
+                                    pickBtn,
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),

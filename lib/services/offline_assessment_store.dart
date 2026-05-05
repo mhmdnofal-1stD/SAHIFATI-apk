@@ -46,6 +46,8 @@ class OfflineAssessmentStore {
   static const String _pendingEvaluationSyncKey =
       'offline.pending_evaluation_sync';
   static const String _evaluationsKeyPrefix = 'offline.evaluations.';
+  static const String _userEvaluationsKeyPrefix =
+    'offline.user_evaluations.';
   static const String _quranChartKeyPrefix = 'offline.quran_chart.';
   static const String _currentUserProfileKeyPrefix =
       'offline.current_user_profile.';
@@ -74,6 +76,21 @@ class OfflineAssessmentStore {
   Future<String?> getCachedEvaluationsJson({String? type}) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_evaluationsKey(type));
+  }
+
+  Future<void> cacheUserEvaluationsJson({
+    required String scopeKey,
+    required String rawJson,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_scopedKey(_userEvaluationsKeyPrefix, scopeKey), rawJson);
+  }
+
+  Future<String?> getCachedUserEvaluationsJson({
+    required String scopeKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_scopedKey(_userEvaluationsKeyPrefix, scopeKey));
   }
 
   Future<void> cacheQuranChartJson({
@@ -281,6 +298,7 @@ class OfflineAssessmentStore {
 
     // Remove every key whose scoped segment starts with this accountKey.
     final scopedPrefixes = [
+      _userEvaluationsKeyPrefix + trimmed,
       _quranChartKeyPrefix + trimmed,
       _currentUserProfileKeyPrefix + trimmed,
       _supervisionCodeKeyPrefix + trimmed,

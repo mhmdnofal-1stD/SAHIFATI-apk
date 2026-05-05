@@ -395,7 +395,7 @@ class _CommentsSection extends StatelessWidget {
                               ? c['user']['username']?.toString()
                               : null) ??
                           '',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.mutedText,
                       ),
@@ -448,7 +448,7 @@ class _CommentInputCard extends StatelessWidget {
               controller: controller,
               textDirection: TextDirection.rtl,
               maxLines: 2,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'أضف تعليقًا...',
                 hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
                 border: InputBorder.none,
@@ -501,7 +501,7 @@ class _RejectReasonCard extends StatelessWidget {
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'اذكر سبب الرفض...',
-              hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
+              hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
               filled: true,
               fillColor: AppColors.panelColor,
               border: OutlineInputBorder(

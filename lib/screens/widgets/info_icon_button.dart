@@ -8,11 +8,13 @@ class InfoIconButton extends StatelessWidget {
   const InfoIconButton({
     super.key,
     required this.message,
+    this.title,
     this.color,
     this.size = 18.0,
   });
 
   final String message;
+  final String? title;
   final Color? color;
   final double size;
 
@@ -45,10 +47,26 @@ class InfoIconButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          content: Text(
-            message,
-            style: const TextStyle(fontSize: 14, height: 1.65),
+          titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+          title: title == null
+              ? null
+              : Text(
+                  title!,
+                  textAlign: isRtl ? TextAlign.right : TextAlign.left,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF132A4A),
+                  ),
+                ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: Text(
+              message,
+              textAlign: isRtl ? TextAlign.right : TextAlign.left,
+              style: const TextStyle(fontSize: 15, height: 1.75),
+            ),
           ),
           actions: [
             TextButton(

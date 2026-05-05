@@ -13,6 +13,7 @@ import 'package:sahifaty/models/school_level_content.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
+import 'package:sahifaty/services/local_quran_chart_service.dart';
 import 'package:sahifaty/services/offline_assessment_store.dart';
 import 'package:sahifaty/services/secure_session_storage.dart';
 
@@ -28,6 +29,7 @@ class EvaluationsProvider with ChangeNotifier {
   List<ChartEvaluationData> chartEvaluationData = [];
   String chartDimension = 'memorization';
   QuranChartFilters chartFilters = const QuranChartFilters();
+  String? chartDataSource;
   String? chartLoadError;
   bool isLoading = true;
   bool isQuestionsLevelLoading = false;
@@ -38,10 +40,58 @@ class EvaluationsProvider with ChangeNotifier {
   Map<String, List<Ayat>> _questionContentAyahs = {};
   Map<String, bool> _questionContentCompletion = {};
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
+  final LocalQuranChartService _localQuranChartService =
+      const LocalQuranChartService();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isSyncingPending = false;
+    final Set<String> _hydratedUserEvaluationScopes = <String>{};
+    final Map<String, Future<void>> _userEvaluationCacheWarmups =
+      <String, Future<void>>{};
   int pendingSyncCount = 0;
+
+  void _debugChart(
+    String event, {
+    int? userId,
+    String? dimension,
+    QuranChartFilters? filters,
+    int? requestId,
+    int? entryCount,
+    int? totalVerses,
+    String? error,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+
+    final buffer = StringBuffer('[chart] $event');
+    if (requestId != null) {
+      buffer.write(' req=$requestId');
+    }
+    if (userId != null) {
+      buffer.write(' user=$userId');
+    }
+    if (dimension != null && dimension.isNotEmpty) {
+      buffer.write(' dim=$dimension');
+    }
+    if (filters != null) {
+      buffer.write(' filters=${filters.toCacheKey()}');
+      if (filters.hasAnyActive) {
+        buffer.write(' filtered=true');
+      }
+    }
+    if (entryCount != null) {
+      buffer.write(' entries=$entryCount');
+    }
+    if (totalVerses != null) {
+      buffer.write(' totalVerses=$totalVerses');
+    }
+    if (error != null && error.isNotEmpty) {
+      buffer.write(' error="$error"');
+    }
+
+    debugPrint(buffer.toString());
+  }
 
   List<Evaluation> get memorizationEvaluations => evaluations
       .where((evaluation) =>
@@ -119,55 +169,39 @@ class EvaluationsProvider with ChangeNotifier {
     final effectiveFilters = filters ?? chartFilters;
     final requestId = ++_chartLoadRequestId;
     try {
+      _debugChart(
+        'request:start',
+        userId: userId,
+        dimension: dimension,
+        filters: effectiveFilters,
+        requestId: requestId,
+      );
       setLoading();
       chartLoadError = null;
       chartDimension = dimension;
       chartFilters = effectiveFilters;
 
-      final cacheScopeKey = await _resolveChartCacheScopeKey(userId);
-      final cachedPayload = await _readCachedChartPayload(
-        cacheScopeKey: cacheScopeKey,
+      _debugChart(
+        'offline:build',
         dimension: dimension,
         filters: effectiveFilters,
+        requestId: requestId,
+        userId: userId,
       );
-
-      if (cachedPayload != null) {
-        _applyChartPayload(
-          cachedPayload,
-          dimension: dimension,
-          filters: effectiveFilters,
-        );
-        resetLoading();
-        unawaited(
-          _maybeRefreshQuranChartDataInBackground(
-            requestId: requestId,
-            userId: userId,
-            dimension: dimension,
-            filters: effectiveFilters,
-            cacheScopeKey: cacheScopeKey,
-          ),
-        );
-        return;
-      }
-
-      chartEvaluationData.clear();
-      totalCount = 0;
-      notifyListeners();
-
-      final response = await _evaluationsServices.getQuranChartData(
+      final response = await buildOfflineQuranChartPayload(
         userId,
         dimension: dimension,
         filters: effectiveFilters,
       );
 
-      await _cacheChartPayload(
-        cacheScopeKey: cacheScopeKey,
-        dimension: dimension,
-        filters: effectiveFilters,
-        payload: response,
-      );
-
       if (requestId != _chartLoadRequestId) {
+        _debugChart(
+          'request:stale_discarded',
+          userId: userId,
+          dimension: dimension,
+          filters: effectiveFilters,
+          requestId: requestId,
+        );
         return;
       }
 
@@ -175,75 +209,52 @@ class EvaluationsProvider with ChangeNotifier {
         response,
         dimension: dimension,
         filters: effectiveFilters,
+        source: 'offline-local',
+        requestId: requestId,
+        userId: userId,
       );
     } catch (e) {
       chartLoadError = e.toString().replaceFirst('Exception: ', '').trim();
-      if (kDebugMode) {
-        print("Error fetching chart data: $e");
-      }
+      _debugChart(
+        'request:error',
+        userId: userId,
+        dimension: dimension,
+        filters: effectiveFilters,
+        requestId: requestId,
+        error: chartLoadError,
+      );
       rethrow;
     } finally {
       if (requestId == _chartLoadRequestId) {
         resetLoading();
+        _debugChart(
+          'request:end',
+          userId: userId,
+          dimension: dimension,
+          filters: effectiveFilters,
+          requestId: requestId,
+          entryCount: chartEvaluationData.length,
+          totalVerses: totalCount,
+          error: chartLoadError,
+        );
       }
     }
   }
 
-  Future<void> _maybeRefreshQuranChartDataInBackground({
-    required int requestId,
-    required int userId,
-    required String dimension,
-    required QuranChartFilters filters,
-    required String cacheScopeKey,
+  Future<Map<String, dynamic>> buildOfflineQuranChartPayload(
+    int userId, {
+    String dimension = 'memorization',
+    QuranChartFilters filters = const QuranChartFilters(),
   }) async {
-    if (!await _canUseRemoteSync()) {
-      return;
-    }
-
-    await _refreshQuranChartDataInBackground(
-      requestId: requestId,
-      userId: userId,
+    final allAyat = await AyatController().loadAllAyat();
+    final resolvedUserEvaluations = await loadResolvedUserEvaluations(userId);
+    return _localQuranChartService.buildChartPayload(
+      allAyat: allAyat,
+      userEvaluations: resolvedUserEvaluations,
+      evaluations: evaluations,
       dimension: dimension,
       filters: filters,
-      cacheScopeKey: cacheScopeKey,
     );
-  }
-
-  Future<void> _refreshQuranChartDataInBackground({
-    required int requestId,
-    required int userId,
-    required String dimension,
-    required QuranChartFilters filters,
-    required String cacheScopeKey,
-  }) async {
-    try {
-      final response = await _evaluationsServices.getQuranChartData(
-        userId,
-        dimension: dimension,
-        filters: filters,
-      );
-
-      await _cacheChartPayload(
-        cacheScopeKey: cacheScopeKey,
-        dimension: dimension,
-        filters: filters,
-        payload: response,
-      );
-
-      if (requestId != _chartLoadRequestId) {
-        return;
-      }
-
-      _applyChartPayload(
-        response,
-        dimension: dimension,
-        filters: filters,
-      );
-    } catch (error) {
-      if (kDebugMode) {
-        debugPrint('Quran chart background refresh skipped: $error');
-      }
-    }
   }
 
   Future<String> _resolveChartCacheScopeKey(int userId) async {
@@ -255,58 +266,17 @@ class EvaluationsProvider with ChangeNotifier {
     return 'user_$userId';
   }
 
-  Future<Map<String, dynamic>?> _readCachedChartPayload({
-    required String cacheScopeKey,
-    required String dimension,
-    required QuranChartFilters filters,
-  }) async {
-    final rawJson = await _offlineStore.getCachedQuranChartJson(
-      scopeKey: cacheScopeKey,
-      dimension: dimension,
-      filtersKey: filters.toCacheKey(),
-    );
-    if (rawJson == null || rawJson.isEmpty) {
-      return null;
-    }
-
-    try {
-      final decoded = jsonDecode(rawJson);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-      if (decoded is Map) {
-        return Map<String, dynamic>.from(decoded);
-      }
-    } catch (error) {
-      if (kDebugMode) {
-        debugPrint('Failed to parse cached Quran chart payload: $error');
-      }
-    }
-
-    return null;
-  }
-
-  Future<void> _cacheChartPayload({
-    required String cacheScopeKey,
-    required String dimension,
-    required QuranChartFilters filters,
-    required Map<String, dynamic> payload,
-  }) async {
-    await _offlineStore.cacheQuranChartJson(
-      scopeKey: cacheScopeKey,
-      dimension: dimension,
-      filtersKey: filters.toCacheKey(),
-      rawJson: jsonEncode(payload),
-    );
-  }
-
   void _applyChartPayload(
     Map<String, dynamic> payload, {
     required String dimension,
     required QuranChartFilters filters,
+    String source = 'unknown',
+    int? requestId,
+    int? userId,
   }) {
     chartDimension = dimension;
     chartFilters = filters;
+    chartDataSource = source;
     totalCount = (payload['totalVerses'] as num?)?.toInt() ?? 0;
 
     final rawEvaluations = payload['evaluations'];
@@ -324,6 +294,15 @@ class EvaluationsProvider with ChangeNotifier {
     }
 
     chartLoadError = null;
+    _debugChart(
+      'payload:applied:$source',
+      userId: userId,
+      dimension: dimension,
+      filters: filters,
+      requestId: requestId,
+      entryCount: chartEvaluationData.length,
+      totalVerses: totalCount,
+    );
     notifyListeners();
   }
 
@@ -345,6 +324,65 @@ class EvaluationsProvider with ChangeNotifier {
       dimension: chartDimension,
       filters: const QuranChartFilters(),
     );
+  }
+
+  Future<List<UserEvaluation>> loadResolvedUserEvaluations(int userId) async {
+    final allAyat = await AyatController().loadAllAyat();
+    final ayatById = <int, Ayat>{
+      for (final ayah in allAyat)
+        if (ayah.id != null) ayah.id!: ayah,
+    };
+
+    final scopeKey = await _resolveChartCacheScopeKey(userId);
+    final authenticatedUserId = await _resolveAuthenticatedUserId();
+    if (authenticatedUserId == userId) {
+      await _ensureUserEvaluationCacheHydrated(
+        userId: userId,
+        scopeKey: scopeKey,
+      );
+    }
+
+    final cachedEvaluations = await _readCachedUserEvaluations(scopeKey: scopeKey);
+    final mergedByAyahId = <int, UserEvaluation>{
+      for (final evaluation in cachedEvaluations)
+        if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
+          (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
+    };
+
+    if (authenticatedUserId == userId) {
+      for (final evaluation in userEvaluations) {
+        final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
+        if (ayahId != null) {
+          mergedByAyahId[ayahId] = evaluation;
+        }
+      }
+
+      final pendingOverlay = await _buildPendingEvaluationOverlay(
+        ayatById.keys.toSet(),
+      );
+      mergedByAyahId.addAll(pendingOverlay);
+    }
+
+    final resolved = <UserEvaluation>[];
+    for (final entry in mergedByAyahId.entries) {
+      final evaluation = entry.value;
+      final ayah = evaluation.ayah ?? ayatById[entry.key];
+      final resolvedEvaluation = UserEvaluation(
+        id: evaluation.id,
+        ayahId: entry.key,
+        ayahIds: evaluation.ayahIds,
+        memoId: evaluation.memoId,
+        compreId: evaluation.compreId,
+        comment: evaluation.comment,
+        memoEvaluation: evaluation.memoEvaluation,
+        compreEvaluation: evaluation.compreEvaluation,
+        ayah: ayah,
+      );
+      _enrichUserEvaluation(resolvedEvaluation);
+      resolved.add(resolvedEvaluation);
+    }
+
+    return resolved;
   }
 
   Future<void> getAllUserEvaluations(int userId, List<int> ayatIds) async {
@@ -570,7 +608,7 @@ class EvaluationsProvider with ChangeNotifier {
         final fetchedEvaluations =
             await _evaluationsServices.getAllUserEvaluations(
           userId,
-          ayatIds,
+          ayatIds: ayatIds,
         );
 
         for (final evaluation in fetchedEvaluations) {
@@ -580,6 +618,11 @@ class EvaluationsProvider with ChangeNotifier {
             evaluationsByAyahId[ayahId] = evaluation;
           }
         }
+
+        await _mergeCachedUserEvaluations(
+          userId: userId,
+          evaluations: fetchedEvaluations,
+        );
       } catch (error) {
         if (!_shouldDeferToOffline(error)) {
           rethrow;
@@ -673,6 +716,7 @@ class EvaluationsProvider with ChangeNotifier {
       endpoint: endpoint,
       body: Map<String, dynamic>.from(body),
     );
+    await _persistEvaluationPayloadToLocalCache(body);
     await _refreshPendingSyncCount();
     return http.Response('{"queued":true}', 202, headers: {
       'content-type': 'application/json',
@@ -764,10 +808,13 @@ class EvaluationsProvider with ChangeNotifier {
     chartEvaluationData.clear();
     totalCount = 0;
     chartDimension = 'memorization';
+    chartDataSource = null;
     chartLoadError = null;
     _loadedQuestionsLevelKey = null;
     _questionContentAyahs = {};
     _questionContentCompletion = {};
+    _hydratedUserEvaluationScopes.clear();
+    _userEvaluationCacheWarmups.clear();
     isQuestionsLevelLoading = false;
     pendingSyncCount = 0;
     isLoading = false;
@@ -792,6 +839,232 @@ class EvaluationsProvider with ChangeNotifier {
 
     final accessToken = await SecureSessionStorage.readAccessToken();
     return accessToken != null && accessToken.isNotEmpty;
+  }
+
+  Future<List<UserEvaluation>> _readCachedUserEvaluations({
+    required String scopeKey,
+  }) async {
+    final rawJson = await _offlineStore.getCachedUserEvaluationsJson(
+      scopeKey: scopeKey,
+    );
+    if (rawJson == null || rawJson.isEmpty) {
+      return const <UserEvaluation>[];
+    }
+
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is! List) {
+        return const <UserEvaluation>[];
+      }
+
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) => UserEvaluation.fromCacheJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(growable: false);
+    } catch (_) {
+      return const <UserEvaluation>[];
+    }
+  }
+
+  Future<void> _ensureUserEvaluationCacheHydrated({
+    required int userId,
+    required String scopeKey,
+  }) async {
+    if (_hydratedUserEvaluationScopes.contains(scopeKey)) {
+      return;
+    }
+
+    final existingWarmup = _userEvaluationCacheWarmups[scopeKey];
+    if (existingWarmup != null) {
+      await existingWarmup;
+      return;
+    }
+
+    final warmup = _warmUserEvaluationCache(
+      userId: userId,
+      scopeKey: scopeKey,
+    );
+    _userEvaluationCacheWarmups[scopeKey] = warmup;
+    try {
+      await warmup;
+    } finally {
+      _userEvaluationCacheWarmups.remove(scopeKey);
+    }
+  }
+
+  Future<void> _warmUserEvaluationCache({
+    required int userId,
+    required String scopeKey,
+  }) async {
+    if (!await _canUseRemoteSync()) {
+      return;
+    }
+
+    try {
+      const limit = 1000;
+      var page = 1;
+      var totalPages = 1;
+      final fetched = <UserEvaluation>[];
+
+      while (page <= totalPages) {
+        final response = await _evaluationsServices.getUserEvaluationsPage(
+          userId,
+          limit: limit,
+          page: page,
+        );
+        fetched.addAll(response.data);
+        totalPages = response.totalPages > 0 ? response.totalPages : 1;
+        page += 1;
+      }
+
+      await _mergeCachedUserEvaluations(
+        userId: userId,
+        evaluations: fetched,
+      );
+
+      if (fetched.isNotEmpty) {
+        final mergedByAyahId = <int, UserEvaluation>{
+          for (final evaluation in userEvaluations)
+            if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
+              (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
+        };
+        for (final evaluation in fetched) {
+          final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
+          if (ayahId != null) {
+            mergedByAyahId[ayahId] = evaluation;
+          }
+        }
+        userEvaluations = mergedByAyahId.values.toList(growable: false);
+        _refreshUserEvaluationMetadata();
+      }
+
+      _hydratedUserEvaluationScopes.add(scopeKey);
+      _debugChart(
+        'cache:warm_complete',
+        userId: userId,
+        entryCount: fetched.length,
+      );
+    } catch (error) {
+      _debugChart(
+        'cache:warm_error',
+        userId: userId,
+        error: error.toString().replaceFirst('Exception: ', '').trim(),
+      );
+    }
+  }
+
+  Future<void> _mergeCachedUserEvaluations({
+    required int userId,
+    required Iterable<UserEvaluation> evaluations,
+  }) async {
+    final scopeKey = await _resolveChartCacheScopeKey(userId);
+    final existing = await _readCachedUserEvaluations(scopeKey: scopeKey);
+    final mergedByAyahId = <int, UserEvaluation>{
+      for (final evaluation in existing)
+        if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
+          (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
+    };
+
+    for (final evaluation in evaluations) {
+      final ayahId = evaluation.ayah?.id ?? evaluation.ayahId;
+      if (ayahId == null) {
+        continue;
+      }
+      mergedByAyahId[ayahId] = evaluation;
+    }
+
+    await _offlineStore.cacheUserEvaluationsJson(
+      scopeKey: scopeKey,
+      rawJson: jsonEncode(
+        mergedByAyahId.values
+            .map((evaluation) => evaluation.toCacheJson())
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  Future<void> _persistEvaluationPayloadToLocalCache(
+    Map<String, dynamic> body,
+  ) async {
+    final userId = await _resolveAuthenticatedUserId();
+    if (userId == null) {
+      return;
+    }
+
+    final updatedEvaluations = <UserEvaluation>[];
+    final singleAyahId = _asInt(body['ayahId']);
+    if (singleAyahId != null) {
+      updatedEvaluations.add(
+        UserEvaluation(
+          ayahId: singleAyahId,
+          memoId: body.containsKey('memo_id') ? _asInt(body['memo_id']) : null,
+          compreId:
+              body.containsKey('compre_id') ? _asInt(body['compre_id']) : null,
+          comment: body.containsKey('comment')
+              ? _asNullableString(body['comment'])
+              : null,
+        ),
+      );
+    }
+
+    final bulkAyahIds = body['ayahIds'];
+    if (bulkAyahIds is List) {
+      for (final rawAyahId in bulkAyahIds) {
+        final ayahId = _asInt(rawAyahId);
+        if (ayahId == null) {
+          continue;
+        }
+        updatedEvaluations.add(
+          UserEvaluation(
+            ayahId: ayahId,
+            memoId:
+                body.containsKey('memo_id') ? _asInt(body['memo_id']) : null,
+            compreId: body.containsKey('compre_id')
+                ? _asInt(body['compre_id'])
+                : null,
+            comment: body.containsKey('comment')
+                ? _asNullableString(body['comment'])
+                : null,
+          ),
+        );
+      }
+    }
+
+    if (updatedEvaluations.isEmpty) {
+      return;
+    }
+
+    await _mergeCachedUserEvaluations(
+      userId: userId,
+      evaluations: updatedEvaluations,
+    );
+  }
+
+  Future<int?> _resolveAuthenticatedUserId() async {
+    final accessToken = await SecureSessionStorage.readAccessToken();
+    if (accessToken == null || accessToken.isEmpty) {
+      return null;
+    }
+
+    final parts = accessToken.split('.');
+    if (parts.length < 2) {
+      return null;
+    }
+
+    try {
+      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map) {
+        return null;
+      }
+      return _asInt(decoded['sub']);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<http.Response> _sendPendingEvaluation(

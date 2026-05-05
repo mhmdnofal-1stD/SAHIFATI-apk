@@ -581,27 +581,61 @@ class _LoginScreenState extends State<LoginScreen> {
 class _OwnerBrandingCard extends StatelessWidget {
   const _OwnerBrandingCard();
 
+  static const String _flutterBetaVersionLabel = 'Beta 00.00.05';
+
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.center,
+    return SizedBox(
+      height: 44,
+      width: double.infinity,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Text(
-            'By',
-            style: AppTypography.of(context).bodySmall.copyWith(
-                  fontFamily: AppFonts.primaryFont,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF6A7685),
-                ),
+          Center(
+            child: Text(
+              _flutterBetaVersionLabel,
+              textDirection: TextDirection.ltr,
+              style: AppTypography.of(context).bodySmall.copyWith(
+                    fontFamily: AppFonts.primaryFont,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF6A7685),
+                    letterSpacing: 0.3,
+                  ),
+            ),
           ),
-          const SizedBox(width: 6),
-          SvgPicture.asset(
-            Assets.organization1STDLogo,
-            height: 28,
-            fit: BoxFit.contain,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: SizedBox(
+              width: 94,
+              height: 40,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: SvgPicture.asset(
+                      Assets.organization1STDLogo,
+                      height: 34,
+                    ),
+                  ),
+                  Positioned(
+                    right: 42,
+                    top: 2,
+                    child: Text(
+                      'By',
+                      textDirection: TextDirection.ltr,
+                      style: AppTypography.of(context).bodySmall.copyWith(
+                            fontFamily: AppFonts.primaryFont,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF6A7685),
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

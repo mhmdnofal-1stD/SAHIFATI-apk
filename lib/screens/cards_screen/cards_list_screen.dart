@@ -72,7 +72,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
                 hintText: 'بحث في البطاقات...',
-                hintStyle: TextStyle(
+                hintStyle: const TextStyle(
                   color: AppColors.mutedText,
                   fontSize: 14,
                 ),
@@ -130,7 +130,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.error_outline,
                           color: AppColors.errorColor,
                           size: 40,

@@ -16,6 +16,7 @@ import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
 import '../../core/constants/colors.dart';
+import '../../core/constants/fonts.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
@@ -481,7 +482,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                         .copyWith(
                                           color: AppColors.whiteFontColor,
                                           fontSize: 18,
-                                          fontFamily: 'UthmanicHafs',
+                                          fontFamily: AppFonts.versesFont,
                                           decoration:
                                               _isUnderlined(ayah.userEvaluation)
                                                   ? TextDecoration.underline
@@ -818,7 +819,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                           .quranVerse
                                           .copyWith(
                                             fontSize: 18,
-                                            fontFamily: 'UthmanicHafs',
+                                            fontFamily: AppFonts.versesFont,
                                             decoration: _isUnderlined(
                                                         ayah.userEvaluation)
                                                     ? TextDecoration.underline

@@ -37,6 +37,7 @@ class AuthSocialSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     final iconChildren = <Widget>[
       if (showEmailMethod)
         const _StaticMethodIcon(
@@ -70,9 +71,10 @@ class AuthSocialSection extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               Align(
-                alignment: AlignmentDirectional.centerEnd,
+                alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
                 child: Text(
                   _sectionLabel(),
+                  textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
                   style: AppTypography.of(context).inputLabel.copyWith(
                         color: const Color(0xFF58657A),
                       ),

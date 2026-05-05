@@ -42,7 +42,7 @@ class CardModel {
   final DateTime? updatedAt;
 
   factory CardModel.fromJson(Map<String, dynamic> json) {
-    List<Map<String, dynamic>> _toMapList(dynamic raw) {
+    List<Map<String, dynamic>> toMapList(dynamic raw) {
       if (raw is List) {
         return raw
             .whereType<Map>()
@@ -64,9 +64,9 @@ class CardModel {
           ? Map<String, dynamic>.from(json['subject'] as Map)
           : {},
       subjectName: (json['subjectName'] as String?) ?? '',
-      researchers: _toMapList(json['researchers']),
+      researchers: toMapList(json['researchers']),
       status: (json['status'] as String?) ?? 'للمراجعة',
-      reviewerComments: _toMapList(json['reviewerComments']),
+      reviewerComments: toMapList(json['reviewerComments']),
       reviewedBy: json['reviewedBy'] is Map
           ? Map<String, dynamic>.from(json['reviewedBy'] as Map)
           : null,

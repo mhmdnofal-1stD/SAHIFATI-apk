@@ -11,6 +11,7 @@ import '../../models/ayat.dart';
 import '../../models/school.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../services/evaluations_services.dart';
+import '../../services/local_quran_chart_service.dart';
 import '../../services/school_services.dart';
 import '../../services/subjects_lookup_service.dart';
 import 'unified_quran_filter_sheet.dart';
@@ -24,20 +25,43 @@ class ChartFilterPanel extends StatefulWidget {
   const ChartFilterPanel({
     super.key,
     required this.userId,
+    this.margin = const EdgeInsets.only(top: 16, bottom: 8),
   });
 
   final int userId;
+  final EdgeInsetsGeometry margin;
 
   @override
   State<ChartFilterPanel> createState() => _ChartFilterPanelState();
 }
 
 class _ChartFilterPanelState extends State<ChartFilterPanel> {
-  bool _expanded = false;
   bool _applying = false;
   bool _availableDataLoading = false;
   UnifiedFilterAvailableData? _availableData;
   String? _availableDataScopeKey;
+  final LocalQuranChartService _localQuranChartService =
+      const LocalQuranChartService();
+
+  Future<void> _openFilterPopup() async {
+    await _ensureAvailableDataLoaded();
+    if (!mounted || _availableData == null) {
+      return;
+    }
+
+    final provider = context.read<EvaluationsProvider>();
+    final selection = await showUnifiedQuranFilterPopup(
+      context,
+      initial: unifiedSelectionFromChartFilters(provider.chartFilters),
+      available: _availableData!,
+      applyButtonLabel: 'chart_filter_apply'.tr,
+    );
+    if (selection == null || !mounted) {
+      return;
+    }
+
+    await _applySelection(selection);
+  }
 
   Future<void> _ensureAvailableDataLoaded() async {
     final provider = context.read<EvaluationsProvider>();
@@ -55,17 +79,30 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
           // Keep going so the filter can still render any locally available data.
         }
       }
-      final scopedAyat = await _loadScopedAyat(provider.chartFilters);
-      final results = await Future.wait(<Future<Object>>[
-        _loadSubjectData(scopedAyat),
-        _loadSchoolGroups(scopedAyat),
-      ]);
+      final scopedAyat = await _loadScopedEvaluatedAyat(provider.chartFilters);
+      final schoolScopedAyat = await _loadScopedEvaluatedAyat(
+        _filtersWithoutSchool(provider.chartFilters),
+      );
+
+      _SubjectData subjectData;
+      try {
+        subjectData = await _loadSubjectData(scopedAyat);
+      } catch (_) {
+        subjectData = _fallbackSubjectData(scopedAyat);
+      }
+
+      List<UnifiedFilterSchoolGroup> schoolGroups;
+      try {
+        schoolGroups = await _loadSchoolGroups(schoolScopedAyat);
+      } catch (_) {
+        schoolGroups = const <UnifiedFilterSchoolGroup>[];
+      }
+
       if (!mounted) return;
-      final subjectData = results[0] as _SubjectData;
-      final schoolGroups = results[1] as List<UnifiedFilterSchoolGroup>;
       setState(() {
         _availableData = UnifiedFilterAvailableData(
           subjects: subjectData.labels,
+          subjectAyahCounts: subjectData.counts,
           subjectHierarchy: subjectData.hierarchy,
           schoolGroups: schoolGroups,
           memorizationEvaluations: provider.memorizationEvaluations,
@@ -74,11 +111,13 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         _availableDataScopeKey = scopeKey;
       });
     } catch (_) {
-      // Fall back to evaluation-only filters if subject/school lookups fail.
+      // Fall back to evaluation-only filters only when the scoped ayah load
+      // itself fails. Subject and school lookups degrade independently above.
       if (!mounted) return;
       setState(() {
         _availableData = UnifiedFilterAvailableData(
           subjects: const <String, String>{},
+          subjectAyahCounts: const <String, int>{},
           schoolGroups: const <UnifiedFilterSchoolGroup>[],
           memorizationEvaluations: provider.memorizationEvaluations,
           comprehensionEvaluations: provider.comprehensionEvaluations,
@@ -93,77 +132,120 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   }
 
   String _availableDataKey(QuranChartFilters filters) {
-    final scopeFilters = QuranChartFilters(
+    return '${Get.locale?.languageCode ?? 'ar'}:${filters.toCacheKey()}';
+  }
+
+  QuranChartFilters _filtersWithoutSchool(QuranChartFilters filters) {
+    return QuranChartFilters(
       thirds: filters.thirds,
       surahIds: filters.surahIds,
       juzs: filters.juzs,
       ayahTypes: filters.ayahTypes,
+      subjectKeys: filters.subjectKeys,
+      memoEvaluationIds: filters.memoEvaluationIds,
+      comprehensionEvaluationIds: filters.comprehensionEvaluationIds,
     );
-    return '${Get.locale?.languageCode ?? 'ar'}:${scopeFilters.toCacheKey()}';
   }
 
-  List<int> _effectiveJuzs(QuranChartFilters filters) {
-    final selectedJuzs = filters.juzs.toSet();
-    final thirdsJuzs = <int>{};
+  Future<List<Ayat>> _loadScopedEvaluatedAyat(QuranChartFilters filters) async {
+    final provider = context.read<EvaluationsProvider>();
+    final userEvaluations = await provider.loadResolvedUserEvaluations(
+      widget.userId,
+    );
+    final memoEvaluationIds = filters.memoEvaluationIds.toSet();
+    final comprehensionEvaluationIds =
+        filters.comprehensionEvaluationIds.toSet();
+    final allAyat = userEvaluations
+        .where((evaluation) {
+          if (memoEvaluationIds.isNotEmpty &&
+              !memoEvaluationIds.contains(evaluation.memoId)) {
+            return false;
+          }
+          if (comprehensionEvaluationIds.isNotEmpty &&
+              !comprehensionEvaluationIds.contains(evaluation.compreId)) {
+            return false;
+          }
+          return true;
+        })
+        .map((evaluation) => evaluation.ayah)
+        .whereType<Ayat>()
+        .fold<Map<int, Ayat>>(<int, Ayat>{}, (acc, ayah) {
+      final ayahId = ayah.id;
+      if (ayahId != null) {
+        acc[ayahId] = ayah;
+      }
+      return acc;
+    })
+        .values
+        .toList(growable: false);
 
-    for (final third in filters.thirds) {
-      switch (third) {
-        case 'first':
-          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 1));
-          break;
-        case 'second':
-          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 11));
-          break;
-        case 'third':
-          thirdsJuzs.addAll(List<int>.generate(10, (index) => index + 21));
-          break;
+    return _localQuranChartService.filterAyat(allAyat, filters);
+  }
+
+  _SubjectData _fallbackSubjectData(List<Ayat> scopedAyat) {
+    final labels = <String, String>{};
+    final counts = <String, int>{};
+
+    for (final ayah in scopedAyat) {
+      final seenForAyah = <String>{};
+      for (final rawKey in ayah.subjects ?? const <String>[]) {
+        final normalizedKey = rawKey.trim();
+        if (normalizedKey.isEmpty || !seenForAyah.add(normalizedKey)) {
+          continue;
+        }
+
+        labels[normalizedKey] = normalizedKey;
+        counts[normalizedKey] = (counts[normalizedKey] ?? 0) + 1;
       }
     }
 
-    if (thirdsJuzs.isEmpty) {
-      final result = selectedJuzs.toList(growable: false);
-      result.sort();
-      return result;
-    }
-
-    final result = selectedJuzs.isEmpty
-        ? thirdsJuzs.toList(growable: false)
-        : thirdsJuzs.intersection(selectedJuzs).toList(growable: false);
-    result.sort();
-    return result;
-  }
-
-  Future<List<Ayat>> _loadScopedAyat(QuranChartFilters filters) async {
-    final allAyat = await AyatController().loadAllAyat();
-    final effectiveJuzs = _effectiveJuzs(filters).toSet();
-    final surahIds = filters.surahIds.toSet();
-    final ayahTypes = filters.ayahTypes.toSet();
-
-    return allAyat.where((ayah) {
-      if (surahIds.isNotEmpty && !surahIds.contains(ayah.surah.id)) {
-        return false;
-      }
-      if (effectiveJuzs.isNotEmpty && !effectiveJuzs.contains(ayah.juz)) {
-        return false;
-      }
-      if (ayahTypes.isNotEmpty && !ayahTypes.contains(ayah.ayahType ?? '')) {
-        return false;
-      }
-      return true;
-    }).toList(growable: false);
+    return _SubjectData(
+      labels: labels,
+      hierarchy: const <SubjectHierarchyItem>[],
+      counts: counts,
+    );
   }
 
   Future<_SubjectData> _loadSubjectData(List<Ayat> scopedAyat) async {
-    final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
-    final locale = Get.locale?.languageCode ?? 'ar';
-    final availableKeys = <String>{};
-    for (final ayah in scopedAyat) {
-      availableKeys.addAll(ayah.subjects ?? const <String>[]);
+    List<SubjectHierarchyItem> hierarchy;
+    try {
+      hierarchy = await SubjectsLookupService.instance.loadHierarchy();
+    } catch (_) {
+      return _fallbackSubjectData(scopedAyat);
     }
 
+    final locale = Get.locale?.languageCode ?? 'ar';
+    final availableKeys = <String>{};
+    final directCounts = <String, int>{};
     final hierarchyByKey = {
       for (final subject in hierarchy) subject.key.trim(): subject,
     };
+
+    for (final ayah in scopedAyat) {
+      final seenForAyah = <String>{};
+      for (final rawKey in ayah.subjects ?? const <String>[]) {
+        final normalizedKey = rawKey.trim();
+        if (normalizedKey.isEmpty || !seenForAyah.add(normalizedKey)) {
+          continue;
+        }
+        availableKeys.add(normalizedKey);
+        directCounts[normalizedKey] = (directCounts[normalizedKey] ?? 0) + 1;
+      }
+    }
+
+    final counts = <String, int>{};
+    for (final entry in directCounts.entries) {
+      String? currentKey = entry.key;
+      while (currentKey != null && currentKey.isNotEmpty) {
+        counts[currentKey] = (counts[currentKey] ?? 0) + entry.value;
+        final parent = hierarchyByKey[currentKey]?.parent?.trim();
+        if (parent == null || parent.isEmpty || parent == '0') {
+          break;
+        }
+        currentKey = parent;
+      }
+    }
+
     final entries = <String, String>{};
     for (final key in availableKeys) {
       final normalizedKey = key.trim();
@@ -172,7 +254,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
       final label = subject?.displayName(locale).trim() ?? normalizedKey;
       entries[normalizedKey] = label.isEmpty ? normalizedKey : label;
     }
-    return _SubjectData(labels: entries, hierarchy: hierarchy);
+    return _SubjectData(labels: entries, hierarchy: hierarchy, counts: counts);
   }
 
   String? _schoolLevelNameFromCatalog(
@@ -197,6 +279,11 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     List<Ayat> scopedAyat,
   ) async {
     final locale = Get.locale?.languageCode ?? 'ar';
+    final ayatController = AyatController();
+    final scopedAyahIds = scopedAyat
+        .where((ayah) => ayah.id != null)
+        .map((ayah) => ayah.id!)
+        .toSet();
     final schools = await SchoolServices().getAllSchools(
       forceRefresh: true,
     );
@@ -205,15 +292,53 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         if (school.id != null) school.id!: school,
     };
     final levelsBySchool = <int, Set<int>>{};
+    final levelCounts = <String, int>{};
     final schoolLabelFallbacks = <int, String>{};
     final levelLabelFallbacks = <String, String>{};
 
+    for (final school in schools) {
+      final schoolId = school.id;
+      if (schoolId == null) {
+        continue;
+      }
+
+      for (final level in school.levels) {
+        final number = level.level;
+        if (number == null) {
+          continue;
+        }
+
+        final matchedAyahIds = <int>{};
+        for (final content in level.content) {
+          final ayahs = await ayatController.loadAyatForContent(content);
+          for (final ayah in ayahs) {
+            final ayahId = ayah.id;
+            if (ayahId != null && scopedAyahIds.contains(ayahId)) {
+              matchedAyahIds.add(ayahId);
+            }
+          }
+        }
+
+        final pairKey = '$schoolId:$number';
+        levelCounts[pairKey] = matchedAyahIds.length;
+        if (matchedAyahIds.isNotEmpty) {
+          (levelsBySchool[schoolId] ??= <int>{}).add(number);
+        }
+      }
+    }
+
     for (final ayah in scopedAyat) {
+      final seenPairsForAyah = <String>{};
       for (final level in ayah.schoolLevels ?? const []) {
         final schoolId = level.schoolId;
         final number = level.level;
         if (schoolId == null || number == null) {
           continue;
+        }
+
+        final pairKey = '$schoolId:$number';
+        if (seenPairsForAyah.add(pairKey) && !levelCounts.containsKey(pairKey)) {
+          levelCounts[pairKey] = (levelCounts[pairKey] ?? 0) + 1;
         }
 
         (levelsBySchool[schoolId] ??= <int>{}).add(number);
@@ -262,6 +387,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
             key: '$schoolId:$number',
             label: levelLabel,
             level: number,
+            availableAyahCount: levelCounts['$schoolId:$number'] ?? 0,
           ),
         );
       }
@@ -280,6 +406,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
             key: '$schoolId:$number',
             label: levelLabel,
             level: number,
+            availableAyahCount: levelCounts['$schoolId:$number'] ?? 0,
           ),
         );
       }
@@ -292,6 +419,10 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         UnifiedFilterSchoolGroup(
           label: _localizedSchoolName(school, locale),
           levels: levels,
+          availableAyahCount: levels.fold<int>(
+            0,
+            (sum, level) => sum + level.availableAyahCount,
+          ),
         ),
       );
     }
@@ -318,11 +449,21 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
           key: '$schoolId:$number',
           label: levelLabel,
           level: number,
+          availableAyahCount: levelCounts['$schoolId:$number'] ?? 0,
         ));
       }
 
       if (levels.isEmpty) continue;
-      groups.add(UnifiedFilterSchoolGroup(label: groupLabel, levels: levels));
+      groups.add(
+        UnifiedFilterSchoolGroup(
+          label: groupLabel,
+          levels: levels,
+          availableAyahCount: levels.fold<int>(
+            0,
+            (sum, level) => sum + level.availableAyahCount,
+          ),
+        ),
+      );
     }
 
     groups.sort((a, b) => a.label.compareTo(b.label));
@@ -396,16 +537,10 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
     final provider = context.watch<EvaluationsProvider>();
     final activeCount = _activeCount(provider.chartFilters);
 
-    if (_expanded &&
-        _availableDataScopeKey != _availableDataKey(provider.chartFilters) &&
-        !_availableDataLoading) {
-      unawaited(_ensureAvailableDataLoaded());
-    }
-
     return Container(
       constraints: const BoxConstraints(maxWidth: 920),
       width: double.infinity,
-      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      margin: widget.margin,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -416,12 +551,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         children: [
           InkWell(
             borderRadius: BorderRadius.circular(22),
-            onTap: () {
-              setState(() => _expanded = !_expanded);
-              if (_expanded) {
-                unawaited(_ensureAvailableDataLoaded());
-              }
-            },
+            onTap: _availableDataLoading || _applying ? null : _openFilterPopup,
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 18,
@@ -440,6 +570,12 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
                       style: AppTypography.of(context).subsectionTitle,
                     ),
                   ),
+                  if (_availableDataLoading || _applying)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   if (activeCount > 0)
                     Container(
                       margin: const EdgeInsets.only(right: 6, left: 6),
@@ -460,49 +596,13 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
                             .copyWith(color: Colors.white),
                       ),
                     ),
-                  Icon(
-                    _expanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
+                  const Icon(
+                    Icons.open_in_full_rounded,
                   ),
                 ],
               ),
             ),
           ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  if (_availableData == null)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  else
-                    UnifiedQuranFilterBody(
-                      key: ValueKey(provider.chartFilters.toCacheKey()),
-                      initial: unifiedSelectionFromChartFilters(
-                        provider.chartFilters,
-                      ),
-                      available: _availableData!,
-                      headerStyle: UnifiedFilterHeaderStyle.inline,
-                      applyButtonLabel: 'chart_filter_apply'.tr,
-                      applyInProgress: _applying,
-                      onApply: _applySelection,
-                    ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -510,7 +610,12 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
 }
 
 class _SubjectData {
-  const _SubjectData({required this.labels, required this.hierarchy});
+  const _SubjectData({
+    required this.labels,
+    required this.hierarchy,
+    required this.counts,
+  });
   final Map<String, String> labels;
   final List<SubjectHierarchyItem> hierarchy;
+  final Map<String, int> counts;
 }

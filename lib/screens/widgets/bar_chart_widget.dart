@@ -1,4 +1,4 @@
-import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
@@ -30,6 +30,125 @@ class BarChartWidget extends StatelessWidget {
     return text;
   }
 
+  String _formatVerseCount(num? value) {
+    final effectiveValue = (value ?? 0).round();
+    return effectiveValue.toString();
+  }
+
+  Widget _buildValueTag(
+    BuildContext context, {
+    required String labelText,
+    required String percentText,
+    required String verseCountText,
+    required Color color,
+    required bool compact,
+    required bool inverted,
+  }) {
+    final t = AppTypography.of(context);
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 5 : 6,
+      ),
+      decoration: BoxDecoration(
+        color: inverted ? const Color(0xFFF2F6FB) : color.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(999),
+        border: inverted
+            ? Border.all(color: color.withValues(alpha: 0.56), width: 1)
+            : null,
+        boxShadow: inverted
+            ? const [
+                BoxShadow(
+                  color: Color(0x14132A4A),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+            children: [
+              Flexible(
+                child: Text(
+                  labelText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.chartTooltip.copyWith(
+                    color: inverted ? color : Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: compact
+                        ? (t.chartTooltip.fontSize ?? 12) - 1
+                        : t.chartTooltip.fontSize,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              SizedBox(width: compact ? 4 : 6),
+              Text(
+                percentText,
+                textDirection: TextDirection.ltr,
+                style: t.chartTooltip.copyWith(
+                  color: inverted ? color : Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: compact
+                      ? (t.chartTooltip.fontSize ?? 12) - 1
+                      : t.chartTooltip.fontSize,
+                  height: 1.1,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            verseCountText,
+            textAlign: TextAlign.center,
+            style: t.chartTooltip.copyWith(
+              color: inverted ? color.withValues(alpha: 0.92) : Colors.white,
+              fontSize: compact
+                  ? (t.chartTooltip.fontSize ?? 12) - 2
+                  : (t.chartTooltip.fontSize ?? 12) - 1,
+              height: 1.05,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDebugSourceBadge(BuildContext context) {
+    final source = evaluationsProvider.chartDataSource;
+    if (!kDebugMode || source == null || source.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final label = source.trim().toUpperCase();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8EEF6),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFBCD0E5)),
+      ),
+      child: Text(
+        'source: $label',
+        textDirection: TextDirection.ltr,
+        style: AppTypography.of(context).chartTooltip.copyWith(
+              color: const Color(0xFF284A6B),
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              height: 1,
+            ),
+      ),
+    );
+  }
+
   Widget _buildStateCard(BuildContext context, String message) {
     return Container(
       width: double.infinity,
@@ -40,10 +159,23 @@ class BarChartWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFDCE2DA)),
       ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: AppTypography.of(context).bodyDefault,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: _buildDebugSourceBadge(context),
+          ),
+          if (kDebugMode &&
+              evaluationsProvider.chartDataSource != null &&
+              evaluationsProvider.chartDataSource!.trim().isNotEmpty)
+            const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTypography.of(context).bodyDefault,
+          ),
+        ],
       ),
     );
   }
@@ -56,34 +188,6 @@ class BarChartWidget extends StatelessWidget {
         : evaluationsProvider.chartEvaluationData
             .where((entry) => entry.evaluationId != 0)
             .toList();
-
-    final List<BarChartGroupData> barGroups = [];
-
-    for (int i = 0; i < visibleEntries.length; i++) {
-      final evaluation = visibleEntries[i];
-
-      final raw = evaluation.percentage ?? 0;
-      final value = (raw * 100).round() / 100;
-
-      final color = evaluationsController.getColorForChartEntry(evaluation);
-
-      barGroups.add(
-        BarChartGroupData(
-          x: i,
-          barRods: [
-            BarChartRodData(
-              toY: value,
-              color: color,
-              width: 16,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(4),
-                topRight: Radius.circular(4),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
 
     if (evaluationsProvider.isLoading && visibleEntries.isEmpty) {
       return const Center(
@@ -107,175 +211,133 @@ class BarChartWidget extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isDesktop = constraints.maxWidth >= 800;
-        final labelWidth = isDesktop ? 100.0 : 72.0;
-        final labelFontSize = isDesktop ? 12.0 : 10.0;
-        final reservedLabelHeight = isDesktop ? 72.0 : 58.0;
-        final reservedTopHeight = isDesktop ? 54.0 : 46.0;
-        final chartHeight = isDesktop ? 360.0 : 300.0;
-        final barWidth = isDesktop ? 24.0 : 16.0;
-        final t = AppTypography.of(context);
+        final barHeight = isDesktop ? 40.0 : 32.0;
+        final infoBoxMinWidth = isDesktop ? 154.0 : 132.0;
+        final outsideTagWidth = isDesktop ? 148.0 : 126.0;
+        final tinyBarThreshold = isDesktop ? 152.0 : 126.0;
 
-        return SizedBox(
-          height: chartHeight,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barTouchData: BarTouchData(
-                  enabled: false,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => Colors.transparent,
-                    tooltipPadding: EdgeInsets.zero,
-                    tooltipMargin: 8,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final evaluation = evaluationsProvider
-                          .chartEvaluationData[group.x.toInt()];
-                      return BarTooltipItem(
-                        '${rod.toY.toStringAsFixed(2)}%\n',
-                        t.chartTooltip,
-                        children: [
-                          TextSpan(
-                            text: '${evaluation.verseCount} ${'verses'.tr}',
-                            style: t.chartTooltip,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: reservedTopHeight,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= visibleEntries.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final evaluation = visibleEntries[index];
-                        return SideTitleWidget(
-                          meta: meta,
-                          space: 6,
-                          child: SizedBox(
-                            width: labelWidth,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    'verse_count'.trParams({
-                                      'count': (evaluation.verseCount ?? 0)
-                                          .toString(),
-                                    }),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.chartAxisTick.copyWith(
-                                      fontSize: isDesktop ? 10 : 9,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    '${_formatPercent(evaluation.percentage)}%',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.chartAxisTick.copyWith(
-                                      fontSize: isDesktop ? 10 : 9,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: reservedLabelHeight,
-                      getTitlesWidget: (double value, TitleMeta meta) {
-                        if (value.toInt() < 0 ||
-                            value.toInt() >= visibleEntries.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final evaluation = visibleEntries[value.toInt()];
-                        return SideTitleWidget(
-                          meta: meta,
-                          space: 10,
-                          child: SizedBox(
-                            width: labelWidth,
-                            child: Text(
-                              evaluation.name[languageProvider.langCode] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: t.chartAxisLabel
-                                  .copyWith(fontSize: labelFontSize),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: isDesktop ? 36 : 28,
-                      interval: 20,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${value.toInt()}%',
-                          style: t.chartAxisTick
-                              .copyWith(fontSize: isDesktop ? 11 : 10),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  checkToShowHorizontalLine: (value) => value % 20 == 0,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.withValues(alpha: 0.45),
-                    strokeWidth: 1,
-                  ),
-                  drawVerticalLine: false,
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: const Border(
-                    top: BorderSide.none,
-                    bottom: BorderSide(color: Colors.black, width: 1),
-                    left: BorderSide(color: Colors.black, width: 1),
-                    right: BorderSide.none,
-                  ),
-                ),
-                barGroups: barGroups
-                    .map(
-                      (group) => group.copyWith(
-                        barRods: group.barRods
-                            .map((rod) => rod.copyWith(width: barWidth))
-                            .toList(),
-                      ),
-                    )
-                    .toList(),
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 12),
+          padding: EdgeInsets.all(isDesktop ? 22 : 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F8F4),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFDCE2DA)),
+          ),
+          child: Column(
+            children: [
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: _buildDebugSourceBadge(context),
               ),
-            ),
+              if (kDebugMode &&
+                  evaluationsProvider.chartDataSource != null &&
+                  evaluationsProvider.chartDataSource!.trim().isNotEmpty)
+                SizedBox(height: isDesktop ? 14 : 10),
+              for (final evaluation in visibleEntries) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, barConstraints) {
+                          final percent = (evaluation.percentage ?? 0)
+                              .toDouble()
+                              .clamp(0, 100);
+                          final color = evaluationsController
+                              .getColorForChartEntry(evaluation);
+                          final availableWidth = barConstraints.maxWidth;
+                          final fillWidth = availableWidth * (percent / 100);
+                          final infoBoxWidth =
+                              fillWidth.clamp(infoBoxMinWidth, availableWidth);
+                          final showOutsideTag = fillWidth < tinyBarThreshold;
+                          final percentText =
+                              '${_formatPercent(evaluation.percentage)}%';
+                            final verseCountText =
+                              '${_formatVerseCount(evaluation.verseCount)} آية';
+                            final labelText =
+                              evaluation.name[languageProvider.langCode] ?? '';
+
+                          return Stack(
+                            alignment: Alignment.centerRight,
+                            children: [
+                              Container(
+                                height: barHeight,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE6E6DE),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              Container(
+                                width: fillWidth,
+                                height: barHeight,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              if (fillWidth > 0 && !showOutsideTag)
+                                Positioned(
+                                  left: (availableWidth - fillWidth)
+                                      .clamp(0, availableWidth),
+                                  child: SizedBox(
+                                    width: infoBoxWidth,
+                                    height: barHeight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.center,
+                                      child: _buildValueTag(
+                                        context,
+                                        labelText: labelText,
+                                        percentText: percentText,
+                                        verseCountText: verseCountText,
+                                        color: color,
+                                        compact: !isDesktop,
+                                        inverted: false,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (fillWidth > 0 && showOutsideTag)
+                                Positioned(
+                                  left: ((availableWidth - fillWidth) -
+                                          outsideTagWidth -
+                                          8)
+                                      .clamp(
+                                    0,
+                                    (availableWidth - outsideTagWidth)
+                                        .clamp(0, availableWidth),
+                                  ),
+                                  child: SizedBox(
+                                    width: outsideTagWidth,
+                                    height: barHeight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: _buildValueTag(
+                                        context,
+                                        labelText: labelText,
+                                        percentText: percentText,
+                                        verseCountText: verseCountText,
+                                        color: color,
+                                        compact: true,
+                                        inverted: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                if (evaluation != visibleEntries.last)
+                  SizedBox(height: isDesktop ? 18 : 14),
+              ],
+            ],
           ),
         );
       },

@@ -148,14 +148,14 @@ class GlobalDrawer extends StatelessWidget {
                     onTap: () {
                       Get.toNamed(CardsListScreen.routeName);
                     },
-                    title: Row(
+                    title: const Row(
                       textDirection: TextDirection.rtl,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.library_books_outlined,
                           size: 30,
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: 10),
                         CustomText(
                           text: 'البطاقات العلمية',
                           withBackground: false,

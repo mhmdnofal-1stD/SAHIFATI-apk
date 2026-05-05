@@ -229,12 +229,25 @@
       const bootStatus = document.getElementById('boot-status');
       const bootActions = document.getElementById('boot-actions');
       let isResolved = false;
+      let flutterSurfaceObserver = null;
+
+      function hasFlutterSurface() {
+        return Boolean(
+          document.querySelector(
+            'flutter-view, flt-glass-pane, flt-semantics-host, flt-semantics-placeholder'
+          )
+        );
+      }
 
       function hideBootScreen() {
         if (!bootScreen || isResolved) {
           return;
         }
         isResolved = true;
+        if (flutterSurfaceObserver) {
+          flutterSurfaceObserver.disconnect();
+          flutterSurfaceObserver = null;
+        }
         bootScreen.classList.add('is-hidden');
         window.setTimeout(() => bootScreen.remove(), 260);
       }
@@ -248,20 +261,51 @@
         bootActions.classList.add('is-visible');
       }
 
+      function resolveIfFlutterSurfaceReady() {
+        if (hasFlutterSurface()) {
+          hideBootScreen();
+          return true;
+        }
+        return false;
+      }
+
       window.addEventListener('flutter-first-frame', hideBootScreen);
 
-      window.addEventListener('error', function () {
+      flutterSurfaceObserver = new MutationObserver(resolveIfFlutterSurfaceReady);
+      flutterSurfaceObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+
+      window.addEventListener('load', resolveIfFlutterSurfaceReady, { once: true });
+      window.setTimeout(resolveIfFlutterSurfaceReady, 1500);
+      window.setTimeout(resolveIfFlutterSurfaceReady, 4000);
+
+      window.addEventListener('error', function (event) {
+        if (isResolved || hasFlutterSurface()) {
+          return;
+        }
+        if (event && event.target && event.target !== window) {
+          return;
+        }
+        showBootError('تعذر إكمال تحميل الواجهة. يمكنك إعادة المحاولة الآن بدل البقاء على شاشة بيضاء.');
+      });
+
+      window.addEventListener('unhandledrejection', function () {
+        if (isResolved || hasFlutterSurface()) {
+          return;
+        }
         showBootError('تعذر إكمال تحميل الواجهة. يمكنك إعادة المحاولة الآن بدل البقاء على شاشة بيضاء.');
       });
 
       window.setTimeout(function () {
-        if (!isResolved && bootStatus) {
+        if (!isResolved && !hasFlutterSurface() && bootStatus) {
           bootStatus.innerHTML = '<strong>ما زال التحميل جاريًا...</strong> هذا قد يحدث في أول تشغيل أو مع اتصال بطيء.';
         }
       }, 4000);
 
       window.setTimeout(function () {
-        if (!isResolved) {
+        if (!isResolved && !hasFlutterSurface()) {
           showBootError('استغرق التحميل وقتًا أطول من المعتاد. أعد المحاولة، وإن تكرر ذلك فهناك خلل يستحق الفحص.');
         }
       }, 12000);

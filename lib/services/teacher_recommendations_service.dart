@@ -37,6 +37,18 @@ class TeacherRecommendationUpsertResult {
   final String operation;
 }
 
+class TeacherRecommendationBulkUpsertResult {
+  const TeacherRecommendationBulkUpsertResult({
+    required this.created,
+    required this.updated,
+    required this.recommendations,
+  });
+
+  final int created;
+  final int updated;
+  final List<TeacherRecommendation> recommendations;
+}
+
 class TeacherRecommendationsService {
   final SahifatyApi _sahifatyApi = SahifatyApi();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
@@ -151,6 +163,45 @@ class TeacherRecommendationsService {
       operation: data['operation']?.toString() == 'updated'
           ? 'updated'
           : 'created',
+    );
+  }
+
+  Future<TeacherRecommendationBulkUpsertResult> createRecommendationsBulk({
+    required int studentId,
+    required List<int> ayahIds,
+  }) async {
+    final response = await _sahifatyApi.post(
+      url: 'teacher-recommendations/bulk',
+      body: {
+        'studentId': studentId,
+        'ayahIds': ayahIds,
+      },
+    );
+
+    final decoded = response.body.isEmpty ? null : jsonDecode(response.body);
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_extractCreateErrorMessage(decoded));
+    }
+
+    if (decoded is! Map) {
+      throw Exception('service_teacher_recommendations_create_failed'.tr);
+    }
+
+    final data = Map<String, dynamic>.from(decoded);
+    final recommendations = (data['recommendations'] as List?)
+            ?.whereType<Map>()
+            .map(
+              (item) => TeacherRecommendation.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
+            .toList() ??
+        const <TeacherRecommendation>[];
+
+    return TeacherRecommendationBulkUpsertResult(
+      created: (data['created'] as num?)?.toInt() ?? 0,
+      updated: (data['updated'] as num?)?.toInt() ?? 0,
+      recommendations: recommendations,
     );
   }
 

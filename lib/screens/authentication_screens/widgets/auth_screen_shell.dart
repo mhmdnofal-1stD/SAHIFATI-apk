@@ -53,7 +53,7 @@ class AuthLanguageSwitch extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: borderColor),
                   boxShadow: [
-                    if (shadowColor.alpha > 0)
+                    if (shadowColor.a > 0)
                       BoxShadow(
                         color: shadowColor,
                         blurRadius: 10,

@@ -7,7 +7,6 @@ import '../../models/user.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import '../main_screen/main_screen.dart';
-import '../../services/evaluations_services.dart';
 import '../../services/teacher_supervisions_services.dart';
 
 /// Resolves the human-facing identity for a supervision student payload.
@@ -709,10 +708,10 @@ class _LinkCard extends StatelessWidget {
         : 'supervision_active_teacher_badge';
     final acceptedAt = _formatAcceptedAt(link['acceptedAt']);
     final studentId = counterpart['_id'] is num
-      ? (counterpart['_id'] as num).toInt()
-      : (counterpart['id'] is num
-        ? (counterpart['id'] as num).toInt()
-        : int.tryParse('${counterpart['_id'] ?? counterpart['id'] ?? ''}'));
+        ? (counterpart['_id'] as num).toInt()
+        : (counterpart['id'] is num
+            ? (counterpart['id'] as num).toInt()
+            : int.tryParse('${counterpart['_id'] ?? counterpart['id'] ?? ''}'));
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -849,7 +848,7 @@ class _StudentMemorizationStatsState extends State<_StudentMemorizationStats> {
   }
 
   Future<_StudentMemorizationSnapshot> _load() async {
-    final payload = await EvaluationsServices().getQuranChartData(
+    final payload = await context.read<EvaluationsProvider>().buildOfflineQuranChartPayload(
       widget.studentId,
       dimension: 'memorization',
     );
@@ -1005,10 +1004,20 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                     Map<String, dynamic>.from(student),
                     fallback: '#$id',
                   );
-                  return RadioListTile<int>(
-                    value: id,
-                    groupValue: _selectedId,
-                    onChanged: (v) => setState(() => _selectedId = v),
+                  final selected = _selectedId == id;
+                  return ListTile(
+                    selected: selected,
+                    selectedTileColor: const Color(0x0D132A4A),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onTap: () => setState(() => _selectedId = id),
+                    leading: Icon(
+                      selected
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: const Color(0xFF132A4A),
+                    ),
                     title: Text(
                       name,
                       textDirection: TextDirection.rtl,
@@ -1097,7 +1106,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: Color(0xFF132A4A),
+            color: const Color(0xFF132A4A),
             size: 40,
           ),
           const SizedBox(height: 8),

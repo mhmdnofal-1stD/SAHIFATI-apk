@@ -20,6 +20,7 @@ import 'providers/school_provider.dart';
 import 'providers/surahs_provider.dart';
 import 'providers/users_provider.dart';
 import 'providers/language_provider.dart';
+import 'services/evaluations_services.dart';
 import 'screens/authentication_screens/email_verification_pending_screen.dart';
 import 'screens/authentication_screens/email_verification_result_screen.dart';
 import 'screens/authentication_screens/forget_password_screen.dart';
@@ -242,6 +243,13 @@ class MyApp extends StatelessWidget {
           page: () => AuthenticatedRouteGate(
             child: MainScreen(
               comesFirst: (Get.parameters['comesFirst'] ?? 'false') == 'true',
+              initialChartFilters: QuranChartFilters(
+                schoolLevelPairs: (Get.parameters['schoolLevelPairs'] ?? '')
+                    .split(',')
+                    .map((value) => value.trim())
+                    .where((value) => value.isNotEmpty)
+                    .toList(growable: false),
+              ),
             ),
           ),
         ),

@@ -127,6 +127,22 @@ class QuranChartFilters {
   }
 }
 
+class PaginatedUserEvaluationsResponse {
+  const PaginatedUserEvaluationsResponse({
+    required this.data,
+    required this.total,
+    required this.page,
+    required this.limit,
+    required this.totalPages,
+  });
+
+  final List<UserEvaluation> data;
+  final int total;
+  final int page;
+  final int limit;
+  final int totalPages;
+}
+
 class EvaluationsServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
@@ -167,47 +183,55 @@ class EvaluationsServices {
     }
   }
 
-  Future<Map<String, dynamic>> getQuranChartData(
+  Future<List<UserEvaluation>> getAllUserEvaluations(
     int userId, {
-    String dimension = 'memorization',
-    QuranChartFilters filters = const QuranChartFilters(),
+    List<int>? ayatIds,
+    int limit = 1000,
+    int page = 1,
+  }) async {
+    final response = await getUserEvaluationsPage(
+      userId,
+      ayatIds: ayatIds,
+      limit: limit,
+      page: page,
+    );
+    return response.data;
+  }
+
+  Future<PaginatedUserEvaluationsResponse> getUserEvaluationsPage(
+    int userId, {
+    List<int>? ayatIds,
+    int limit = 1000,
+    int page = 1,
   }) async {
     try {
       final queryParameters = <String, String>{
-        'dimension': dimension,
-        ...filters.toQueryParameters(),
+        'userId': userId.toString(),
+        'limit': limit.toString(),
+        'page': page.toString(),
       };
-      final queryString = Uri(queryParameters: queryParameters).query;
-      final res =
-          await _sahifatyApi.get('user-evaluations/chart/$userId?$queryString');
-
-      if (res.statusCode == 200) {
-        // Decode the full JSON map
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      } else {
-        throw Exception('service_evaluations_load_failed'.tr);
+      if (ayatIds != null && ayatIds.isNotEmpty) {
+        queryParameters['ayatIds'] = ayatIds.join(',');
       }
-    } catch (ex) {
-      rethrow;
-    }
-  }
 
-  Future<List<UserEvaluation>> getAllUserEvaluations(
-      int userId, List<int> ayatIds) async {
-    try {
-      final ayatIdsParam = ayatIds.join(',');
-      final http.Response res = await _sahifatyApi.get(
-          'user-evaluations?userId=$userId&ayatIds=$ayatIdsParam&limit=1000');
+      final query = Uri(queryParameters: queryParameters).query;
+      final http.Response res =
+          await _sahifatyApi.get('user-evaluations?$query');
 
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(res.body);
 
         final List<dynamic> data = body['data'] ?? [];
 
-        // Extract only evaluation from each data item
-        return data
-            .map<UserEvaluation>((e) => UserEvaluation.fromJson(e))
-            .toList();
+        return PaginatedUserEvaluationsResponse(
+          data: data
+              .map<UserEvaluation>((e) => UserEvaluation.fromJson(e))
+              .toList(),
+          total: (body['total'] as num?)?.toInt() ?? data.length,
+          page: (body['page'] as num?)?.toInt() ?? page,
+          limit: (body['limit'] as num?)?.toInt() ?? limit,
+          totalPages: (body['totalPages'] as num?)?.toInt() ?? 1,
+        );
       } else {
         throw Exception('service_evaluations_load_failed'.tr);
       }

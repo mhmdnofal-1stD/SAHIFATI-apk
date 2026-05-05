@@ -330,22 +330,15 @@ class _WelcomeHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            firstName == null
+          _TitleInfoRow(
+            title: firstName == null
                 ? 'welcome_back'.tr
                 : '${'welcome_back'.tr} $firstName',
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
+            message: 'welcome_kickoff_subtitle'.tr,
+            titleStyle: AppTypography.of(context)
                 .pageHeading
                 .copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'welcome_kickoff_subtitle'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .bodyDefault
-                .copyWith(color: Colors.white.withValues(alpha: 0.86)),
+            infoColor: Colors.white.withValues(alpha: 0.86),
           ),
         ],
       ),
@@ -761,20 +754,13 @@ class _ValueCard extends StatelessWidget {
           children: [
             Icon(icon, color: const Color(0xFF132A4A)),
             const SizedBox(height: 14),
-            Text(
-              titleKey.tr,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
+            _TitleInfoRow(
+              title: titleKey.tr,
+              message: bodyKey.tr,
+              titleStyle: AppTypography.of(context)
                   .listTileTitle
                   .copyWith(color: const Color(0xFF132A4A)),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              bodyKey.tr,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
-                  .bodySecondary
-                  .copyWith(color: const Color(0xFF304256)),
+              infoColor: const Color(0xFF6B7280),
             ),
           ],
         ),
@@ -822,22 +808,57 @@ class _JourneyStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  titleKey.tr,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
+                _TitleInfoRow(
+                  title: titleKey.tr,
+                  message: bodyKey.tr,
+                  titleStyle: AppTypography.of(context)
                       .listTileTitle
                       .copyWith(color: const Color(0xFF132A4A)),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  bodyKey.tr,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
-                      .bodySecondary
-                      .copyWith(color: const Color(0xFF4B5563)),
+                  infoColor: const Color(0xFF6B7280),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TitleInfoRow extends StatelessWidget {
+  const _TitleInfoRow({
+    required this.title,
+    required this.message,
+    required this.titleStyle,
+    required this.infoColor,
+  });
+
+  final String title;
+  final String message;
+  final TextStyle titleStyle;
+  final Color infoColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRtl = (Get.locale?.languageCode ?? 'ar') == 'ar';
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InfoIconButton(
+            title: title,
+            message: message,
+            color: infoColor,
+            size: 18,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              title,
+              textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+              style: titleStyle,
             ),
           ),
         ],

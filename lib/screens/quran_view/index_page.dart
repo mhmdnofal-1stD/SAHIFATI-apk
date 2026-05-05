@@ -29,7 +29,6 @@ import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
-import '../../core/typography/app_typography.dart';
 import '../../core/reading/reading_session.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
@@ -615,56 +614,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   static const int _mushafFirstPage = 1;
   static const int _mushafLastPage = 604;
 
-  /// Cached [first, last] mushaf page range derived from the active reader
-  /// scope filter. Null when no scope is active (full mushaf).
-  (int, int)? _scopePageRange;
-
-  /// Resolve the scope-effective surah set per cascading rule:
-  /// surahIds > juzs > thirds > none.
-  Set<int> _resolveScopeSurahIds() {
-    if (_filterSurahIds.isNotEmpty) {
-      return Set<int>.from(_filterSurahIds);
-    }
-    if (_filterJuzs.isNotEmpty) {
-      return _ReaderScopeData.surahsInJuzs(_filterJuzs);
-    }
-    if (_filterThirds.isNotEmpty) {
-      final juzs = <int>{};
-      for (final third in _filterThirds) {
-        juzs.addAll(_ReaderScopeData.juzsInThird(third));
-      }
-      return _ReaderScopeData.surahsInJuzs(juzs);
-    }
-    return const <int>{};
-  }
-
-  void _recomputeScopePageRange() {
-    final surahs = _resolveScopeSurahIds();
-    if (surahs.isEmpty) {
-      _scopePageRange = null;
-      return;
-    }
-    var minPage = _mushafLastPage;
-    var maxPage = _mushafFirstPage;
-    for (final s in surahs) {
-      final first = quran.getPageNumber(s, 1);
-      final last = quran.getPageNumber(s, quran.getVerseCount(s));
-      if (first < minPage) minPage = first;
-      if (last > maxPage) maxPage = last;
-    }
-    _scopePageRange = (minPage, maxPage);
-  }
-
-  int get _scopeFirstPage {
-    if (_scopePageRange != null) return _scopePageRange!.$1;
-    return _mushafFirstPage;
-  }
-
-  int get _scopeLastPage {
-    if (_scopePageRange != null) return _scopePageRange!.$2;
-    return _mushafLastPage;
-  }
-
   String get _navigationProgressLabel {
     if (_isPageNavigation && _currentPage != null) {
       return '$_currentPage / 604';
@@ -1129,27 +1078,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<List<Ayat>> _loadCurrentNavigationAyat() async {
-    await _ensureNavigationInitialized();
-
-    if (_isPageNavigation) {
-      // Load every ayah on this mushaf page across all surahs so that a
-      // single page that spans the end of one surah and the start of another
-      // shows both surahs in place instead of being split across two pages.
-      final pageAyat = await AyatController().loadAyatByPage(_currentPage!);
-      pageAyat.sort(_compareAyatOrder);
-      return pageAyat;
-    }
-
-    if (_currentHizbQuarter != null) {
-      return _navigationScopeAyat
-          .where((ayah) => ayah.hizbQuarter == _currentHizbQuarter)
-          .toList();
-    }
-
-    return List<Ayat>.from(_navigationScopeAyat);
-  }
-
   Future<void> _loadAdjacentChunk({required bool forward}) async {
     final selectedUser = context.read<UsersProvider>().selectedUser;
     if (selectedUser == null) {
@@ -1226,7 +1154,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return recognizer;
     }
 
-    if (_isAyahSelectionMode && !_isSupervisorViewingStudent(usersProvider)) {
+    if (_isAyahSelectionMode) {
       recognizer.onTap = () => _toggleAyahSelection(ayah);
       return recognizer;
     }
@@ -1366,6 +1294,22 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _canTapAyah(UsersProvider usersProvider) {
     return _hasConnection &&
         (_canOpenAssessment || _isSupervisorViewingStudent(usersProvider));
+  }
+
+  String _recommendationErrorFeedback(Object error) {
+    final rawMessage = error.toString().replaceFirst(
+          RegExp(r'^Exception:\s*'),
+          '',
+        );
+    final message = rawMessage.trim();
+    if (message.contains('Cannot recommend mastered ayahs')) {
+      return 'quran_reading_recommendation_mastered_blocked'.tr;
+    }
+    if (message.isEmpty ||
+        message == 'service_teacher_recommendations_create_failed'.tr) {
+      return 'quran_reading_recommendation_send_error'.tr;
+    }
+    return message;
   }
 
   bool _isMasteredMemoEvaluation(Evaluation? evaluation) {
@@ -1523,13 +1467,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       if (!mounted) {
         return;
       }
-
-      final message = '$error';
-      final feedbackKey = message.contains('Cannot recommend mastered ayahs')
-          ? 'quran_reading_recommendation_mastered_blocked'
-          : 'quran_reading_recommendation_send_error';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(feedbackKey.tr)),
+        SnackBar(content: Text(_recommendationErrorFeedback(error))),
       );
     }
   }
@@ -1721,6 +1660,135 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         _pageController.jumpTo(savedScrollOffset);
       }
     });
+  }
+
+  Future<void> _sendSupervisorRecommendationsForSelectedAyahs() async {
+    final usersProvider = context.read<UsersProvider>();
+    final student = usersProvider.selectedUser;
+    if (student == null) {
+      return;
+    }
+
+    final ayahs = _selectedAyahs();
+    if (ayahs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('no_verses_found_to_evaluate'.tr)),
+      );
+      return;
+    }
+
+    final ayahIds = ayahs
+        .map((ayah) => ayah.id)
+        .whereType<int>()
+        .toSet()
+        .toList(growable: false);
+    if (ayahIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('quran_reading_recommendation_send_error'.tr)),
+      );
+      return;
+    }
+
+    final studentLabel =
+        student.username.isNotEmpty ? student.username : student.email;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'quran_reading_bulk_recommendation_dialog_title'.trParams({
+            'count': ayahIds.length.toString(),
+          }),
+        ),
+        content: Text(
+          'quran_reading_bulk_recommendation_dialog_body'.trParams({
+            'student': studentLabel,
+            'count': ayahIds.length.toString(),
+          }),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('quran_reading_recommendation_cancel'.tr),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('quran_reading_recommendation_confirm'.tr),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      await _teacherRecommendationsService.createRecommendationsBulk(
+        studentId: student.id,
+        ayahIds: ayahIds,
+      );
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _selectedAyahKeys.clear();
+        _isAyahSelectionMode = false;
+      });
+
+      unawaited(
+        _teacherRecommendationsService.refreshStudentRecommendationsInBackground(
+          student.id,
+          ayahIds: ayahIds,
+          onUpdated: (freshRecommendations) {
+            if (!mounted) {
+              return;
+            }
+
+            final recommendationsByAyah =
+                <int, List<TeacherRecommendation>>{};
+            for (final recommendation in freshRecommendations) {
+              recommendationsByAyah
+                  .putIfAbsent(
+                    recommendation.ayahId,
+                    () => <TeacherRecommendation>[],
+                  )
+                  .add(_hydrateRecommendationWithViewer(recommendation));
+            }
+
+            setState(() {
+              for (final ayah in ayahs) {
+                final ayahId = ayah.id;
+                if (ayahId == null) {
+                  continue;
+                }
+                ayah.teacherRecommendations =
+                    recommendationsByAyah[ayahId] ??
+                        <TeacherRecommendation>[];
+              }
+            });
+          },
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'quran_reading_bulk_recommendation_sent'.trParams({
+              'count': ayahIds.length.toString(),
+            }),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_recommendationErrorFeedback(error))),
+      );
+    }
   }
 
   Future<void> _persistReadingSession({bool shouldAutoResume = true}) async {
@@ -1940,7 +2008,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         _filterSurahIds
           ..clear()
           ..addAll(result.surahIds);
-        _recomputeScopePageRange();
       });
 
       final selectedUser = context.read<UsersProvider>().selectedUser;
@@ -2211,11 +2278,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final usersProvider = Provider.of<UsersProvider>(context);
     final isSupervisorRecommendationMode =
         _isSupervisorViewingStudent(usersProvider);
-    final ayahTapTooltip = isSupervisorRecommendationMode
+    final ayahTapTooltip = _isAyahSelectionMode
+      ? 'quran_reading_multi_select_mode_tooltip'.tr
+      : isSupervisorRecommendationMode
         ? 'quran_reading_recommendation_tap_tooltip'.tr
-        : _isAyahSelectionMode
-            ? 'quran_reading_multi_select_mode_tooltip'.tr
-            : 'quran_reading_assessment_tap_tooltip'.tr;
+        : 'quran_reading_assessment_tap_tooltip'.tr;
 
     if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
@@ -2356,8 +2423,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                 isDarkMode: isDarkMode,
                                 isActive: _isAyahSelectionMode,
                                 flat: true,
-                                onTap: _canTapAyah(usersProvider) &&
-                                        !isSupervisorRecommendationMode
+                                onTap: _canTapAyah(usersProvider)
                                     ? _toggleAyahSelectionMode
                                     : null,
                               ),
@@ -2470,10 +2536,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                     child: Center(
                                       child: FilledButton.icon(
                                         onPressed: () =>
-                                            _openBulkAssessmentForSelectedAyahs(
-                                          evaluationProvider,
-                                          languageProvider,
-                                        ),
+                                            isSupervisorRecommendationMode
+                                                ? _sendSupervisorRecommendationsForSelectedAyahs()
+                                                : _openBulkAssessmentForSelectedAyahs(
+                                                    evaluationProvider,
+                                                    languageProvider,
+                                                  ),
                                         style: FilledButton.styleFrom(
                                           backgroundColor:
                                               const Color(0xFF132A4A),
@@ -2492,7 +2560,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                               .keyboard_double_arrow_up_rounded,
                                         ),
                                         label: Text(
-                                          'quran_reading_bulk_apply_selected'
+                                          (isSupervisorRecommendationMode
+                                                  ? 'quran_reading_bulk_recommend_selected'
+                                                  : 'quran_reading_bulk_apply_selected')
                                               .trParams({
                                             'count': _selectedAyahKeys.length
                                                 .toString(),
@@ -2843,143 +2913,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 }
 
-class _AyahMarkerInline extends StatelessWidget {
-  const _AyahMarkerInline({
-    required this.number,
-    required this.textColor,
-    required this.borderColor,
-    required this.fillColor,
-  });
-
-  final String number;
-  final Color textColor;
-  final Color borderColor;
-  final Color fillColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final markerStyle = AppTypography.of(context).quranAyahMarker.copyWith(
-          fontSize: 18,
-          height: 1,
-          fontWeight: FontWeight.w700,
-          color: textColor,
-        );
-
-    return SizedBox(
-      width: 30,
-      height: 30,
-      child: CustomPaint(
-        painter: _AyahMarkerPainter(
-          borderColor: borderColor,
-          fillColor: fillColor,
-        ),
-        child: Center(
-          child: Text(
-            number,
-            textDirection: TextDirection.rtl,
-            style: markerStyle,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AyahMarkerPainter extends CustomPainter {
-  const _AyahMarkerPainter({
-    required this.borderColor,
-    required this.fillColor,
-  });
-
-  final Color borderColor;
-  final Color fillColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final outerRadius = size.width / 2 - 1;
-    final innerRadius = outerRadius - 3;
-
-    final fillPaint = Paint()
-      ..color = fillColor
-      ..style = PaintingStyle.fill;
-    final strokePaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    canvas.drawCircle(center, outerRadius, fillPaint);
-    canvas.drawCircle(center, outerRadius, strokePaint);
-    canvas.drawCircle(center, innerRadius, strokePaint);
-
-    for (var i = 0; i < 8; i++) {
-      final angle = (math.pi / 4) * i;
-      final start = Offset(
-        center.dx + math.cos(angle) * innerRadius,
-        center.dy + math.sin(angle) * innerRadius,
-      );
-      final end = Offset(
-        center.dx + math.cos(angle) * outerRadius,
-        center.dy + math.sin(angle) * outerRadius,
-      );
-      canvas.drawLine(start, end, strokePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _AyahMarkerPainter oldDelegate) {
-    return oldDelegate.borderColor != borderColor ||
-        oldDelegate.fillColor != fillColor;
-  }
-}
-
-class _ReadingNoticeBanner extends StatelessWidget {
-  const _ReadingNoticeBanner({
-    required this.message,
-    required this.isDarkMode,
-  });
-
-  final String message;
-  final bool isDarkMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(maxWidth: 980),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF2A211B) : const Color(0xFFFFF5E8),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDarkMode ? const Color(0xFF6E5130) : const Color(0xFFE0BC7A),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFFAF7E22),
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                height: 1.45,
-                color: isDarkMode
-                    ? const Color(0xFFF3E2C3)
-                    : const Color(0xFF7A5B18),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ReaderSubjectData {
   const _ReaderSubjectData({
     required this.labels,
@@ -3113,6 +3046,57 @@ class _ReaderSurahPill extends StatelessWidget {
   }
 }
 
+class _ReaderProgressLabel extends StatelessWidget {
+  const _ReaderProgressLabel({
+    required this.label,
+    required this.isDarkMode,
+    this.onTap,
+    this.tooltip,
+  });
+
+  final String label;
+  final bool isDarkMode;
+  final VoidCallback? onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Text(
+      label,
+      style: TextStyle(
+        color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
+        fontWeight: FontWeight.w700,
+        fontSize: 18,
+        fontFeatures: const [FontFeature.tabularFigures()],
+        decoration: onTap != null ? TextDecoration.underline : null,
+        decorationStyle:
+            onTap != null ? TextDecorationStyle.dotted : null,
+      ),
+    );
+
+    if (onTap == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: text,
+      );
+    }
+
+    final tappable = InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: text,
+      ),
+    );
+
+    if (tooltip == null || tooltip!.isEmpty) {
+      return tappable;
+    }
+    return Tooltip(message: tooltip!, child: tappable);
+  }
+}
+
 class _ReaderBottomChip extends StatelessWidget {
   const _ReaderBottomChip({
     required this.isDarkMode,
@@ -3207,123 +3191,6 @@ class _ReaderRenderedPage extends StatelessWidget {
   }
 }
 
-class _ReaderPageRail extends StatelessWidget {
-  const _ReaderPageRail({
-    required this.isDarkMode,
-    required this.currentIndex,
-    required this.maxIndex,
-    required this.currentPageLabel,
-    required this.onChangeEnd,
-  });
-
-  final bool isDarkMode;
-  final double currentIndex;
-  final double maxIndex;
-  final String currentPageLabel;
-  final ValueChanged<double> onChangeEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedValue =
-        currentIndex.clamp(0.0, math.max(0.0, maxIndex)).toDouble();
-
-    return Container(
-      width: 36,
-      margin: const EdgeInsetsDirectional.only(end: 2),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: isDarkMode
-            ? Colors.black.withValues(alpha: 0.18)
-            : Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(
-            currentPageLabel,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-            ),
-          ),
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 3,
-                  thumbShape:
-                      const RoundSliderThumbShape(enabledThumbRadius: 7),
-                  overlayShape:
-                      const RoundSliderOverlayShape(overlayRadius: 12),
-                ),
-                child: Slider(
-                  min: 0,
-                  max: math.max(1.0, maxIndex),
-                  value: clampedValue,
-                  onChanged: (_) {},
-                  onChangeEnd: onChangeEnd,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ReaderProgressLabel extends StatelessWidget {
-  const _ReaderProgressLabel({
-    required this.label,
-    required this.isDarkMode,
-    this.onTap,
-    this.tooltip,
-  });
-
-  final String label;
-  final bool isDarkMode;
-  final VoidCallback? onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Text(
-      label,
-      style: TextStyle(
-        color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
-        fontWeight: FontWeight.w700,
-        fontSize: 18,
-        fontFeatures: const [FontFeature.tabularFigures()],
-        decoration: onTap != null ? TextDecoration.underline : null,
-        decorationStyle: onTap != null ? TextDecorationStyle.dotted : null,
-      ),
-    );
-
-    if (onTap == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: text,
-      );
-    }
-
-    final tappable = InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: text,
-      ),
-    );
-
-    if (tooltip == null || tooltip!.isEmpty) {
-      return tappable;
-    }
-    return Tooltip(message: tooltip!, child: tappable);
-  }
-}
-
 class _ReaderInlineChevron extends StatelessWidget {
   const _ReaderInlineChevron({
     required this.icon,
@@ -3357,44 +3224,9 @@ class _ReaderInlineChevron extends StatelessWidget {
 /// using the `quran` package metadata.
 class _ReaderScopeData {
   static const int _juzsPerThird = 10;
-  static Map<int, List<int>>? _juzToSurahs;
 
   static int thirdOfJuz(int juz) => ((juz - 1) ~/ _juzsPerThird) + 1;
 
-  static Iterable<int> juzsInThird(int third) {
-    final start = (third - 1) * _juzsPerThird + 1;
-    final end = third * _juzsPerThird;
-    return Iterable<int>.generate(end - start + 1, (i) => start + i);
-  }
-
-  static Map<int, List<int>> _ensureJuzToSurahs() {
-    final cached = _juzToSurahs;
-    if (cached != null) return cached;
-    final map = <int, Set<int>>{};
-    for (var s = 1; s <= quran.totalSurahCount; s++) {
-      final firstJuz = quran.getJuzNumber(s, 1);
-      final lastJuz = quran.getJuzNumber(s, quran.getVerseCount(s));
-      for (var j = firstJuz; j <= lastJuz; j++) {
-        (map[j] ??= <int>{}).add(s);
-      }
-    }
-    final sorted = <int, List<int>>{
-      for (final entry in map.entries)
-        entry.key: (entry.value.toList()..sort()),
-    };
-    _juzToSurahs = sorted;
-    return sorted;
-  }
-
-  static Set<int> surahsInJuzs(Iterable<int> juzs) {
-    final out = <int>{};
-    final table = _ensureJuzToSurahs();
-    for (final j in juzs) {
-      final list = table[j];
-      if (list != null) out.addAll(list);
-    }
-    return out;
-  }
 }
 
 class _ReaderJuzPicker extends StatefulWidget {

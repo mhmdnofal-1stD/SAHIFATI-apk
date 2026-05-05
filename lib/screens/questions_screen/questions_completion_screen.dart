@@ -6,6 +6,7 @@ import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
+import 'package:sahifaty/services/evaluations_services.dart';
 import '../widgets/custom_back_button.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/info_icon_button.dart';
@@ -21,6 +22,7 @@ class QuestionsCompletionScreen extends StatefulWidget {
     required this.totalItems,
     required this.completedItems,
     required this.lastReachedLevel,
+    this.browseSchoolLevelPair,
   });
 
   final bool skipped;
@@ -29,6 +31,7 @@ class QuestionsCompletionScreen extends StatefulWidget {
   final int totalItems;
   final int completedItems;
   final int lastReachedLevel;
+  final String? browseSchoolLevelPair;
 
   @override
   State<QuestionsCompletionScreen> createState() =>
@@ -39,10 +42,20 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
   bool _isOpeningReadingBrowser = false;
   String? _errorMessage;
 
+  QuranChartFilters _browseChartFilters() {
+    final schoolLevelPair = widget.browseSchoolLevelPair?.trim();
+    if (schoolLevelPair == null || schoolLevelPair.isEmpty) {
+      return const QuranChartFilters();
+    }
+
+    return QuranChartFilters(schoolLevelPairs: [schoolLevelPair]);
+  }
+
   Future<void> _openReadingBrowser() async {
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final user = usersProvider.selectedUser;
+    final filters = _browseChartFilters();
 
     setState(() {
       _isOpeningReadingBrowser = true;
@@ -51,14 +64,24 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
 
     try {
       if (user != null) {
-        await evaluationsProvider.getQuranChartData(user.id);
+        await evaluationsProvider.getQuranChartData(
+          user.id,
+          filters: filters,
+        );
       }
 
       if (!mounted) {
         return;
       }
 
-      Get.offAllNamed(MainScreen.routeName);
+      final parameters = <String, String>{
+        'comesFirst': 'false',
+      };
+      if (filters.schoolLevelPairs.isNotEmpty) {
+        parameters['schoolLevelPairs'] = filters.schoolLevelPairs.join(',');
+      }
+
+      Get.offAllNamed(MainScreen.routeName, parameters: parameters);
     } catch (error) {
       if (!mounted) {
         return;
@@ -67,7 +90,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
       final message = error.toString().replaceFirst('Exception: ', '').trim();
       setState(() {
         _errorMessage = message.isEmpty
-        ? 'questions_completion_open_browse_error'.tr
+            ? 'questions_completion_open_browse_error'.tr
             : message;
       });
     } finally {

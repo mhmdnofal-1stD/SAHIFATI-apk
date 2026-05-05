@@ -54,7 +54,7 @@ try {
   $writer = [System.IO.StreamWriter]::new($resolvedOutputPath, $false, [System.Text.UTF8Encoding]::new($false))
 
   try {
-    while (($line = $reader.ReadLine()) -ne $null) {
+    while ($null -ne ($line = $reader.ReadLine())) {
       if ([string]::IsNullOrWhiteSpace($line)) {
         continue
       }
