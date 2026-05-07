@@ -23,20 +23,98 @@ class AuthLanguageSwitch extends StatelessWidget {
   final Color shadowColor;
   final EdgeInsetsGeometry padding;
 
-  String _targetLanguageCode(String currentCode) {
-    return currentCode.toLowerCase() == 'en' ? 'ar' : 'en';
+  List<Map<String, String>> _availableLanguages(LanguageProvider languageProvider) {
+    final languages = <Map<String, String>>[];
+
+    for (final entry in languageProvider.languages) {
+      if (entry is! Map) {
+        continue;
+      }
+
+      final code = entry['code']?.toString().trim().toLowerCase() ?? '';
+      final name = entry['name']?.toString().trim() ?? '';
+      if (code.isEmpty || name.isEmpty) {
+        continue;
+      }
+
+      languages.add({'code': code, 'name': name});
+    }
+
+    return languages;
   }
 
-  String _targetLanguageLabel(String languageCode) {
-    return languageCode == 'ar' ? 'العربية' : 'English';
+  String _currentLanguageLabel(LanguageProvider languageProvider) {
+    for (final language in _availableLanguages(languageProvider)) {
+      if (language['code'] == languageProvider.langCode.toLowerCase()) {
+        return language['name']!;
+      }
+    }
+
+    return languageProvider.langCode.toUpperCase();
+  }
+
+  Future<void> _openLanguagePicker(
+    BuildContext context,
+    LanguageProvider languageProvider,
+  ) async {
+    if (!languageProvider.isLoadingLanguages &&
+        !languageProvider.hasFetchedLanguages) {
+      await languageProvider.fetchLanguages();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final languages = _availableLanguages(languageProvider);
+    if (languages.isEmpty) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final typography = AppTypography.of(sheetContext);
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Text(
+                  'language'.tr,
+                  style: typography.sectionTitle,
+                ),
+              ),
+              for (final language in languages)
+                ListTile(
+                  title: Text(language['name']!),
+                  trailing: language['code'] ==
+                          languageProvider.langCode.toLowerCase()
+                      ? Icon(
+                          Icons.check,
+                          color: Theme.of(sheetContext).colorScheme.primary,
+                        )
+                      : null,
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    await languageProvider.changeLanguage(language['code']!);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, _) {
-        final targetCode = _targetLanguageCode(languageProvider.langCode);
-        final targetLabel = _targetLanguageLabel(targetCode);
+        final currentLabel = _currentLanguageLabel(languageProvider);
 
         return Tooltip(
           message: 'language'.tr,
@@ -46,7 +124,7 @@ class AuthLanguageSwitch extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: () async {
-                await languageProvider.changeLanguage(targetCode);
+                await _openLanguagePicker(context, languageProvider);
               },
               child: Container(
                 padding: padding,
@@ -74,7 +152,7 @@ class AuthLanguageSwitch extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        targetLabel,
+                        currentLabel,
                         style: AppTypography.of(context).badgeLabel.copyWith(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,

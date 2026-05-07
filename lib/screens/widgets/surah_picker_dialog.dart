@@ -32,15 +32,13 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
 
     final entries = List<int>.generate(114, (index) => index + 1).where((id) {
       if (query.isEmpty) return true;
-      final localized = localizedSurahNameById(
+      final searchableNames = searchableSurahNamesById(
         id,
         localeCode: Get.locale?.languageCode,
-      ).toLowerCase();
-      final nameAr = localizedSurahNameById(id, localeCode: 'ar').toLowerCase();
-      final nameEn = localizedSurahNameById(id, localeCode: 'en').toLowerCase();
-      return localized.contains(query) ||
-          nameAr.contains(query) ||
-          nameEn.contains(query) ||
+      );
+      return searchableNames.any(
+            (name) => name.toLowerCase().contains(query),
+          ) ||
           id.toString() == query;
     }).toList();
 

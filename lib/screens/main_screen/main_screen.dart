@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -121,12 +123,16 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
 
-    if (widget.comesFirst) {
-      final evaluationsProvider = context.read<EvaluationsProvider>();
-      evaluationsProvider.getAllEvaluations();
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
+      if (widget.comesFirst) {
+        final evaluationsProvider = context.read<EvaluationsProvider>();
+        unawaited(evaluationsProvider.getAllEvaluations());
+      }
+
       _bootstrapChartDataIfNeeded();
     });
   }

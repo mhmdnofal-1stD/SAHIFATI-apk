@@ -5,6 +5,7 @@ import 'package:quran/quran.dart' as quran;
 import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
+import '../../core/utils/localized_value.dart';
 import '../../core/utils/surah_localization.dart';
 import '../../models/evaluation.dart';
 import '../../services/evaluations_services.dart';
@@ -375,10 +376,12 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
 
   String _evaluationLabel(Evaluation evaluation) {
     final locale = Get.locale?.languageCode ?? 'ar';
-    final raw = evaluation.name;
-    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
-    if (localized != null && localized.trim().isNotEmpty) {
-      return localized.trim();
+    final localized = localizedValue(
+      evaluation.name,
+      preferredLocale: locale,
+    );
+    if (localized.isNotEmpty) {
+      return localized;
     }
     return evaluation.id?.toString() ?? '';
   }

@@ -24,7 +24,7 @@ class SocialLoginButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: SizeConfig.screenWidth! * 0.85, // Adjust width as needed
+      width: MediaQuery.sizeOf(context).width * 0.85,
       height: SizeConfig.getProportionalHeight(50),
       child: ElevatedButton(
         onPressed: onPressed,

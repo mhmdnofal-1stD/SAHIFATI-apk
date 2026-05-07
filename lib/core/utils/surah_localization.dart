@@ -103,6 +103,28 @@ String localizedSurahNameById(int surahId, {String? localeCode}) {
   );
 }
 
+List<String> searchableSurahNamesById(int surahId, {String? localeCode}) {
+  final normalizedLocale = normalizeSurahLocaleCode(localeCode);
+  final candidates = <String>[];
+
+  void addCandidate(String? value) {
+    final normalized = value?.trim() ?? '';
+    if (normalized.isEmpty) {
+      return;
+    }
+    if (candidates.contains(normalized)) {
+      return;
+    }
+    candidates.add(normalized);
+  }
+
+  addCandidate(localizedSurahNameById(surahId, localeCode: normalizedLocale));
+  addCandidate(localizedSurahNameById(surahId, localeCode: 'ar'));
+  addCandidate(localizedSurahNameById(surahId, localeCode: 'en'));
+
+  return candidates;
+}
+
 int canonicalAyahCountForSurah(int surahId, {int? fallbackAyahCount}) {
   if (surahId >= 1 && surahId <= quran.totalSurahCount) {
     return quran.getVerseCount(surahId);

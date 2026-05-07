@@ -95,7 +95,7 @@ class LocalQuranChartService {
           final verseCount = evaluationVerseCounts[entry.key] ?? 0;
           return {
             'evaluationId': entry.key,
-            'name': evaluation?.name ?? const {'ar': 'غير مصنف', 'en': 'غير مصنف'},
+            'name': evaluation?.name ?? const {'ar': 'غير مصنف'},
             'code': evaluation?.code ?? '!',
             'color': evaluation?.color,
             'characterCount': entry.value,
@@ -116,7 +116,7 @@ class LocalQuranChartService {
       );
       result.add({
         'evaluationId': 0,
-        'name': const {'ar': 'غير مصنف', 'en': 'غير مصنف'},
+        'name': const {'ar': 'غير مصنف'},
         'code': '!',
         'color': null,
         'characterCount': unevaluatedCharacterCount,

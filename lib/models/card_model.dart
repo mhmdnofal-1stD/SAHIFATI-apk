@@ -1,3 +1,5 @@
+import '../core/utils/localized_value.dart';
+
 /// Represents a research card linking a Quranic content item to a subject.
 /// Mirrors the API `cards` schema.
 class CardModel {
@@ -85,7 +87,10 @@ class CardModel {
   String get subjectDisplayName {
     final name = subject['name'];
     if (name is Map) {
-      return (name['ar'] as String?) ?? (name['en'] as String?) ?? subjectName;
+      final resolved = localizedValue(localizedStringMapFromDynamic(name));
+      if (resolved.isNotEmpty) {
+        return resolved;
+      }
     }
     return subjectName;
   }

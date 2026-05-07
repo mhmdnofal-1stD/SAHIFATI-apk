@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/utils/localized_value.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
@@ -797,7 +798,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
 
   String _localizedName(ChartEvaluationData entry) {
     final langCode = Get.locale?.languageCode ?? 'ar';
-    return entry.name[langCode] ?? entry.name['ar'] ?? entry.name['en'] ?? '';
+    return localizedValue(entry.name, preferredLocale: langCode);
   }
 }
 
@@ -952,7 +953,7 @@ class _ChartLegend extends StatelessWidget {
 
   String _localizedName(ChartEvaluationData entry) {
     final langCode = Get.locale?.languageCode ?? 'ar';
-    return entry.name[langCode] ?? entry.name['ar'] ?? entry.name['en'] ?? '';
+    return localizedValue(entry.name, preferredLocale: langCode);
   }
 
   @override

@@ -22,6 +22,7 @@ class TypographyConfigService {
 
   static const String appKey = 'frontend-users-ui';
   static const Duration _httpTimeout = Duration(seconds: 12);
+  static const Duration _prefsTimeout = Duration(seconds: 2);
   static const String _cacheKey = 'typography_config_frontend-users-ui';
   static const String _seedAssetPath =
       'assets/json/typography_frontend-users-ui.json';
@@ -64,10 +65,17 @@ class TypographyConfigService {
   // ---- Internals -----------------------------------------------------------
 
   static Future<TypographyConfig?> _readCached() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_cacheKey);
-    if (raw == null || raw.isEmpty) return null;
-    return _decode(raw);
+    try {
+      final prefs = await SharedPreferences.getInstance().timeout(_prefsTimeout);
+      final raw = prefs.getString(_cacheKey);
+      if (raw == null || raw.isEmpty) return null;
+      return _decode(raw);
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint('TypographyConfigService: timed out reading cached config');
+      }
+      return null;
+    }
   }
 
   static Future<TypographyConfig?> _readSeed() async {

@@ -24,6 +24,7 @@ class TranslationLibraryService {
 
   static const String appKey = 'frontend-users-ui';
   static const Duration _httpTimeout = Duration(seconds: 12);
+  static const Duration _prefsTimeout = Duration(seconds: 2);
   static const String _cachePrefix = 'translation_bundle_';
   static const String _metaPrefix = 'translation_bundle_meta_';
 
@@ -38,9 +39,20 @@ class TranslationLibraryService {
   /// [refreshInBackground].
   static Future<Map<String, String>> loadCachedOrSeed(
     String languageCode,
+    {
+    bool includeAyahSeed = true,
+  }
   ) async {
     final seed = await _loadAssetSeed(languageCode);
     final cached = await _readCachedBundle(languageCode);
+    if (!includeAyahSeed) {
+      if (cached != null && cached.isNotEmpty) {
+        return _mergeBundles(seed, cached);
+      }
+
+      return seed;
+    }
+
     final ayahSeed = await AyahTranslationLibraryService.loadSeed(languageCode);
     if (cached != null && cached.isNotEmpty) {
       return _mergeBundles(_mergeBundles(seed, cached), ayahSeed);
@@ -98,17 +110,23 @@ class TranslationLibraryService {
   static Future<Map<String, String>?> _readCachedBundle(
     String languageCode,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_cachePrefix$languageCode');
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-
     try {
+      final prefs = await SharedPreferences.getInstance().timeout(_prefsTimeout);
+      final raw = prefs.getString('$_cachePrefix$languageCode');
+      if (raw == null || raw.isEmpty) {
+        return null;
+      }
+
       final decoded = json.decode(raw);
       if (decoded is Map) {
         return decoded.map(
           (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+        );
+      }
+    } on TimeoutException {
+      if (kDebugMode) {
+        debugPrint(
+          'TranslationLibraryService: timed out reading cached bundle for $languageCode',
         );
       }
     } catch (error) {

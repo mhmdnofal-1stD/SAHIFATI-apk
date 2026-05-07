@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-08",
+  "defaultFallbackLanguage": "ar",
+  "policy": {
+    "unsupportedAyahFallback": "arabic-only",
+    "allowEnglishFallback": false,
+    "consumerRuntimeChangesAllowed": false
+  },
+  "sources": [
+    {
+      "languageCode": "de",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "german_bubenheim",
+      "delivery": "api-or-sqlite",
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "hi",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "hindi_omari",
+      "delivery": "api-or-sqlite",
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "ms",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "malay_basumayyah",
+      "delivery": "api-or-sqlite",
+      "notes": [
+        "Live through browse and sura endpoints",
+        "Not currently exposed by quranenc translations/list/ms"
+      ],
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "pa",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "punjabi_arif",
+      "delivery": "api-or-sqlite",
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "ha",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "hausa_gummi",
+      "delivery": "api-or-sqlite",
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "sw",
+      "status": "approved",
+      "provider": "quranenc",
+      "translationKey": "swahili_rwwad",
+      "alternates": [
+        "swahili_barawani"
+      ],
+      "delivery": "api-or-sqlite",
+      "verifiedCoverage": {
+        "surahs": 114,
+        "ayat": 6236
+      }
+    },
+    {
+      "languageCode": "jv",
+      "status": "deferred",
+      "provider": null,
+      "translationKey": null,
+      "delivery": null,
+      "notes": [
+        "No official machine-readable source with clear reusable terms confirmed in the 2026-05-08 audit"
+      ],
+      "verifiedCoverage": null
+    }
+  ]
+}

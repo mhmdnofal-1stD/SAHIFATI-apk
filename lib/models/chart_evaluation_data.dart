@@ -1,3 +1,5 @@
+import '../core/utils/localized_value.dart';
+
 class ChartEvaluationData {
   int evaluationId;
   Map<String, String> name;
@@ -19,15 +21,15 @@ class ChartEvaluationData {
   factory ChartEvaluationData.fromJson(Map<String, dynamic> json) {
     Map<String, String>? parsedName;
     if (json['name'] != null) {
-      parsedName = Map<String, String>.from(json['name']);
+      parsedName = localizedStringMapFromDynamic(json['name']);
     } else if (json['nameAr'] != null) {
       final localizedName = json['nameAr'].toString();
-      parsedName = {'ar': localizedName, 'en': localizedName};
+      parsedName = {'ar': localizedName};
     }
 
     return ChartEvaluationData(
         evaluationId: json['evaluationId'],
-        name: parsedName ?? const {'ar': '', 'en': ''},
+        name: parsedName ?? const {'ar': ''},
         code: json['code']?.toString() ?? '',
         color: json['color']?.toString(),
         characterCount: json['characterCount'],

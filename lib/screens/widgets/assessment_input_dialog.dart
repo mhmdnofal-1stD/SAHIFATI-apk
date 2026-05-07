@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
+import '../../core/utils/localized_value.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
@@ -79,18 +80,13 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   );
 
   String evaluationLabel(Evaluation evaluation) {
-    final localizedName =
-        evaluation.name[languageProvider.langCode]?.trim() ?? '';
-    if (localizedName.isNotEmpty) {
-      return localizedName;
-    }
-
-    final fallbackName = evaluation.name[Get.locale?.languageCode]?.trim() ??
-        evaluation.name['ar']?.trim() ??
-        evaluation.name['en']?.trim() ??
-        '';
-    if (fallbackName.isNotEmpty) {
-      return fallbackName;
+    final resolved = localizedValue(
+      evaluation.name,
+      preferredLocale: languageProvider.langCode,
+      fallbackLocale: Get.locale?.languageCode,
+    );
+    if (resolved.isNotEmpty) {
+      return resolved;
     }
 
     return evaluation.code;

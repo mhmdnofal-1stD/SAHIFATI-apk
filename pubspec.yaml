@@ -54,12 +54,7 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-    - assets/json/data.json
-    - assets/json/intl_ar.json
-    - assets/json/intl_en.json
-    - assets/json/mushaf_layout_mushaf5.json
-    - assets/json/profile_location_lookup.json
-    - assets/json/typography_frontend-users-ui.json
+    - assets/json/
 
   fonts:
     - family: DIN NEXT ARABIC

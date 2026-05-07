@@ -9,10 +9,12 @@ class LanguageProvider with ChangeNotifier {
   
   List<dynamic> languages = [
     {"code": "ar", "name": "العربية"},
-    {"code": "en", "name": "English"}
+    {"code": "en", "name": "English"},
+    {"code": "tr", "name": "Türkçe"}
   ];
   
   bool isLoadingLanguages = false;
+  bool hasFetchedLanguages = false;
   final LanguageServices _services = LanguageServices();
 
   void setLangCode(String code) {
@@ -41,6 +43,7 @@ class LanguageProvider with ChangeNotifier {
     if (fetched != null) {
       languages = fetched;
     }
+    hasFetchedLanguages = true;
     
     isLoadingLanguages = false;
     notifyListeners();

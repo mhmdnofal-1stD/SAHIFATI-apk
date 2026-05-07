@@ -25,6 +25,10 @@ class AyahTranslationLibraryService {
   static final Map<String, Map<String, String>> _memoryCache =
       <String, Map<String, String>>{};
 
+  static bool supportsLanguage(String languageCode) {
+    return supportedLanguageCodes.contains(_normalizeLanguageCode(languageCode));
+  }
+
   static Future<void> preload({
     required Iterable<String> languageCodes,
   }) async {
@@ -35,6 +39,10 @@ class AyahTranslationLibraryService {
 
   static Future<Map<String, String>> loadSeed(String languageCode) async {
     final normalizedLanguageCode = _normalizeLanguageCode(languageCode);
+    if (!supportsLanguage(normalizedLanguageCode)) {
+      return const <String, String>{};
+    }
+
     final cached = _memoryCache[normalizedLanguageCode];
     if (cached != null) {
       return cached;
@@ -115,7 +123,8 @@ class AyahTranslationLibraryService {
 
   static Map<String, String> _buildSeed(String languageCode) {
     final normalizedLanguageCode = _normalizeLanguageCode(languageCode);
-    if (normalizedLanguageCode == 'ar') {
+    if (!supportsLanguage(normalizedLanguageCode) ||
+        normalizedLanguageCode == 'ar') {
       return const <String, String>{};
     }
 

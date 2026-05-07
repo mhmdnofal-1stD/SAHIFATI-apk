@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../core/utils/localized_value.dart';
 import 'offline_assessment_store.dart';
 import 'sahifaty_api.dart';
 
@@ -26,12 +27,7 @@ class SubjectHierarchyItem {
     final rawName = json['name'];
 
     if (rawName is Map) {
-      for (final entry in rawName.entries) {
-        final value = entry.value;
-        if (value is String && value.trim().isNotEmpty) {
-          localizedName[entry.key.toString()] = value.trim();
-        }
-      }
+      localizedName.addAll(localizedStringMapFromDynamic(rawName));
     }
 
     return SubjectHierarchyItem(
@@ -44,26 +40,9 @@ class SubjectHierarchyItem {
   }
 
   String displayName(String localeCode) {
-    final preferred = name[localeCode]?.trim();
-    if (preferred != null && preferred.isNotEmpty) {
-      return preferred;
-    }
-
-    final arabic = name['ar']?.trim();
-    if (arabic != null && arabic.isNotEmpty) {
-      return arabic;
-    }
-
-    final english = name['en']?.trim();
-    if (english != null && english.isNotEmpty) {
-      return english;
-    }
-
-    for (final value in name.values) {
-      final normalized = value.trim();
-      if (normalized.isNotEmpty) {
-        return normalized;
-      }
+    final resolved = localizedValue(name, preferredLocale: localeCode);
+    if (resolved.isNotEmpty) {
+      return resolved;
     }
 
     return nameAr?.trim() ?? '';

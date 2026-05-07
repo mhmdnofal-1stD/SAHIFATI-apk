@@ -1,5 +1,7 @@
 import 'package:sahifaty/models/school_level_content.dart';
 
+import '../core/utils/localized_value.dart';
+
 class SchoolLevel {
   String? _id;
   int? schoolId;
@@ -32,16 +34,10 @@ class SchoolLevel {
       return normalized.isEmpty ? null : normalized;
     }
     if (value is Map) {
-      for (final key in const ['ar', 'en']) {
-        final candidate = value[key];
-        if (candidate is String && candidate.trim().isNotEmpty) {
-          return candidate.trim();
-        }
-      }
-      for (final candidate in value.values) {
-        if (candidate is String && candidate.trim().isNotEmpty) {
-          return candidate.trim();
-        }
+      final localized = localizedStringMapFromDynamic(value);
+      final resolved = localizedValue(localized);
+      if (resolved.isNotEmpty) {
+        return resolved;
       }
     }
     return null;
@@ -49,12 +45,12 @@ class SchoolLevel {
 
   static Map<String, dynamic>? _parseLocalizedName(dynamic value) {
     if (value is Map) {
-      return Map<String, dynamic>.from(value);
+      final localized = localizedStringMapFromDynamic(value);
+      return localized.isEmpty ? null : localized;
     }
     if (value is String && value.trim().isNotEmpty) {
       return {
         'ar': value.trim(),
-        'en': value.trim(),
       };
     }
     return null;

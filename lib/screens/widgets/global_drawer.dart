@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
-import '../../core/typography/app_typography.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
@@ -17,6 +16,34 @@ import '../../services/teacher_supervisions_services.dart';
 import 'custom_text.dart';
 
 import '../cards_screen/cards_list_screen.dart';
+
+Widget _buildDrawerTitle({
+  required String text,
+  required IconData icon,
+  Color? color,
+}) {
+  return Row(
+    textDirection: TextDirection.rtl,
+    children: [
+      Icon(
+        icon,
+        size: 30,
+        color: color,
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: CustomText(
+          text: text,
+          withBackground: false,
+          color: color,
+          textAlign: TextAlign.start,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
+}
 
 class GlobalDrawer extends StatelessWidget {
   const GlobalDrawer({super.key});
@@ -42,76 +69,36 @@ class GlobalDrawer extends StatelessWidget {
                 onTap: () {
                   Get.to(() => const ProfileScreen());
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.account_circle_outlined,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: 'drawer_profile'.tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'drawer_profile'.tr,
+                  icon: Icons.account_circle_outlined,
                 ),
               ),
               ListTile(
                 onTap: () {
                   Get.toNamed('/my-licenses');
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.verified_outlined,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: 'drawer_my_licenses'.tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'drawer_my_licenses'.tr,
+                  icon: Icons.verified_outlined,
                 ),
               ),
               ListTile(
                 onTap: () {
                   Get.to(() => const SettingsScreen());
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.settings,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: "settings".tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'settings'.tr,
+                  icon: Icons.settings,
                 ),
               ),
               ListTile(
                 onTap: () {
                   Get.to(() => const SettingsScreen());
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.language,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: "language".tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'language'.tr,
+                  icon: Icons.language,
                 ),
               ),
               ListTile(
@@ -123,19 +110,9 @@ class GlobalDrawer extends StatelessWidget {
                   await evaluationsProvider.getAllEvaluations();
                   Get.to(const QuestionsScreen());
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.question_answer_sharp,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: "quick_questions".tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'quick_questions'.tr,
+                  icon: Icons.question_answer_sharp,
                 ),
               ),
               Consumer<UsersProvider>(
@@ -146,19 +123,9 @@ class GlobalDrawer extends StatelessWidget {
                     onTap: () {
                       Get.toNamed(CardsListScreen.routeName);
                     },
-                    title: const Row(
-                      textDirection: TextDirection.rtl,
-                      children: [
-                        Icon(
-                          Icons.library_books_outlined,
-                          size: 30,
-                        ),
-                        SizedBox(width: 10),
-                        CustomText(
-                          text: 'البطاقات العلمية',
-                          withBackground: false,
-                        ),
-                      ],
+                    title: _buildDrawerTitle(
+                      text: 'البطاقات العلمية',
+                      icon: Icons.library_books_outlined,
                     ),
                   );
                 },
@@ -189,57 +156,27 @@ class GlobalDrawer extends StatelessWidget {
                     );
                   }
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.people,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: "switch_user".tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'switch_user'.tr,
+                  icon: Icons.people,
                 ),
               ),
               ListTile(
                 onTap: () {
                   Get.offAllNamed(WelcomeScreen.routeName);
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.home_outlined,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: 'drawer_home'.tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'drawer_home'.tr,
+                  icon: Icons.home_outlined,
                 ),
               ),
               ListTile(
                 onTap: () {
                   Get.offAllNamed(MainScreen.routeName);
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.auto_stories_outlined,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    CustomText(
-                      text: 'drawer_browse'.tr,
-                      withBackground: false,
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'drawer_browse'.tr,
+                  icon: Icons.auto_stories_outlined,
                 ),
               ),
               ListTile(
@@ -247,22 +184,10 @@ class GlobalDrawer extends StatelessWidget {
                   final usersProvider = context.read<UsersProvider>();
                   await UsersController().logout(usersProvider);
                 },
-                title: Row(
-                  textDirection: TextDirection.rtl,
-                  children: [
-                    const Icon(
-                      Icons.logout,
-                      color: Colors.red,
-                      size: 30,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'logout'.tr,
-                      style: AppTypography.of(context)
-                          .drawerItem
-                          .copyWith(color: Colors.red),
-                    ),
-                  ],
+                title: _buildDrawerTitle(
+                  text: 'logout'.tr,
+                  icon: Icons.logout,
+                  color: Colors.red,
                 ),
               ),
             ],
@@ -344,19 +269,9 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
           onTap: () {
             Get.toNamed(IncomingRequestsScreen.routeName);
           },
-          title: Row(
-            textDirection: TextDirection.rtl,
-            children: [
-              const Icon(
-                Icons.space_dashboard_rounded,
-                size: 30,
-              ),
-              const SizedBox(width: 10),
-              CustomText(
-                text: 'supervision_dashboard_screen_title'.tr,
-                withBackground: false,
-              ),
-            ],
+          title: _buildDrawerTitle(
+            text: 'supervision_dashboard_screen_title'.tr,
+            icon: Icons.space_dashboard_rounded,
           ),
         );
       },

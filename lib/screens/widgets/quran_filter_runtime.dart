@@ -7,6 +7,7 @@ import 'package:sahifaty/models/school.dart';
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/localized_value.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
 import 'package:sahifaty/services/subjects_lookup_service.dart';
 import 'package:sahifaty/services/school_services.dart';
@@ -433,16 +434,14 @@ class QuranFilterAvailabilityBuilder {
   }
 
   String _localizedSchoolName(School school, String locale) {
-    final raw = school.schoolName;
-    final preferred = raw[locale];
-    if (preferred is String && preferred.trim().isNotEmpty) {
-      return preferred.trim();
+    final resolved = localizedValue(
+      localizedStringMapFromDynamic(school.schoolName),
+      preferredLocale: locale,
+    );
+    if (resolved.isNotEmpty) {
+      return resolved;
     }
-    for (final candidate in raw.values) {
-      if (candidate is String && candidate.trim().isNotEmpty) {
-        return candidate.trim();
-      }
-    }
+
     return school.id?.toString() ?? '';
   }
 
@@ -450,16 +449,12 @@ class QuranFilterAvailabilityBuilder {
     if (raw == null) {
       return null;
     }
-    final preferred = raw[locale];
-    if (preferred is String && preferred.trim().isNotEmpty) {
-      return preferred.trim();
-    }
-    for (final candidate in raw.values) {
-      if (candidate is String && candidate.trim().isNotEmpty) {
-        return candidate.trim();
-      }
-    }
-    return null;
+
+    final resolved = localizedValue(
+      localizedStringMapFromDynamic(raw),
+      preferredLocale: locale,
+    );
+    return resolved.isEmpty ? null : resolved;
   }
 
   String? _schoolLevelNameFromCatalog(

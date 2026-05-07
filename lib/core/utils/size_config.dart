@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
@@ -8,6 +10,43 @@ class SizeConfig {
   static double? screenHeight;
   static double? defaultSize;
   static Orientation? orientation;
+
+  static ui.FlutterView? get _view {
+    final views = ui.PlatformDispatcher.instance.views;
+    if (views.isEmpty) {
+      return null;
+    }
+
+    return views.first;
+  }
+
+  static double get _resolvedScreenWidth {
+    if (screenWidth != null && screenWidth! > 0) {
+      return screenWidth!;
+    }
+
+    final view = _view;
+    if (view == null) {
+      return _mobileDesignWidth;
+    }
+
+    final pixelRatio = view.devicePixelRatio == 0 ? 1.0 : view.devicePixelRatio;
+    return view.physicalSize.width / pixelRatio;
+  }
+
+  static double get _resolvedScreenHeight {
+    if (screenHeight != null && screenHeight! > 0) {
+      return screenHeight!;
+    }
+
+    final view = _view;
+    if (view == null) {
+      return _mobileDesignHeight;
+    }
+
+    final pixelRatio = view.devicePixelRatio == 0 ? 1.0 : view.devicePixelRatio;
+    return view.physicalSize.height / pixelRatio;
+  }
 
   void init(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -56,20 +95,20 @@ class SizeConfig {
   // }
 
   static double getProportionalWidth(double inputWidth) {
-    return (inputWidth / _mobileDesignWidth) * screenWidth!;
+    return (inputWidth / _mobileDesignWidth) * _resolvedScreenWidth;
   }
 
   static double getProportionalHeight(double inputHeight) {
-    return (inputHeight / _mobileDesignHeight) * screenHeight!;
+    return (inputHeight / _mobileDesignHeight) * _resolvedScreenHeight;
   }
 
   static double getProperVerticalSpace(double value) {
-    var space = screenHeight! / value;
+    var space = _resolvedScreenHeight / value;
     return space;
   }
 
   static double getProperHorizontalSpace(double value) {
-    var space = screenWidth! / value;
+    var space = _resolvedScreenWidth / value;
     return space;
   }
 
