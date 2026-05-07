@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/api.dart';
+import 'ayah_translation_library_service.dart';
 
 /// Loads translation bundles for the user app from the central translation
 /// library API and caches them locally so the app reads strings offline.
@@ -40,11 +41,12 @@ class TranslationLibraryService {
   ) async {
     final seed = await _loadAssetSeed(languageCode);
     final cached = await _readCachedBundle(languageCode);
+    final ayahSeed = await AyahTranslationLibraryService.loadSeed(languageCode);
     if (cached != null && cached.isNotEmpty) {
-      return _mergeBundles(seed, cached);
+      return _mergeBundles(_mergeBundles(seed, cached), ayahSeed);
     }
 
-    return seed;
+    return _mergeBundles(seed, ayahSeed);
   }
 
   /// Refreshes one or more language bundles from the API in the background.
@@ -67,7 +69,13 @@ class TranslationLibraryService {
         }
 
         final seed = await _loadAssetSeed(languageCode);
-        final mergedTranslations = _mergeBundles(seed, fetched.translations);
+        final ayahSeed = await AyahTranslationLibraryService.loadSeed(
+          languageCode,
+        );
+        final mergedTranslations = _mergeBundles(
+          _mergeBundles(seed, fetched.translations),
+          ayahSeed,
+        );
 
         await _writeCachedBundle(
           languageCode,

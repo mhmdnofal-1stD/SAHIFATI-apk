@@ -5,73 +5,97 @@ import 'package:sahifaty/services/sahifaty_api.dart';
 class AyatServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
 
+  String _buildAyatQuery(Map<String, String> queryParameters) {
+    return 'ayat?${Uri(queryParameters: queryParameters).query}';
+  }
 
-  Future<Map<String, dynamic>> getAyatBySurahId(int surahId) async {
+  Future<Map<String, dynamic>> _getAyat(
+    Map<String, String> queryParameters,
+  ) async {
+    final res = await _sahifatyApi.get(_buildAyatQuery(queryParameters));
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    }
+
+    throw Exception('service_ayat_load_failed'.tr);
+  }
+
+  Future<Map<String, dynamic>> getAyatBySurahId(
+    int surahId, {
+    String? languageCode,
+  }) async {
     try {
-      int limit = 1000;
-      final res = await _sahifatyApi.get('ayat?surahId=$surahId&limit=$limit');
-
-      // Decode JSON body
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(res.body);
-        return data;
-      } else {
-        throw Exception('service_ayat_load_failed'.tr);
-      }
+      return _getAyat({
+        'surahId': surahId.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      });
     } catch (ex) {
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getAyatByHizb(int hizb) async {
+  Future<Map<String, dynamic>> getAyatByHizb(
+    int hizb, {
+    String? languageCode,
+  }) async {
     try {
-      int limit = 1000;
-
-      final res = await _sahifatyApi.get('ayat?hizb=$hizb&limit=$limit');
-
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        throw Exception(
-          'service_ayat_load_hizb_failed'.trParams({
-            'hizb': hizb.toString(),
-          }),
-        );
-      }
+      return _getAyat({
+        'hizb': hizb.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      });
     } catch (ex) {
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getAyatByJuz(int juz) async {
+  Future<Map<String, dynamic>> getAyatByHizbQuarter(
+    int hizbQuarter, {
+    String? languageCode,
+  }) async {
     try {
-      int limit = 1000;
-      final res = await _sahifatyApi.get('ayat?juz=$juz&limit=$limit');
-
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        throw Exception(
-          'service_ayat_load_juz_failed'.trParams({
-            'juz': juz.toString(),
-          }),
-        );
-      }
+      return _getAyat({
+        'hizbQuarter': hizbQuarter.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      });
     } catch (ex) {
       rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> getAyatByRange(int surahId, int start, int end) async {
+  Future<Map<String, dynamic>> getAyatByJuz(
+    int juz, {
+    String? languageCode,
+  }) async {
     try {
-      int limit = 1000;
-      final res = await _sahifatyApi.get('ayat?surahId=$surahId&fromAyah=$start&toAyah=$end&limit=$limit');
+      return _getAyat({
+        'juz': juz.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      });
+    } catch (ex) {
+      rethrow;
+    }
+  }
 
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        throw Exception('service_ayat_load_range_failed'.tr);
-      }
+  Future<Map<String, dynamic>> getAyatByPage(
+    int page, {
+    String? languageCode,
+  }) async {
+    try {
+      return _getAyat({
+        'mushafPage': page.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      });
     } catch (ex) {
       rethrow;
     }

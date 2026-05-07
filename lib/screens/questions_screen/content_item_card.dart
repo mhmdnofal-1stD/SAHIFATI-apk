@@ -20,6 +20,8 @@ import '../../core/constants/fonts.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
 import '../../models/school_level_content.dart';
+import '../widgets/ayah_assessment_title.dart';
+import '../widgets/ayah_preview_block.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/teacher_recommendation_badge.dart';
@@ -233,6 +235,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
     Ayat? ayah,
     UserEvaluation? currentEvaluation,
     String? title,
+    Widget? titleWidget,
   }) async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
 
@@ -254,6 +257,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
       subjectKeys: ayah?.subjects ?? const <Object?>[],
       enableCommentField: ayah != null,
       title: title,
+      titleWidget: titleWidget,
     );
   }
 
@@ -474,10 +478,15 @@ class _ContentItemCardState extends State<ContentItemCard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Text(
-                                    ayah.text,
-                                    textAlign: TextAlign.center,
-                                    style: AppTypography.of(context)
+                                  AyahPreviewBlock(
+                                    ayah: ayah,
+                                    languageCode: languageProvider.langCode,
+                                    translationStyle: AppTypography.of(context)
+                                        .bodySecondary
+                                        .copyWith(
+                                          color: AppColors.whiteFontColor,
+                                        ),
+                                    arabicStyle: AppTypography.of(context)
                                         .quranVerse
                                         .copyWith(
                                           color: AppColors.whiteFontColor,
@@ -530,10 +539,13 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                             ayah: ayah,
                                             currentEvaluation:
                                                 ayah.userEvaluation,
-                                            title: 'content_item_card_assess_verse_title'
-                                                .trParams({
-                                              'ayah': ayah.ayahNo.toString(),
-                                            }),
+                                            titleWidget:
+                                                buildAyahAssessmentDialogTitle(
+                                              context: context,
+                                              ayah: ayah,
+                                              languageCode:
+                                                  languageProvider.langCode,
+                                            ),
                                           );
 
                                           if (selection == null) {
@@ -818,10 +830,14 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Text(
-                                      ayah.text,
-                                      textAlign: TextAlign.center,
-                                      style: AppTypography.of(context)
+                                    AyahPreviewBlock(
+                                      ayah: ayah,
+                                      languageCode:
+                                          languageProvider.langCode,
+                                      translationStyle:
+                                          AppTypography.of(context)
+                                              .bodySecondary,
+                                      arabicStyle: AppTypography.of(context)
                                           .quranVerse
                                           .copyWith(
                                             fontSize: 18,
@@ -870,10 +886,13 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               ayah: ayah,
                                               currentEvaluation:
                                                   ayah.userEvaluation,
-                                              title: 'content_item_card_assess_verse_title'
-                                                  .trParams({
-                                                'ayah': ayah.ayahNo.toString(),
-                                              }),
+                                              titleWidget:
+                                                  buildAyahAssessmentDialogTitle(
+                                                context: context,
+                                                ayah: ayah,
+                                                languageCode:
+                                                    languageProvider.langCode,
+                                              ),
                                             );
 
                                             if (selection == null) {

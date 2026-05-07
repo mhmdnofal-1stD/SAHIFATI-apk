@@ -87,9 +87,10 @@ Future<void> main() async {
   );
 
   // Pull latest translation bundles from the central translation library in
-  // the background. Failures (offline, server down) are swallowed so the app
-  // keeps using the cached/seed copy without blocking startup.
-  unawaited(LocalizationService.refreshFromRemote());
+  // the background.
+  // Translation bundles are now expected to be fully available offline at
+  // startup, including ayah translations, so startup does not trigger a
+  // network refresh for translations.
 
   // Pull the latest typography config in the background and update the
   // controller so live text styles re-render with the admin's overrides.

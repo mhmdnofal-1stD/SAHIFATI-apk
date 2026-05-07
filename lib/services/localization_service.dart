@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ayah_translation_library_service.dart';
 import 'translation_library_service.dart';
 
 class LocalizationService extends Translations {
@@ -24,6 +25,9 @@ class LocalizationService extends Translations {
   static Map<String, String> enKeys = {};
 
   Future<void> init() async {
+    await AyahTranslationLibraryService.preload(
+      languageCodes: AyahTranslationLibraryService.supportedLanguageCodes,
+    );
     arKeys = await TranslationLibraryService.loadCachedOrSeed('ar');
     enKeys = await TranslationLibraryService.loadCachedOrSeed('en');
   }

@@ -35,6 +35,7 @@ import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
 import '../../services/mushaf_layout_service.dart';
 import '../widgets/global_drawer.dart';
+import '../widgets/ayah_assessment_title.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/pending_sync_banner.dart';
@@ -328,16 +329,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   String _trParams(String key, Map<String, String> params) =>
       key.trParams(params);
-
-  String _buildAyahPreviewTitle(Ayat ayah) {
-    final raw = quran
-        .getVerse(ayah.surah.id, ayah.ayahNo, verseEndSymbol: false)
-        .trim();
-    const maxLen = 50;
-    final preview =
-        raw.length > maxLen ? '${raw.substring(0, maxLen).trim()}…' : raw;
-    return '$preview (${ayah.ayahNo})';
-  }
 
   Future<List<Ayat>> _readerAvailabilitySourceAyat(
     int userId,
@@ -1184,7 +1175,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       initialComment: ayah.userEvaluation?.comment,
       subjectKeys: ayah.subjects ?? const <Object?>[],
       enableCommentField: true,
-      title: _buildAyahPreviewTitle(ayah),
+      titleWidget: buildAyahAssessmentDialogTitle(
+        context: context,
+        ayah: ayah,
+        languageCode: languageProvider.langCode,
+      ),
     );
 
     if (selection == null || !mounted) {

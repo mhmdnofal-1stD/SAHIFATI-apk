@@ -8,6 +8,8 @@ import 'package:sahifaty/models/user_evaluation.dart';
 class Ayat {
   int? _id;
   String text;
+  String? translationText;
+  String? translationLanguage;
   int ayahNo;
   int juz;
   int hizb;
@@ -26,6 +28,8 @@ class Ayat {
   Ayat({
     int? id,
     required this.text,
+    this.translationText,
+    this.translationLanguage,
     required this.ayahNo,
     required this.juz,
     required this.hizb,
@@ -53,6 +57,8 @@ class Ayat {
       id: json['_id'],
       ayahNo: ayahNo,
       text: json['text'],
+      translationText: json['translationText']?.toString(),
+      translationLanguage: json['translationLanguage']?.toString(),
       juz: json['juz'],
       hizb: json['hizb'],
       hizbQuarter: json['hizbQuarter'],
@@ -92,6 +98,8 @@ class Ayat {
       '_id': _id,
       'ayahNo': ayahNo,
       'text': text,
+      'translationText': translationText,
+      'translationLanguage': translationLanguage,
       'juz': juz,
       'hizb': hizb,
       'hizbQuarter': hizbQuarter,
@@ -106,7 +114,7 @@ class Ayat {
 
   @override
   String toString() {
-    return 'Ayat(text: $text)';
+    return 'Ayat(text: $text, translationLanguage: $translationLanguage)';
   }
 
   bool get hasTeacherRecommendations => teacherRecommendations.isNotEmpty;

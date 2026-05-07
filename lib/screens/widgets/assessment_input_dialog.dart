@@ -46,6 +46,8 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
   bool showSubjectSummary = true,
   String? subjectSummaryLabel,
   String? title,
+  Widget? titleWidget,
+  bool titleUsesQuranVerseStyle = false,
 }) async {
   if (evaluationsProvider.evaluations.isEmpty) {
     await evaluationsProvider.getAllEvaluations();
@@ -143,12 +145,17 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
             }
 
             final canSave = memoChanged || compreChanged || commentChanged;
+            final titleStyle = titleUsesQuranVerseStyle
+                ? AppTypography.of(context).quranVerse
+                : AppTypography.of(context).dialogTitle;
 
             return AlertDialog(
-              title: Text(
-                effectiveTitle,
-                textAlign: TextAlign.center,
-              ),
+              title: titleWidget ??
+                  Text(
+                    effectiveTitle,
+                    textAlign: TextAlign.center,
+                    style: titleStyle,
+                  ),
               content: SingleChildScrollView(
                 child: SizedBox(
                   width: 360,

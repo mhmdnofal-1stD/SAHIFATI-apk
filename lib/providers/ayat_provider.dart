@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/services/ayat_services.dart';
+import 'package:sahifaty/services/localization_service.dart';
 import '../models/ayat.dart';
 import '../models/evaluation.dart';
 import '../models/school_level_content.dart';
@@ -43,7 +44,11 @@ class AyatProvider with ChangeNotifier {
         };
       } else {
         // 🌐 Online → Load from API
-        res = await _ayatServices.getAyatBySurahId(surahId);
+        final locale = await LocalizationService.getCurrentLocale();
+        res = await _ayatServices.getAyatBySurahId(
+          surahId,
+          languageCode: locale.languageCode,
+        );
       }
 
       var data = res['data'];
