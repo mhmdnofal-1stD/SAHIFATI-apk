@@ -137,4 +137,88 @@ void main() {
 
     expect(filtered.map((ayah) => ayah.id).toList(growable: false), [1]);
   });
+
+  test('buildChartPayload respects thirds filters offline', () {
+    final allAyat = <Ayat>[
+      _buildAyah(
+        id: 1,
+        surahId: 1,
+        ayahNo: 1,
+        juz: 1,
+        letterCount: 10,
+      ),
+      _buildAyah(
+        id: 2,
+        surahId: 2,
+        ayahNo: 1,
+        juz: 15,
+        letterCount: 20,
+      ),
+      _buildAyah(
+        id: 3,
+        surahId: 3,
+        ayahNo: 1,
+        juz: 25,
+        letterCount: 30,
+      ),
+    ];
+
+    final userEvaluations = <UserEvaluation>[
+      UserEvaluation(ayahId: 1, memoId: 5),
+      UserEvaluation(ayahId: 2, memoId: 5),
+      UserEvaluation(ayahId: 3, memoId: 5),
+    ];
+    final evaluations = <app_models.Evaluation>[
+      app_models.Evaluation(
+        id: 5,
+        code: 'H',
+        name: const {'ar': 'صعب', 'en': 'Hard'},
+      ),
+    ];
+
+    final payload = service.buildChartPayload(
+      allAyat: allAyat,
+      userEvaluations: userEvaluations,
+      evaluations: evaluations,
+      dimension: 'memorization',
+      filters: const QuranChartFilters(thirds: <String>['first']),
+    );
+
+    expect(payload['totalVerses'], 1);
+
+    final chartEntries = (payload['evaluations'] as List)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+
+    expect(chartEntries, hasLength(1));
+    expect(chartEntries.single['evaluationId'], 5);
+    expect(chartEntries.single['verseCount'], 1);
+    expect(chartEntries.single['characterCount'], 10);
+    expect(chartEntries.single['percentage'], 100.0);
+  });
+
+  test('filterAyat respects explicit school scope when ayah metadata is absent', () {
+    final filtered = service.filterAyat(
+      <Ayat>[
+        _buildAyah(
+          id: 1,
+          surahId: 1,
+          ayahNo: 1,
+          juz: 1,
+          letterCount: 10,
+        ),
+        _buildAyah(
+          id: 2,
+          surahId: 2,
+          ayahNo: 1,
+          juz: 2,
+          letterCount: 20,
+        ),
+      ],
+      const QuranChartFilters(schoolLevelPairs: <String>['2:1']),
+      allowedSchoolAyahIds: const <int>{2},
+    );
+
+    expect(filtered.map((ayah) => ayah.id).toList(growable: false), [2]);
+  });
 }

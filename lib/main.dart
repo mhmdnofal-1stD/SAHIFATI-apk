@@ -10,6 +10,7 @@ import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
 import 'core/constants/colors.dart';
+import 'core/constants/fonts.dart';
 import 'core/typography/app_typography.dart';
 import 'core/typography/typography_config.dart';
 import 'providers/ayat_provider.dart';
@@ -113,6 +114,7 @@ class MyApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: AppFonts.primaryFont,
         scaffoldBackgroundColor: AppColors.backgroundColor,
         brightness: Brightness.light,
         textTheme: const TextTheme(
@@ -165,6 +167,7 @@ class MyApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
+        fontFamily: AppFonts.primaryFont,
         scaffoldBackgroundColor: const Color(0xFF121212),
         brightness: Brightness.dark,
         textTheme: const TextTheme(

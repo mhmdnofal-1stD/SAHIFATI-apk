@@ -15,6 +15,7 @@ import 'package:sahifaty/providers/language_provider.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
 import 'package:sahifaty/services/local_quran_chart_service.dart';
 import 'package:sahifaty/services/offline_assessment_store.dart';
+import 'package:sahifaty/services/school_filter_scope_service.dart';
 import 'package:sahifaty/services/secure_session_storage.dart';
 
 import '../models/chart_evaluation_data.dart';
@@ -42,6 +43,8 @@ class EvaluationsProvider with ChangeNotifier {
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
   final LocalQuranChartService _localQuranChartService =
       const LocalQuranChartService();
+    final SchoolFilterScopeService _schoolFilterScopeService =
+      const SchoolFilterScopeService();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isSyncingPending = false;
@@ -49,6 +52,7 @@ class EvaluationsProvider with ChangeNotifier {
     final Map<String, Future<void>> _userEvaluationCacheWarmups =
       <String, Future<void>>{};
   int pendingSyncCount = 0;
+  int? _activeEvaluationUserId;
 
   void _debugChart(
     String event, {
@@ -248,12 +252,15 @@ class EvaluationsProvider with ChangeNotifier {
   }) async {
     final allAyat = await AyatController().loadAllAyat();
     final resolvedUserEvaluations = await loadResolvedUserEvaluations(userId);
+    final allowedSchoolAyahIds = await _schoolFilterScopeService
+        .resolveAllowedAyahIds(filters);
     return _localQuranChartService.buildChartPayload(
       allAyat: allAyat,
       userEvaluations: resolvedUserEvaluations,
       evaluations: evaluations,
       dimension: dimension,
       filters: filters,
+      allowedSchoolAyahIds: allowedSchoolAyahIds,
     );
   }
 
@@ -327,6 +334,7 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
   Future<List<UserEvaluation>> loadResolvedUserEvaluations(int userId) async {
+    _prepareUserScope(userId);
     final allAyat = await AyatController().loadAllAyat();
     final ayatById = <int, Ayat>{
       for (final ayah in allAyat)
@@ -386,6 +394,7 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
   Future<void> getAllUserEvaluations(int userId, List<int> ayatIds) async {
+    _prepareUserScope(userId);
     setLoading();
     try {
       final evaluationsByAyahId = await _loadUserEvaluationsByAyahId(
@@ -404,6 +413,7 @@ class EvaluationsProvider with ChangeNotifier {
     List<int> ayatIds, {
     int batchSize = 250,
   }) async {
+    _prepareUserScope(userId);
     final normalizedIds = ayatIds.toSet().toList();
     if (normalizedIds.isEmpty) {
       return;
@@ -434,6 +444,7 @@ class EvaluationsProvider with ChangeNotifier {
     int userId,
     List<SchoolLevelContent> contents,
   ) async {
+    _prepareUserScope(userId);
     final nextLevelKey = contents.map((content) => content.cacheKey).join('||');
     if (_loadedQuestionsLevelKey == nextLevelKey &&
         _questionContentAyahs.isNotEmpty) {
@@ -815,10 +826,36 @@ class EvaluationsProvider with ChangeNotifier {
     _questionContentCompletion = {};
     _hydratedUserEvaluationScopes.clear();
     _userEvaluationCacheWarmups.clear();
+    _activeEvaluationUserId = null;
     isQuestionsLevelLoading = false;
     pendingSyncCount = 0;
     isLoading = false;
     notifyListeners();
+  }
+
+  void _prepareUserScope(int userId) {
+    if (_activeEvaluationUserId == userId) {
+      return;
+    }
+
+    if (_activeEvaluationUserId != null) {
+      userEvaluations.clear();
+      chartEvaluationData.clear();
+      totalCount = 0;
+      chartDimension = 'memorization';
+      chartDataSource = null;
+      chartLoadError = null;
+      _loadedQuestionsLevelKey = null;
+      _questionContentAyahs = {};
+      _questionContentCompletion = {};
+      _hydratedUserEvaluationScopes.clear();
+      _userEvaluationCacheWarmups.clear();
+      isQuestionsLevelLoading = false;
+      pendingSyncCount = 0;
+      isLoading = false;
+    }
+
+    _activeEvaluationUserId = userId;
   }
 
   Future<void> _refreshPendingSyncCount({bool notify = true}) async {

@@ -1444,6 +1444,13 @@ class UsersProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  bool get hasPushedSelectedUser =>
+      _previousUser != null &&
+      selectedUser != null &&
+      _previousUser!.id != selectedUser!.id;
+
+  User? get activeAccountUser => hasPushedSelectedUser ? _previousUser : selectedUser;
+
   void setSelectedUser(User user) {
     selectedUser = user;
     _resetReadingDisplayPreferencesState();
@@ -1467,20 +1474,31 @@ class UsersProvider with ChangeNotifier {
   }
 
   Future<void> _persistSelectedUser(User user) async {
-    final prefs = await SharedPreferences.getInstance();
     selectedUser = user;
     _resetNotificationsState();
-    await prefs.setString('userData', json.encode(user.toMap()));
+    await _setActiveUserSnapshot(user);
     await saveUserToDevice(user);
   }
 
+  Future<void> _persistActiveAccountUser(User user) async {
+    if (hasPushedSelectedUser) {
+      _previousUser = user;
+      await _setActiveUserSnapshot(user);
+      await saveUserToDevice(user);
+      return;
+    }
+
+    await _persistSelectedUser(user);
+  }
+
   User _buildUserFromProfile(Map<String, dynamic> profile) {
+    final fallbackUser = activeAccountUser;
     final normalizedProfile = <String, dynamic>{
       ...profile,
-      'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
-      'email': profile['email'] ?? selectedUser?.email ?? '',
-      'username': profile['username'] ?? selectedUser?.username ?? '',
-      'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
+      'id': profile['id'] ?? profile['_id'] ?? fallbackUser?.id,
+      'email': profile['email'] ?? fallbackUser?.email ?? '',
+      'username': profile['username'] ?? fallbackUser?.username ?? '',
+      'userRoleId': profile['userRoleId'] ?? fallbackUser?.userRoleId,
     };
     return User.fromJson(normalizedProfile);
   }
@@ -1488,11 +1506,11 @@ class UsersProvider with ChangeNotifier {
   Future<User?> getCachedCurrentUserProfile() async {
     final cachedProfile = await _usersService.getCachedCurrentUserProfile();
     if (cachedProfile == null) {
-      return selectedUser;
+      return activeAccountUser;
     }
 
     final user = _buildUserFromProfile(cachedProfile);
-    await _persistSelectedUser(user);
+    await _persistActiveAccountUser(user);
     _applyReadingDisplayPreferencesFromProfile(cachedProfile);
     _readingDisplayPreferencesLoaded = true;
     notifyListeners();
@@ -1521,7 +1539,7 @@ class UsersProvider with ChangeNotifier {
     try {
       final profile = await _usersService.getCurrentUserProfile();
       final user = _buildUserFromProfile(profile);
-      await _persistSelectedUser(user);
+      await _persistActiveAccountUser(user);
       _applyReadingDisplayPreferencesFromProfile(profile);
       _readingDisplayPreferencesLoaded = true;
       notifyListeners();
@@ -1563,13 +1581,13 @@ class UsersProvider with ChangeNotifier {
 
       final normalizedProfile = <String, dynamic>{
         ...profile,
-        'id': profile['id'] ?? profile['_id'] ?? selectedUser?.id,
-        'email': profile['email'] ?? selectedUser?.email ?? '',
+        'id': profile['id'] ?? profile['_id'] ?? activeAccountUser?.id,
+        'email': profile['email'] ?? activeAccountUser?.email ?? '',
         'username': profile['username'] ?? username,
-        'userRoleId': profile['userRoleId'] ?? selectedUser?.userRoleId,
+        'userRoleId': profile['userRoleId'] ?? activeAccountUser?.userRoleId,
       };
       final user = User.fromJson(normalizedProfile);
-      await _persistSelectedUser(user);
+      await _persistActiveAccountUser(user);
       _applyReadingDisplayPreferencesFromProfile(profile);
       _readingDisplayPreferencesLoaded = true;
       notifyListeners();
@@ -1737,7 +1755,14 @@ class UsersProvider with ChangeNotifier {
     await SecureSessionStorage.setActiveAccountKey(accountKey);
     await _setActiveUserSnapshot(user);
     selectedUser = user;
+    isLicenseLoading = false;
+    isPromoCodesLoading = false;
+    licenseBalanceSummary = null;
+    giftPoolSummary = null;
+    promoWorkspaceError = null;
+    myPromoCodes = <Map<String, dynamic>>[];
     _resetReadingDisplayPreferencesState();
+    _resetNotificationsState();
     await checkFirstLogin(user: user);
     _resetPushNotificationsSession();
     await _bootstrapPushNotificationsForCurrentUser();

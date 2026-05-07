@@ -3,16 +3,17 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/assets.dart';
+import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/language_provider.dart';
 
 class AuthLanguageSwitch extends StatelessWidget {
   const AuthLanguageSwitch({
     super.key,
-    this.backgroundColor = const Color(0xFFFFFCF8),
-    this.borderColor = const Color(0xFFD7D8DE),
-    this.foregroundColor = const Color(0xFF132A4A),
-    this.shadowColor = const Color(0x0813284A),
+    this.backgroundColor = AppColors.panelColor,
+    this.borderColor = AppColors.lineColor,
+    this.foregroundColor = AppColors.blackFontColor,
+    this.shadowColor = const Color(0x141D6652),
     this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
   });
 
@@ -141,7 +142,7 @@ class AuthScreenShell extends StatelessWidget {
     final titleFontSize = isCompactPhone ? 22.0 : 24.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2E9DD),
+      backgroundColor: AppColors.backgroundColor,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -179,14 +180,14 @@ class AuthScreenShell extends StatelessWidget {
                           constraints: BoxConstraints(maxWidth: maxWidth),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFFCF7),
+                              color: AppColors.panelColor,
                               borderRadius: BorderRadius.circular(cardRadius),
                               border: Border.all(
-                                color: const Color(0xFFE0D3C0),
+                                color: AppColors.lineColor,
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x1813284A),
+                                  color: Color(0x141D6652),
                                   blurRadius: 48,
                                   offset: Offset(0, 24),
                                 ),
@@ -224,7 +225,7 @@ class AuthScreenShell extends StatelessWidget {
                                           .pageHeading
                                           .copyWith(
                                             fontSize: titleFontSize,
-                                            color: const Color(0xFF132A4A),
+                                            color: AppColors.blackFontColor,
                                             height: 1.15,
                                           ),
                                     ),
@@ -236,7 +237,7 @@ class AuthScreenShell extends StatelessWidget {
                                         style: AppTypography.of(context)
                                             .bodySecondary
                                             .copyWith(
-                                              color: const Color(0xFF556277),
+                                              color: AppColors.mutedText,
                                               height: 1.5,
                                             ),
                                       ),
@@ -270,15 +271,15 @@ class _BrandHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 60,
-          height: 60,
+          width: 64,
+          height: 64,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFDFC),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE5D9C8)),
+            color: AppColors.mintSurface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.lineColor),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x1413284A),
+                color: Color(0x141D6652),
                 blurRadius: 18,
                 offset: Offset(0, 10),
               ),
@@ -291,14 +292,27 @@ class _BrandHeader extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         Expanded(
-          child: Text(
-            'SAHIFATI',
-            style: AppTypography.of(context).badgeLabel.copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.4,
-                  color: const Color(0xFF173054),
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'صحيفتي',
+                style: AppTypography.of(context).pageHeading.copyWith(
+                      fontSize: 28,
+                      color: AppColors.blackFontColor,
+                      height: 1.0,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'رحلة قرآنية أوضح من أول خطوة',
+                style: AppTypography.of(context).bodySmall.copyWith(
+                      color: AppColors.mutedText,
+                      height: 1.4,
+                    ),
+              ),
+            ],
           ),
         ),
         const AuthLanguageSwitch(),
@@ -323,9 +337,9 @@ class _AuthModeToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0E7DB),
+        color: AppColors.mintSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE0D2BF)),
+        border: Border.all(color: AppColors.lineColor),
       ),
       child: Row(
         children: [
@@ -368,7 +382,7 @@ class _ModeItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? const Color(0xFF132A4A) : Colors.transparent,
+      color: isSelected ? AppColors.primaryPurple : Colors.transparent,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -381,7 +395,7 @@ class _ModeItem extends StatelessWidget {
               Icon(
                 icon,
                 size: 17,
-                color: isSelected ? Colors.white : const Color(0xFF5E6A7E),
+                color: isSelected ? Colors.white : AppColors.mutedText,
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -390,8 +404,7 @@ class _ModeItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.of(context).buttonSecondary.copyWith(
                         fontSize: 13,
-                        color:
-                            isSelected ? Colors.white : const Color(0xFF5E6A7E),
+                    color: isSelected ? Colors.white : AppColors.mutedText,
                       ),
                 ),
               ),
@@ -419,7 +432,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x80B5CCFF), Color(0x00B5CCFF)],
+                colors: [Color(0x52EDF3D7), Color(0x00EDF3D7)],
               ),
             ),
           ),
@@ -433,7 +446,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x7AE2C48D), Color(0x00E2C48D)],
+                colors: [Color(0x332F7B64), Color(0x002F7B64)],
               ),
             ),
           ),
@@ -447,7 +460,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(90),
               gradient: const LinearGradient(
-                colors: [Color(0x30C5D8F3), Color(0x34F5DFC1)],
+                colors: [Color(0x16EDF3D7), Color(0x121D6652)],
               ),
             ),
           ),

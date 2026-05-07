@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sahifaty/core/constants/colors.dart';
 import '../../../core/typography/app_typography.dart';
 
 class CustomAuthFooter extends StatelessWidget {
@@ -18,11 +19,11 @@ class CustomAuthFooter extends StatelessWidget {
     return TextButton.icon(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: const Color(0xFF132A4A),
+        foregroundColor: AppColors.primaryPurple,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
-          side: const BorderSide(color: Color(0xFFD8DDE5)),
+          side: const BorderSide(color: AppColors.lineColor),
         ),
       ),
       icon: Icon(icon, size: 18),
@@ -30,7 +31,7 @@ class CustomAuthFooter extends StatelessWidget {
         actionText,
         style: AppTypography.of(context).buttonSecondary.copyWith(
               fontSize: 14,
-              color: const Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
             ),
       ),
     );

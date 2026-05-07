@@ -14,28 +14,31 @@ import 'package:sahifaty/controllers/ayat_controller.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
 import 'package:sahifaty/models/ayat.dart';
-import 'package:sahifaty/models/evaluation.dart';
-import 'package:sahifaty/models/school.dart';
-import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
 import 'package:sahifaty/models/user.dart';
+import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
-import 'package:sahifaty/services/school_services.dart';
+import 'package:sahifaty/services/evaluations_services.dart';
+import 'package:sahifaty/services/local_quran_chart_service.dart';
+import 'package:sahifaty/services/school_filter_scope_service.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
-import 'package:sahifaty/services/subjects_lookup_service.dart';
 import 'package:sahifaty/services/users_services.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
+import '../../core/reading/mushaf_page_layout.dart';
 import '../../core/reading/reading_session.dart';
+import '../../core/utils/surah_localization.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
+import '../../services/mushaf_layout_service.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/no_pop_scope.dart';
 import '../widgets/pending_sync_banner.dart';
+import '../widgets/quran_filter_runtime.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 import '../widgets/unified_quran_filter_sheet.dart';
 
@@ -147,6 +150,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final List<Ayat> _ayat = [];
   final List<Ayat> _allAyat = [];
   final Map<int, List<Ayat>> _allAyatByPage = <int, List<Ayat>>{};
+  final Map<int, MushafPageLayout> _mushafLayoutsByPage =
+      <int, MushafPageLayout>{};
   _ReadingNavigationMode _navigationMode = _ReadingNavigationMode.hizbQuarter;
   List<int> _pageSequence = <int>[];
   int? _currentPage;
@@ -166,6 +171,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool _canOpenAssessment = true;
   bool _isAyahSelectionMode = false;
   bool _hasLoadedAllEvaluationCoverage = false;
+  bool _hasAttemptedMushafLayoutLoad = false;
   String? _readingNotice;
   final Set<int> _selectedAyahKeys = <int>{};
   final Map<int, TapGestureRecognizer> _ayahTapRecognizers =
@@ -173,8 +179,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
   final UsersServices _usersService = UsersServices();
+  final LocalQuranChartService _localQuranChartService =
+      const LocalQuranChartService();
+  final SchoolFilterScopeService _schoolFilterScopeService =
+      const SchoolFilterScopeService();
+  final QuranFilterAvailabilityBuilder _filterAvailabilityBuilder =
+      const QuranFilterAvailabilityBuilder();
   User? _viewerUser;
   Surah? _activeSurah;
+  Set<int>? _activeReaderAllowedSchoolAyahIds;
 
   // Reading display filter (fades non-matching ayahs in the rendered text).
   final Set<String> _filterAyahTypes = <String>{};
@@ -183,10 +196,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   final Set<int> _filterMemoEvaluationIds = <int>{};
   final Set<int> _filterCompreEvaluationIds = <int>{};
 
-  // Hierarchical reader scope (Thirds -> Juz -> Surahs). When narrower
-  // children are picked they replace their parent (per product spec):
-  //   surahIds win over juzs, juzs win over thirds.
-  // Empty == no scope == full mushaf.
+  // Reader scope uses the same chart-style equation boundary as
+  // QuranChartFilters: thirds narrow juzs, and surah/juz selections compose
+  // as intersections instead of replacing each other.
   final Set<int> _filterThirds = <int>{};
   final Set<int> _filterJuzs = <int>{};
   final Set<int> _filterSurahIds = <int>{};
@@ -259,19 +271,36 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return result;
   }
 
-  bool _ayahMatchesScopeFilter(Ayat ayah) {
-    if (_filterSurahIds.isNotEmpty) {
-      return _filterSurahIds.contains(ayah.surah.id);
+  UnifiedFilterSelection _currentReaderFilterSelection() {
+    return UnifiedFilterSelection(
+      thirds: {..._filterThirds},
+      juzs: {..._filterJuzs},
+      surahIds: {..._filterSurahIds},
+      ayahTypes: {..._filterAyahTypes},
+      subjectKeys: {..._filterSubjectKeys},
+      schoolLevelIds: {..._filterSchoolLevelIds},
+      memoEvaluationIds: {..._filterMemoEvaluationIds},
+      compreEvaluationIds: {..._filterCompreEvaluationIds},
+    );
+  }
+
+  QuranChartFilters _currentReaderChartFilters() {
+    return unifiedSelectionToChartFilters(_currentReaderFilterSelection());
+  }
+
+  bool _matchesSelectedEvaluationFilters(UserEvaluation? userEvaluation) {
+    if (_filterMemoEvaluationIds.isNotEmpty) {
+      final memoId = userEvaluation?.memoId;
+      if (memoId == null || !_filterMemoEvaluationIds.contains(memoId)) {
+        return false;
+      }
     }
 
-    if (_filterJuzs.isNotEmpty) {
-      final juz = ayah.juz;
-      return _filterJuzs.contains(juz);
-    }
-
-    if (_filterThirds.isNotEmpty) {
-      final juz = ayah.juz;
-      return _filterThirds.contains(_ReaderScopeData.thirdOfJuz(juz));
+    if (_filterCompreEvaluationIds.isNotEmpty) {
+      final compreId = userEvaluation?.compreId;
+      if (compreId == null || !_filterCompreEvaluationIds.contains(compreId)) {
+        return false;
+      }
     }
 
     return true;
@@ -281,80 +310,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Ayat ayah,
     EvaluationsProvider evaluationsProvider,
   ) {
-    if (!_ayahMatchesScopeFilter(ayah)) {
+    final userEvaluation =
+        ayah.userEvaluation ?? evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+    if (!_matchesSelectedEvaluationFilters(userEvaluation)) {
       return false;
     }
 
-    if (!_hasActiveDisplayFilter) {
-      return true;
-    }
-
-    return _ayahMatchesDisplayFilter(ayah, evaluationsProvider);
-  }
-
-  bool _ayahMatchesDisplayFilter(
-    Ayat ayah,
-    EvaluationsProvider evaluationsProvider,
-  ) {
-    if (!_hasActiveDisplayFilter) {
-      return true;
-    }
-
-    if (_filterAyahTypes.isNotEmpty) {
-      final type = ayah.ayahType?.trim().toLowerCase();
-      if (type == null || !_filterAyahTypes.contains(type)) {
-        return false;
-      }
-    }
-
-    if (_filterSubjectKeys.isNotEmpty) {
-      final subjects = ayah.subjects ?? const <String>[];
-      final hasMatch =
-          subjects.any((subject) => _filterSubjectKeys.contains(subject));
-      if (!hasMatch) {
-        return false;
-      }
-    }
-
-    if (_filterSchoolLevelIds.isNotEmpty) {
-      final levels = ayah.schoolLevels ?? const <SchoolLevel>[];
-      final hasMatch = levels.any((level) {
-        final schoolId = level.schoolId;
-        final levelNumber = level.level;
-        if (schoolId == null || levelNumber == null) {
-          return false;
-        }
-        return _filterSchoolLevelIds.contains(
-          _schoolLevelFilterKey(schoolId, levelNumber),
-        );
-      });
-      if (!hasMatch) {
-        return false;
-      }
-    }
-
-    if (_filterMemoEvaluationIds.isNotEmpty ||
-        _filterCompreEvaluationIds.isNotEmpty) {
-      final userEvaluation = ayah.userEvaluation ??
-          evaluationsProvider.getUserEvaluationForAyah(ayah.id);
-
-      if (_filterMemoEvaluationIds.isNotEmpty) {
-        final memoId = userEvaluation?.memoId;
-        if (memoId == null || !_filterMemoEvaluationIds.contains(memoId)) {
-          return false;
-        }
-      }
-
-      if (_filterCompreEvaluationIds.isNotEmpty) {
-        final compreId = userEvaluation?.compreId;
-        if (compreId == null ||
-            !_filterCompreEvaluationIds.contains(compreId)) {
-          return false;
-        }
-      }
-    }
-
-    return true;
+    final filters = _currentReaderChartFilters();
+    return _localQuranChartService.filterAyat(
+      <Ayat>[ayah],
+      filters,
+      allowedSchoolAyahIds: _activeReaderAllowedSchoolAyahIds,
+    ).isNotEmpty;
   }
 
   String _tr(String key) => key.tr;
@@ -372,231 +339,82 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return '$preview (${ayah.ayahNo})';
   }
 
-  String _schoolLevelFilterKey(int schoolId, int level) => '$schoolId:$level';
-
-  String _resolveLocalizedMapValue(Map<String, dynamic> raw) {
-    final locale = Get.locale?.languageCode ?? 'ar';
-    final localized = raw[locale] ?? raw['ar'] ?? raw['en'];
-    if (localized is String && localized.trim().isNotEmpty) {
-      return localized.trim();
-    }
-    for (final value in raw.values) {
-      if (value is String && value.trim().isNotEmpty) {
-        return value.trim();
-      }
-    }
-    return '';
-  }
-
-  String _resolveSchoolName(SchoolLevel level, Map<int, School> schoolsById) {
-    final schoolId = level.schoolId;
-    if (schoolId != null) {
-      final school = schoolsById[schoolId];
-      if (school != null) {
-        final localized = _resolveLocalizedMapValue(school.schoolName);
-        if (localized.isNotEmpty) {
-          return localized;
-        }
-      }
-    }
-
-    final embedded = level.schoolName?.trim();
-    if (embedded != null && embedded.isNotEmpty) {
-      return embedded;
-    }
-
-    return schoolId?.toString() ?? '';
-  }
-
-  String _resolveSchoolFilterLevelName(
-    SchoolLevel level,
-    Map<int, School> schoolsById,
-  ) {
-    final schoolId = level.schoolId;
-    final levelNumber = level.level;
-
-    if (schoolId != null && levelNumber != null) {
-      final school = schoolsById[schoolId];
-      if (school != null &&
-          levelNumber >= 1 &&
-          levelNumber <= school.levels.length) {
-        final localized = _resolveSchoolLevelName(
-          school.levels[levelNumber - 1],
-        );
-        if (localized.isNotEmpty) {
-          return localized;
-        }
-      }
-    }
-
-    final direct = _resolveSchoolLevelName(level);
-    if (direct.isNotEmpty && direct != (level.id ?? '')) {
-      return direct;
-    }
-
-    if (levelNumber != null) {
-      final fallbackKey = 'level_$levelNumber';
-      final translated = fallbackKey.tr;
-      return translated == fallbackKey ? levelNumber.toString() : translated;
-    }
-
-    return level.id ?? '';
-  }
-
-  Future<_ReaderSubjectData> _resolveSubjectDisplayLabels(
-    Set<String> subjectKeys,
+  Future<List<Ayat>> _readerAvailabilitySourceAyat(
+    int userId,
+    EvaluationsProvider evaluationsProvider,
   ) async {
-    final labels = <String, String>{
-      for (final key in subjectKeys) key: key,
+    if (_filterMemoEvaluationIds.isEmpty && _filterCompreEvaluationIds.isEmpty) {
+      return List<Ayat>.from(_allAyat, growable: false);
+    }
+
+    final resolvedEvaluations =
+        await evaluationsProvider.loadResolvedUserEvaluations(userId);
+    final evaluationsByAyahId = <int, UserEvaluation>{
+      for (final evaluation in resolvedEvaluations)
+        if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
+          (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
     };
-    if (subjectKeys.isEmpty) {
-      return const _ReaderSubjectData(
-        labels: <String, String>{},
-        hierarchy: <SubjectHierarchyItem>[],
-      );
-    }
 
-    try {
-      final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
-      final locale = Get.locale?.languageCode ?? 'ar';
-      final byKey = <String, SubjectHierarchyItem>{
-        for (final item in hierarchy) item.key: item,
-      };
-      for (final key in subjectKeys) {
-        final subject = byKey[key];
-        if (subject == null) {
-          continue;
-        }
-        final displayName = subject.displayName(locale).trim();
-        if (displayName.isNotEmpty) {
-          labels[key] = displayName;
-        }
+    return _allAyat.where((ayah) {
+      final ayahId = ayah.id;
+      final userEvaluation = ayah.userEvaluation ??
+          (ayahId == null ? null : evaluationsByAyahId[ayahId]);
+      if (userEvaluation != null) {
+        ayah.userEvaluation ??= userEvaluation;
       }
-      return _ReaderSubjectData(labels: labels, hierarchy: hierarchy);
-    } catch (_) {}
-
-    return _ReaderSubjectData(labels: labels, hierarchy: const []);
+      return _matchesSelectedEvaluationFilters(userEvaluation);
+    }).toList(growable: false);
   }
 
-  Future<List<UnifiedFilterSchoolGroup>> _resolveSchoolFilterGroups(
+  Future<List<Ayat>> _filterAyatForReaderFilters(
     Iterable<Ayat> sourceAyat,
+    QuranChartFilters filters,
   ) async {
-    final schoolsById = <int, School>{};
-    final catalogSchools = <School>[];
-    try {
-      final schools = await SchoolServices().getAllSchools(
-        forceRefresh: true,
-      );
-      catalogSchools.addAll(schools);
-      for (final school in schools) {
-        final schoolId = school.id;
-        if (schoolId == null) {
-          continue;
-        }
-        schoolsById[schoolId] = school;
-      }
-    } catch (_) {}
+    final allowedSchoolAyahIds = await _schoolFilterScopeService
+        .resolveAllowedAyahIds(filters);
+    return _localQuranChartService.filterAyat(
+      sourceAyat.toList(growable: false),
+      filters,
+      allowedSchoolAyahIds: allowedSchoolAyahIds,
+    );
+  }
 
-    final groupTitles = <int, String>{};
-    final groupedLevels = <int, Map<String, UnifiedFilterSchoolLevel>>{};
-
-    for (final ayah in sourceAyat) {
-      final schoolLevels = ayah.schoolLevels ?? const <SchoolLevel>[];
-      for (final level in schoolLevels) {
-        final schoolId = level.schoolId;
-        final levelNumber = level.level;
-        if (schoolId == null || levelNumber == null) {
-          continue;
-        }
-
-        groupTitles[schoolId] = _resolveSchoolName(level, schoolsById);
-        final filterKey = _schoolLevelFilterKey(schoolId, levelNumber);
-        groupedLevels
-            .putIfAbsent(schoolId, () => <String, UnifiedFilterSchoolLevel>{})
-            .putIfAbsent(
-              filterKey,
-              () => UnifiedFilterSchoolLevel(
-                key: filterKey,
-                label: _resolveSchoolFilterLevelName(level, schoolsById),
-                level: levelNumber,
-              ),
-            );
+  Future<UnifiedFilterAvailableData> _buildReaderAvailableData(
+    int userId,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    if (evaluationsProvider.evaluations.isEmpty) {
+      try {
+        await evaluationsProvider.getAllEvaluations();
+      } catch (_) {
+        // Keep going so the sheet can still render content-based filters.
       }
     }
 
-    final groups = <UnifiedFilterSchoolGroup>[];
+    final sourceAyat = await _readerAvailabilitySourceAyat(
+      userId,
+      evaluationsProvider,
+    );
+    return _filterAvailabilityBuilder.build(
+      filters: _currentReaderChartFilters(),
+      loadScopedAyat: (filters) => _filterAyatForReaderFilters(
+        sourceAyat,
+        filters,
+      ),
+      memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
+      comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
+    );
+  }
 
-    for (final school in catalogSchools) {
-      final schoolId = school.id;
-      if (schoolId == null) {
-        continue;
-      }
-
-      final levels = <UnifiedFilterSchoolLevel>[];
-      final seenLevels = <int>{};
-      final catalogLevels = school.levels.toList()
-        ..sort((left, right) {
-          final leftValue = left.level ?? 0;
-          final rightValue = right.level ?? 0;
-          return leftValue.compareTo(rightValue);
-        });
-
-      for (final level in catalogLevels) {
-        final levelNumber = level.level;
-        if (levelNumber == null || !seenLevels.add(levelNumber)) {
-          continue;
-        }
-        levels.add(
-          UnifiedFilterSchoolLevel(
-            key: _schoolLevelFilterKey(schoolId, levelNumber),
-            label: _resolveSchoolLevelName(level),
-            level: levelNumber,
-          ),
-        );
-      }
-
-      final embeddedExtras = groupedLevels[schoolId]?.values.toList() ??
-          const <UnifiedFilterSchoolLevel>[];
-      for (final level in embeddedExtras) {
-        if (!seenLevels.add(level.level)) {
-          continue;
-        }
-        levels.add(level);
-      }
-
-      if (levels.isEmpty) {
-        continue;
-      }
-
-      levels.sort((left, right) => left.level.compareTo(right.level));
-      groups.add(
-        UnifiedFilterSchoolGroup(
-          label: _resolveLocalizedMapValue(school.schoolName),
-          levels: levels,
-        ),
-      );
+  Future<void> _refreshReaderAllowedSchoolScope() async {
+    final filters = _currentReaderChartFilters();
+    if (filters.schoolIds.isEmpty && filters.schoolLevelPairs.isEmpty) {
+      _activeReaderAllowedSchoolAyahIds = null;
+      return;
     }
 
-    groupedLevels.forEach((schoolId, levelMap) {
-      if (schoolsById.containsKey(schoolId)) {
-        return;
-      }
-      final levels = levelMap.values.toList()
-        ..sort((left, right) => left.level.compareTo(right.level));
-      if (levels.isEmpty) {
-        return;
-      }
-      groups.add(
-        UnifiedFilterSchoolGroup(
-          label: groupTitles[schoolId] ?? schoolId.toString(),
-          levels: levels,
-        ),
-      );
-    });
-
-    groups.sort((left, right) => left.label.compareTo(right.label));
-
-    return groups;
+    _activeReaderAllowedSchoolAyahIds = await _schoolFilterScopeService
+        .resolveAllowedAyahIds(filters);
   }
 
   bool get _isPageNavigation =>
@@ -613,6 +431,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   // surahs, navigation is clamped to that scope (Hard-scope behavior).
   static const int _mushafFirstPage = 1;
   static const int _mushafLastPage = 604;
+  static const double _mushafLineHeight = 31;
+  static const double _mushafWordFontSize = 20;
+  static const double _mushafLandscapeLineHeight = 40;
+  static const double _mushafLandscapeWordFontSize = 25.5;
+  static const Map<int, Map<int, _MushafLineFineTune>>
+      _mushafLineFineTuneOverrides = <int, Map<int, _MushafLineFineTune>>{};
+  static final RegExp _mushafVisualMarksPattern = RegExp(
+    r'[\s\u0640\u064B-\u065F\u0670\u06D6-\u06ED]',
+  );
 
   String get _navigationProgressLabel {
     if (_isPageNavigation && _currentPage != null) {
@@ -678,6 +505,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       ..addAll(byPage);
   }
 
+  Future<void> _ensureMushafLayoutsLoaded() async {
+    if (_hasAttemptedMushafLayoutLoad) {
+      return;
+    }
+
+    _hasAttemptedMushafLayoutLoad = true;
+    final layouts = await MushafLayoutService.loadAllPages();
+    _mushafLayoutsByPage
+      ..clear()
+      ..addAll(layouts);
+  }
+
   List<Ayat> _ayatForPage(int page) => _allAyatByPage[page] ?? const <Ayat>[];
 
   int? get _currentPageSequenceIndex {
@@ -722,6 +561,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return Surah(
       id: firstAyah.surah.id,
       nameAr: firstAyah.surah.nameAr,
+      name: firstAyah.surah.name,
       ayahCount: quran.getVerseCount(firstAyah.surah.id),
     );
   }
@@ -1286,191 +1126,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return false;
     }
 
-    final role = viewer.userRoleId ?? 0;
-    final isPrivileged = role == 1 || role == 2;
-    return isPrivileged && viewer.id != selectedUser.id;
+    return usersProvider.hasPushedSelectedUser && viewer.id != selectedUser.id;
   }
 
   bool _canTapAyah(UsersProvider usersProvider) {
-    return _hasConnection &&
-        (_canOpenAssessment || _isSupervisorViewingStudent(usersProvider));
+    return _canOpenAssessment;
   }
 
-  String _recommendationErrorFeedback(Object error) {
-    final rawMessage = error.toString().replaceFirst(
-          RegExp(r'^Exception:\s*'),
-          '',
-        );
-    final message = rawMessage.trim();
-    if (message.contains('Cannot recommend mastered ayahs')) {
-      return 'quran_reading_recommendation_mastered_blocked'.tr;
-    }
-    if (message.isEmpty ||
-        message == 'service_teacher_recommendations_create_failed'.tr) {
-      return 'quran_reading_recommendation_send_error'.tr;
-    }
-    return message;
-  }
-
-  bool _isMasteredMemoEvaluation(Evaluation? evaluation) {
-    if (evaluation == null || evaluation.type != 'memorization') {
-      return false;
+  int? _evaluationTargetUserId(UsersProvider usersProvider) {
+    if (!_isSupervisorViewingStudent(usersProvider)) {
+      return null;
     }
 
-    final code = evaluation.code.trim().toLowerCase();
-    final nameAr = evaluation.name['ar']?.trim() ?? '';
-    final nameEn = evaluation.name['en']?.trim().toLowerCase() ?? '';
-    return code == 'g' || nameAr == 'متمكن' || nameEn == 'proficient';
-  }
-
-  bool _isAyahMasteredForRecommendation(
-    Ayat ayah,
-    EvaluationsProvider evaluationsProvider,
-  ) {
-    final existingEvaluation = ayah.userEvaluation ??
-        evaluationsProvider.getUserEvaluationForAyah(ayah.id);
-    final memoEvaluation = existingEvaluation?.memoEvaluation ??
-        evaluationsProvider.findEvaluationById(existingEvaluation?.memoId);
-    return _isMasteredMemoEvaluation(memoEvaluation);
-  }
-
-  TeacherRecommendation _hydrateRecommendationWithViewer(
-    TeacherRecommendation recommendation,
-  ) {
-    final viewer = _viewerUser;
-    if (viewer == null || recommendation.teacher != null) {
-      return recommendation;
-    }
-
-    return TeacherRecommendation(
-      id: recommendation.id,
-      teacherId: recommendation.teacherId,
-      studentId: recommendation.studentId,
-      ayahId: recommendation.ayahId,
-      source: recommendation.source,
-      status: recommendation.status,
-      notified: recommendation.notified,
-      createdAt: recommendation.createdAt,
-      updatedAt: recommendation.updatedAt,
-      teacher: TeacherRecommendationTeacher(
-        id: viewer.id,
-        username: viewer.username.isNotEmpty ? viewer.username : null,
-        email: viewer.email,
-      ),
-    );
-  }
-
-  Future<void> _sendSupervisorRecommendationForAyah(
-    Ayat ayah,
-    EvaluationsProvider evaluationsProvider,
-  ) async {
-    final usersProvider = context.read<UsersProvider>();
-    final student = usersProvider.selectedUser;
-    if (student == null || ayah.id == null) {
-      return;
-    }
-
-    if (_isAyahMasteredForRecommendation(ayah, evaluationsProvider)) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('quran_reading_recommendation_mastered_blocked'.tr),
-        ),
-      );
-      return;
-    }
-
-    final studentLabel =
-        student.username.isNotEmpty ? student.username : student.email;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'quran_reading_recommendation_dialog_title'.trParams({
-            'ayah': ayah.ayahNo.toString(),
-          }),
-        ),
-        content: Text(
-          'quran_reading_recommendation_dialog_body'.trParams({
-            'student': studentLabel,
-            'ayah': ayah.ayahNo.toString(),
-          }),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('quran_reading_recommendation_cancel'.tr),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('quran_reading_recommendation_confirm'.tr),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) {
-      return;
-    }
-
-    try {
-      final result = await _teacherRecommendationsService.createRecommendation(
-        studentId: student.id,
-        ayahId: ayah.id!,
-      );
-      if (!mounted) {
-        return;
-      }
-
-      final hydratedRecommendation =
-          _hydrateRecommendationWithViewer(result.recommendation);
-      setState(() {
-        ayah.teacherRecommendations = [
-          ...ayah.teacherRecommendations.where(
-            (item) => item.id != hydratedRecommendation.id,
-          ),
-          hydratedRecommendation,
-        ];
-      });
-
-      unawaited(
-        _teacherRecommendationsService
-            .refreshStudentRecommendationsInBackground(
-          student.id,
-          ayahIds: [ayah.id!],
-          onUpdated: (freshRecommendations) {
-            if (!mounted) {
-              return;
-            }
-
-            setState(() {
-              ayah.teacherRecommendations = freshRecommendations
-                  .where((item) => item.ayahId == ayah.id)
-                  .toList();
-            });
-          },
-        ),
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.operation == 'updated'
-                ? 'quran_reading_recommendation_updated'.tr
-                : 'quran_reading_recommendation_sent'.tr,
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_recommendationErrorFeedback(error))),
-      );
-    }
+    return usersProvider.selectedUser?.id;
   }
 
   Future<void> _openAssessmentDialogForAyah(
@@ -1484,10 +1152,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     final usersProvider = context.read<UsersProvider>();
-    if (_isSupervisorViewingStudent(usersProvider)) {
-      await _sendSupervisorRecommendationForAyah(ayah, evaluationsProvider);
-      return;
-    }
+    final targetUserId = _evaluationTargetUserId(usersProvider);
 
     if (!_canOpenAssessment) {
       if (!mounted) {
@@ -1530,6 +1195,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       ayah,
       evaluationsProvider,
       null,
+      targetUserId: targetUserId,
       memoId: selection.memoId,
       compreId: selection.compreId,
       comment: selection.comment,
@@ -1612,12 +1278,16 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
+    final usersProvider = context.read<UsersProvider>();
+    final targetUserId = _evaluationTargetUserId(usersProvider);
+
     try {
       await EvaluationsController().sendMultipleEvaluationSelection(
         ayahs,
         evaluationsProvider,
         null,
         'verses'.tr,
+        targetUserId: targetUserId,
         memoId: selection.memoId,
         compreId: selection.compreId,
         comment: null,
@@ -1660,135 +1330,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         _pageController.jumpTo(savedScrollOffset);
       }
     });
-  }
-
-  Future<void> _sendSupervisorRecommendationsForSelectedAyahs() async {
-    final usersProvider = context.read<UsersProvider>();
-    final student = usersProvider.selectedUser;
-    if (student == null) {
-      return;
-    }
-
-    final ayahs = _selectedAyahs();
-    if (ayahs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('no_verses_found_to_evaluate'.tr)),
-      );
-      return;
-    }
-
-    final ayahIds = ayahs
-        .map((ayah) => ayah.id)
-        .whereType<int>()
-        .toSet()
-        .toList(growable: false);
-    if (ayahIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('quran_reading_recommendation_send_error'.tr)),
-      );
-      return;
-    }
-
-    final studentLabel =
-        student.username.isNotEmpty ? student.username : student.email;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'quran_reading_bulk_recommendation_dialog_title'.trParams({
-            'count': ayahIds.length.toString(),
-          }),
-        ),
-        content: Text(
-          'quran_reading_bulk_recommendation_dialog_body'.trParams({
-            'student': studentLabel,
-            'count': ayahIds.length.toString(),
-          }),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('quran_reading_recommendation_cancel'.tr),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('quran_reading_recommendation_confirm'.tr),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !mounted) {
-      return;
-    }
-
-    try {
-      await _teacherRecommendationsService.createRecommendationsBulk(
-        studentId: student.id,
-        ayahIds: ayahIds,
-      );
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _selectedAyahKeys.clear();
-        _isAyahSelectionMode = false;
-      });
-
-      unawaited(
-        _teacherRecommendationsService.refreshStudentRecommendationsInBackground(
-          student.id,
-          ayahIds: ayahIds,
-          onUpdated: (freshRecommendations) {
-            if (!mounted) {
-              return;
-            }
-
-            final recommendationsByAyah =
-                <int, List<TeacherRecommendation>>{};
-            for (final recommendation in freshRecommendations) {
-              recommendationsByAyah
-                  .putIfAbsent(
-                    recommendation.ayahId,
-                    () => <TeacherRecommendation>[],
-                  )
-                  .add(_hydrateRecommendationWithViewer(recommendation));
-            }
-
-            setState(() {
-              for (final ayah in ayahs) {
-                final ayahId = ayah.id;
-                if (ayahId == null) {
-                  continue;
-                }
-                ayah.teacherRecommendations =
-                    recommendationsByAyah[ayahId] ??
-                        <TeacherRecommendation>[];
-              }
-            });
-          },
-        ),
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'quran_reading_bulk_recommendation_sent'.trParams({
-              'count': ayahIds.length.toString(),
-            }),
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_recommendationErrorFeedback(error))),
-      );
-    }
   }
 
   Future<void> _persistReadingSession({bool shouldAutoResume = true}) async {
@@ -1940,46 +1481,24 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   Future<void> _openDisplayFilter() async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
-    await _ensureAllAyatIndexedByPage();
-
-    // Snapshot the dimensions available across the loaded ayat so the picker
-    // only offers values the user can actually act on right now.
-    final availableSubjectKeys = <String>{};
-    for (final ayah in _allAyat) {
-      if (ayah.subjects != null) {
-        availableSubjectKeys.addAll(ayah.subjects!);
-      }
+    final selectedUser = context.read<UsersProvider>().selectedUser;
+    if (selectedUser == null) {
+      return;
     }
-
-    final availableSubjects = await _resolveSubjectDisplayLabels(
-      availableSubjectKeys,
+    await _ensureAllAyatIndexedByPage();
+    final availableData = await _buildReaderAvailableData(
+      selectedUser.id,
+      evaluationsProvider,
     );
-    final availableSchoolGroups = await _resolveSchoolFilterGroups(_allAyat);
     if (!mounted) {
       return;
     }
 
-    final initial = UnifiedFilterSelection(
-      thirds: {..._filterThirds},
-      juzs: {..._filterJuzs},
-      surahIds: {..._filterSurahIds},
-      ayahTypes: {..._filterAyahTypes},
-      subjectKeys: {..._filterSubjectKeys},
-      schoolLevelIds: {..._filterSchoolLevelIds},
-      memoEvaluationIds: {..._filterMemoEvaluationIds},
-      compreEvaluationIds: {..._filterCompreEvaluationIds},
-    );
-
-    final result = await showUnifiedQuranFilterSheet(
+    final result = await showQuranFilterSurface(
       context,
-      initial: initial,
-      available: UnifiedFilterAvailableData(
-        subjects: availableSubjects.labels,
-        subjectHierarchy: availableSubjects.hierarchy,
-        schoolGroups: availableSchoolGroups,
-        memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
-        comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
-      ),
+      initial: _currentReaderFilterSelection(),
+      available: availableData,
+      presentation: QuranFilterPresentation.sheet,
     );
 
     if (result != null && mounted) {
@@ -2009,11 +1528,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           ..clear()
           ..addAll(result.surahIds);
       });
-
-      final selectedUser = context.read<UsersProvider>().selectedUser;
-      if (selectedUser == null) {
-        return;
-      }
+      await _refreshReaderAllowedSchoolScope();
 
       final rebuilt = await _rebuildNavigablePages(
         userId: selectedUser.id,
@@ -2033,24 +1548,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
   }
 
-  String _resolveSchoolLevelName(SchoolLevel level) {
-    final raw = level.name;
-    if (raw == null) {
-      final levelNumber = level.level;
-      if (levelNumber != null) {
-        final fallbackKey = 'level_$levelNumber';
-        final translated = fallbackKey.tr;
-        return translated == fallbackKey ? levelNumber.toString() : translated;
-      }
-      return level.id ?? '';
-    }
-    final localized = _resolveLocalizedMapValue(raw);
-    if (localized.isNotEmpty) {
-      return localized;
-    }
-    return level.id ?? '';
-  }
-
   Future<void> _setWakelockEnabled(bool enabled) async {
     if (kIsWeb) {
       return;
@@ -2068,28 +1565,33 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   Future<void> _loadAyat(
       int userId, EvaluationsProvider evaluationsProvider) async {
     await _refreshConnectivity();
-    var canOpenAssessment = _hasConnection;
-    String? readingNotice = _hasConnection
-        ? null
-        : _tr(
-            'quran_reading_connection_notice',
-          );
+    var canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+    String? readingNotice;
 
-    if (_hasConnection) {
-      if (evaluationsProvider.evaluations.isEmpty) {
-        try {
-          await evaluationsProvider.getAllEvaluations();
-        } catch (_) {
-          canOpenAssessment = false;
-          readingNotice ??= _tr(
+    if (evaluationsProvider.evaluations.isEmpty) {
+      try {
+        await evaluationsProvider.getAllEvaluations();
+      } catch (_) {
+        canOpenAssessment = false;
+        if (_hasConnection) {
+          readingNotice = _tr(
             'quran_reading_assessment_options_error',
           );
         }
       }
     }
 
+    canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+    if (!_hasConnection) {
+      readingNotice = canOpenAssessment
+          ? _tr('quran_reading_connection_notice')
+          : _tr('quran_reading_assessment_unavailable_notice');
+    }
+
     await _ensureNavigationInitialized();
     await _ensureAllAyatIndexedByPage();
+    await _ensureMushafLayoutsLoaded();
+    await _refreshReaderAllowedSchoolScope();
 
     final rebuilt = await _rebuildNavigablePages(
       userId: userId,
@@ -2276,13 +1778,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final usersProvider = Provider.of<UsersProvider>(context);
-    final isSupervisorRecommendationMode =
-        _isSupervisorViewingStudent(usersProvider);
     final ayahTapTooltip = _isAyahSelectionMode
       ? 'quran_reading_multi_select_mode_tooltip'.tr
-      : isSupervisorRecommendationMode
-        ? 'quran_reading_recommendation_tap_tooltip'.tr
-        : 'quran_reading_assessment_tap_tooltip'.tr;
+      : 'quran_reading_assessment_tap_tooltip'.tr;
 
     if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
@@ -2303,6 +1801,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return Consumer<GeneralProvider>(
       builder: (context, generalProvider, _) {
         final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
+      final isLandscapeReader =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+      final readerBodyPadding = isLandscapeReader
+        ? const EdgeInsets.fromLTRB(8, 4, 8, 8)
+        : const EdgeInsets.fromLTRB(4, 0, 4, 3);
+      final readerSurfacePadding = isLandscapeReader
+        ? const EdgeInsets.symmetric(vertical: 5, horizontal: 4)
+        : const EdgeInsets.symmetric(vertical: 2, horizontal: 2);
+      final readerSurfaceTopMargin = isLandscapeReader ? 4.0 : 0.0;
 
         return Theme(
           data: isDarkMode
@@ -2373,18 +1880,23 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             onTap: _handleExitReading,
                           ),
                           const SizedBox(width: 8),
-                          _ReaderSurahPill(
-                            surahName: (_activeSurah ?? widget.surah).nameAr,
-                            isDarkMode: isDarkMode,
-                            tooltip: _tr('quran_reading_surah_picker_tooltip'),
-                            onTap: _openSurahPicker,
+                          Flexible(
+                            child: _ReaderSurahPill(
+                              surahName: (_activeSurah ?? widget.surah)
+                                  .displayName(
+                                    localeCode: languageProvider.langCode,
+                                  ),
+                              isDarkMode: isDarkMode,
+                              tooltip: _tr('quran_reading_surah_picker_tooltip'),
+                              onTap: _openSurahPicker,
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          _ReaderToolIcon(
-                            icon: Icons.tune_rounded,
+                          QuranFilterTrigger.icon(
                             tooltip: _tr('quran_reading_filters_tooltip'),
                             isDarkMode: isDarkMode,
-                            isActive: _hasAnyActiveReaderFilter,
+                            activeCount: _currentReaderFilterSelection()
+                                .activeDimensionCount,
                             onTap: _openDisplayFilter,
                           ),
                           const Spacer(),
@@ -2452,23 +1964,20 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               body: SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                  padding: readerBodyPadding,
                   child: Column(
                     children: [
                       const PendingSyncBanner(bottomPadding: 8),
                       Expanded(
                         child: Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(top: 4),
+                          margin: EdgeInsets.only(top: readerSurfaceTopMargin),
                           decoration: BoxDecoration(
                             color: _readingSurfaceColor(isDarkMode),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 4,
-                            ),
+                            padding: readerSurfacePadding,
                             child: Column(
                               children: [
                                 Expanded(
@@ -2504,24 +2013,22 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                       itemBuilder: (context, index) {
                                         final page = _pageSequence[index];
                                         final pageAyat = _ayatForPage(page);
-                                        return SingleChildScrollView(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              4, 10, 4, 10),
-                                          child: _ReaderRenderedPage(
-                                            pageNumber: page,
-                                            isDarkMode: isDarkMode,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: _buildAyatWidgets(
-                                                pageAyat,
-                                                languageProvider,
-                                                evaluationProvider,
-                                                _hasConnection,
-                                                isDarkMode,
-                                              ),
-                                            ),
-                                          ),
+                                        return LayoutBuilder(
+                                          builder: (context, constraints) {
+                                            return _buildReaderPageViewport(
+                                              context: context,
+                                              constraints: constraints,
+                                              page: page,
+                                              pageAyat: pageAyat,
+                                              languageProvider:
+                                                  languageProvider,
+                                              evaluationProvider:
+                                                  evaluationProvider,
+                                              isDarkMode: isDarkMode,
+                                              isLandscapeReader:
+                                                  isLandscapeReader,
+                                            );
+                                          },
                                         );
                                       },
                                     ),
@@ -2536,15 +2043,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                     child: Center(
                                       child: FilledButton.icon(
                                         onPressed: () =>
-                                            isSupervisorRecommendationMode
-                                                ? _sendSupervisorRecommendationsForSelectedAyahs()
-                                                : _openBulkAssessmentForSelectedAyahs(
-                                                    evaluationProvider,
-                                                    languageProvider,
-                                                  ),
+                                            _openBulkAssessmentForSelectedAyahs(
+                                          evaluationProvider,
+                                          languageProvider,
+                                        ),
                                         style: FilledButton.styleFrom(
                                           backgroundColor:
-                                              const Color(0xFF132A4A),
+                                              AppColors.primaryPurple,
                                           foregroundColor: Colors.white,
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 22,
@@ -2560,9 +2065,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                               .keyboard_double_arrow_up_rounded,
                                         ),
                                         label: Text(
-                                          (isSupervisorRecommendationMode
-                                                  ? 'quran_reading_bulk_recommend_selected'
-                                                  : 'quran_reading_bulk_apply_selected')
+                                          'quran_reading_bulk_apply_selected'
                                               .trParams({
                                             'count': _selectedAyahKeys.length
                                                 .toString(),
@@ -2599,9 +2102,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                       ? const Color(
                                                           0xFFE6DFD0,
                                                         )
-                                                      : const Color(
-                                                          0xFF132A4A,
-                                                        ),
+                                                      : AppColors.primaryPurple,
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Text(
@@ -2614,13 +2115,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                                     .toString(),
                                                           },
                                                         )
-                                                      : widget.surah.nameAr,
+                                                      : widget.surah.displayName(
+                                                          localeCode:
+                                                              languageProvider
+                                                                  .langCode,
+                                                        ),
                                                   style: TextStyle(
                                                     color: isDarkMode
                                                         ? Colors.white
-                                                        : const Color(
-                                                            0xFF132A4A,
-                                                          ),
+                                                        : AppColors.primaryPurple,
                                                     fontWeight: FontWeight.w700,
                                                     fontSize: 18,
                                                   ),
@@ -2634,9 +2137,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                       ? const Color(
                                                           0xFFE6DFD0,
                                                         )
-                                                      : const Color(
-                                                          0xFF132A4A,
-                                                        ),
+                                                      : AppColors.primaryPurple,
                                                 ),
                                               ],
                                             ),
@@ -2708,32 +2209,1262 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
   }
 
-  List<Widget> _buildAyatWidgets(
-      List<Ayat> ayat,
-      LanguageProvider languageProvider,
-      EvaluationsProvider evaluationProvider,
-      bool hasConnection,
-      bool isDarkMode) {
-    List<Widget> widgets = [];
-    if (ayat.isEmpty) return widgets;
+  String _mushafAyahKey(int surahId, int ayahNo) => '$surahId:$ayahNo';
 
-    List<List<Ayat>> groups = [];
-    List<Ayat> currentGroup = [];
+  _AyahPresentation _resolveAyahPresentation(
+    Ayat ayah,
+    LanguageProvider languageProvider,
+    EvaluationsProvider evaluationProvider,
+    bool isDarkMode,
+  ) {
+    final userEvaluation =
+        ayah.userEvaluation ?? evaluationProvider.getUserEvaluationForAyah(ayah.id);
+    final isSelected = _selectedAyahKeys.contains(_ayahSelectionKey(ayah));
+
+    final defaultColor =
+        isDarkMode ? Colors.white : AppColors.blackFontColor;
+    final fadedColor =
+        isDarkMode ? const Color(0xFF4A4A4A) : const Color(0xFFCFCFCF);
+    final isFiltered = _hasAnyActiveReaderFilter &&
+        !_ayahMatchesActiveReaderSelection(ayah, evaluationProvider);
+
+    final memoEvaluation = userEvaluation?.memoEvaluation ??
+        evaluationProvider.findEvaluationById(userEvaluation?.memoId);
+    final compreEvaluation = userEvaluation?.compreEvaluation ??
+        evaluationProvider.findEvaluationById(userEvaluation?.compreId);
+
+    final hasMemorizationAccent =
+        !isFiltered && _showMemorizationColors && memoEvaluation != null;
+    final accentColor = hasMemorizationAccent
+        ? _resolveReadableVerseColor(
+            preferredColor:
+                EvaluationsController().getColorForEvaluationModel(memoEvaluation),
+            fallbackColor:
+                isDarkMode ? const Color(0xFFE6DFD0) : AppColors.buttonColor,
+            isDarkMode: isDarkMode,
+          )
+        : (isFiltered ? fadedColor : defaultColor);
+    final verseColor = isFiltered
+        ? fadedColor
+        : (hasMemorizationAccent ? accentColor : defaultColor);
+    final selectedBackgroundColor =
+        isSelected ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.12) : null;
+    final selectedBadgeTextColor = isSelected
+        ? (ThemeData.estimateBrightnessForColor(accentColor) == Brightness.dark
+            ? Colors.white
+            : Colors.black)
+        : accentColor;
+
+    final showUnderline = !isFiltered &&
+        _showComprehensionUnderline &&
+        EvaluationsController().isPositiveComprehension(compreEvaluation);
+
+    return _AyahPresentation(
+      isFiltered: isFiltered,
+      badgeTextColor: selectedBadgeTextColor,
+      tapRecognizer: _getAyahTapRecognizer(
+        ayah,
+        evaluationProvider,
+        languageProvider,
+      ),
+      verseTextStyle: TextStyle(
+        fontSize: 21,
+        height: 1.8,
+        color: verseColor,
+        backgroundColor: selectedBackgroundColor,
+        fontFamily: AppFonts.versesFont,
+        decoration:
+            showUnderline ? TextDecoration.underline : TextDecoration.none,
+        decorationColor: showUnderline ? accentColor : null,
+        decorationThickness: showUnderline ? 1.8 : null,
+      ),
+    );
+  }
+
+  Widget _buildMushafLineSlot({
+    required Widget child,
+    double? height,
+    Alignment alignment = Alignment.center,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: height ?? _mushafLineHeight,
+      child: Align(
+        alignment: alignment,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: alignment,
+          child: IntrinsicWidth(child: child),
+        ),
+      ),
+    );
+  }
+
+  Color _mushafFrameColor(bool isDarkMode) {
+    return isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
+  }
+
+  Color _mushafHeaderFillColor(bool isDarkMode) {
+    return isDarkMode ? const Color(0xFF2A2414) : const Color(0xFFF4E8C8);
+  }
+
+  Color _mushafHeaderTextColor(bool isDarkMode) {
+    return isDarkMode ? const Color(0xFFE8C97E) : const Color(0xFF5C3A00);
+  }
+
+  Widget _buildMushafHeaderOrnament(Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
+        const SizedBox(width: 4),
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 1),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
+      ],
+    );
+  }
+
+  Widget _buildMushafHeaderRail(Color color, {required bool alignStart}) {
+    return Row(
+      textDirection: TextDirection.rtl,
+      children: [
+        if (!alignStart) _buildMushafHeaderOrnament(color),
+        Expanded(
+          child: Container(
+            height: 1.2,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            color: color.withValues(alpha: 0.42),
+          ),
+        ),
+        if (alignStart) _buildMushafHeaderOrnament(color),
+      ],
+    );
+  }
+
+  String _toArabicIndicDigits(int value) {
+    const digits = <String>['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    return value
+        .toString()
+        .split('')
+        .map((digit) => digits[int.parse(digit)])
+        .join();
+  }
+
+  double _resolveMushafWordFontSize({
+    required bool isLandscapeReader,
+    required _MushafLineFineTune fineTune,
+  }) {
+    final baseSize =
+        isLandscapeReader ? _mushafLandscapeWordFontSize : _mushafWordFontSize;
+    return baseSize * fineTune.fontScale;
+  }
+
+  double _resolveMushafLineHeight({
+    required bool isLandscapeReader,
+    required _MushafLineFineTune fineTune,
+  }) {
+    final baseHeight =
+        isLandscapeReader ? _mushafLandscapeLineHeight : _mushafLineHeight;
+    return baseHeight * fineTune.lineHeightScale;
+  }
+
+  double _resolveLandscapeGapWidth(
+    int gapFlex,
+    _MushafLineFineTune fineTune,
+  ) {
+    final baseWidth = 5.5 + (gapFlex * 2.1);
+    return math.max(5.0, baseWidth * fineTune.gapScale).toDouble();
+  }
+
+  _MushafLineFineTune _resolveMushafLineFineTune({
+    required int pageNumber,
+    required MushafRenderableLine line,
+    required _MushafLinePattern pattern,
+    required bool isLandscapeReader,
+  }) {
+    final manualOverride =
+        _mushafLineFineTuneOverrides[pageNumber]?[line.lineNumber];
+    if (manualOverride != null) {
+      return manualOverride;
+    }
+
+    final tokenLengths = line.words
+        .map(_mushafVisualTokenLength)
+        .toList(growable: false);
+    if (tokenLengths.isEmpty) {
+      return const _MushafLineFineTune();
+    }
+
+    final tokenCount = tokenLengths.length;
+    final totalChars = tokenLengths.fold<int>(0, (sum, value) => sum + value);
+    final longestToken = tokenLengths.reduce(math.max);
+    final shortestToken = tokenLengths.reduce(math.min);
+
+    if (isLandscapeReader) {
+      if (pattern.isCentered || tokenCount <= 4 || totalChars <= 12) {
+        return const _MushafLineFineTune(
+          forceCentered: true,
+          gapScale: 0.68,
+          fontScale: 1.24,
+          lineHeightScale: 1.0,
+          horizontalInset: 34,
+        );
+      }
+      if (tokenCount <= 6 && totalChars <= 20) {
+        return const _MushafLineFineTune(
+          forceCentered: true,
+          gapScale: 0.74,
+          fontScale: 1.18,
+          lineHeightScale: 1.0,
+          horizontalInset: 24,
+        );
+      }
+      if (tokenCount >= 7 || totalChars >= 28) {
+        return const _MushafLineFineTune(
+          forceCentered: true,
+          gapScale: 0.78,
+          fontScale: 1.1,
+          lineHeightScale: 1.0,
+          horizontalInset: 10,
+        );
+      }
+      return const _MushafLineFineTune(
+        forceCentered: true,
+        gapScale: 0.76,
+        fontScale: 1.14,
+        lineHeightScale: 1.0,
+        horizontalInset: 18,
+      );
+    }
+
+    if (!pattern.isCentered && tokenCount >= 5 && tokenCount <= 6 && totalChars <= 16) {
+      return const _MushafLineFineTune(
+        forceCentered: true,
+        gapScale: 0.92,
+        fontScale: 1.02,
+      );
+    }
+
+    if (!pattern.isCentered && tokenCount >= 10 && totalChars >= 40) {
+      return const _MushafLineFineTune(
+        gapScale: 0.9,
+        fontScale: 0.96,
+      );
+    }
+
+    if (!pattern.isCentered && tokenCount >= 8 && totalChars >= 34) {
+      return const _MushafLineFineTune(
+        gapScale: 0.94,
+        fontScale: 0.98,
+      );
+    }
+
+    if (!pattern.isCentered && tokenCount >= 7 && totalChars >= 34) {
+      return const _MushafLineFineTune(
+        fontScale: 0.98,
+      );
+    }
+
+    if (!pattern.isCentered && longestToken - shortestToken >= 5 && tokenCount <= 5) {
+      return const _MushafLineFineTune();
+    }
+
+    return const _MushafLineFineTune();
+  }
+
+  Widget _buildMushafAyahMarker({
+    required int ayahNo,
+    required TextStyle textStyle,
+    required bool isDarkMode,
+    required bool isLandscapeReader,
+    VoidCallback? onTap,
+    Color? accentColor,
+  }) {
+    final frameColor = _mushafFrameColor(isDarkMode);
+    final markerTextColor = accentColor == null || accentColor == textStyle.color
+        ? frameColor
+        : accentColor;
+    final markerNumberSize = math
+        .max(
+          11.0,
+          (textStyle.fontSize ?? _mushafWordFontSize) -
+              (isLandscapeReader ? 5 : 6),
+        )
+        .toDouble();
+    final ornamentSize = markerNumberSize + (isLandscapeReader ? 12 : 10);
+
+    Widget markerBody = SizedBox(
+      width: isLandscapeReader ? 30 : 24,
+      height: isLandscapeReader ? 30 : 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Text(
+            '۝',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontSize: ornamentSize,
+              height: 1,
+              color: frameColor.withValues(alpha: isDarkMode ? 0.92 : 0.88),
+              fontFamily: AppFonts.versesFont,
+            ),
+          ),
+          Transform.translate(
+            offset: const Offset(0, -0.5),
+            child: Text(
+              _toArabicIndicDigits(ayahNo),
+              textDirection: TextDirection.rtl,
+              style: textStyle.copyWith(
+                fontSize: markerNumberSize,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                color: markerTextColor,
+                decoration: TextDecoration.none,
+                decorationColor: null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      markerBody = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: onTap,
+        child: markerBody,
+      );
+    }
+
+    return markerBody;
+  }
+
+  Widget _buildMushafSurahHeaderLine(
+    int surahId,
+    bool isDarkMode,
+    bool isLandscapeReader,
+  ) {
+    final frameColor = _mushafFrameColor(isDarkMode);
+    final lineHeight = _resolveMushafLineHeight(
+      isLandscapeReader: isLandscapeReader,
+      fineTune: const _MushafLineFineTune(lineHeightScale: 1.0),
+    ) + 1;
+
+    return SizedBox(
+      width: double.infinity,
+      height: lineHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _mushafHeaderFillColor(isDarkMode),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: frameColor, width: 1.4),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: frameColor.withValues(alpha: 0.45),
+                  width: 0.9,
+                ),
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Row(
+                        textDirection: TextDirection.rtl,
+                        children: [
+                          Expanded(
+                            child: _buildMushafHeaderRail(
+                              frameColor,
+                              alignStart: true,
+                            ),
+                          ),
+                          SizedBox(width: isLandscapeReader ? 190 : 150),
+                          Expanded(
+                            child: _buildMushafHeaderRail(
+                              frameColor,
+                              alignStart: false,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        color: _mushafHeaderFillColor(isDarkMode),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Transform.translate(
+                          offset: const Offset(0, -0.6),
+                          child: Text(
+                            'سورة ${localizedSurahNameById(surahId, localeCode: 'ar')}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                              fontSize: isLandscapeReader ? 21 : 19,
+                              height: 1,
+                              fontWeight: FontWeight.w700,
+                              color: _mushafHeaderTextColor(isDarkMode),
+                              fontFamily: AppFonts.primaryFont,
+                              fontFamilyFallback: const <String>[
+                                AppFonts.versesFont,
+                              ],
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMushafBasmalaLine(bool isDarkMode, bool isLandscapeReader) {
+    return _buildMushafLineSlot(
+      height: _resolveMushafLineHeight(
+        isLandscapeReader: isLandscapeReader,
+        fineTune: const _MushafLineFineTune(),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.rtl,
+        style: TextStyle(
+          fontSize: isLandscapeReader ? 22 : 20,
+          height: 1,
+          color: _mushafHeaderTextColor(isDarkMode),
+          fontFamily: AppFonts.versesFont,
+        ),
+      ),
+    );
+  }
+
+  int _mushafVisualTokenLength(MushafWordLayout word) {
+    final normalized = word.text.replaceAll(_mushafVisualMarksPattern, '');
+    return math.max(1, normalized.runes.length);
+  }
+
+  _MushafLinePattern _resolveMushafLinePattern(MushafRenderableLine line) {
+    final tokenCount = line.words.length;
+    if (tokenCount <= 1) {
+      return const _MushafLinePattern.centered(tokenSpacing: 0);
+    }
+
+    final tokenLengths = line.words
+        .map(_mushafVisualTokenLength)
+        .toList(growable: false);
+    final totalChars = tokenLengths.fold<int>(0, (sum, value) => sum + value);
+    final averageChars = totalChars / tokenCount;
+    final isSparseLine =
+        totalChars <= 12 || (tokenCount <= 3 && averageChars >= 4.5);
+    if (isSparseLine) {
+      return _MushafLinePattern.centered(
+        tokenSpacing: totalChars <= 8 ? 14 : 10,
+      );
+    }
+
+    final isDenseLine = totalChars >= 28 || tokenCount >= 7;
+    final isVeryDenseLine = totalChars >= 40 || tokenCount >= 10;
+    final outerFlex = isDenseLine ? 0 : 1;
+    final gapFlexes = <int>[];
+    for (var index = 0; index < tokenLengths.length - 1; index += 1) {
+      final leftLength = tokenLengths[index];
+      final rightLength = tokenLengths[index + 1];
+      final combinedLength = leftLength + rightLength;
+
+      var gapFlex = combinedLength <= 5
+          ? 3
+          : combinedLength <= 8
+              ? 2
+              : 1;
+
+      if (leftLength >= 6 || rightLength >= 6) {
+        gapFlex -= 1;
+      }
+      if (isVeryDenseLine) {
+        gapFlex -= 1;
+      }
+      if (line.words[index].isVerseEnd || line.words[index + 1].isVerseEnd) {
+        gapFlex = math.max(gapFlex, 2);
+      }
+      gapFlexes.add(math.max(1, gapFlex));
+    }
+
+    return _MushafLinePattern.distributed(
+      outerFlex: outerFlex,
+      gapFlexes: gapFlexes,
+    );
+  }
+
+  Widget _buildMushafLineToken({
+    required Widget child,
+    VoidCallback? onTap,
+    double horizontalPadding = 1.5,
+  }) {
+    final padded = Padding(
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      child: child,
+    );
+
+    if (onTap == null) {
+      return padded;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: onTap,
+      child: padded,
+    );
+  }
+
+  Widget _buildSegmentedUnderlinedWord({
+    required String text,
+    required TextStyle textStyle,
+    required Color underlineColor,
+    required double underlineThickness,
+  }) {
+    final cleanTextStyle = textStyle.copyWith(
+      decoration: TextDecoration.none,
+      decorationColor: null,
+      decorationThickness: null,
+    );
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: underlineThickness <= 1.8 ? 0.4 : 0.7),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: underlineThickness + 1.4),
+            child: Text(
+              text,
+              textDirection: TextDirection.rtl,
+              style: cleanTextStyle,
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: underlineColor,
+              ),
+              child: SizedBox(height: underlineThickness),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnderlinedAyahConnector({
+    required Color underlineColor,
+    required double underlineThickness,
+    required double fontSize,
+    double? width,
+  }) {
+    final bottomInset = underlineThickness <= 1.8 ? 0.4 : 0.7;
+
+    Widget connector = Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(bottom: underlineThickness + 1.4),
+            child: SizedBox(
+              width: width,
+              height: fontSize,
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: underlineColor,
+              ),
+              child: SizedBox(height: underlineThickness),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (width != null) {
+      connector = SizedBox(width: width, child: connector);
+    }
+
+    return IgnorePointer(child: connector);
+  }
+
+  double _measureMushafTextWidth({
+    required String text,
+    required TextStyle textStyle,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: textStyle),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+    )..layout();
+    return painter.width;
+  }
+
+  double _estimateMushafLineWidthForFit({
+    required MushafRenderableLine line,
+    required Map<String, Ayat> ayahByKey,
+    required TextStyle textStyle,
+    required _MushafLinePattern pattern,
+    required _MushafLineFineTune fineTune,
+    required bool isLandscapeReader,
+    required bool isCenteredLine,
+  }) {
+    const tokenPaddingWidth = 3.0;
+    final markerWidth = isLandscapeReader ? 30.0 : 24.0;
+    final recommendationBadgeWidth = isLandscapeReader ? 28.0 : 24.0;
+    var totalWidth = 0.0;
+
+    for (var index = 0; index < line.words.length; index += 1) {
+      final word = line.words[index];
+      if (word.isVerseEnd) {
+        totalWidth += markerWidth + tokenPaddingWidth;
+        final ayah = ayahByKey[_mushafAyahKey(word.surahId, word.ayahNo)];
+        if (ayah != null && ayah.teacherRecommendations.isNotEmpty) {
+          totalWidth += 4 + recommendationBadgeWidth;
+        }
+      } else {
+        totalWidth +=
+            _measureMushafTextWidth(text: word.text, textStyle: textStyle) +
+            tokenPaddingWidth;
+      }
+
+      if (!isCenteredLine || index >= line.words.length - 1) {
+        continue;
+      }
+
+      if (pattern.isCentered) {
+        totalWidth += math
+            .max(
+              6.0,
+              (pattern.tokenSpacing == 0 ? 8.0 : pattern.tokenSpacing) *
+                  fineTune.gapScale,
+            )
+            .toDouble();
+        continue;
+      }
+
+      if (index < pattern.gapFlexes.length) {
+        totalWidth += _resolveLandscapeGapWidth(
+          pattern.gapFlexes[index],
+          fineTune,
+        );
+      }
+    }
+
+    return totalWidth;
+  }
+
+  Widget _buildMushafWordLine(
+    int pageNumber,
+    MushafRenderableLine line,
+    Map<String, Ayat> ayahByKey,
+    LanguageProvider languageProvider,
+    EvaluationsProvider evaluationProvider,
+    bool isDarkMode,
+    bool isLandscapeReader,
+  ) {
+    final pattern = _resolveMushafLinePattern(line);
+    final fineTune = _resolveMushafLineFineTune(
+      pageNumber: pageNumber,
+      line: line,
+      pattern: pattern,
+      isLandscapeReader: isLandscapeReader,
+    );
+    final resolvedFontSize = _resolveMushafWordFontSize(
+      isLandscapeReader: isLandscapeReader,
+      fineTune: fineTune,
+    );
+    final resolvedLineHeight = _resolveMushafLineHeight(
+      isLandscapeReader: isLandscapeReader,
+      fineTune: fineTune,
+    );
+    final measureStyle = TextStyle(
+      fontSize: resolvedFontSize,
+      height: 1,
+      color: isDarkMode ? Colors.white : AppColors.blackFontColor,
+      fontFamily: AppFonts.versesFont,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCenteredLine =
+            (fineTune.forceCentered || pattern.isCentered) && !isLandscapeReader;
+        final horizontalInset =
+            (isCenteredLine || isLandscapeReader) ? fineTune.horizontalInset : 0.0;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? math.max(0.0, constraints.maxWidth - (horizontalInset * 2))
+            : double.infinity;
+
+        var fitScale = 1.0;
+        if (!isLandscapeReader && availableWidth.isFinite && availableWidth > 0) {
+          final estimatedWidth = _estimateMushafLineWidthForFit(
+            line: line,
+            ayahByKey: ayahByKey,
+            textStyle: measureStyle,
+            pattern: pattern,
+            fineTune: fineTune,
+            isLandscapeReader: isLandscapeReader,
+            isCenteredLine: isCenteredLine,
+          );
+          if (estimatedWidth > availableWidth) {
+            fitScale = math.min(1.0, (availableWidth / estimatedWidth) * 0.985);
+          }
+        }
+
+        final effectiveFontSize = resolvedFontSize * fitScale;
+        final effectiveGapScale = fineTune.gapScale * fitScale;
+        final effectiveGapFineTune = _MushafLineFineTune(
+          forceCentered: fineTune.forceCentered,
+          gapScale: effectiveGapScale,
+          fontScale: fineTune.fontScale,
+          lineHeightScale: fineTune.lineHeightScale,
+          horizontalInset: fineTune.horizontalInset,
+        );
+        final defaultStyle = TextStyle(
+          fontSize: effectiveFontSize,
+          height: 1,
+          color: isDarkMode ? Colors.white : AppColors.blackFontColor,
+          fontFamily: AppFonts.versesFont,
+        );
+        final tokens = <_MushafLineTokenData>[];
+        final tokenWidths = <double>[];
+        for (var index = 0; index < line.words.length; index += 1) {
+          final word = line.words[index];
+          final ayahKey = _mushafAyahKey(word.surahId, word.ayahNo);
+          final ayah = ayahByKey[ayahKey];
+          final presentation = ayah == null
+              ? null
+              : _resolveAyahPresentation(
+                  ayah,
+                  languageProvider,
+                  evaluationProvider,
+                  isDarkMode,
+                );
+          final baseWordStyle =
+              (presentation?.verseTextStyle ?? defaultStyle).copyWith(
+            fontSize: effectiveFontSize,
+            height: 1,
+          );
+          final showAyahUnderline =
+              presentation?.verseTextStyle.decoration == TextDecoration.underline;
+          final underlineColor = presentation?.verseTextStyle.decorationColor ??
+              presentation?.badgeTextColor ??
+              (baseWordStyle.color ?? defaultStyle.color!);
+          final underlineThickness = isLandscapeReader ? 2.0 : 1.8;
+          final plainWordStyle = baseWordStyle.copyWith(
+            decoration: TextDecoration.none,
+            decorationColor: null,
+            decorationThickness: null,
+          );
+          final onTap = presentation?.tapRecognizer.onTap;
+
+          if (showAyahUnderline && !word.isVerseEnd) {
+            tokenWidths.add(
+              _measureMushafTextWidth(
+                text: word.text,
+                textStyle: plainWordStyle,
+              ),
+            );
+            tokens.add(
+              _MushafLineTokenData(
+                child: _buildMushafLineToken(
+                  child: _buildSegmentedUnderlinedWord(
+                    text: word.text,
+                    textStyle: plainWordStyle,
+                    underlineColor: underlineColor,
+                    underlineThickness: underlineThickness,
+                  ),
+                  onTap: onTap,
+                  horizontalPadding: 0,
+                ),
+                underlineAyahKey: ayahKey,
+                underlineColor: underlineColor,
+                underlineThickness: underlineThickness,
+              ),
+            );
+            continue;
+          }
+
+          if (word.isVerseEnd) {
+            var markerTokenWidth = isLandscapeReader ? 30.0 : 24.0;
+            final marker = _buildMushafAyahMarker(
+              ayahNo: word.ayahNo,
+              textStyle: plainWordStyle,
+              isDarkMode: isDarkMode,
+              isLandscapeReader: isLandscapeReader,
+              onTap: onTap,
+              accentColor: presentation?.badgeTextColor,
+            );
+
+            Widget markerToken = marker;
+            if (ayah != null &&
+                presentation != null &&
+                !presentation.isFiltered &&
+                ayah.teacherRecommendations.isNotEmpty) {
+              markerTokenWidth += (isLandscapeReader ? 30.0 : 24.0) + 4;
+              markerToken = Row(
+                mainAxisSize: MainAxisSize.min,
+                textDirection: TextDirection.rtl,
+                children: [
+                  marker,
+                  const SizedBox(width: 4),
+                  TeacherRecommendationBadge(
+                    recommendations: ayah.teacherRecommendations,
+                    compact: true,
+                  ),
+                ],
+              );
+            }
+
+            tokenWidths.add(markerTokenWidth + 3);
+
+            tokens.add(
+              _MushafLineTokenData(
+                child: _buildMushafLineToken(
+                  child: markerToken,
+                ),
+              ),
+            );
+            continue;
+          }
+
+          tokenWidths.add(
+            _measureMushafTextWidth(
+                  text: word.text,
+                  textStyle: plainWordStyle,
+                ) +
+                3,
+          );
+          tokens.add(
+            _MushafLineTokenData(
+              child: _buildMushafLineToken(
+                child: Text(
+                  word.text,
+                  textDirection: TextDirection.rtl,
+                  style: plainWordStyle,
+                ),
+                onTap: onTap,
+              ),
+            ),
+          );
+        }
+
+        bool shouldBridgeUnderline(
+          _MushafLineTokenData left,
+          _MushafLineTokenData right,
+        ) {
+          return left.underlineAyahKey != null &&
+              left.underlineAyahKey == right.underlineAyahKey &&
+              left.underlineColor != null &&
+              left.underlineThickness != null;
+        }
+
+        final intrinsicTokenWidth = tokenWidths.fold<double>(
+          0,
+          (sum, value) => sum + value,
+        );
+        final visualLineScale = !isLandscapeReader &&
+                availableWidth.isFinite &&
+                availableWidth > 0 &&
+                intrinsicTokenWidth > availableWidth
+            ? math.min(1.0, (availableWidth / intrinsicTokenWidth) * 0.985)
+            : 1.0;
+
+        if (isCenteredLine) {
+          final gapWidths = pattern.isCentered
+              ? List<double>.filled(
+                  math.max(0, tokens.length - 1),
+                  math
+                      .max(
+                        6.0,
+                        (pattern.tokenSpacing == 0 ? 8.0 : pattern.tokenSpacing) *
+                            effectiveGapScale,
+                      )
+                      .toDouble(),
+                  growable: false,
+                )
+              : List<double>.generate(
+                  math.max(0, tokens.length - 1),
+                  (index) => _resolveLandscapeGapWidth(
+                    pattern.gapFlexes[index],
+                    effectiveGapFineTune,
+                  ),
+                  growable: false,
+                );
+
+          final centeredChildren = <Widget>[];
+          for (var index = 0; index < tokens.length; index += 1) {
+            centeredChildren.add(tokens[index].child);
+            if (index < gapWidths.length) {
+              final leftToken = tokens[index];
+              final rightToken = tokens[index + 1];
+              if (shouldBridgeUnderline(leftToken, rightToken)) {
+                centeredChildren.add(
+                  _buildUnderlinedAyahConnector(
+                    width: gapWidths[index],
+                    underlineColor: leftToken.underlineColor!,
+                    underlineThickness: leftToken.underlineThickness!,
+                    fontSize: effectiveFontSize,
+                  ),
+                );
+              } else {
+                centeredChildren.add(SizedBox(width: gapWidths[index]));
+              }
+            }
+          }
+
+          Widget lineChild = Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            textDirection: TextDirection.rtl,
+            children: centeredChildren,
+          );
+          if (visualLineScale < 1.0 || availableWidth.isFinite) {
+            lineChild = FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: lineChild,
+            );
+          }
+
+          return SizedBox(
+            width: double.infinity,
+            height: resolvedLineHeight,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: fineTune.horizontalInset),
+              child: Center(child: lineChild),
+            ),
+          );
+        }
+
+        final distributedChildren = <Widget>[];
+        final outerFlex = isLandscapeReader
+            ? 0
+            : (pattern.outerFlex <= 0
+                ? 0
+                : math.max(
+                    1,
+                    (pattern.outerFlex * effectiveGapScale).round(),
+                  ));
+        final gapFlexes = List<int>.generate(
+          pattern.gapFlexes.length,
+          (index) => math.max(
+            1,
+            (pattern.gapFlexes[index] * effectiveGapScale).round(),
+          ),
+          growable: false,
+        );
+        final totalGapUnits = (outerFlex * 2) +
+            gapFlexes.fold<int>(0, (sum, value) => sum + value);
+        final horizontalPadding = isLandscapeReader ? fineTune.horizontalInset * 2 : 0.0;
+        final distributedAvailableWidth = constraints.maxWidth.isFinite
+            ? math.max(0.0, constraints.maxWidth - horizontalPadding)
+            : double.infinity;
+        final remainingGapWidth = distributedAvailableWidth.isFinite
+            ? math.max(0.0, distributedAvailableWidth - intrinsicTokenWidth)
+            : 0.0;
+        final gapUnitWidth = totalGapUnits > 0
+            ? remainingGapWidth / totalGapUnits
+            : 0.0;
+        final outerGapWidth = gapUnitWidth * outerFlex;
+
+        if (outerGapWidth > 0) {
+          distributedChildren.add(SizedBox(width: outerGapWidth));
+        }
+        for (var index = 0; index < tokens.length; index += 1) {
+          distributedChildren.add(tokens[index].child);
+          if (index < gapFlexes.length) {
+            final gapWidth = gapUnitWidth * gapFlexes[index];
+            final leftToken = tokens[index];
+            final rightToken = tokens[index + 1];
+            if (shouldBridgeUnderline(leftToken, rightToken)) {
+              distributedChildren.add(
+                _buildUnderlinedAyahConnector(
+                  width: gapWidth,
+                  underlineColor: leftToken.underlineColor!,
+                  underlineThickness: leftToken.underlineThickness!,
+                  fontSize: effectiveFontSize,
+                ),
+              );
+            } else {
+              distributedChildren.add(SizedBox(width: gapWidth));
+            }
+          }
+        }
+        if (outerGapWidth > 0) {
+          distributedChildren.add(SizedBox(width: outerGapWidth));
+        }
+
+        Widget lineChild = Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          textDirection: TextDirection.rtl,
+          children: distributedChildren,
+        );
+        if (visualLineScale < 1.0 || distributedAvailableWidth.isFinite) {
+          lineChild = FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: lineChild,
+          );
+        }
+
+        return SizedBox(
+          width: double.infinity,
+          height: resolvedLineHeight,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isLandscapeReader ? fineTune.horizontalInset : 0,
+            ),
+            child: Center(child: lineChild),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReaderPageViewport({
+    required BuildContext context,
+    required BoxConstraints constraints,
+    required int page,
+    required List<Ayat> pageAyat,
+    required LanguageProvider languageProvider,
+    required EvaluationsProvider evaluationProvider,
+    required bool isDarkMode,
+    required bool isLandscapeReader,
+  }) {
+    final isIntroPage = page == 1 || page == 2;
+    final pageWidget = _ReaderRenderedPage(
+      pageNumber: page,
+      isDarkMode: isDarkMode,
+      margin: EdgeInsets.symmetric(vertical: isLandscapeReader ? 4 : 0),
+      contentPadding: isLandscapeReader
+          ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
+          : const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _buildAyatWidgets(
+          page,
+          pageAyat,
+          languageProvider,
+          evaluationProvider,
+          _hasConnection,
+          isDarkMode,
+          isLandscapeReader,
+        ),
+      ),
+    );
+
+    if (isLandscapeReader) {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+        child: SizedBox(
+          width: constraints.maxWidth,
+          height: isIntroPage ? constraints.maxHeight : null,
+          child: pageWidget,
+        ),
+      );
+    }
+
+    if (isIntroPage) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 2),
+        child: SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: pageWidget,
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 2),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: constraints.maxWidth,
+          height: constraints.maxHeight,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              height: isIntroPage ? constraints.maxHeight : null,
+              child: pageWidget,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildMushafLayoutWidgets(
+    MushafPageLayout layout,
+    List<Ayat> ayat,
+    LanguageProvider languageProvider,
+    EvaluationsProvider evaluationProvider,
+    bool isDarkMode,
+    bool isLandscapeReader,
+  ) {
+    if (layout.lines.isEmpty) {
+      return const <Widget>[];
+    }
+
+    final ayahByKey = <String, Ayat>{
+      for (final ayah in ayat) _mushafAyahKey(ayah.surah.id, ayah.ayahNo): ayah,
+    };
+    final widgets = <Widget>[];
+
+    for (final line in layout.buildRenderableLines()) {
+      switch (line.kind) {
+        case MushafPageLineKind.words:
+          widgets.add(
+            _buildMushafWordLine(
+              layout.pageNumber,
+              line,
+              ayahByKey,
+              languageProvider,
+              evaluationProvider,
+              isDarkMode,
+              isLandscapeReader,
+            ),
+          );
+          break;
+
+        case MushafPageLineKind.surahHeader:
+          final surahId = line.surahId;
+          if (surahId != null) {
+            widgets.add(
+              _buildMushafSurahHeaderLine(
+                surahId,
+                isDarkMode,
+                isLandscapeReader,
+              ),
+            );
+          }
+          break;
+
+        case MushafPageLineKind.basmala:
+          widgets.add(
+            _buildMushafBasmalaLine(isDarkMode, isLandscapeReader),
+          );
+          break;
+
+        case MushafPageLineKind.blank:
+          widgets.add(
+            SizedBox(
+              width: double.infinity,
+              height: _resolveMushafLineHeight(
+                isLandscapeReader: isLandscapeReader,
+                fineTune: const _MushafLineFineTune(),
+              ),
+            ),
+          );
+          break;
+      }
+    }
+
+    widgets.add(const SizedBox(height: 4));
+    return widgets;
+  }
+
+  List<Widget> _buildAyatWidgets(
+    int pageNumber,
+    List<Ayat> ayat,
+    LanguageProvider languageProvider,
+    EvaluationsProvider evaluationProvider,
+    bool hasConnection,
+    bool isDarkMode,
+    bool isLandscapeReader,
+  ) {
+    final layout = _mushafLayoutsByPage[pageNumber];
+    if (layout != null) {
+      final lineAwareWidgets = _buildMushafLayoutWidgets(
+        layout,
+        ayat,
+        languageProvider,
+        evaluationProvider,
+        isDarkMode,
+        isLandscapeReader,
+      );
+      if (lineAwareWidgets.isNotEmpty) {
+        return lineAwareWidgets;
+      }
+    }
+
+    return _buildAyatWidgetsFallback(
+      ayat,
+      languageProvider,
+      evaluationProvider,
+      hasConnection,
+      isDarkMode,
+    );
+  }
+
+  List<Widget> _buildAyatWidgetsFallback(
+    List<Ayat> ayat,
+    LanguageProvider languageProvider,
+    EvaluationsProvider evaluationProvider,
+    bool hasConnection,
+    bool isDarkMode,
+  ) {
+    final widgets = <Widget>[];
+    if (ayat.isEmpty) {
+      return widgets;
+    }
+
+    final groups = <List<Ayat>>[];
+    var currentGroup = <Ayat>[];
     int? currentSurahId;
 
-    for (var ayah in ayat) {
+    for (final ayah in ayat) {
       if (currentSurahId != null && ayah.surah.id != currentSurahId) {
         groups.add(currentGroup);
-        currentGroup = [];
+        currentGroup = <Ayat>[];
       }
       currentGroup.add(ayah);
       currentSurahId = ayah.surah.id;
     }
-    if (currentGroup.isNotEmpty) groups.add(currentGroup);
+    if (currentGroup.isNotEmpty) {
+      groups.add(currentGroup);
+    }
 
-    for (var group in groups) {
+    for (final group in groups) {
       final firstAyah = group.first;
-
       final isAtStartOfSurah = firstAyah.ayahNo == 1;
 
       if (isAtStartOfSurah) {
@@ -2754,7 +3485,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 ),
               ),
               child: Text(
-                firstAyah.surah.nameAr,
+                firstAyah.surah.displayName(
+                  localeCode: languageProvider.langCode,
+                ),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -2798,90 +3531,39 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         Text.rich(
           TextSpan(
             children: group.map((ayah) {
-              final userEvaluation = ayah.userEvaluation ??
-                  evaluationProvider.getUserEvaluationForAyah(ayah.id);
-              final isSelected =
-                  _selectedAyahKeys.contains(_ayahSelectionKey(ayah));
-
-              final defaultColor =
-                  isDarkMode ? Colors.white : AppColors.blackFontColor;
-              final fadedColor = isDarkMode
-                  ? const Color(0xFF4A4A4A)
-                  : const Color(0xFFCFCFCF);
-              final isFiltered = _hasAnyActiveReaderFilter &&
-                  !_ayahMatchesActiveReaderSelection(ayah, evaluationProvider);
-
-              final memoEvaluation = userEvaluation?.memoEvaluation ??
-                  evaluationProvider.findEvaluationById(userEvaluation?.memoId);
-              final compreEvaluation = userEvaluation?.compreEvaluation ??
-                  evaluationProvider
-                      .findEvaluationById(userEvaluation?.compreId);
-
-              final hasMemorizationAccent = !isFiltered &&
-                  _showMemorizationColors &&
-                  memoEvaluation != null;
-              final accentColor = hasMemorizationAccent
-                  ? _resolveReadableVerseColor(
-                      preferredColor: EvaluationsController()
-                          .getColorForEvaluationModel(memoEvaluation),
-                      fallbackColor: isDarkMode
-                          ? const Color(0xFFE6DFD0)
-                          : AppColors.buttonColor,
-                      isDarkMode: isDarkMode,
-                    )
-                  : (isFiltered ? fadedColor : defaultColor);
-              final verseColor = isFiltered
-                  ? fadedColor
-                  : (hasMemorizationAccent ? accentColor : defaultColor);
-              final selectedBackgroundColor = isSelected
-                  ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.12)
-                  : null;
-              final selectedBadgeTextColor = isSelected
-                  ? (ThemeData.estimateBrightnessForColor(accentColor) ==
-                          Brightness.dark
-                      ? Colors.white
-                      : Colors.black)
-                  : accentColor;
-
-              final showUnderline = !isFiltered &&
-                  _showComprehensionUnderline &&
-                  EvaluationsController()
-                      .isPositiveComprehension(compreEvaluation);
-              final ayahTapRecognizer = _getAyahTapRecognizer(
+              final presentation = _resolveAyahPresentation(
                 ayah,
-                evaluationProvider,
                 languageProvider,
-              );
-
-              final verseTextStyle = TextStyle(
-                fontSize: 21,
-                height: 1.8,
-                color: verseColor,
-                backgroundColor: selectedBackgroundColor,
-                fontFamily: AppFonts.versesFont,
-                decoration: showUnderline
-                    ? TextDecoration.underline
-                    : TextDecoration.none,
-                decorationColor: showUnderline ? accentColor : null,
-                decorationThickness: showUnderline ? 1.8 : null,
+                evaluationProvider,
+                isDarkMode,
               );
 
               return TextSpan(
                 children: [
                   TextSpan(
                     text: '${ayah.text} ',
-                    recognizer: ayahTapRecognizer,
-                    style: verseTextStyle,
+                    recognizer: presentation.tapRecognizer,
+                    style: presentation.verseTextStyle,
                   ),
-                  TextSpan(
-                    text: gc.ayahMarker(ayah.ayahNo),
-                    style: verseTextStyle.copyWith(
-                      color: selectedBadgeTextColor,
-                      decoration: TextDecoration.none,
-                      decorationColor: null,
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: 2,
+                        end: 2,
+                      ),
+                      child: _buildMushafAyahMarker(
+                        ayahNo: ayah.ayahNo,
+                        textStyle: presentation.verseTextStyle,
+                        isDarkMode: isDarkMode,
+                        isLandscapeReader: false,
+                        onTap: presentation.tapRecognizer.onTap,
+                        accentColor: presentation.badgeTextColor,
+                      ),
                     ),
                   ),
-                  if (!isFiltered && ayah.teacherRecommendations.isNotEmpty)
+                  if (!presentation.isFiltered &&
+                      ayah.teacherRecommendations.isNotEmpty)
                     WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
                       child: Padding(
@@ -2898,7 +3580,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   const TextSpan(text: ' '),
                 ],
               );
-            }).toList(),
+            }).toList(growable: false),
           ),
           textAlign: TextAlign.justify,
           textDirection: TextDirection.rtl,
@@ -2906,21 +3588,25 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         ),
       );
 
-      widgets.add(const SizedBox(height: 12));
+      widgets.add(const SizedBox(height: 4));
     }
 
     return widgets;
   }
 }
 
-class _ReaderSubjectData {
-  const _ReaderSubjectData({
-    required this.labels,
-    required this.hierarchy,
+class _AyahPresentation {
+  const _AyahPresentation({
+    required this.isFiltered,
+    required this.badgeTextColor,
+    required this.tapRecognizer,
+    required this.verseTextStyle,
   });
 
-  final Map<String, String> labels;
-  final List<SubjectHierarchyItem> hierarchy;
+  final bool isFiltered;
+  final Color badgeTextColor;
+  final TapGestureRecognizer tapRecognizer;
+  final TextStyle verseTextStyle;
 }
 
 class _ReaderToolIcon extends StatelessWidget {
@@ -2945,7 +3631,7 @@ class _ReaderToolIcon extends StatelessWidget {
     final disabled = onTap == null;
     final foreground = isDarkMode
         ? (disabled ? const Color(0xFF6B7280) : Colors.white)
-        : (disabled ? const Color(0xFF9AA3B2) : const Color(0xFF132A4A));
+      : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
     final background = flat
         ? Colors.transparent
         : (isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0));
@@ -2953,7 +3639,7 @@ class _ReaderToolIcon extends StatelessWidget {
     final activeOverlay = isActive
         ? (isDarkMode
             ? Colors.white.withValues(alpha: 0.10)
-            : const Color(0xFF132A4A).withValues(alpha: 0.10))
+        : AppColors.primaryPurple.withValues(alpha: 0.10))
         : null;
 
     return Tooltip(
@@ -3015,7 +3701,7 @@ class _ReaderSurahPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = isDarkMode ? Colors.white : const Color(0xFF132A4A);
+    final foreground = isDarkMode ? Colors.white : AppColors.primaryPurple;
     final pill = Material(
       color: isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0),
       borderRadius: BorderRadius.circular(14),
@@ -3024,15 +3710,20 @@ class _ReaderSurahPill extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: 14,
+            horizontal: 12,
             vertical: 8,
           ),
           child: Text(
             surahName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
             style: TextStyle(
               color: foreground,
               fontSize: 16,
               fontWeight: FontWeight.w800,
+              fontFamily: AppFonts.primaryFont,
+              fontFamilyFallback: const <String>[AppFonts.versesFont],
             ),
           ),
         ),
@@ -3064,7 +3755,7 @@ class _ReaderProgressLabel extends StatelessWidget {
     final text = Text(
       label,
       style: TextStyle(
-        color: isDarkMode ? Colors.white : const Color(0xFF132A4A),
+        color: isDarkMode ? Colors.white : AppColors.primaryPurple,
         fontWeight: FontWeight.w700,
         fontSize: 18,
         fontFeatures: const [FontFeature.tabularFigures()],
@@ -3151,21 +3842,210 @@ class _ReaderRenderedPage extends StatelessWidget {
     required this.pageNumber,
     required this.isDarkMode,
     required this.child,
+    this.margin = const EdgeInsets.symmetric(vertical: 4),
+    this.contentPadding = const EdgeInsets.fromLTRB(12, 8, 12, 8),
   });
 
   final int pageNumber;
   final bool isDarkMode;
   final Widget child;
+  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry contentPadding;
+
+  bool get _isIntroPage => pageNumber == 1 || pageNumber == 2;
+
+  double _resolveIntroPageAspectRatio(bool isLandscapeReader) {
+    if (isLandscapeReader) {
+      return pageNumber == 1 ? 1.02 : 1.06;
+    }
+    return pageNumber == 1 ? 0.74 : 0.78;
+  }
+
+  Widget _buildRecitationDivider(Color color) {
+    final primaryColor = Color.lerp(color, Colors.black, 0.32) ?? color;
+    final secondaryColor = Color.lerp(color, Colors.black, 0.12) ?? color;
+    return IgnorePointer(
+      child: SizedBox(
+        width: 14,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 2.2,
+              decoration: BoxDecoration(
+                color: secondaryColor,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: secondaryColor.withValues(alpha: 0.22),
+                    blurRadius: 3,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              width: 4.2,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.26),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntroOrnamentBand({
+    required Color borderColor,
+    required Color fillColor,
+    required bool isLandscapeReader,
+  }) {
+    return Container(
+      height: isLandscapeReader ? 24 : 28,
+      decoration: BoxDecoration(
+        color: fillColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor, width: 1),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                height: 1.2,
+                color: borderColor.withValues(alpha: 0.45),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor, width: 1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageContent({
+    required Color borderColor,
+    required Color bgColor,
+    required bool isLandscapeReader,
+  }) {
+    final baseContent = Padding(
+      padding: contentPadding,
+      child: child,
+    );
+
+    if (!_isIntroPage) {
+      return baseContent;
+    }
+
+    final fillColor = isDarkMode ? const Color(0xFF201C12) : const Color(0xFFF7F3E4);
+    final widthFactor = pageNumber == 1
+      ? (isLandscapeReader ? 0.70 : 0.76)
+        : (isLandscapeReader ? 0.76 : 0.82);
+    final mainFrame = SizedBox(
+      width: double.infinity,
+      child: Container(
+        decoration: BoxDecoration(
+          color: fillColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor, width: 1.25),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: borderColor.withValues(alpha: 0.42),
+                width: 0.9,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                pageNumber == 1 ? 12 : 16,
+                pageNumber == 1 ? 10 : 12,
+                pageNumber == 1 ? 12 : 16,
+                pageNumber == 1 ? 10 : 12,
+              ),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return SizedBox.expand(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Align(
+          alignment: pageNumber == 1
+              ? const Alignment(0, -0.24)
+              : const Alignment(0, -0.04),
+          child: FractionallySizedBox(
+            widthFactor: widthFactor,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildIntroOrnamentBand(
+                  borderColor: borderColor,
+                  fillColor: fillColor,
+                  isLandscapeReader: isLandscapeReader,
+                ),
+                const SizedBox(height: 8),
+                mainFrame,
+                const SizedBox(height: 8),
+                _buildIntroOrnamentBand(
+                  borderColor: borderColor,
+                  fillColor: fillColor,
+                  isLandscapeReader: isLandscapeReader,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isLandscapeReader =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final borderColor =
         isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
     final bgColor =
         isDarkMode ? const Color(0xFF1C1A15) : const Color(0xFFFDFAF3);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+    final pagePanel = Container(
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
@@ -3178,18 +4058,132 @@ class _ReaderRenderedPage extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: _buildPageContent(
+        borderColor: borderColor,
+        bgColor: bgColor,
+        isLandscapeReader: isLandscapeReader,
+      ),
+    );
+
+    final dividerOnLeft = pageNumber.isOdd;
+    Widget composedPage;
+
+    if (_isIntroPage) {
+      composedPage = AspectRatio(
+        aspectRatio: _resolveIntroPageAspectRatio(isLandscapeReader),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: dividerOnLeft ? 18 : 6,
+                  right: dividerOnLeft ? 6 : 18,
+                ),
+                child: pagePanel,
+              ),
+            ),
+            Positioned(
+              top: 2,
+              bottom: 2,
+              left: dividerOnLeft ? 11 : null,
+              right: dividerOnLeft ? null : 11,
+              child: _buildRecitationDivider(borderColor),
+            ),
+          ],
+        ),
+      );
+    } else {
+      composedPage = Stack(
+        clipBehavior: Clip.none,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-            child: child,
+            padding: EdgeInsets.only(
+              left: dividerOnLeft ? 18 : 6,
+              right: dividerOnLeft ? 6 : 18,
+            ),
+            child: pagePanel,
+          ),
+          Positioned(
+            top: 2,
+            bottom: 2,
+            left: dividerOnLeft ? 11 : null,
+            right: dividerOnLeft ? null : 11,
+            child: _buildRecitationDivider(borderColor),
           ),
         ],
-      ),
+      );
+    }
+
+    return Container(
+      margin: margin,
+      child: composedPage,
     );
   }
 }
+
+class _MushafLinePattern {
+  const _MushafLinePattern._({
+    required this.isCentered,
+    required this.outerFlex,
+    required this.gapFlexes,
+    required this.tokenSpacing,
+  });
+
+  const _MushafLinePattern.centered({required double tokenSpacing})
+      : this._(
+          isCentered: true,
+          outerFlex: 0,
+          gapFlexes: const <int>[],
+          tokenSpacing: tokenSpacing,
+        );
+
+  const _MushafLinePattern.distributed({
+    required int outerFlex,
+    required List<int> gapFlexes,
+  }) : this._(
+          isCentered: false,
+          outerFlex: outerFlex,
+          gapFlexes: gapFlexes,
+          tokenSpacing: 0,
+        );
+
+  final bool isCentered;
+  final int outerFlex;
+  final List<int> gapFlexes;
+  final double tokenSpacing;
+}
+
+class _MushafLineFineTune {
+  const _MushafLineFineTune({
+    this.forceCentered = false,
+    this.gapScale = 1,
+    this.fontScale = 1,
+    this.lineHeightScale = 1,
+    this.horizontalInset = 0,
+  });
+
+  final bool forceCentered;
+  final double gapScale;
+  final double fontScale;
+  final double lineHeightScale;
+  final double horizontalInset;
+}
+
+class _MushafLineTokenData {
+  const _MushafLineTokenData({
+    required this.child,
+    this.underlineAyahKey,
+    this.underlineColor,
+    this.underlineThickness,
+  });
+
+  final Widget child;
+  final String? underlineAyahKey;
+  final Color? underlineColor;
+  final double? underlineThickness;
+}
+
 
 class _ReaderInlineChevron extends StatelessWidget {
   const _ReaderInlineChevron({
@@ -3207,7 +4201,7 @@ class _ReaderInlineChevron extends StatelessWidget {
     final disabled = onTap == null;
     final foreground = isDarkMode
         ? (disabled ? const Color(0xFF5B6271) : Colors.white)
-        : (disabled ? const Color(0xFFB9C0CC) : const Color(0xFF132A4A));
+      : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
@@ -3217,16 +4211,6 @@ class _ReaderInlineChevron extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Static helpers + cached lookup tables for the reader's hierarchical
-/// scope filter (Thirds -> Juz -> Surahs). Built lazily on first access
-/// using the `quran` package metadata.
-class _ReaderScopeData {
-  static const int _juzsPerThird = 10;
-
-  static int thirdOfJuz(int juz) => ((juz - 1) ~/ _juzsPerThird) + 1;
-
 }
 
 class _ReaderJuzPicker extends StatefulWidget {
@@ -3400,7 +4384,10 @@ class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
                       ),
                     ),
                     title: Text(
-                      quran.getSurahNameArabic(surahNumber),
+                      localizedSurahNameById(
+                        surahNumber,
+                        localeCode: Get.locale?.languageCode,
+                      ),
                       style: TextStyle(
                         fontWeight:
                             isCurrent ? FontWeight.w800 : FontWeight.w600,

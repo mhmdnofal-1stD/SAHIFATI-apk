@@ -57,10 +57,19 @@ flutter:
     - assets/json/data.json
     - assets/json/intl_ar.json
     - assets/json/intl_en.json
+    - assets/json/mushaf_layout_mushaf5.json
     - assets/json/profile_location_lookup.json
     - assets/json/typography_frontend-users-ui.json
 
   fonts:
+    - family: DIN NEXT ARABIC
+      fonts:
+        - asset: fonts/DINNextLTArabic-Light.ttf
+          weight: 300
+        - asset: fonts/DINNextLTArabic-Medium.ttf
+          weight: 500
+        - asset: fonts/DINNextLTArabic-Bold.ttf
+          weight: 700
     - family: KFGQPC Uthmanic Script HAFS
       fonts:
         - asset: fonts/KFGQPC-Uthmanic-Hafs.otf

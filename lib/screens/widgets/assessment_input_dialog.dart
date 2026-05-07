@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../controllers/evaluations_controller.dart';
+import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
@@ -346,9 +347,9 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                 ),
                 FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF132A4A),
+                    backgroundColor: AppColors.primaryPurple,
                     disabledBackgroundColor:
-                        const Color(0xFF132A4A).withValues(alpha: 0.32),
+                        AppColors.primaryPurple.withValues(alpha: 0.32),
                     foregroundColor: Colors.white,
                     disabledForegroundColor: Colors.white70,
                   ),

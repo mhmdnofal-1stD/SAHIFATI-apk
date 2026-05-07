@@ -8,7 +8,6 @@ import '../../providers/surahs_provider.dart';
 import '../../providers/users_provider.dart';
 import '../quran_view/index_page.dart';
 import 'custom_text.dart';
-import 'package:quran/quran.dart' as quran;
 
 class CustomHizbsButton extends StatelessWidget {
   final Map<String, dynamic> hizb;
@@ -29,8 +28,8 @@ class CustomHizbsButton extends StatelessWidget {
     final hasError = surahsProvider.hizbLoadError != null && surahs.isEmpty;
 
     final surahNames = surahs
-        .map((e) => quran.getSurahNameArabic(e.id))
-        .join('، ');
+      .map((e) => e.displayName(localeCode: Get.locale?.languageCode))
+      .join('، ');
     final subtitle = isLoading
       ? 'custom_hizb_preparing'.tr
         : hasError

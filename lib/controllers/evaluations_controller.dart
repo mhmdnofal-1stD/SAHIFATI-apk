@@ -25,13 +25,14 @@ class EvaluationsController {
 
   Future<void> sendEvaluation(Ayat verse, Evaluation evaluation,
       EvaluationsProvider evaluationsProvider, AyatProvider? ayatProvider,
-      {bool clearSelection = false}) async {
+      {bool clearSelection = false, int? targetUserId}) async {
     final isComprehension = evaluation.type == comprehensionDimension;
 
     await sendEvaluationSelection(
       verse,
       evaluationsProvider,
       ayatProvider,
+      targetUserId: targetUserId,
       memoId: isComprehension ? null : (clearSelection ? null : evaluation.id),
       compreId:
           isComprehension ? (clearSelection ? null : evaluation.id) : null,
@@ -42,7 +43,8 @@ class EvaluationsController {
 
   Future<void> sendEvaluationSelection(Ayat verse,
       EvaluationsProvider evaluationsProvider, AyatProvider? ayatProvider,
-      {int? memoId,
+      {int? targetUserId,
+      int? memoId,
       int? compreId,
       String? comment,
       required bool memoChanged,
@@ -55,6 +57,7 @@ class EvaluationsController {
     try {
       final Map<String, dynamic> userEvaluation = buildSinglePayload(
         ayahId: verse.id!,
+        userId: targetUserId,
         memoId: memoId,
         compreId: compreId,
         comment: comment,
@@ -91,7 +94,7 @@ class EvaluationsController {
       EvaluationsProvider evaluationsProvider,
       AyatProvider? ayatProvider,
       String unitName,
-      {bool clearSelection = false}) async {
+      {bool clearSelection = false, int? targetUserId}) async {
     final isComprehension = evaluation.type == comprehensionDimension;
 
     await sendMultipleEvaluationSelection(
@@ -99,6 +102,7 @@ class EvaluationsController {
       evaluationsProvider,
       ayatProvider,
       unitName,
+      targetUserId: targetUserId,
       memoId: isComprehension ? null : (clearSelection ? null : evaluation.id),
       compreId:
           isComprehension ? (clearSelection ? null : evaluation.id) : null,
@@ -112,7 +116,8 @@ class EvaluationsController {
       EvaluationsProvider evaluationsProvider,
       AyatProvider? ayatProvider,
       String unitName,
-      {int? memoId,
+      {int? targetUserId,
+      int? memoId,
       int? compreId,
       String? comment,
       required bool memoChanged,
@@ -126,6 +131,7 @@ class EvaluationsController {
       final ayatIds = verses.map((v) => v.id!).toList();
       final Map<String, dynamic> userEvaluation = buildBulkPayload(
         ayahIds: ayatIds,
+        userId: targetUserId,
         memoId: memoId,
         compreId: compreId,
         comment: comment,
@@ -196,6 +202,7 @@ class EvaluationsController {
 
   Map<String, dynamic> buildSinglePayload({
     required int ayahId,
+    int? userId,
     int? memoId,
     int? compreId,
     String? comment,
@@ -208,6 +215,10 @@ class EvaluationsController {
     final payload = <String, dynamic>{
       'ayahId': ayahId,
     };
+
+    if (userId != null) {
+      payload['userId'] = userId;
+    }
 
     if (includeMemo) {
       payload['memo_id'] = clearMemo ? null : memoId;
@@ -224,6 +235,7 @@ class EvaluationsController {
 
   Map<String, dynamic> buildBulkPayload({
     required List<int> ayahIds,
+    int? userId,
     int? memoId,
     int? compreId,
     String? comment,
@@ -236,6 +248,10 @@ class EvaluationsController {
     final payload = <String, dynamic>{
       'ayahIds': ayahIds,
     };
+
+    if (userId != null) {
+      payload['userId'] = userId;
+    }
 
     if (includeMemo) {
       payload['memo_id'] = clearMemo ? null : memoId;

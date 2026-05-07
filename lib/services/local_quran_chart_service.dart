@@ -12,8 +12,13 @@ class LocalQuranChartService {
     required List<Evaluation> evaluations,
     String dimension = 'memorization',
     QuranChartFilters filters = const QuranChartFilters(),
+    Set<int>? allowedSchoolAyahIds,
   }) {
-    final relevantAyat = filterAyat(allAyat, filters);
+    final relevantAyat = filterAyat(
+      allAyat,
+      filters,
+      allowedSchoolAyahIds: allowedSchoolAyahIds,
+    );
     final evaluationsByAyahId = _latestEvaluationsByAyahId(userEvaluations);
 
     final filteredAyat = relevantAyat.where((ayah) {
@@ -134,7 +139,11 @@ class LocalQuranChartService {
     };
   }
 
-  List<Ayat> filterAyat(List<Ayat> allAyat, QuranChartFilters filters) {
+  List<Ayat> filterAyat(
+    List<Ayat> allAyat,
+    QuranChartFilters filters, {
+    Set<int>? allowedSchoolAyahIds,
+  }) {
     final effectiveJuzs = _effectiveJuzs(filters).toSet();
     final surahIds = filters.surahIds.toSet();
     final ayahTypes = filters.ayahTypes.toSet();
@@ -159,23 +168,30 @@ class LocalQuranChartService {
         }
       }
       if (schoolLevelPairs.isNotEmpty || schoolIds.isNotEmpty) {
-        final levels = ayah.schoolLevels ?? const [];
-        final matchesSchoolId = schoolIds.isEmpty
-            ? false
-            : levels.any((level) =>
-                level.schoolId != null && schoolIds.contains(level.schoolId));
-        final matchesPair = schoolLevelPairs.isEmpty
-            ? false
-            : levels.any((level) {
-                final schoolId = level.schoolId;
-                final levelNumber = level.level;
-                if (schoolId == null || levelNumber == null) {
-                  return false;
-                }
-                return schoolLevelPairs.contains('$schoolId:$levelNumber');
-              });
-        if (!matchesSchoolId && !matchesPair) {
-          return false;
+        if (allowedSchoolAyahIds != null) {
+          final ayahId = ayah.id;
+          if (ayahId == null || !allowedSchoolAyahIds.contains(ayahId)) {
+            return false;
+          }
+        } else {
+          final levels = ayah.schoolLevels ?? const [];
+          final matchesSchoolId = schoolIds.isEmpty
+              ? false
+              : levels.any((level) =>
+                  level.schoolId != null && schoolIds.contains(level.schoolId));
+          final matchesPair = schoolLevelPairs.isEmpty
+              ? false
+              : levels.any((level) {
+                  final schoolId = level.schoolId;
+                  final levelNumber = level.level;
+                  if (schoolId == null || levelNumber == null) {
+                    return false;
+                  }
+                  return schoolLevelPairs.contains('$schoolId:$levelNumber');
+                });
+          if (!matchesSchoolId && !matchesPair) {
+            return false;
+          }
         }
       }
       return true;

@@ -186,7 +186,7 @@ class _StaticMethodIcon extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: const Color(0xFF132A4A),
+                color: AppColors.primaryPurple,
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(
@@ -203,7 +203,7 @@ class _StaticMethodIcon extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTypography.of(context).bodySmall.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF5D697D),
+                    color: AppColors.mutedText,
                   ),
             ),
           ],

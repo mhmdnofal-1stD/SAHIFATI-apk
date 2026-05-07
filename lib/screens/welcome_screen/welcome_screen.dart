@@ -1,8 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/evaluations_controller.dart';
+import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
@@ -202,13 +204,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     return NoPopScope(
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F4ED),
+        backgroundColor: AppColors.backgroundColor,
         body: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFFF9F5EE), Color(0xFFF4F7FB)],
+              colors: [Color(0xFFFCFDF8), Color(0xFFF4F8EB)],
             ),
           ),
           child: SafeArea(
@@ -223,7 +225,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
-                        colors: [Color(0x25132A4A), Color(0x00132A4A)],
+                        colors: [Color(0x33EDF3D7), Color(0x00EDF3D7)],
                       ),
                     ),
                   ),
@@ -237,7 +239,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
-                        colors: [Color(0x1F0B503D), Color(0x000B503D)],
+                        colors: [Color(0x1F2F7B64), Color(0x002F7B64)],
                       ),
                     ),
                   ),
@@ -317,11 +319,16 @@ class _WelcomeHero extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
       decoration: BoxDecoration(
-        color: const Color(0xFF132A4A),
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppColors.primaryPurple, AppColors.brandAccent],
+        ),
         borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0x26EDF3D7)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x26132A4A),
+            color: Color(0x261D6652),
             blurRadius: 28,
             offset: Offset(0, 16),
           ),
@@ -330,6 +337,8 @@ class _WelcomeHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const _WelcomeBrandHeader(),
+          const SizedBox(height: 20),
           _TitleInfoRow(
             title: firstName == null
                 ? 'welcome_back'.tr
@@ -338,10 +347,69 @@ class _WelcomeHero extends StatelessWidget {
             titleStyle: AppTypography.of(context)
                 .pageHeading
                 .copyWith(color: Colors.white),
-            infoColor: Colors.white.withValues(alpha: 0.86),
+            infoColor: const Color(0xFFEDF3D7),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'نقطة بداية هادئة، بلون موحّد، وخط أوضح يضع تركيزك على الرحلة نفسها.',
+            textDirection: TextDirection.rtl,
+            style: AppTypography.of(context).bodySecondary.copyWith(
+                  color: const Color(0xFFF5F8EE),
+                  height: 1.55,
+                ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WelcomeBrandHeader extends StatelessWidget {
+  const _WelcomeBrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 62,
+          height: 62,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: SvgPicture.asset(Assets.logoLightSvg),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'صحيفتي',
+                style: AppTypography.of(context).pageHeading.copyWith(
+                      color: Colors.white,
+                      fontSize: 30,
+                      height: 1.0,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'بداية قرآنية دقيقة وهوية بصرية واحدة من الدخول حتى التقييم.',
+                textDirection: TextDirection.rtl,
+                style: AppTypography.of(context).bodySmall.copyWith(
+                      color: const Color(0xFFEDF3D7),
+                      height: 1.45,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -368,12 +436,12 @@ class _WelcomeStoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFE7DFD2)),
+        border: Border.all(color: AppColors.lineColor),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
+            color: Color(0x121D6652),
             blurRadius: 24,
             offset: Offset(0, 14),
           ),
@@ -387,7 +455,7 @@ class _WelcomeStoryCard extends StatelessWidget {
             textDirection: TextDirection.rtl,
             style: AppTypography.of(context)
                 .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A)),
+                .copyWith(color: AppColors.primaryPurple),
           ),
           const SizedBox(height: 18),
           const Wrap(
@@ -398,19 +466,19 @@ class _WelcomeStoryCard extends StatelessWidget {
                 titleKey: 'welcome_kickoff_value_1_title',
                 bodyKey: 'welcome_kickoff_value_1_body',
                 icon: Icons.timer_outlined,
-                tint: Color(0xFFF4E6CC),
+                tint: AppColors.warmSurface,
               ),
               _ValueCard(
                 titleKey: 'welcome_kickoff_value_2_title',
                 bodyKey: 'welcome_kickoff_value_2_body',
                 icon: Icons.insights_outlined,
-                tint: Color(0xFFDDEBFF),
+                tint: Color(0xFFF2F7E7),
               ),
               _ValueCard(
                 titleKey: 'welcome_kickoff_value_3_title',
                 bodyKey: 'welcome_kickoff_value_3_body',
                 icon: Icons.route_outlined,
-                tint: Color(0xFFDCEFE7),
+                tint: AppColors.mintSurface,
               ),
             ],
           ),
@@ -443,9 +511,9 @@ class _WelcomeStoryCard extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: busy ? null : onPrimaryPressed,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF132A4A),
+                      backgroundColor: AppColors.primaryPurple,
                       disabledBackgroundColor:
-                          const Color(0xFF132A4A).withValues(alpha: 0.45),
+                          AppColors.primaryPurple.withValues(alpha: 0.45),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
@@ -474,7 +542,7 @@ class _WelcomeStoryCard extends StatelessWidget {
               ),
               InfoIconButton(
                 message: 'welcome_primary_cta_caption'.tr,
-                color: const Color(0xFF9AA3B2),
+                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -487,7 +555,7 @@ class _WelcomeStoryCard extends StatelessWidget {
                   onPressed: busy ? null : onSecondaryPressed,
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                    side: const BorderSide(color: Color(0x40132A4A)),
+                    side: const BorderSide(color: AppColors.lineColor),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -498,12 +566,12 @@ class _WelcomeStoryCard extends StatelessWidget {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF132A4A),
+                            color: AppColors.primaryPurple,
                           ),
                         )
                       : const Icon(
                           Icons.menu_book_rounded,
-                          color: Color(0xFF132A4A),
+                          color: AppColors.primaryPurple,
                         ),
                   label: Text(
                     isOpeningSahifa
@@ -512,13 +580,13 @@ class _WelcomeStoryCard extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     style: AppTypography.of(context)
                         .buttonSecondary
-                        .copyWith(color: const Color(0xFF132A4A)),
+                        .copyWith(color: AppColors.primaryPurple),
                   ),
                 ),
               ),
               InfoIconButton(
                 message: 'welcome_secondary_cta_caption'.tr,
-                color: const Color(0xFF9AA3B2),
+                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -552,9 +620,16 @@ class _WelcomeMetricsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFAF7),
+        color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: const Color(0xFFE9E2D6)),
+        border: Border.all(color: AppColors.lineColor),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F1D6652),
+            blurRadius: 22,
+            offset: Offset(0, 12),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -568,12 +643,12 @@ class _WelcomeMetricsCard extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                   style: AppTypography.of(context)
                       .sectionTitle
-                      .copyWith(color: const Color(0xFF132A4A)),
+                      .copyWith(color: AppColors.primaryPurple),
                 ),
               ),
               InfoIconButton(
                 message: 'welcome_chart_subtitle'.tr,
-                color: const Color(0xFF9AA3B2),
+                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -611,7 +686,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
                 ),
                 InfoIconButton(
                   message: 'welcome_dimension_hint'.tr,
-                  color: const Color(0xFF9AA3B2),
+                  color: AppColors.mutedText,
                 ),
               ],
             ),
@@ -637,7 +712,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE8E0D4)),
+                border: Border.all(color: AppColors.lineColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -647,7 +722,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     style: AppTypography.of(context)
                         .badgeLabel
-                        .copyWith(color: const Color(0xFF6B7280)),
+                      .copyWith(color: AppColors.mutedText),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -655,7 +730,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     style: AppTypography.of(context)
                         .sectionTitle
-                        .copyWith(color: const Color(0xFF132A4A)),
+                        .copyWith(color: AppColors.primaryPurple),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -665,7 +740,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     style: AppTypography.of(context)
                         .bodySecondary
-                        .copyWith(color: const Color(0xFF4B5563)),
+                        .copyWith(color: AppColors.mutedText),
                   ),
                 ],
               ),
@@ -748,19 +823,22 @@ class _ValueCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: tint,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.lineColor.withValues(alpha: 0.7),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: const Color(0xFF132A4A)),
+            Icon(icon, color: AppColors.primaryPurple),
             const SizedBox(height: 14),
             _TitleInfoRow(
               title: titleKey.tr,
               message: bodyKey.tr,
               titleStyle: AppTypography.of(context)
                   .listTileTitle
-                  .copyWith(color: const Color(0xFF132A4A)),
-              infoColor: const Color(0xFF6B7280),
+                  .copyWith(color: AppColors.primaryPurple),
+              infoColor: AppColors.mutedText,
             ),
           ],
         ),
@@ -783,9 +861,9 @@ class _JourneyStep extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F4EC),
+        color: AppColors.warmSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFECE3D6)),
+        border: Border.all(color: AppColors.lineColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,7 +872,7 @@ class _JourneyStep extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: const BoxDecoration(
-              color: Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -813,8 +891,8 @@ class _JourneyStep extends StatelessWidget {
                   message: bodyKey.tr,
                   titleStyle: AppTypography.of(context)
                       .listTileTitle
-                      .copyWith(color: const Color(0xFF132A4A)),
-                  infoColor: const Color(0xFF6B7280),
+                      .copyWith(color: AppColors.primaryPurple),
+                  infoColor: AppColors.mutedText,
                 ),
               ],
             ),
@@ -902,7 +980,7 @@ class _ChartLegend extends StatelessWidget {
               textDirection: TextDirection.rtl,
               style: AppTypography.of(context)
                   .chartAxisLabel
-                  .copyWith(color: const Color(0xFF132A4A)),
+                  .copyWith(color: AppColors.primaryPurple),
             ),
           ],
         );
@@ -935,7 +1013,7 @@ class _ExternalSliceLabel extends StatelessWidget {
             border: Border.all(color: color, width: 1),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x14000000),
+                color: Color(0x141D6652),
                 blurRadius: 4,
                 offset: Offset(0, 1),
               ),
@@ -976,9 +1054,9 @@ class _ChartStateCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE7DFD2)),
+        border: Border.all(color: AppColors.lineColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -987,10 +1065,10 @@ class _ChartStateCard extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: const Color(0xFFF4F0E8),
+              color: AppColors.mintSurface,
               borderRadius: BorderRadius.circular(22),
             ),
-            child: Icon(icon, color: const Color(0xFF132A4A), size: 30),
+            child: Icon(icon, color: AppColors.primaryPurple, size: 30),
           ),
           const SizedBox(height: 16),
           Text(
@@ -999,7 +1077,7 @@ class _ChartStateCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.of(context)
                 .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A)),
+                .copyWith(color: AppColors.primaryPurple),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1008,7 +1086,7 @@ class _ChartStateCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.of(context)
                 .bodyDefault
-                .copyWith(color: const Color(0xFF6B7280)),
+              .copyWith(color: AppColors.mutedText),
           ),
           if (footerMessage != null) ...[
             const SizedBox(height: 10),
@@ -1026,7 +1104,7 @@ class _ChartStateCard extends StatelessWidget {
             OutlinedButton(
               onPressed: onAction,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0x26132A4A)),
+                side: const BorderSide(color: AppColors.lineColor),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -1036,7 +1114,7 @@ class _ChartStateCard extends StatelessWidget {
                 textDirection: TextDirection.rtl,
                 style: AppTypography.of(context)
                     .buttonSecondary
-                    .copyWith(color: const Color(0xFF132A4A)),
+                    .copyWith(color: AppColors.primaryPurple),
               ),
             ),
           ],

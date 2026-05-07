@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/fonts.dart';
 import '../../../core/typography/app_typography.dart';
 import '../../../core/utils/size_config.dart';
 
@@ -16,9 +15,7 @@ class CustomErrorTxt extends StatelessWidget {
         padding:  EdgeInsets.only(right: SizeConfig.getProportionalWidth(35)),
         child: Text(
           text,
-          style: AppTypography.of(context)
-              .inputError
-              .copyWith(fontFamily: AppFonts.primaryFont),
+          style: AppTypography.of(context).inputError,
         ),
       ),
     );

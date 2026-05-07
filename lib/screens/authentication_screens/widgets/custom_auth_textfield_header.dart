@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/fonts.dart';
 import '../../../core/typography/app_typography.dart';
 
 class CustomAuthTextFieldHeader extends StatelessWidget {
@@ -15,9 +14,7 @@ class CustomAuthTextFieldHeader extends StatelessWidget {
         padding: const EdgeInsets.only(right: 4),
         child: Text(
           text,
-          style: AppTypography.of(context)
-              .inputLabel
-              .copyWith(fontFamily: AppFonts.primaryFont),
+          style: AppTypography.of(context).inputLabel,
         ),
       ),
     );

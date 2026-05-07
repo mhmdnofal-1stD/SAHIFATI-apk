@@ -13,6 +13,7 @@ import '../profile_screen/profile_screen.dart';
 import '../supervision_screen/incoming_requests_screen.dart';
 import '../welcome_screen/welcome_screen.dart';
 import '../main_screen/main_screen.dart';
+import '../../services/teacher_supervisions_services.dart';
 import 'custom_text.dart';
 
 import '../cards_screen/cards_list_screen.dart';
@@ -39,9 +40,6 @@ class GlobalDrawer extends StatelessWidget {
             children: [
               ListTile(
                 onTap: () {
-                  final usersProvider = context.read<UsersProvider>();
-                  // إذا كنت في سياق طالب، استرجع المستخدم الأصلي
-                  usersProvider.popSelectedUser();
                   Get.to(() => const ProfileScreen());
                 },
                 title: Row(
@@ -167,27 +165,9 @@ class GlobalDrawer extends StatelessWidget {
               ),
               Consumer<UsersProvider>(
                 builder: (context, usersProvider, _) {
-                  final role = usersProvider.selectedUser?.userRoleId ?? 0;
-                  final canAccessSupervision = role == 1 || role == 2;
-                  if (!canAccessSupervision) return const SizedBox.shrink();
-                  return ListTile(
-                    onTap: () {
-                      Get.toNamed(IncomingRequestsScreen.routeName);
-                    },
-                    title: Row(
-                      textDirection: TextDirection.rtl,
-                      children: [
-                        const Icon(
-                          Icons.space_dashboard_rounded,
-                          size: 30,
-                        ),
-                        const SizedBox(width: 10),
-                        CustomText(
-                          text: 'supervision_dashboard_screen_title'.tr,
-                          withBackground: false,
-                        ),
-                      ],
-                    ),
+                  return _SupervisionDashboardTile(
+                    hasDelegatedUser: usersProvider.hasPushedSelectedUser,
+                    fallbackRole: usersProvider.selectedUser?.userRoleId ?? 0,
                   );
                 },
               ),
@@ -289,6 +269,97 @@ class GlobalDrawer extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SupervisionDashboardTile extends StatefulWidget {
+  const _SupervisionDashboardTile({
+    required this.hasDelegatedUser,
+    required this.fallbackRole,
+  });
+
+  final bool hasDelegatedUser;
+  final int fallbackRole;
+
+  @override
+  State<_SupervisionDashboardTile> createState() =>
+      _SupervisionDashboardTileState();
+}
+
+class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
+  final TeacherSupervisionsService _service = TeacherSupervisionsService();
+  late Future<bool> _visibilityFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _visibilityFuture = _loadVisibility();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SupervisionDashboardTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hasDelegatedUser != widget.hasDelegatedUser ||
+        oldWidget.fallbackRole != widget.fallbackRole) {
+      _visibilityFuture = _loadVisibility();
+    }
+  }
+
+  Future<bool> _loadVisibility() async {
+    try {
+      final results = await Future.wait<dynamic>([
+        _service.listIncomingRequests(),
+        _service.getLimits(),
+      ]);
+      final requests = results[0] as List<Map<String, dynamic>>;
+      final limits = results[1] as Map<String, dynamic>;
+      final teacherActiveCount = (limits['teacherActiveCount'] as num?)?.toInt() ?? 0;
+      final studentActiveCount = (limits['studentActiveCount'] as num?)?.toInt() ?? 0;
+      return requests.isNotEmpty ||
+          teacherActiveCount > 0 ||
+          studentActiveCount > 0 ||
+          widget.hasDelegatedUser;
+    } catch (_) {
+      return widget.hasDelegatedUser ||
+          widget.fallbackRole == 1 ||
+          widget.fallbackRole == 2;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _visibilityFuture,
+      builder: (context, snapshot) {
+        final canAccessSupervision = snapshot.data ??
+            widget.hasDelegatedUser ||
+            widget.fallbackRole == 1 ||
+            widget.fallbackRole == 2;
+        if (!canAccessSupervision) {
+          return const SizedBox.shrink();
+        }
+
+        return ListTile(
+          onTap: () {
+            Get.toNamed(IncomingRequestsScreen.routeName);
+          },
+          title: Row(
+            textDirection: TextDirection.rtl,
+            children: [
+              const Icon(
+                Icons.space_dashboard_rounded,
+                size: 30,
+              ),
+              const SizedBox(width: 10),
+              CustomText(
+                text: 'supervision_dashboard_screen_title'.tr,
+                withBackground: false,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:quran/quran.dart' as quran;
 import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
+import '../../core/utils/surah_localization.dart';
 import '../../models/evaluation.dart';
 import '../../services/evaluations_services.dart';
 import '../../services/subjects_lookup_service.dart';
@@ -692,7 +693,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                       children: [
                         for (final s in _availableSurahIds)
                           _filterChipInt(
-                            quran.getSurahNameArabic(s),
+                            localizedSurahNameById(
+                              s,
+                              localeCode: Get.locale?.languageCode,
+                            ),
                             s,
                             _draft.surahIds,
                           ),

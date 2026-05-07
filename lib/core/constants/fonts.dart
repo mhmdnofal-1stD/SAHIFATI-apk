@@ -1,8 +1,8 @@
 import 'dart:ui';
 
 class AppFonts {
-  static String primaryFont = 'Roboto';
-  static String versesFont = 'KFGQPC Uthmanic Script HAFS';
+  static const String primaryFont = 'DIN NEXT ARABIC';
+  static const String versesFont = 'KFGQPC Uthmanic Script HAFS';
 
   //FontWeights
   static FontWeight thin = FontWeight.w100;

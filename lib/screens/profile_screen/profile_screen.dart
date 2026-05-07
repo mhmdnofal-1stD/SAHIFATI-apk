@@ -4,11 +4,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/constants/assets.dart';
+import '../../core/constants/colors.dart';
 import '../../providers/users_provider.dart';
 import '../../services/users_services.dart';
 import '../../core/typography/app_typography.dart';
@@ -179,12 +182,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Navigator.of(context).maybePop();
           },
         ),
-        iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
+        iconTheme: const IconThemeData(color: AppColors.primaryPurple),
         title: Text(
           'profile_screen_title'.tr,
           style: AppTypography.of(context)
               .appBarTitle
-              .copyWith(color: const Color(0xFF132A4A)),
+              .copyWith(color: AppColors.primaryPurple),
         ),
         actions: [
           Padding(
@@ -192,7 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Tooltip(
               message: 'profile_add_supervisor_tooltip'.tr,
               child: Material(
-                color: const Color(0xFF132A4A),
+                color: AppColors.primaryPurple,
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -289,7 +292,7 @@ class _ProfileIdentityHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
-        color: const Color(0xFF132A4A),
+        color: AppColors.primaryPurple,
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
@@ -389,12 +392,12 @@ class _QrShareCard extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                   style: AppTypography.of(context)
                       .sectionTitle
-                      .copyWith(color: const Color(0xFF132A4A)),
+                      .copyWith(color: AppColors.primaryPurple),
                 ),
               ),
               InfoIconButton(
                 message: 'profile_qr_card_subtitle'.tr,
-                color: const Color(0xFF9AA3B2),
+                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -420,11 +423,11 @@ class _QrShareCard extends StatelessWidget {
                             backgroundColor: Colors.white,
                             eyeStyle: const QrEyeStyle(
                               eyeShape: QrEyeShape.square,
-                              color: Color(0xFF132A4A),
+                              color: AppColors.primaryPurple,
                             ),
                             dataModuleStyle: const QrDataModuleStyle(
                               dataModuleShape: QrDataModuleShape.square,
-                              color: Color(0xFF132A4A),
+                              color: AppColors.primaryPurple,
                             ),
                             errorCorrectionLevel: QrErrorCorrectLevel.H,
                           ),
@@ -439,8 +442,8 @@ class _QrShareCard extends StatelessWidget {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Image.asset(
-                                    'assets/images/clean_logo.png',
+                                  SvgPicture.asset(
+                                    Assets.logoSvg,
                                     width: 44,
                                     height: 44,
                                   ),
@@ -451,7 +454,7 @@ class _QrShareCard extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                      color: Color(0xFF132A4A),
+                                      color: AppColors.primaryPurple,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
                                       height: 1.0,
@@ -518,7 +521,7 @@ class _QrActionButton extends StatelessWidget {
         child: ElevatedButton.icon(
           onPressed: () => onTap(),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF132A4A),
+            backgroundColor: AppColors.primaryPurple,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -545,12 +548,12 @@ class _QrActionButton extends StatelessWidget {
           ),
         ),
         icon: const Icon(Icons.download_rounded,
-            color: Color(0xFF132A4A), size: 18),
+            color: AppColors.primaryPurple, size: 18),
         label: Text(
           label,
           style: AppTypography.of(context)
               .buttonSecondary
-              .copyWith(color: const Color(0xFF132A4A)),
+              .copyWith(color: AppColors.primaryPurple),
         ),
       ),
     );
@@ -571,7 +574,7 @@ class _QrCardLoading extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE7DFD2)),
       ),
       child: const CircularProgressIndicator(
-        color: Color(0xFF132A4A),
+        color: AppColors.primaryPurple,
       ),
     );
   }
@@ -606,7 +609,7 @@ class _QrCardError extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.of(context)
                 .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A)),
+                .copyWith(color: AppColors.primaryPurple),
           ),
           const SizedBox(height: 6),
           Text(
@@ -620,12 +623,12 @@ class _QrCardError extends StatelessWidget {
           const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: () => onRetry(),
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF132A4A)),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.primaryPurple),
             label: Text(
               'profile_qr_retry'.tr,
               style: AppTypography.of(context)
                   .buttonSecondary
-                  .copyWith(color: const Color(0xFF132A4A)),
+                  .copyWith(color: AppColors.primaryPurple),
             ),
           ),
         ],
@@ -662,7 +665,7 @@ class _SupervisorIntroCard extends StatelessWidget {
             ),
             child: const Icon(
               Icons.qr_code_scanner_rounded,
-              color: Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
             ),
           ),
           const SizedBox(width: 12),
@@ -675,7 +678,7 @@ class _SupervisorIntroCard extends StatelessWidget {
                   textDirection: TextDirection.rtl,
                   style: AppTypography.of(context)
                       .listTileTitle
-                      .copyWith(color: const Color(0xFF132A4A)),
+                      .copyWith(color: AppColors.primaryPurple),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -698,14 +701,14 @@ class _SupervisorIntroCard extends StatelessWidget {
                     ),
                     icon: const Icon(
                       Icons.qr_code_scanner_rounded,
-                      color: Color(0xFF132A4A),
+                      color: AppColors.primaryPurple,
                       size: 18,
                     ),
                     label: Text(
                       'profile_add_supervisor_tooltip'.tr,
                       style: AppTypography.of(context)
                           .buttonSecondary
-                          .copyWith(color: const Color(0xFF132A4A)),
+                          .copyWith(color: AppColors.primaryPurple),
                     ),
                   ),
                 ),

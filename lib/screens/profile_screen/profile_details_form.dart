@@ -68,6 +68,9 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
   bool _locationLookupLoaded = false;
   bool _profileLoaded = false;
 
+  bool get _isReadOnlyStudentProfile =>
+      context.read<UsersProvider>().hasPushedSelectedUser;
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +123,12 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
   Future<void> _loadProfile() async {
     final usersProvider = context.read<UsersProvider>();
     try {
+      if (usersProvider.hasPushedSelectedUser &&
+          usersProvider.selectedUser != null) {
+        _applyUserProfile(usersProvider.selectedUser!);
+        return;
+      }
+
       final cachedUser = await usersProvider.getCachedCurrentUserProfile();
       if (!mounted) {
         return;
@@ -812,22 +821,34 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                     style: const TextStyle(color: Colors.black54),
                   ),
                 ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed:
-                    usersProvider.isProfileLoading ? null : _saveProfile,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primaryPurple,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+              if (_isReadOnlyStudentProfile)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(
+                    'عرض بروفايل الطالب فقط في سياق الإشراف. التعديل متاح من حساب المستخدم نفسه.',
+                    textDirection: TextDirection.rtl,
+                    style: AppTypography.of(context)
+                        .bodySecondary
+                        .copyWith(color: Colors.black54),
+                  ),
                 ),
-                child: usersProvider.isProfileLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text('settings_profile_save_button'.tr),
-              ),
+              const SizedBox(height: 16),
+              if (!_isReadOnlyStudentProfile)
+                FilledButton(
+                  onPressed:
+                      usersProvider.isProfileLoading ? null : _saveProfile,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryPurple,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: usersProvider.isProfileLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text('settings_profile_save_button'.tr),
+                ),
             ],
           ),
         ),

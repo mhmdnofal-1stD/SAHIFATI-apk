@@ -1,8 +1,10 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import '../core/constants/colors.dart';
-import 'package:quran/quran.dart' as quran;
 import 'package:get/get.dart';
+import 'package:quran/quran.dart' as quran;
+
+import '../core/constants/colors.dart';
+import '../core/utils/surah_localization.dart';
 
 class GeneralController {
   // Dropdown options with text and associated color
@@ -35,8 +37,12 @@ class GeneralController {
       bool isArabic = Get.locale?.languageCode == 'ar';
       String separator = isArabic ? "، " : ", ";
 
-      List<String> surahNames =
-          surahNumbers.map((s) => quran.getSurahNameArabic(s)).toList();
+        List<String> surahNames = surahNumbers
+          .map((s) => localizedSurahNameById(
+            s,
+            localeCode: Get.locale?.languageCode,
+            ))
+          .toList();
 
       return "(${surahNames.join(separator)})";
     } catch (e) {
@@ -53,8 +59,13 @@ class GeneralController {
 
   List<Map<String, dynamic>> get quranSurahs => List.generate(
       114,
-      (index) =>
-          {'id': index + 1, 'name': quran.getSurahNameArabic(index + 1)});
+      (index) => {
+            'id': index + 1,
+            'name': localizedSurahNameById(
+              index + 1,
+              localeCode: Get.locale?.languageCode,
+            ),
+          });
 
   String toArabicDigits(int n) => n
       .toString()
@@ -135,7 +146,17 @@ class GeneralController {
     if (number < 1 || number > 114) {
       return 'surah_not_found'.tr; // Need key or hardcode? 'Not Found'
     }
-    return quran.getSurahNameArabic(number);
+    return getLocalizedSurahName(number);
+  }
+
+  String getLocalizedSurahName(int number, {String? localeCode}) {
+    if (number < 1 || number > 114) {
+      return 'surah_not_found'.tr;
+    }
+    return localizedSurahNameById(
+      number,
+      localeCode: localeCode ?? Get.locale?.languageCode,
+    );
   }
 
   String getSurahNameArabic(int number) {

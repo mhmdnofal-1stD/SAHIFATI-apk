@@ -628,6 +628,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                   itemCount: surahs.length,
                                   itemBuilder: (context, index) {
                                     final surah = surahs[index];
+                                    final surahName = surah.displayName(
+                                      localeCode: languageProvider.langCode,
+                                    );
                                     final cardColor = surahColors[surah.id];
 
                                     return Card(
@@ -636,7 +639,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                           horizontal: 16, vertical: 8),
                                       child: ListTile(
                                         title: Text(
-                                          surah.nameAr,
+                                          surahName,
                                           textAlign: TextAlign.right,
                                           style: AppTypography.of(context)
                                               .listTileTitle,
@@ -653,7 +656,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                               languageProvider,
                                               title: 'content_item_card_assess_surah_title'
                                                   .trParams({
-                                                'surah': surah.nameAr,
+                                                'surah': surahName,
                                               }),
                                             );
 
@@ -680,7 +683,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                       evaluationsProvider,
                                                   selection: selection,
                                                   unitLabel:
-                                                      "${'surah_label'.tr} ${surah.nameAr}",
+                                                      "${'surah_label'.tr} $surahName",
                                                 );
 
                                                 // Update card color in StatefulBuilder
@@ -739,6 +742,9 @@ class _ContentItemCardState extends State<ContentItemCard> {
       LanguageProvider languageProvider) async {
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final ayatController = AyatController();
+    final surahName = surah.displayName(
+      localeCode: languageProvider.langCode,
+    );
 
     try {
       List<Ayat> ayahs = await ayatController.loadAyatBySurah(surah.id);
@@ -785,7 +791,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                   padding: const EdgeInsets.all(16.0),
                   child: CustomText(
                     text: 'surah_verses_juz_title'.trParams(
-                        {'surah': surah.nameAr, 'juz': juz.toString()}),
+                        {'surah': surahName, 'juz': juz.toString()}),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     withBackground: false,
@@ -930,8 +936,10 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
   String _contentHeadline() {
     if (widget.content.surahId != null) {
-      final surahName =
-          GeneralController().getSurahNameArabic(widget.content.surahId!);
+      final surahName = GeneralController().getLocalizedSurahName(
+        widget.content.surahId!,
+        localeCode: Get.locale?.languageCode,
+      );
       if (widget.content.startAyah != null && widget.content.endAyah != null) {
         return '$surahName ${widget.content.startAyah} - ${widget.content.endAyah}';
       }

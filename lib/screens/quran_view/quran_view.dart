@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:quran/quran.dart' as quran;
+import 'package:sahifaty/core/utils/surah_localization.dart';
 import '../../core/typography/app_typography.dart';
 import '../widgets/no_pop_scope.dart';
 
@@ -60,7 +61,10 @@ class _SurahPage extends StatelessWidget {
             if (index == 0) {
               return Center(
                 child: Text(
-                  quran.getSurahNameArabic(surahNumber),
+                  localizedSurahNameById(
+                    surahNumber,
+                    localeCode: Get.locale?.languageCode,
+                  ),
                   style: t.surahHeading,
                 ),
               );

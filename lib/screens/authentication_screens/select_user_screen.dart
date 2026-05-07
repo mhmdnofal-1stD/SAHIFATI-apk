@@ -267,7 +267,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             'auth_saved_accounts_label'.tr,
             style: AppTypography.of(context).sectionTitle.copyWith(
                   fontSize: 16,
-                  color: const Color(0xFF132A4A),
+                  color: AppColors.primaryPurple,
                 ),
           ),
         ),
@@ -314,7 +314,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             textAlign: TextAlign.center,
             style: AppTypography.of(context).bodySecondary.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF132A4A),
+                  color: AppColors.primaryPurple,
                 ),
           ),
         ],
@@ -337,7 +337,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFCF7),
+              color: AppColors.panelColor,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: const Color(0xFFE2D8C8)),
               boxShadow: const [
@@ -350,7 +350,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             ),
             child: const Icon(
               Icons.person_search_rounded,
-              color: Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
               size: 32,
             ),
           ),
@@ -359,7 +359,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
             'auth_saved_accounts_empty_title'.tr,
             textAlign: TextAlign.center,
             style: AppTypography.of(context).subsectionTitle.copyWith(
-                  color: const Color(0xFF132A4A),
+                  color: AppColors.primaryPurple,
                 ),
           ),
           const SizedBox(height: 8),
@@ -417,7 +417,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       user['hasActiveSession'] == true
                           ? Icons.bolt_rounded
                           : Icons.person_outline_rounded,
-                      color: const Color(0xFF132A4A),
+                      color: AppColors.primaryPurple,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -438,7 +438,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                               .copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
-                                color: const Color(0xFF132A4A),
+                                color: AppColors.primaryPurple,
                               ),
                         ),
                         const SizedBox(height: 4),
@@ -490,14 +490,14 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                     'auth_saved_accounts_continue'.tr,
                     style: AppTypography.of(context).buttonSecondary.copyWith(
                           fontSize: 12,
-                          color: const Color(0xFF132A4A),
+                          color: AppColors.primaryPurple,
                         ),
                   ),
                   const SizedBox(width: 6),
                   const Icon(
                     Icons.arrow_forward_rounded,
                     size: 18,
-                    color: Color(0xFF132A4A),
+                    color: AppColors.primaryPurple,
                   ),
                 ],
               ),
@@ -547,9 +547,9 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _openManualLogin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF132A4A),
+                  backgroundColor: AppColors.primaryPurple,
                   disabledBackgroundColor:
-                      const Color(0xFF132A4A).withValues(alpha: 0.45),
+                      AppColors.primaryPurple.withValues(alpha: 0.45),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),

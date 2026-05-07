@@ -12,7 +12,6 @@ import '../../core/utils/size_config.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import 'custom_text.dart';
-import 'package:quran/quran.dart' as quran;
 
 class CustomThirdsDropdown extends StatefulWidget {
   const CustomThirdsDropdown({
@@ -281,9 +280,9 @@ class _CustomThirdsDropdownState extends State<CustomThirdsDropdown>
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: CustomText(
-                            text: Get.locale?.languageCode == 'ar'
-                                ? quran.getSurahNameArabic(sura.id)
-                                : quran.getSurahName(sura.id),
+                            text: sura.displayName(
+                              localeCode: Get.locale?.languageCode,
+                            ),
                             fontSize: 13,
                             withBackground: false,
                             color: Colors.black87,

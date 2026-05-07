@@ -769,7 +769,7 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
                                   message:
                                       'license_activation_purchase_footer_note'
                                           .tr,
-                                  color: const Color(0xFF9AA3B2),
+                                  color: AppColors.mutedText,
                                 ),
                               ],
                             ),

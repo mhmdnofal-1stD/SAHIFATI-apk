@@ -1,3 +1,5 @@
+import 'package:sahifaty/core/utils/surah_localization.dart';
+
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/models/teacher_recommendation.dart';
@@ -44,14 +46,21 @@ class Ayat {
   int? get id => _id;
 
   factory Ayat.fromJson(Map<String, dynamic> json) {
+    final surah = Surah.fromJson(json['surah']);
+    final ayahNo = json['ayahNo'];
+
     return Ayat(
       id: json['_id'],
-      ayahNo: json['ayahNo'],
+      ayahNo: ayahNo,
       text: json['text'],
       juz: json['juz'],
       hizb: json['hizb'],
       hizbQuarter: json['hizbQuarter'],
-      page: json['page'],
+      page: resolveCanonicalMushafPage(
+        surahId: surah.id,
+        ayahNo: ayahNo is int ? ayahNo : int.tryParse('$ayahNo') ?? 0,
+        fallbackPage: json['page'] as int?,
+      ),
       wordCount: json['wordCount'],
       letterCount: json['letterCount'],
       weight: json['weight'],
@@ -66,7 +75,7 @@ class Ayat {
             .map((item) => item.toString())
             .toList()
           : [],
-      surah: Surah.fromJson(json['surah']),
+      surah: surah,
       userEvaluation: json['userEvaluation'] == null
           ? null
           : UserEvaluation.fromJson(json['userEvaluation']),

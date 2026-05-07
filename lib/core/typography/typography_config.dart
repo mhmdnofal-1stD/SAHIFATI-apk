@@ -79,18 +79,18 @@ class TypographyFontFamilies {
   static const String dinNextArabic = 'din-next-arabic';
 
   /// Resolves an admin-supplied font family key to the Flutter font family
-  /// (or `null` when the platform default should be used).
+  /// (or the app's default UI family when no explicit key is provided).
   static String? resolveFamily(String? key) {
     switch (key) {
       case quranUthmanicScriptHafs:
         return AppFonts.versesFont;
       case dinNextArabic:
-        return 'DIN NEXT ARABIC';
+        return AppFonts.primaryFont;
       case null:
       case defaultUi:
-        return null; // Falls back to platform default (Roboto on Android).
+        return AppFonts.primaryFont;
       default:
-        return null;
+        return AppFonts.primaryFont;
     }
   }
 

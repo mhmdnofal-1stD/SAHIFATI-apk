@@ -5,6 +5,7 @@ import 'package:sahifaty/models/auth_data.dart';
 import 'package:sahifaty/controllers/users_controller.dart';
 import 'package:sahifaty/models/user.dart';
 import 'package:sahifaty/providers/users_provider.dart';
+import 'package:sahifaty/services/offline_assessment_store.dart';
 import 'package:sahifaty/services/secure_session_storage.dart';
 
 void main() {
@@ -74,6 +75,79 @@ void main() {
     expect(secondAutoLogin, isTrue);
     expect(provider.selectedUser?.id, user.id);
     expect(provider.isFirstLogin, isFalse);
+  });
+
+  test('cached current-user refresh persists to the active session snapshot', () async {
+    final provider = UsersProvider();
+    final store = OfflineAssessmentStore();
+    final user = User(
+      id: 61,
+      username: 'before_refresh',
+      email: 'persist@example.com',
+    );
+
+    await provider.saveUserSession(
+      user,
+      'access-token-61',
+      refreshToken: 'refresh-token-61',
+    );
+
+    await store.cacheCurrentUserProfileJson(
+      scopeKey: '61',
+      rawJson:
+          '{"id":61,"username":"after_refresh","email":"persist@example.com"}',
+    );
+
+    final refreshedUser = await provider.getCachedCurrentUserProfile();
+    expect(refreshedUser?.username, 'after_refresh');
+
+    provider.selectedUser = null;
+
+    final restored = await provider.tryAutoLogin();
+    expect(restored, isTrue);
+    expect(provider.selectedUser?.id, 61);
+    expect(provider.selectedUser?.username, 'after_refresh');
+  });
+
+  test('current-user profile refresh does not clobber a supervised student selection',
+      () async {
+    final provider = UsersProvider();
+    final store = OfflineAssessmentStore();
+    final teacher = User(
+      id: 71,
+      username: 'teacher_before_refresh',
+      email: 'teacher@example.com',
+    );
+    final student = User(
+      id: 72,
+      username: 'student_profile',
+      email: 'student@example.com',
+    );
+
+    await provider.saveUserSession(
+      teacher,
+      'access-token-71',
+      refreshToken: 'refresh-token-71',
+    );
+    provider.setSelectedUser(teacher);
+    provider.pushSelectedUser(student);
+
+    await store.cacheCurrentUserProfileJson(
+      scopeKey: '71',
+      rawJson:
+          '{"id":71,"username":"teacher_after_refresh","email":"teacher@example.com"}',
+    );
+
+    final refreshedTeacher = await provider.getCachedCurrentUserProfile();
+
+    expect(refreshedTeacher?.id, 71);
+    expect(refreshedTeacher?.username, 'teacher_after_refresh');
+    expect(provider.selectedUser?.id, 72);
+    expect(provider.selectedUser?.username, 'student_profile');
+
+    provider.popSelectedUser();
+    expect(provider.selectedUser?.id, 71);
+    expect(provider.selectedUser?.username, 'teacher_after_refresh');
   });
 
   test('switching stored user silently refreshes an expired access token',

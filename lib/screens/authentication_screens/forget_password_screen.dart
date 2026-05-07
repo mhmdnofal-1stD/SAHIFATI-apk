@@ -296,7 +296,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       _isArabic ? TextDirection.rtl : TextDirection.ltr,
                   style: AppTypography.of(context).sectionTitle.copyWith(
                         fontSize: 15,
-                        color: const Color(0xFF132A4A),
+                        color: AppColors.primaryPurple,
                       ),
                 ),
                 const SizedBox(height: 6),
@@ -380,9 +380,9 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF132A4A),
+          backgroundColor: AppColors.primaryPurple,
           disabledBackgroundColor:
-              const Color(0xFF132A4A).withValues(alpha: 0.45),
+              AppColors.primaryPurple.withValues(alpha: 0.45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -417,8 +417,8 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return OutlinedButton.icon(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF132A4A),
-        side: const BorderSide(color: Color(0xFFD8DDE5)),
+        foregroundColor: AppColors.primaryPurple,
+        side: const BorderSide(color: AppColors.lineColor),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(999),
@@ -429,7 +429,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         label,
         style: AppTypography.of(context).buttonSecondary.copyWith(
               fontSize: 14,
-              color: const Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
             ),
       ),
     );
@@ -481,7 +481,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             InfoIconButton(
               message: 'forgot_password_request_caption'.tr,
-              color: const Color(0xFF9AA3B2),
+              color: AppColors.mutedText,
             ),
           ],
         ),
@@ -588,7 +588,7 @@ class ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             InfoIconButton(
               message: 'forgot_password_password_rules'.tr,
-              color: const Color(0xFF9AA3B2),
+              color: AppColors.mutedText,
             ),
           ],
         ),

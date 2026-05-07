@@ -4,6 +4,7 @@ import 'package:quran/quran.dart' as quran;
 
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
+import '../../core/utils/surah_localization.dart';
 
 class SurahPickerDialog extends StatefulWidget {
   const SurahPickerDialog({super.key});
@@ -31,9 +32,14 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
 
     final entries = List<int>.generate(114, (index) => index + 1).where((id) {
       if (query.isEmpty) return true;
-      final nameAr = quran.getSurahNameArabic(id).toLowerCase();
-      final nameEn = quran.getSurahNameEnglish(id).toLowerCase();
-      return nameAr.contains(query) ||
+      final localized = localizedSurahNameById(
+        id,
+        localeCode: Get.locale?.languageCode,
+      ).toLowerCase();
+      final nameAr = localizedSurahNameById(id, localeCode: 'ar').toLowerCase();
+      final nameEn = localizedSurahNameById(id, localeCode: 'en').toLowerCase();
+      return localized.contains(query) ||
+          nameAr.contains(query) ||
           nameEn.contains(query) ||
           id.toString() == query;
     }).toList();
@@ -112,9 +118,10 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
                               ),
                             ),
                             title: Text(
-                              isArabic
-                                  ? quran.getSurahNameArabic(surahId)
-                                  : quran.getSurahNameEnglish(surahId),
+                              localizedSurahNameById(
+                                surahId,
+                                localeCode: Get.locale?.languageCode,
+                              ),
                               textDirection: isArabic
                                   ? TextDirection.rtl
                                   : TextDirection.ltr,

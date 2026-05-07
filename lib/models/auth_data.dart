@@ -16,13 +16,7 @@ class AuthData {
     if (
         json.containsKey('id') ||
         json.containsKey('username')) {
-      userData = User(
-        id: json['id'],
-        username: json['username'] ?? '',
-        email: json['email'] ?? '',
-        userRoleId: json['userRoleId'] ?? json['roleNum'],
-        licenseStatus: json['licenseStatus'] as String?,
-      );
+      userData = User.fromJson(json);
       return AuthData(
           accessToken: json['token'],
           refreshToken: json['refreshToken'],

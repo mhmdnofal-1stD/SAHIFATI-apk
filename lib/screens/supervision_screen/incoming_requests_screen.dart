@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/user.dart';
 import '../../providers/evaluations_provider.dart';
@@ -192,7 +193,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF132A4A),
+              backgroundColor: AppColors.primaryPurple,
             ),
             child: Text(
               'supervision_one_time_review_confirm_action'.tr,
@@ -240,7 +241,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
 
     final usersProvider = context.read<UsersProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
-    usersProvider.setSelectedUser(selectedStudent);
+    usersProvider.pushSelectedUser(selectedStudent);
     try {
       await evaluationsProvider.getQuranChartData(studentId);
     } catch (_) {}
@@ -258,13 +259,13 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF7F4ED),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF132A4A)),
+        iconTheme: const IconThemeData(color: AppColors.primaryPurple),
         centerTitle: true,
         title: Text(
           'supervision_dashboard_screen_title'.tr,
           style: AppTypography.of(context)
               .appBarTitle
-              .copyWith(color: const Color(0xFF132A4A)),
+              .copyWith(color: AppColors.primaryPurple),
         ),
       ),
       body: SafeArea(
@@ -273,7 +274,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(
-                child: CircularProgressIndicator(color: Color(0xFF132A4A)),
+                child: CircularProgressIndicator(color: AppColors.primaryPurple),
               );
             }
             if (snapshot.hasError) {
@@ -415,7 +416,7 @@ class _SectionHeader extends StatelessWidget {
             color: const Color(0xFFEFEAE0),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: const Color(0xFF132A4A)),
+          child: Icon(icon, color: AppColors.primaryPurple),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -424,13 +425,13 @@ class _SectionHeader extends StatelessWidget {
             textDirection: TextDirection.rtl,
             style: AppTypography.of(context)
                 .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A), fontSize: 16),
+                .copyWith(color: AppColors.primaryPurple, fontSize: 16),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFF132A4A),
+            color: AppColors.primaryPurple,
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
@@ -458,7 +459,7 @@ class _LimitsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF132A4A),
+        color: AppColors.primaryPurple,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -577,7 +578,7 @@ class _RequestCard extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.person_rounded,
-                  color: Color(0xFF132A4A),
+                  color: AppColors.primaryPurple,
                 ),
               ),
               const SizedBox(width: 12),
@@ -590,7 +591,7 @@ class _RequestCard extends StatelessWidget {
                       textDirection: TextDirection.rtl,
                       style: AppTypography.of(context)
                           .listTileTitle
-                          .copyWith(color: const Color(0xFF132A4A)),
+                          .copyWith(color: AppColors.primaryPurple),
                     ),
                     if (email.isNotEmpty)
                       Text(
@@ -612,7 +613,7 @@ class _RequestCard extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: onAccept,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF132A4A),
+                    backgroundColor: AppColors.primaryPurple,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -671,13 +672,13 @@ class _RequestCard extends StatelessWidget {
             icon: const Icon(
               Icons.timer_outlined,
               size: 18,
-              color: Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
             ),
             label: Text(
               'supervision_action_one_time_review'.tr,
               style: AppTypography.of(context)
                   .buttonSecondary
-                  .copyWith(color: const Color(0xFF132A4A)),
+                  .copyWith(color: AppColors.primaryPurple),
             ),
           ),
         ],
@@ -734,7 +735,7 @@ class _LinkCard extends StatelessWidget {
               roleInLink == 'teacher'
                   ? Icons.person_search_rounded
                   : Icons.school_rounded,
-              color: const Color(0xFF132A4A),
+              color: AppColors.primaryPurple,
             ),
           ),
           const SizedBox(width: 12),
@@ -750,7 +751,7 @@ class _LinkCard extends StatelessWidget {
                         textDirection: TextDirection.rtl,
                         style: AppTypography.of(context)
                             .listTileTitle
-                            .copyWith(color: const Color(0xFF132A4A)),
+                            .copyWith(color: AppColors.primaryPurple),
                       ),
                     ),
                     Container(
@@ -767,7 +768,7 @@ class _LinkCard extends StatelessWidget {
                         textDirection: TextDirection.rtl,
                         style: AppTypography.of(context)
                             .badgeLabel
-                            .copyWith(color: const Color(0xFF132A4A)),
+                            .copyWith(color: AppColors.primaryPurple),
                       ),
                     ),
                   ],
@@ -803,7 +804,7 @@ class _LinkCard extends StatelessWidget {
               ),
               icon: const Icon(
                 Icons.person_search_rounded,
-                color: Color(0xFF132A4A),
+                color: AppColors.primaryPurple,
               ),
               tooltip: 'supervision_limits_students_label'.tr,
             ),
@@ -980,7 +981,7 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
               textDirection: TextDirection.rtl,
               style: AppTypography.of(context)
                   .sectionTitle
-                  .copyWith(color: const Color(0xFF132A4A), fontSize: 16),
+                  .copyWith(color: AppColors.primaryPurple, fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1016,14 +1017,14 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                       selected
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: const Color(0xFF132A4A),
+                      color: AppColors.primaryPurple,
                     ),
                     title: Text(
                       name,
                       textDirection: TextDirection.rtl,
                       style: AppTypography.of(context)
                           .listTileTitle
-                          .copyWith(color: const Color(0xFF132A4A)),
+                          .copyWith(color: AppColors.primaryPurple),
                     ),
                   );
                 },
@@ -1046,7 +1047,7 @@ class _PickStudentToRemoveSheetState extends State<_PickStudentToRemoveSheet> {
                       'supervision_preview_cancel'.tr,
                       style: AppTypography.of(context)
                           .buttonSecondary
-                          .copyWith(color: const Color(0xFF132A4A)),
+                          .copyWith(color: AppColors.primaryPurple),
                     ),
                   ),
                 ),
@@ -1106,7 +1107,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: const Color(0xFF132A4A),
+            color: AppColors.primaryPurple,
             size: 40,
           ),
           const SizedBox(height: 8),
@@ -1115,7 +1116,7 @@ class _EmptyState extends StatelessWidget {
             textDirection: TextDirection.rtl,
             style: AppTypography.of(context)
                 .sectionTitle
-                .copyWith(color: const Color(0xFF132A4A), fontSize: 15),
+                .copyWith(color: AppColors.primaryPurple, fontSize: 15),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1157,20 +1158,20 @@ class _ErrorState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTypography.of(context)
                   .bodyDefault
-                  .copyWith(color: const Color(0xFF132A4A)),
+                  .copyWith(color: AppColors.primaryPurple),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () => onRetry(),
               icon: const Icon(
                 Icons.refresh_rounded,
-                color: Color(0xFF132A4A),
+                color: AppColors.primaryPurple,
               ),
               label: Text(
                 'profile_qr_retry'.tr,
                 style: AppTypography.of(context)
                     .buttonSecondary
-                    .copyWith(color: const Color(0xFF132A4A)),
+                    .copyWith(color: AppColors.primaryPurple),
               ),
             ),
           ],

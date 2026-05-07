@@ -1,3 +1,32 @@
+int? _parseUserRoleId(dynamic rawRole) {
+  if (rawRole is num) {
+    return rawRole.toInt();
+  }
+
+  switch (rawRole?.toString().trim().toLowerCase()) {
+    case '0':
+    case 'student':
+      return 0;
+    case '1':
+    case 'supervisor':
+      return 1;
+    case '2':
+    case 'admin':
+      return 2;
+    case '3':
+    case 'researcher':
+      return 3;
+    case '4':
+    case 'reviewer':
+      return 4;
+    case '5':
+    case 'admitter':
+      return 5;
+    default:
+      return null;
+  }
+}
+
 class User {
   int id;
   String username;
@@ -59,7 +88,9 @@ class User {
       id: rawId is int ? rawId : int.tryParse('${rawId ?? 0}') ?? 0,
       username: (json['username'] ?? '') as String,
       email: json['email'],
-      userRoleId: json['userRoleId'] ?? json['roleNum'],
+      userRoleId: _parseUserRoleId(
+        json['userRoleId'] ?? json['roleNum'] ?? json['role'],
+      ),
       licenseStatus: json['licenseStatus'] as String?,
       gender: json['gender'] as String?,
       birthYear: json['birthYear'] as int?,

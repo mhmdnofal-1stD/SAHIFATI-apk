@@ -8,7 +8,6 @@ import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/auth/social_auth_config.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
@@ -49,12 +48,12 @@ class _LoginScreenState extends State<LoginScreen> {
     required String tooltip,
     required VoidCallback? onTap,
     String? label,
-    Color foreground = const Color(0xFF132A4A),
+    Color foreground = AppColors.blackFontColor,
   }) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: onTap == null ? const Color(0xFFF1ECE3) : const Color(0xFFFFFCF8),
+        color: onTap == null ? AppColors.dropDownButtonColor : AppColors.panelColor,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -64,10 +63,10 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: EdgeInsets.symmetric(horizontal: label == null ? 0 : 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD7D8DE)),
+              border: Border.all(color: AppColors.lineColor),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x0813284A),
+                  color: Color(0x141D6652),
                   blurRadius: 10,
                   offset: Offset(0, 4),
                 ),
@@ -83,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     label,
                     style: AppTypography.of(context)
                         .buttonSecondary
-                        .copyWith(color: const Color(0xFF4F5D72)),
+                        .copyWith(color: AppColors.mutedText),
                   ),
                 ],
               ],
@@ -232,9 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               message,
               textDirection: TextDirection.rtl,
-              style: AppTypography.of(context)
-                  .inputError
-                  .copyWith(fontFamily: AppFonts.primaryFont),
+              style: AppTypography.of(context).inputError,
             ),
           ),
         ],
@@ -501,9 +498,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? null
                           : () => _handleLogin(usersProvider, evaluationsProvider),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF132A4A),
+                        backgroundColor: AppColors.primaryPurple,
                         disabledBackgroundColor:
-                            const Color(0xFF132A4A).withValues(alpha: 0.45),
+                            AppColors.primaryPurple.withValues(alpha: 0.45),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
                         ),
@@ -521,17 +518,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Icon(Icons.login_rounded, color: Colors.white),
                       label: Text(
                         'login'.tr,
-                        style: AppTypography.of(context).buttonPrimary.copyWith(
-                              fontFamily: AppFonts.primaryFont,
-                              color: Colors.white,
-                            ),
+                        style: AppTypography.of(context)
+                            .buttonPrimary
+                            .copyWith(color: Colors.white),
                       ),
                     ),
                   ),
                 ),
                 InfoIconButton(
                   message: 'surface_quick_login_hint'.tr,
-                  color: const Color(0xFF9AA3B2),
+                  color: AppColors.mutedText,
                 ),
               ],
             ),
@@ -596,9 +592,8 @@ class _OwnerBrandingCard extends StatelessWidget {
               _flutterBetaVersionLabel,
               textDirection: TextDirection.ltr,
               style: AppTypography.of(context).bodySmall.copyWith(
-                    fontFamily: AppFonts.primaryFont,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF6A7685),
+                    color: AppColors.mutedText,
                     letterSpacing: 0.3,
                   ),
             ),
@@ -627,9 +622,8 @@ class _OwnerBrandingCard extends StatelessWidget {
                       'By',
                       textDirection: TextDirection.ltr,
                       style: AppTypography.of(context).bodySmall.copyWith(
-                            fontFamily: AppFonts.primaryFont,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF6A7685),
+                            color: AppColors.mutedText,
                           ),
                     ),
                   ),

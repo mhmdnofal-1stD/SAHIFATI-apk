@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sahifaty/core/constants/fonts.dart';
+import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 
 class CustomAuthenticationTextField extends StatefulWidget {
@@ -56,10 +56,10 @@ class _CustomAuthenticationTextFieldState
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
               width: widget.borderWidth ?? 1.0, color: widget.borderColor),
-          color: const Color(0xFFFFFDFC),
+          color: AppColors.panelColor,
           boxShadow: const [
             BoxShadow(
-              color: Color(0x0D132A4A),
+              color: Color(0x0D1D6652),
               blurRadius: 16,
               offset: Offset(0, 8),
             ),
@@ -92,14 +92,20 @@ class _CustomAuthenticationTextFieldState
                         ? null
                         : Icon(
                             widget.leadingIcon,
-                            color: const Color(0xFF66758A),
+                            color: AppColors.mutedText,
                             size: 20,
                           ),
                     suffixIcon: widget.obscureText
                         ? IconButton(
                             icon: !showPassword
-                                ? const Icon(Icons.visibility, color: Color(0xFF66758A))
-                                : const Icon(Icons.visibility_off, color: Color(0xFF66758A)),
+                                ? const Icon(
+                                    Icons.visibility,
+                                    color: AppColors.mutedText,
+                                  )
+                                : const Icon(
+                                    Icons.visibility_off,
+                                    color: AppColors.mutedText,
+                                  ),
                             onPressed: () {
                               setState(() {
                                 showPassword = !showPassword;
@@ -108,9 +114,7 @@ class _CustomAuthenticationTextFieldState
                           )
                         : null,
                     hintText: widget.hintText ?? "",
-                    hintStyle: AppTypography.of(context)
-                        .inputHint
-                        .copyWith(fontFamily: AppFonts.primaryFont),
+                    hintStyle: AppTypography.of(context).inputHint,
                     border: InputBorder.none,
                   )),
             ),

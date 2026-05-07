@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:sahifaty/core/constants/colors.dart';
 
 /// A small ℹ️ icon that shows [message] in a popup dialog on tap.
 /// Place it next to an interactive button to surface contextual help
@@ -24,7 +25,7 @@ class InfoIconButton extends StatelessWidget {
       icon: Icon(
         Icons.info_outline_rounded,
         size: size,
-        color: color ?? const Color(0xFF9AA3B2),
+        color: color ?? AppColors.mutedText,
       ),
       padding: EdgeInsets.zero,
       constraints: BoxConstraints(
@@ -57,7 +58,7 @@ class InfoIconButton extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF132A4A),
+                    color: AppColors.primaryPurple,
                   ),
                 ),
           content: ConstrainedBox(

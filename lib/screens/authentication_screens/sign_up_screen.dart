@@ -390,9 +390,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: ElevatedButton.icon(
                 onPressed: isBusy ? null : () => _handleSubmit(usersProvider),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF132A4A),
+                  backgroundColor: AppColors.primaryPurple,
                   disabledBackgroundColor:
-                      const Color(0xFF132A4A).withValues(alpha: 0.45),
+                      AppColors.primaryPurple.withValues(alpha: 0.45),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),

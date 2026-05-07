@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../services/teacher_supervisions_services.dart';
 import '../widgets/info_icon_button.dart';
@@ -184,7 +185,7 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
           textDirection: TextDirection.rtl,
           style: AppTypography.of(ctx)
               .dialogTitle
-              .copyWith(color: const Color(0xFF132A4A)),
+              .copyWith(color: AppColors.primaryPurple),
         ),
         content: Text(
           bodyKey.tr,
@@ -203,7 +204,7 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
               'supervision_scan_result_dismiss'.tr,
               style: AppTypography.of(ctx)
                   .buttonSecondary
-                  .copyWith(color: const Color(0xFF132A4A)),
+                  .copyWith(color: AppColors.primaryPurple),
             ),
           ),
         ],
@@ -309,20 +310,20 @@ class _AddSupervisorScreenState extends State<AddSupervisorScreen> {
                             ),
                             icon: const Icon(
                               Icons.photo_library_rounded,
-                              color: Color(0xFF132A4A),
+                              color: AppColors.primaryPurple,
                             ),
                             label: Text(
                               'supervision_scan_pick_from_gallery'.tr,
                               style: AppTypography.of(context)
                                   .buttonPrimary
-                                  .copyWith(color: const Color(0xFF132A4A)),
+                                  .copyWith(color: AppColors.primaryPurple),
                             ),
                           ),
                         ),
                       ),
                       InfoIconButton(
                         message: 'supervision_scan_hint'.tr,
-                        color: const Color(0xFF9AA3B2),
+                        color: AppColors.mutedText,
                       ),
                     ],
                   ),
@@ -398,7 +399,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                   ),
                   child: const Icon(
                     Icons.person_rounded,
-                    color: Color(0xFF132A4A),
+                    color: AppColors.primaryPurple,
                     size: 28,
                   ),
                 ),
@@ -420,7 +421,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                         textDirection: TextDirection.rtl,
                         style: AppTypography.of(context)
                             .userDisplayName
-                            .copyWith(color: const Color(0xFF132A4A)),
+                            .copyWith(color: AppColors.primaryPurple),
                       ),
                       if (email.isNotEmpty) ...[
                         const SizedBox(height: 2),
@@ -486,7 +487,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                       'supervision_preview_cancel'.tr,
                       style: AppTypography.of(context)
                           .buttonSecondary
-                          .copyWith(color: const Color(0xFF132A4A)),
+                          .copyWith(color: AppColors.primaryPurple),
                     ),
                   ),
                 ),
@@ -497,7 +498,7 @@ class _SupervisorPreviewSheet extends StatelessWidget {
                         ? () => Navigator.of(context).pop(true)
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF132A4A),
+                      backgroundColor: AppColors.primaryPurple,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
