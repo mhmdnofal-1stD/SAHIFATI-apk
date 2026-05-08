@@ -30,9 +30,7 @@ class AuthSocialSection extends StatelessWidget {
   final AuthSocialStatusTone statusTone;
 
   String _sectionLabel() {
-    return (Get.locale?.languageCode ?? 'ar') == 'ar'
-        ? 'الدخول بـ'
-        : 'Sign in with';
+    return 'auth_methods_label'.tr;
   }
 
   @override

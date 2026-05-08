@@ -55,6 +55,7 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/json/
+    - assets/json/ayah_translations/
 
   fonts:
     - family: DIN NEXT ARABIC

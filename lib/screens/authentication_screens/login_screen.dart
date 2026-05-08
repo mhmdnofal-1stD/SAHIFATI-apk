@@ -404,6 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
         subtitle: '',
+        brandSubtitle: 'auth_login_subtitle_compact'.tr,
         isSignup: false,
         fillViewport: true,
         preferCompactMobileLayout: true,
@@ -602,7 +603,7 @@ class _OwnerBrandingCard extends StatelessWidget {
             right: 0,
             bottom: 0,
             child: SizedBox(
-              width: 94,
+              width: 176,
               height: 40,
               child: Stack(
                 clipBehavior: Clip.none,
@@ -616,15 +617,24 @@ class _OwnerBrandingCard extends StatelessWidget {
                     ),
                   ),
                   Positioned(
+                    left: 0,
                     right: 42,
-                    top: 2,
-                    child: Text(
-                      'By',
-                      textDirection: TextDirection.ltr,
-                      style: AppTypography.of(context).bodySmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.mutedText,
-                          ),
+                    top: 0,
+                    bottom: 0,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'auth_owner_brand_caption'.tr,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: AppTypography.of(context).bodySmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.mutedText,
+                              fontSize: 10,
+                              height: 1.15,
+                            ),
+                      ),
                     ),
                   ),
                 ],

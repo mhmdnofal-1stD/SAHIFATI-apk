@@ -1,9 +1,12 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
 import 'package:quran/quran.dart' as quran;
 
 class AyahTranslationLibraryService {
   AyahTranslationLibraryService._();
 
-  static const List<String> supportedLanguageCodes = [
+  static const List<String> _packageBackedLanguageCodes = [
     'ar',
     'en',
     'tr',
@@ -22,24 +25,57 @@ class AyahTranslationLibraryService {
     'sv',
   ];
 
+  static const List<String> _assetBackedLanguageCodes = [
+    'de',
+    'hi',
+    'ms',
+    'pa',
+    'ha',
+    'sw',
+  ];
+
+  static const List<String> supportedLanguageCodes = [
+    ..._packageBackedLanguageCodes,
+    ..._assetBackedLanguageCodes,
+  ];
+
+  static const String _assetManifestPath =
+      'assets/json/ayah_translations/manifest.json';
+  static const String _assetBundleDirectoryPath =
+      'assets/json/ayah_translations';
+
   static final Map<String, Map<String, String>> _memoryCache =
       <String, Map<String, String>>{};
+  static Future<Map<String, String>>? _assetManifestFuture;
 
   static bool supportsLanguage(String languageCode) {
-    return supportedLanguageCodes.contains(_normalizeLanguageCode(languageCode));
+    return supportedLanguageCodes
+        .contains(_normalizeLanguageCode(languageCode));
   }
 
   static Future<void> preload({
     required Iterable<String> languageCodes,
   }) async {
-    for (final languageCode in languageCodes) {
-      await loadSeed(languageCode);
+    final normalizedCodes = languageCodes
+        .map(_normalizeLanguageCode)
+        .where((languageCode) => languageCode.isNotEmpty)
+        .toList(growable: false);
+    if (normalizedCodes.isEmpty) {
+      return;
     }
+
+    final preferredLanguageCode = normalizedCodes.reversed.firstWhere(
+      (languageCode) => languageCode != 'ar',
+      orElse: () => normalizedCodes.last,
+    );
+
+    await loadSeed(preferredLanguageCode);
   }
 
   static Future<Map<String, String>> loadSeed(String languageCode) async {
     final normalizedLanguageCode = _normalizeLanguageCode(languageCode);
-    if (!supportsLanguage(normalizedLanguageCode)) {
+    if (normalizedLanguageCode == 'ar' ||
+        !supportsLanguage(normalizedLanguageCode)) {
       return const <String, String>{};
     }
 
@@ -48,7 +84,7 @@ class AyahTranslationLibraryService {
       return cached;
     }
 
-    final built = _buildSeed(normalizedLanguageCode);
+    final built = await _buildSeed(normalizedLanguageCode);
     _memoryCache[normalizedLanguageCode] = built;
     return built;
   }
@@ -121,14 +157,22 @@ class AyahTranslationLibraryService {
     }
   }
 
-  static Map<String, String> _buildSeed(String languageCode) {
+  static Future<Map<String, String>> _buildSeed(String languageCode) async {
     final normalizedLanguageCode = _normalizeLanguageCode(languageCode);
     if (!supportsLanguage(normalizedLanguageCode) ||
         normalizedLanguageCode == 'ar') {
       return const <String, String>{};
     }
 
-    final translation = _translationForLanguageCode(normalizedLanguageCode);
+    if (_assetBackedLanguageCodes.contains(normalizedLanguageCode)) {
+      return _loadAssetSeed(normalizedLanguageCode);
+    }
+
+    return _buildPackageSeed(normalizedLanguageCode);
+  }
+
+  static Map<String, String> _buildPackageSeed(String languageCode) {
+    final translation = _translationForLanguageCode(languageCode);
     final bundle = <String, String>{};
 
     for (var surahId = 1; surahId <= quran.totalSurahCount; surahId++) {
@@ -151,5 +195,115 @@ class AyahTranslationLibraryService {
     }
 
     return bundle;
+  }
+
+  static Future<Map<String, String>> _loadAssetSeed(String languageCode) async {
+    final assetPath = await _resolveAssetBundlePath(languageCode);
+    if (assetPath == null || assetPath.isEmpty) {
+      return const <String, String>{};
+    }
+
+    try {
+      final raw = await rootBundle.loadString(assetPath);
+      final decoded = json.decode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return const <String, String>{};
+      }
+
+      final rawSurahs =
+          decoded['surahs'] as List<dynamic>? ?? const <dynamic>[];
+      final bundle = <String, String>{};
+
+      for (final rawSurah in rawSurahs) {
+        if (rawSurah is! List || rawSurah.length < 2) {
+          continue;
+        }
+
+        final surahId = _parseInt(rawSurah[0]);
+        final rawAyat = rawSurah[1];
+        if (surahId == null || rawAyat is! List) {
+          continue;
+        }
+
+        for (var ayahIndex = 0; ayahIndex < rawAyat.length; ayahIndex += 1) {
+          final translation = rawAyat[ayahIndex]?.toString().trim() ?? '';
+          if (translation.isEmpty) {
+            continue;
+          }
+
+          bundle[translationKey(surahId, ayahIndex + 1)] = translation;
+        }
+      }
+
+      return bundle;
+    } catch (_) {
+      return const <String, String>{};
+    }
+  }
+
+  static Future<String?> _resolveAssetBundlePath(String languageCode) async {
+    final manifest = await _loadAssetManifest();
+    final manifestPath = manifest[languageCode];
+    if (manifestPath != null && manifestPath.isNotEmpty) {
+      return manifestPath;
+    }
+
+    if (_assetBackedLanguageCodes.contains(languageCode)) {
+      return '$_assetBundleDirectoryPath/$languageCode.json';
+    }
+
+    return null;
+  }
+
+  static Future<Map<String, String>> _loadAssetManifest() {
+    final existing = _assetManifestFuture;
+    if (existing != null) {
+      return existing;
+    }
+
+    final future = _readAssetManifest();
+    _assetManifestFuture = future;
+    return future;
+  }
+
+  static Future<Map<String, String>> _readAssetManifest() async {
+    try {
+      final raw = await rootBundle.loadString(_assetManifestPath);
+      final decoded = json.decode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return const <String, String>{};
+      }
+
+      final rawLanguages =
+          decoded['languages'] as List<dynamic>? ?? const <dynamic>[];
+      final manifest = <String, String>{};
+
+      for (final rawEntry in rawLanguages) {
+        if (rawEntry is! Map<String, dynamic>) {
+          continue;
+        }
+
+        final languageCode =
+            _normalizeLanguageCode(rawEntry['languageCode']?.toString() ?? '');
+        final path = rawEntry['path']?.toString().trim() ?? '';
+        if (languageCode.isEmpty || path.isEmpty) {
+          continue;
+        }
+
+        manifest[languageCode] = path;
+      }
+
+      return manifest;
+    } catch (_) {
+      return const <String, String>{};
+    }
+  }
+
+  static int? _parseInt(Object? value) {
+    if (value is int) {
+      return value;
+    }
+
+    return int.tryParse('$value');
   }
 }

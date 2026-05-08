@@ -7,11 +7,22 @@ class LanguageProvider with ChangeNotifier {
 
   String langCode;
   
-  List<dynamic> languages = [
+  static const List<Map<String, String>> _defaultLanguages = [
     {"code": "ar", "name": "العربية"},
     {"code": "en", "name": "English"},
-    {"code": "tr", "name": "Türkçe"}
+    {"code": "tr", "name": "Türkçe"},
+    {"code": "id", "name": "Bahasa Indonesia"},
+    {"code": "hi", "name": "हिन्दी"},
+    {"code": "ur", "name": "اردو"},
+    {"code": "fa", "name": "فارسی"},
+    {"code": "bn", "name": "বাংলা"},
+    {"code": "ms", "name": "Bahasa Melayu"},
+    {"code": "de", "name": "Deutsch"},
+    {"code": "pa", "name": "ਪੰਜਾਬੀ"},
+    {"code": "sw", "name": "Kiswahili"}
   ];
+
+  List<dynamic> languages = List<Map<String, String>>.from(_defaultLanguages);
   
   bool isLoadingLanguages = false;
   bool hasFetchedLanguages = false;
@@ -39,9 +50,40 @@ class LanguageProvider with ChangeNotifier {
     isLoadingLanguages = true;
     notifyListeners();
 
-    final fetched = await _services.fetchLanguages();
-    if (fetched != null) {
-      languages = fetched;
+    final settings = await _services.fetchLanguageSettings();
+    if (settings != null) {
+      final filtered = settings.languages.where((language) {
+        if (language is! Map) {
+          return false;
+        }
+
+        final code = language['code']?.toString() ?? '';
+        return LocalizationService.supportsUiLanguage(code);
+      }).map((language) {
+        return Map<String, String>.from(
+          (language as Map).map(
+            (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+          ),
+        );
+      }).toList(growable: false);
+
+      if (filtered.isNotEmpty) {
+        languages = filtered;
+        await LocalizationService.updateEnabledUiLanguages(
+          defaultLanguage: settings.defaultLanguage,
+          languages: filtered,
+        );
+      } else {
+        final cachedLanguages = await LocalizationService.getEnabledUiLanguages();
+        languages = cachedLanguages.isNotEmpty
+            ? cachedLanguages
+            : List<Map<String, String>>.from(_defaultLanguages);
+      }
+    } else {
+      final cachedLanguages = await LocalizationService.getEnabledUiLanguages();
+      languages = cachedLanguages.isNotEmpty
+          ? cachedLanguages
+          : List<Map<String, String>>.from(_defaultLanguages);
     }
     hasFetchedLanguages = true;
     

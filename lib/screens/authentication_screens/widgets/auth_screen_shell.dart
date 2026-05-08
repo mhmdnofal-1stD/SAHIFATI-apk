@@ -178,6 +178,7 @@ class AuthScreenShell extends StatelessWidget {
     required this.subtitle,
     required this.isSignup,
     required this.child,
+    this.brandSubtitle,
     this.onSelectLogin,
     this.onSelectSignup,
     this.maxWidth = 440,
@@ -190,6 +191,7 @@ class AuthScreenShell extends StatelessWidget {
   final String subtitle;
   final bool isSignup;
   final Widget child;
+  final String? brandSubtitle;
   final VoidCallback? onSelectLogin;
   final VoidCallback? onSelectSignup;
   final double maxWidth;
@@ -287,7 +289,7 @@ class AuthScreenShell extends StatelessWidget {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  const _BrandHeader(),
+                                  _BrandHeader(brandSubtitle: brandSubtitle),
                                   SizedBox(height: headerSpacing),
                                   _AuthModeToggle(
                                     isSignup: isSignup,
@@ -342,10 +344,14 @@ class AuthScreenShell extends StatelessWidget {
 }
 
 class _BrandHeader extends StatelessWidget {
-  const _BrandHeader();
+  const _BrandHeader({this.brandSubtitle});
+
+  final String? brandSubtitle;
 
   @override
   Widget build(BuildContext context) {
+    final hasBrandSubtitle = brandSubtitle?.trim().isNotEmpty ?? false;
+
     return Row(
       children: [
         Container(
@@ -382,14 +388,16 @@ class _BrandHeader extends StatelessWidget {
                       height: 1.0,
                     ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'رحلة قرآنية أوضح من أول خطوة',
-                style: AppTypography.of(context).bodySmall.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.4,
-                    ),
-              ),
+              if (hasBrandSubtitle) ...[
+                const SizedBox(height: 4),
+                Text(
+                  brandSubtitle!,
+                  style: AppTypography.of(context).bodySmall.copyWith(
+                        color: AppColors.mutedText,
+                        height: 1.4,
+                      ),
+                ),
+              ],
             ],
           ),
         ),
