@@ -25,6 +25,7 @@ class AyahPreviewBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final typography = AppTypography.of(context);
+    final isRtlTranslation = isRtlAyahTranslationLanguage(languageCode);
     final translation = lookupAyahTranslation(
       ayah: ayah,
       languageCode: languageCode,
@@ -33,20 +34,26 @@ class AyahPreviewBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (translation != null) ...[
-          Text(
-            translation,
-            textAlign: textAlign,
-            style: translationStyle ?? typography.bodySecondary,
-          ),
-          SizedBox(height: spacing),
-        ],
         Text(
           resolveAyahArabicText(ayah),
           textAlign: textAlign,
           textDirection: TextDirection.rtl,
           style: arabicStyle ?? typography.quranVerse,
         ),
+        if (translation != null) ...[
+          SizedBox(height: spacing),
+          Directionality(
+            textDirection:
+                isRtlTranslation ? TextDirection.rtl : TextDirection.ltr,
+            child: Text(
+              translation,
+              textAlign: TextAlign.start,
+              softWrap: true,
+              style: (translationStyle ?? typography.bodySecondary)
+                  .copyWith(height: 1.7),
+            ),
+          ),
+        ],
       ],
     );
   }

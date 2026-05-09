@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 .map<DropdownMenuItem<String>>((language) {
                               return DropdownMenuItem<String>(
                                 value: language['code'],
-                                child: Text(language['name']),
+                                child: Text(language['name'] ?? ''),
                               );
                             }).toList(),
                             onChanged: hasLanguages ? (String? value) async {

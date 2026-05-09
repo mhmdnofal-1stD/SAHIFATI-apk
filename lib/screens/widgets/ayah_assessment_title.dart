@@ -14,6 +14,11 @@ String _normalizeAyahTranslationLanguageCode(String languageCode) {
   return normalized.split('-').first;
 }
 
+bool isRtlAyahTranslationLanguage(String languageCode) {
+  const rtlLanguages = {'ar', 'fa', 'he', 'ku', 'ps', 'ur'};
+  return rtlLanguages.contains(_normalizeAyahTranslationLanguageCode(languageCode));
+}
+
 String resolveAyahArabicText(Ayat ayah) {
   return ayah.text.trim().isNotEmpty
       ? ayah.text.trim()
@@ -54,20 +59,26 @@ Widget buildAyahAssessmentDialogTitle({
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      if (translation != null) ...[
-        Text(
-          translation,
-          textAlign: TextAlign.center,
-          style: typography.dialogTitle,
-        ),
-        const SizedBox(height: 12),
-      ],
       Text(
         arabicText,
         textAlign: TextAlign.center,
         textDirection: TextDirection.rtl,
         style: typography.quranVerse,
       ),
+      if (translation != null) ...[
+        const SizedBox(height: 14),
+        Directionality(
+          textDirection: isRtlAyahTranslationLanguage(languageCode)
+              ? TextDirection.rtl
+              : TextDirection.ltr,
+          child: Text(
+            translation,
+            textAlign: TextAlign.start,
+            softWrap: true,
+            style: typography.bodySecondary.copyWith(height: 1.7),
+          ),
+        ),
+      ],
     ],
   );
 }

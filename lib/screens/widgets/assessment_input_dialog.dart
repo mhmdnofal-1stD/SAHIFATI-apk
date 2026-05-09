@@ -146,12 +146,11 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                 : AppTypography.of(context).dialogTitle;
 
             return AlertDialog(
-              title: titleWidget ??
-                  Text(
-                    effectiveTitle,
-                    textAlign: TextAlign.center,
-                    style: titleStyle,
-                  ),
+              title: Text(
+                effectiveTitle,
+                textAlign: TextAlign.center,
+                style: titleStyle,
+              ),
               content: SingleChildScrollView(
                 child: SizedBox(
                   width: 360,
@@ -302,6 +301,10 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                               );
                             },
                           ),
+                          const SizedBox(height: 20),
+                        ],
+                        if (titleWidget != null) ...[
+                          titleWidget,
                           const SizedBox(height: 20),
                         ],
                         if (enableCommentField) ...[
