@@ -27,10 +27,6 @@ class AuthLanguageSwitch extends StatelessWidget {
     final languages = <Map<String, String>>[];
 
     for (final entry in languageProvider.languages) {
-      if (entry is! Map) {
-        continue;
-      }
-
       final code = entry['code']?.toString().trim().toLowerCase() ?? '';
       final name = entry['name']?.toString().trim() ?? '';
       if (code.isEmpty || name.isEmpty) {
