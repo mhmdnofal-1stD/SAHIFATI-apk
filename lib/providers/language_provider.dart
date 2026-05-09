@@ -7,7 +7,7 @@ class LanguageProvider with ChangeNotifier {
 
   String langCode;
 
-  List<dynamic> languages = const <Map<String, String>>[];
+  List<Map<String, String>> languages = const <Map<String, String>>[];
   
   bool isLoadingLanguages = false;
   bool hasFetchedLanguages = false;
@@ -38,18 +38,8 @@ class LanguageProvider with ChangeNotifier {
     final settings = await _services.fetchLanguageSettings();
     if (settings != null) {
       final filtered = settings.languages.where((language) {
-        if (language is! Map) {
-          return false;
-        }
-
         final code = language['code']?.toString() ?? '';
         return LocalizationService.supportsUiLanguage(code);
-      }).map((language) {
-        return Map<String, String>.from(
-          (language as Map).map(
-            (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
-          ),
-        );
       }).toList(growable: false);
 
       if (filtered.isNotEmpty) {
