@@ -48,7 +48,7 @@ Widget buildAyahAssessmentDialogTitle({
   required Ayat ayah,
   required String languageCode,
 }) {
-  final typography = AppTypography.of(context);
+  final typography = AppTypography.of(context, listen: false);
   final arabicText = resolveAyahArabicText(ayah);
   final translation = lookupAyahTranslation(
     ayah: ayah,

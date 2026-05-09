@@ -55,7 +55,7 @@ class CardModel {
     }
 
     return CardModel(
-      id: (json['_id'] ?? json['id'] is int)
+      id: ((json['_id'] ?? json['id']) is int)
           ? (json['_id'] ?? json['id']) as int
           : int.tryParse('${json['_id'] ?? json['id'] ?? 0}') ?? 0,
       content: json['content'] is Map
