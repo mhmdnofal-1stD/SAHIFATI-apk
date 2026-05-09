@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quran/quran.dart' as quran;
 import 'package:provider/provider.dart';
 
 import '../../core/constants/colors.dart';
@@ -225,6 +226,8 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ayatValue = _ayatValue();
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.panelColor,
@@ -238,7 +241,11 @@ class _InfoCard extends StatelessWidget {
         children: [
           _Row(label: 'الموضوع', value: card.subjectDisplayName),
           const Divider(height: 20, color: AppColors.lineColor),
-          _Row(label: 'المحتوى', value: card.contentLabel),
+          _Row(label: 'النطاق', value: card.contentLabel),
+          if (ayatValue.isNotEmpty) ...[
+            const Divider(height: 20, color: AppColors.lineColor),
+            _Row(label: 'الآيات', value: ayatValue, useQuranVerseStyle: true),
+          ],
           const Divider(height: 20, color: AppColors.lineColor),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -268,15 +275,87 @@ class _InfoCard extends StatelessWidget {
   String _formatDate(DateTime dt) {
     return '${dt.year}/${dt.month.toString().padLeft(2, '0')}/${dt.day.toString().padLeft(2, '0')}';
   }
+
+  String _ayatValue() {
+    final content = card.content;
+    final type = (content['type']?.toString() ?? '')
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[\s_-]+'), '');
+    final surahId = _toInt(content['surahId']);
+    if (surahId == null || surahId < 1 || surahId > quran.totalSurahCount) {
+      return '';
+    }
+
+    if (type == 'ayah') {
+      final ayahNo = _toInt(content['ayahNo']);
+      return _verseText(surahId, ayahNo);
+    }
+
+    if (type == 'ayahrange') {
+      final startAyah = _toInt(content['startAyah']);
+      final endAyah = _toInt(content['endAyah']);
+      if (startAyah == null || endAyah == null) {
+        return '';
+      }
+
+      final lower = startAyah <= endAyah ? startAyah : endAyah;
+      final upper = startAyah <= endAyah ? endAyah : startAyah;
+      final verses = <String>[];
+      for (var ayahNo = lower; ayahNo <= upper; ayahNo++) {
+        final verse = _verseText(surahId, ayahNo);
+        if (verse.isNotEmpty) {
+          verses.add(verse);
+        }
+      }
+      return verses.join('\n\n');
+    }
+
+    return '';
+  }
+
+  int? _toInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse('${value ?? ''}');
+  }
+
+  String _verseText(int surahId, int? ayahNo) {
+    if (ayahNo == null || ayahNo <= 0) {
+      return '';
+    }
+
+    try {
+      return quran.getVerse(surahId, ayahNo, verseEndSymbol: false).trim();
+    } catch (_) {
+      return '';
+    }
+  }
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
+  const _Row({
+    required this.label,
+    required this.value,
+    this.useQuranVerseStyle = false,
+  });
   final String label;
   final String value;
+  final bool useQuranVerseStyle;
 
   @override
   Widget build(BuildContext context) {
+    final valueStyle = useQuranVerseStyle
+        ? AppTypography.of(context).quranVerse.copyWith(
+              fontSize: 24,
+              height: 1.9,
+            color: AppColors.blackFontColor,
+            )
+        : AppTypography.of(context).bodyDefault.copyWith(
+              fontSize: 14,
+            );
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,9 +363,7 @@ class _Row extends StatelessWidget {
         Flexible(
           child: Text(
             value,
-            style: AppTypography.of(context).bodyDefault.copyWith(
-                  fontSize: 14,
-                ),
+            style: valueStyle,
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.right,
           ),

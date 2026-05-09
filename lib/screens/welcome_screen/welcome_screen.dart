@@ -199,9 +199,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();
     final user = usersProvider.selectedUser;
-    final width = MediaQuery.sizeOf(context).width;
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width;
+    final height = size.height;
     final isWide = width >= 980;
-    final horizontalPadding = width >= 1200 ? 32.0 : 20.0;
+    final compactViewport = height <= 900;
+    final horizontalPadding = width >= 1200 ? 28.0 : 16.0;
 
     return NoPopScope(
       child: Scaffold(
@@ -248,9 +251,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 SingleChildScrollView(
                   padding: EdgeInsets.fromLTRB(
                     horizontalPadding,
-                    24,
+                    compactViewport ? 14 : 20,
                     horizontalPadding,
-                    28,
+                    compactViewport ? 18 : 24,
                   ),
                   child: Center(
                     child: ConstrainedBox(
@@ -259,7 +262,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _WelcomeHero(userName: user?.username ?? user?.email),
-                          const SizedBox(height: 24),
+                          SizedBox(height: compactViewport ? 16 : 22),
                           Flex(
                             direction: isWide ? Axis.horizontal : Axis.vertical,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,6 +270,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               Expanded(
                                 flex: isWide ? 6 : 0,
                                 child: _WelcomeStoryCard(
+                                  compactViewport: compactViewport,
                                   isBusy: _isStartingAssessment,
                                   isOpeningSahifa: _isOpeningReadingBrowser,
                                   errorMessage: _kickoffErrorMessage,
@@ -275,12 +279,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                 ),
                               ),
                               SizedBox(
-                                width: isWide ? 22 : 0,
-                                height: isWide ? 0 : 22,
+                                width: isWide ? 16 : 0,
+                                height: isWide ? 0 : 16,
                               ),
                               Expanded(
                                 flex: isWide ? 5 : 0,
                                 child: _WelcomeMetricsCard(
+                                  compactViewport: compactViewport,
                                   isChartLoading: _isChartLoading,
                                   hasResolvedChartState: _hasResolvedChartState,
                                   chartErrorMessage: _chartErrorMessage,
@@ -318,7 +323,7 @@ class _WelcomeHero extends StatelessWidget {
         : userName!.trim().split(' ').first;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topRight,
@@ -339,7 +344,7 @@ class _WelcomeHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const _WelcomeBrandHeader(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           _TitleInfoRow(
             title: firstName == null
                 ? 'welcome_back'.tr
@@ -349,15 +354,6 @@ class _WelcomeHero extends StatelessWidget {
                 .pageHeading
                 .copyWith(color: Colors.white),
             infoColor: const Color(0xFFEDF3D7),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'نقطة بداية هادئة، بلون موحّد، وخط أوضح يضع تركيزك على الرحلة نفسها.',
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context).bodySecondary.copyWith(
-                  color: const Color(0xFFF5F8EE),
-                  height: 1.55,
-                ),
           ),
         ],
       ),
@@ -417,6 +413,7 @@ class _WelcomeBrandHeader extends StatelessWidget {
 
 class _WelcomeStoryCard extends StatelessWidget {
   const _WelcomeStoryCard({
+    required this.compactViewport,
     required this.isBusy,
     required this.isOpeningSahifa,
     required this.errorMessage,
@@ -424,6 +421,7 @@ class _WelcomeStoryCard extends StatelessWidget {
     required this.onSecondaryPressed,
   });
 
+  final bool compactViewport;
   final bool isBusy;
   final bool isOpeningSahifa;
   final String? errorMessage;
@@ -433,9 +431,11 @@ class _WelcomeStoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final busy = isBusy || isOpeningSahifa;
+    final width = MediaQuery.sizeOf(context).width;
+    final useSingleRowLayout = width >= 620;
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compactViewport ? 18 : 22),
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(30),
@@ -451,143 +451,167 @@ class _WelcomeStoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'welcome_msg'.tr,
-            textDirection: TextDirection.rtl,
-            style: AppTypography.of(context)
-                .sectionTitle
-                .copyWith(color: AppColors.primaryPurple),
-          ),
-          const SizedBox(height: 18),
-          const Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _ValueCard(
-                titleKey: 'welcome_kickoff_value_1_title',
-                bodyKey: 'welcome_kickoff_value_1_body',
-                icon: Icons.timer_outlined,
-                tint: AppColors.warmSurface,
-              ),
-              _ValueCard(
-                titleKey: 'welcome_kickoff_value_2_title',
-                bodyKey: 'welcome_kickoff_value_2_body',
-                icon: Icons.insights_outlined,
-                tint: Color(0xFFF2F7E7),
-              ),
-              _ValueCard(
-                titleKey: 'welcome_kickoff_value_3_title',
-                bodyKey: 'welcome_kickoff_value_3_body',
-                icon: Icons.route_outlined,
-                tint: AppColors.mintSurface,
-              ),
-            ],
-          ),
-          const SizedBox(height: 22),
-          const _JourneyStep(
-            titleKey: 'welcome_kickoff_step_1_title',
-            bodyKey: 'welcome_kickoff_step_1_body',
-          ),
-          const SizedBox(height: 12),
-          const _JourneyStep(
-            titleKey: 'welcome_kickoff_step_2_title',
-            bodyKey: 'welcome_kickoff_step_2_body',
-          ),
-          const SizedBox(height: 12),
-          const _JourneyStep(
-            titleKey: 'welcome_kickoff_step_3_title',
-            bodyKey: 'welcome_kickoff_step_3_body',
-          ),
-          const SizedBox(height: 24),
+          if (useSingleRowLayout)
+            const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _ValueCard(
+                    titleKey: 'welcome_kickoff_value_1_title',
+                    bodyKey: 'welcome_kickoff_value_1_body',
+                    icon: Icons.timer_outlined,
+                    tint: AppColors.warmSurface,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: _ValueCard(
+                    titleKey: 'welcome_kickoff_value_2_title',
+                    bodyKey: 'welcome_kickoff_value_2_body',
+                    icon: Icons.insights_outlined,
+                    tint: Color(0xFFF2F7E7),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: _ValueCard(
+                    titleKey: 'welcome_kickoff_value_3_title',
+                    bodyKey: 'welcome_kickoff_value_3_body',
+                    icon: Icons.route_outlined,
+                    tint: AppColors.mintSurface,
+                  ),
+                ),
+              ],
+            )
+          else
+            const Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                _ValueCard(
+                  titleKey: 'welcome_kickoff_value_1_title',
+                  bodyKey: 'welcome_kickoff_value_1_body',
+                  icon: Icons.timer_outlined,
+                  tint: AppColors.warmSurface,
+                ),
+                _ValueCard(
+                  titleKey: 'welcome_kickoff_value_2_title',
+                  bodyKey: 'welcome_kickoff_value_2_body',
+                  icon: Icons.insights_outlined,
+                  tint: Color(0xFFF2F7E7),
+                ),
+                _ValueCard(
+                  titleKey: 'welcome_kickoff_value_3_title',
+                  bodyKey: 'welcome_kickoff_value_3_body',
+                  icon: Icons.route_outlined,
+                  tint: AppColors.mintSurface,
+                ),
+              ],
+            ),
+          SizedBox(height: compactViewport ? 18 : 22),
           if (errorMessage != null) ...[
             _InlineFeedbackBanner(message: errorMessage!),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
           ],
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 54,
-                  child: ElevatedButton.icon(
-                    onPressed: busy ? null : onPrimaryPressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryPurple,
-                      disabledBackgroundColor:
-                          AppColors.primaryPurple.withValues(alpha: 0.45),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: compactViewport ? 48 : 52,
+                      child: ElevatedButton.icon(
+                        onPressed: busy ? null : onPrimaryPressed,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryPurple,
+                          disabledBackgroundColor:
+                              AppColors.primaryPurple.withValues(alpha: 0.45),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        icon: isBusy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.play_arrow_rounded, color: Colors.white),
+                        label: Text(
+                          isBusy
+                              ? 'welcome_primary_cta_loading'.tr
+                              : 'الاسئلة السريعة',
+                          textDirection: TextDirection.rtl,
+                          style: AppTypography.of(context)
+                              .buttonPrimary
+                              .copyWith(color: Colors.white),
+                        ),
                       ),
                     ),
-                    icon: isBusy
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.play_arrow_rounded, color: Colors.white),
-                    label: Text(
-                      isBusy
-                          ? 'welcome_primary_cta_loading'.tr
-                          : 'start_evaluation'.tr,
-                      textDirection: TextDirection.rtl,
-                      style: AppTypography.of(context)
-                          .buttonPrimary
-                          .copyWith(color: Colors.white),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: InfoIconButton(
+                        message: 'welcome_primary_cta_caption'.tr,
+                        color: AppColors.mutedText,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-              InfoIconButton(
-                message: 'welcome_primary_cta_caption'.tr,
-                color: AppColors.mutedText,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+              const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: busy ? null : onSecondaryPressed,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    side: const BorderSide(color: AppColors.lineColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  icon: isOpeningSahifa
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.primaryPurple,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: compactViewport ? 48 : 52,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : onSecondaryPressed,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size.fromHeight(compactViewport ? 46 : 50),
+                          side: const BorderSide(color: AppColors.lineColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
                           ),
-                        )
-                      : const Icon(
-                          Icons.menu_book_rounded,
-                          color: AppColors.primaryPurple,
                         ),
-                  label: Text(
-                    isOpeningSahifa
-                        ? 'welcome_secondary_cta_loading'.tr
-                        : 'welcome_secondary_cta'.tr,
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .buttonSecondary
-                        .copyWith(color: AppColors.primaryPurple),
-                  ),
+                        icon: isOpeningSahifa
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primaryPurple,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.menu_book_rounded,
+                                color: AppColors.primaryPurple,
+                              ),
+                        label: Text(
+                          isOpeningSahifa
+                              ? 'welcome_secondary_cta_loading'.tr
+                              : 'صحيفتي',
+                          textDirection: TextDirection.rtl,
+                          style: AppTypography.of(context)
+                              .buttonSecondary
+                              .copyWith(color: AppColors.primaryPurple),
+                        ),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: InfoIconButton(
+                        message: 'welcome_secondary_cta_caption'.tr,
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              InfoIconButton(
-                message: 'welcome_secondary_cta_caption'.tr,
-                color: AppColors.mutedText,
               ),
             ],
           ),
@@ -599,6 +623,7 @@ class _WelcomeStoryCard extends StatelessWidget {
 
 class _WelcomeMetricsCard extends StatelessWidget {
   const _WelcomeMetricsCard({
+    required this.compactViewport,
     required this.isChartLoading,
     required this.hasResolvedChartState,
     required this.chartErrorMessage,
@@ -606,6 +631,7 @@ class _WelcomeMetricsCard extends StatelessWidget {
     required this.onDimensionChanged,
   });
 
+  final bool compactViewport;
   final bool isChartLoading;
   final bool hasResolvedChartState;
   final String? chartErrorMessage;
@@ -616,10 +642,9 @@ class _WelcomeMetricsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final evaluationsProvider = context.watch<EvaluationsProvider>();
     final entries = _meaningfulEntries(evaluationsProvider);
-    final topEntry = _topSignal(entries);
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compactViewport ? 18 : 22),
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(30),
@@ -635,25 +660,6 @@ class _WelcomeMetricsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  'welcome_chart_title'.tr,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
-                      .sectionTitle
-                      .copyWith(color: AppColors.primaryPurple),
-                ),
-              ),
-              InfoIconButton(
-                message: 'welcome_chart_subtitle'.tr,
-                color: AppColors.mutedText,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
           if (isChartLoading && !hasResolvedChartState)
             const _ChartStateCard(
               icon: Icons.hourglass_top_rounded,
@@ -691,60 +697,31 @@ class _WelcomeMetricsCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: compactViewport ? 10 : 12),
             SizedBox(
-              height: 320,
+              height: compactViewport ? 240 : 280,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: compactViewport ? 8 : 16),
                 child: PieChart(
                   PieChartData(
                     sectionsSpace: 2,
-                    centerSpaceRadius: 48,
+                    centerSpaceRadius: compactViewport ? 34 : 42,
                     sections: _truthfulSections(context, entries),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: compactViewport ? 8 : 10),
             _ChartLegend(entries: entries),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.lineColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'welcome_chart_top_label'.tr,
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .badgeLabel
-                      .copyWith(color: AppColors.mutedText),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    topEntry == null ? '-' : _localizedName(topEntry),
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .sectionTitle
-                        .copyWith(color: AppColors.primaryPurple),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'welcome_chart_total_count'.trParams({
-                      'count': evaluationsProvider.totalCount.toString(),
-                    }),
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .bodySecondary
-                        .copyWith(color: AppColors.mutedText),
-                  ),
-                ],
-              ),
+            SizedBox(height: compactViewport ? 8 : 10),
+            Text(
+              'welcome_chart_total_count'.trParams({
+                'count': evaluationsProvider.totalCount.toString(),
+              }),
+              textDirection: TextDirection.rtl,
+              style: AppTypography.of(context)
+                  .bodySecondary
+                  .copyWith(color: AppColors.mutedText),
             ),
           ],
         ],
@@ -785,21 +762,6 @@ class _WelcomeMetricsCard extends StatelessWidget {
       );
     }).toList();
   }
-
-  ChartEvaluationData? _topSignal(List<ChartEvaluationData> entries) {
-    if (entries.isEmpty) {
-      return null;
-    }
-
-    final sorted = [...entries]
-      ..sort((a, b) => (b.percentage ?? 0).compareTo(a.percentage ?? 0));
-    return sorted.first;
-  }
-
-  String _localizedName(ChartEvaluationData entry) {
-    final langCode = Get.locale?.languageCode ?? 'ar';
-    return localizedValue(entry.name, preferredLocale: langCode);
-  }
 }
 
 class _ValueCard extends StatelessWidget {
@@ -817,86 +779,38 @@ class _ValueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 220),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: tint,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: AppColors.lineColor.withValues(alpha: 0.7),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: AppColors.primaryPurple),
-            const SizedBox(height: 14),
-            _TitleInfoRow(
-              title: titleKey.tr,
-              message: bodyKey.tr,
-              titleStyle: AppTypography.of(context)
-                  .listTileTitle
-                  .copyWith(color: AppColors.primaryPurple),
-              infoColor: AppColors.mutedText,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _JourneyStep extends StatelessWidget {
-  const _JourneyStep({
-    required this.titleKey,
-    required this.bodyKey,
-  });
-
-  final String titleKey;
-  final String bodyKey;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: AppColors.warmSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.lineColor),
+        color: tint,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.lineColor.withValues(alpha: 0.7),
+        ),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryPurple,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check_rounded,
-              color: Colors.white,
-              size: 18,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: AppColors.primaryPurple, size: 20),
+              const Spacer(),
+              InfoIconButton(
+                title: titleKey.tr,
+                message: bodyKey.tr,
+                color: AppColors.mutedText,
+                size: 18,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _TitleInfoRow(
-                  title: titleKey.tr,
-                  message: bodyKey.tr,
-                  titleStyle: AppTypography.of(context)
-                      .listTileTitle
-                      .copyWith(color: AppColors.primaryPurple),
-                  infoColor: AppColors.mutedText,
-                ),
-              ],
-            ),
+          const SizedBox(height: 10),
+          Text(
+            titleKey.tr,
+            textDirection: TextDirection.rtl,
+            style: AppTypography.of(context)
+                .listTileTitle
+                .copyWith(color: AppColors.primaryPurple),
           ),
         ],
       ),

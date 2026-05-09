@@ -517,6 +517,10 @@ class _FilterCardTrigger extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
                   style: AppTypography.of(context).subsectionTitle,
                 ),
               ),
@@ -544,7 +548,8 @@ class _FilterCardTrigger extends StatelessWidget {
                         .copyWith(color: Colors.white),
                   ),
                 ),
-              const Icon(Icons.open_in_full_rounded),
+              const SizedBox(width: 4),
+              const Icon(Icons.open_in_full_rounded, size: 18),
             ],
           ),
         ),

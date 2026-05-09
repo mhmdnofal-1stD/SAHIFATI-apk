@@ -9,6 +9,7 @@ int? _parseUserRoleId(dynamic rawRole) {
       return 0;
     case '1':
     case 'supervisor':
+    case 'super.admin':
       return 1;
     case '2':
     case 'admin':

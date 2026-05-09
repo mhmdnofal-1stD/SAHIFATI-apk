@@ -134,7 +134,6 @@ class GlobalDrawer extends StatelessWidget {
                 builder: (context, usersProvider, _) {
                   return _SupervisionDashboardTile(
                     hasDelegatedUser: usersProvider.hasPushedSelectedUser,
-                    fallbackRole: usersProvider.selectedUser?.userRoleId ?? 0,
                   );
                 },
               ),
@@ -201,11 +200,9 @@ class GlobalDrawer extends StatelessWidget {
 class _SupervisionDashboardTile extends StatefulWidget {
   const _SupervisionDashboardTile({
     required this.hasDelegatedUser,
-    required this.fallbackRole,
   });
 
   final bool hasDelegatedUser;
-  final int fallbackRole;
 
   @override
   State<_SupervisionDashboardTile> createState() =>
@@ -225,8 +222,7 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
   @override
   void didUpdateWidget(covariant _SupervisionDashboardTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.hasDelegatedUser != widget.hasDelegatedUser ||
-        oldWidget.fallbackRole != widget.fallbackRole) {
+    if (oldWidget.hasDelegatedUser != widget.hasDelegatedUser) {
       _visibilityFuture = _loadVisibility();
     }
   }
@@ -246,9 +242,7 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
           studentActiveCount > 0 ||
           widget.hasDelegatedUser;
     } catch (_) {
-      return widget.hasDelegatedUser ||
-          widget.fallbackRole == 1 ||
-          widget.fallbackRole == 2;
+      return widget.hasDelegatedUser;
     }
   }
 
@@ -258,9 +252,7 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
       future: _visibilityFuture,
       builder: (context, snapshot) {
         final canAccessSupervision = snapshot.data ??
-            widget.hasDelegatedUser ||
-            widget.fallbackRole == 1 ||
-            widget.fallbackRole == 2;
+            widget.hasDelegatedUser;
         if (!canAccessSupervision) {
           return const SizedBox.shrink();
         }
