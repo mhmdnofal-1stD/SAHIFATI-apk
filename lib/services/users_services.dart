@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/auth_data.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api.dart';
 import '../models/user_notification_item.dart';
 import 'offline_assessment_store.dart';
@@ -748,8 +747,7 @@ class UsersServices with ChangeNotifier {
 
   Future<dynamic> deleteAccount(int userId) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('accessToken');
+      final token = await SecureSessionStorage.readAccessToken();
 
       if (token == null) {
         throw 'service_users_missing_auth_token'.tr;

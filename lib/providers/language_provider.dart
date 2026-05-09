@@ -6,23 +6,8 @@ class LanguageProvider with ChangeNotifier {
   LanguageProvider({String initialLangCode = 'ar'}) : langCode = initialLangCode;
 
   String langCode;
-  
-  static const List<Map<String, String>> _defaultLanguages = [
-    {"code": "ar", "name": "العربية"},
-    {"code": "en", "name": "English"},
-    {"code": "tr", "name": "Türkçe"},
-    {"code": "id", "name": "Bahasa Indonesia"},
-    {"code": "hi", "name": "हिन्दी"},
-    {"code": "ur", "name": "اردو"},
-    {"code": "fa", "name": "فارسی"},
-    {"code": "bn", "name": "বাংলা"},
-    {"code": "ms", "name": "Bahasa Melayu"},
-    {"code": "de", "name": "Deutsch"},
-    {"code": "pa", "name": "ਪੰਜਾਬੀ"},
-    {"code": "sw", "name": "Kiswahili"}
-  ];
 
-  List<dynamic> languages = List<Map<String, String>>.from(_defaultLanguages);
+  List<dynamic> languages = const <Map<String, String>>[];
   
   bool isLoadingLanguages = false;
   bool hasFetchedLanguages = false;
@@ -75,15 +60,11 @@ class LanguageProvider with ChangeNotifier {
         );
       } else {
         final cachedLanguages = await LocalizationService.getEnabledUiLanguages();
-        languages = cachedLanguages.isNotEmpty
-            ? cachedLanguages
-            : List<Map<String, String>>.from(_defaultLanguages);
+        languages = cachedLanguages;
       }
     } else {
       final cachedLanguages = await LocalizationService.getEnabledUiLanguages();
-      languages = cachedLanguages.isNotEmpty
-          ? cachedLanguages
-          : List<Map<String, String>>.from(_defaultLanguages);
+      languages = cachedLanguages;
     }
     hasFetchedLanguages = true;
     

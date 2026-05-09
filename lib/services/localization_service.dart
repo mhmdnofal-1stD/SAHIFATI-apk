@@ -83,7 +83,7 @@ class LocalizationService extends Translations {
 
     for (final language in languages) {
       final normalizedCode = _normalizeLanguageCode(language['code'] ?? '');
-      final normalizedName = String(language['name'] ?? '').trim();
+      final normalizedName = (language['name'] ?? '').toString().trim();
       if (
         !supportsUiLanguage(normalizedCode) ||
         normalizedCodes.contains(normalizedCode) ||

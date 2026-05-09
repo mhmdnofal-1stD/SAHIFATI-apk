@@ -87,6 +87,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Consumer<LanguageProvider>(
                 builder: (context, languageProvider, _) {
+                  final hasLanguages = languageProvider.languages.isNotEmpty;
+                  final selectedLanguage = languageProvider.languages.any(
+                    (language) => language['code'] == languageProvider.langCode,
+                  )
+                      ? languageProvider.langCode
+                      : null;
+
                   return ListTile(
                     leading: const Icon(Icons.language),
                     title: Text(
@@ -100,14 +107,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : DropdownButton<String>(
-                            value: languageProvider.languages.any(
-                              (language) =>
-                                  language['code'] ==
-                                  languageProvider.langCode,
-                            )
-                                ? languageProvider.langCode
-                                : 'ar',
+                            value: selectedLanguage,
                             underline: const SizedBox(),
+                            hint: Text(
+                              hasLanguages ? 'language'.tr : 'loading'.tr,
+                            ),
                             items: languageProvider.languages
                                 .map<DropdownMenuItem<String>>((language) {
                               return DropdownMenuItem<String>(
@@ -115,14 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 child: Text(language['name']),
                               );
                             }).toList(),
-                            onChanged: (String? value) async {
+                            onChanged: hasLanguages ? (String? value) async {
                               if (value != null) {
                                 await languageProvider.changeLanguage(value);
                                 if (mounted) {
                                   setState(() {});
                                 }
                               }
-                            },
+                            } : null,
                           ),
                   );
                 },
