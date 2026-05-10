@@ -6,7 +6,7 @@ import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
-import 'add_child_screen.dart';
+import '../authentication_screens/add_child_screen.dart';
 
 class ManageChildrenScreen extends StatefulWidget {
   const ManageChildrenScreen({super.key});
