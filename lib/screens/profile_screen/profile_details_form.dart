@@ -726,8 +726,6 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
               InputDecorator(
                 decoration: _inputDecoration(
                   'settings_profile_country_code'.tr,
-                ).copyWith(
-                  helperText: 'settings_profile_country_code_helper'.tr,
                 ),
                 child: Text(
                   _selectedCountry == null
@@ -747,9 +745,6 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                 child: InputDecorator(
                   decoration:
                       _inputDecoration('settings_profile_city'.tr).copyWith(
-                    helperText: _selectedCountry == null
-                        ? 'settings_profile_city_helper_pick_country'.tr
-                        : 'settings_profile_city_helper_canonical'.tr,
                   ),
                   child: Text(
                     _selectedCity == null ||
@@ -801,26 +796,6 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                   });
                 },
               ),
-              if (_selectedEducationLevel != null ||
-                  _selectedWorkType != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Text(
-                    'settings_profile_canonical_note'.trParams({
-                      'education': _labelForOption(
-                        _educationLevelOptions,
-                        _selectedEducationLevel,
-                        'settings_profile_unspecified',
-                      ),
-                      'work': _labelForOption(
-                        _workTypeOptions,
-                        _selectedWorkType,
-                        'settings_profile_unspecified',
-                      ),
-                    }),
-                    style: const TextStyle(color: Colors.black54),
-                  ),
-                ),
               if (_isReadOnlyStudentProfile)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),

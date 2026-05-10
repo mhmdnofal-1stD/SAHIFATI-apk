@@ -404,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: AuthScreenShell(
         title: 'auth_login_title'.tr,
         subtitle: '',
-        brandSubtitle: 'auth_login_subtitle_compact'.tr,
+        brandSubtitle: '',
         isSignup: false,
         fillViewport: true,
         preferCompactMobileLayout: true,

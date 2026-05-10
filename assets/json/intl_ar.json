@@ -506,7 +506,7 @@
   "auth_license_required": "يلزم تفعيل رخصة نشطة قبل متابعة استخدام هذه الميزة.",
   "auth_login_use_social_auth": "هذا الحساب يستخدم تسجيل الدخول الاجتماعي. استخدم خيار الدخول الاجتماعي بدلًا من كلمة المرور.",
   "auth_registration_verification_email_unavailable": "التسجيل غير متاح مؤقتًا لأن رسالة التفعيل تعذر إرسالها. حاول مرة أخرى بعد قليل.",
-  "auth_login_subtitle_compact": "سطح هادئ وسريع يوصلك مباشرة إلى حسابك دون ازدحام بصري.",
+  "auth_login_subtitle_compact": "",
   "auth_account_selector_title": "اختر حسابك",
   "auth_account_selector_subtitle": "ادخل بالحساب المحفوظ أو تابع يدويًا.",
   "auth_saved_accounts_label": "الحسابات المحفوظة",
@@ -529,7 +529,7 @@
   "privacy_policy_open_email_error": "تعذر فتح تطبيق البريد الإلكتروني",
   "auth_signup_title": "أنشئ حسابك بثقة",
   "auth_signup_subtitle_compact": "واجهة أخف وأوضح تضع إنشاء الحساب والمتابعة السريعة في مكان واحد.",
-  "auth_methods_label": "طرق سريعة",
+  "auth_methods_label": "التسجيل بـ",
   "auth_methods_caption": "أيقونات صغيرة للوصول المباشر",
   "auth_method_email": "البريد",
   "auth_divider_or": "أو",
@@ -729,5 +729,5 @@
   "service_api_invalid_request_prefix": "طلب غير صالح: ",
   "service_api_unauthorized_prefix": "غير مصرح: ",
   "service_api_invalid_input_prefix": "مدخلات غير صالحة: ",
-  "auth_owner_brand_caption": "مملوكة ومشغلة بواسطة"
+  "auth_owner_brand_caption": "By"
 }

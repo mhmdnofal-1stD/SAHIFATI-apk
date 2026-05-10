@@ -32,6 +32,8 @@ class User {
   int id;
   String username;
   String email;
+  String? authProvider;
+  String? guardianUserId;
   int? userRoleId;
   String? licenseStatus;
   String? gender;
@@ -55,10 +57,14 @@ class User {
   bool showComprehensionUnderline;
   List<String> allowedSubjectKeys;
 
+  bool get isChildAccount => authProvider == 'managed_child';
+
   User({
     required this.id,
     String? username,
-    required this.email,
+    this.email = '',
+    this.authProvider,
+    this.guardianUserId,
     this.userRoleId,
     this.licenseStatus,
     this.gender,
@@ -88,7 +94,9 @@ class User {
     return User(
       id: rawId is int ? rawId : int.tryParse('${rawId ?? 0}') ?? 0,
       username: (json['username'] ?? '') as String,
-      email: json['email'],
+      email: (json['email'] as String?) ?? '',
+      authProvider: json['authProvider'] as String?,
+      guardianUserId: json['guardianUserId']?.toString(),
       userRoleId: _parseUserRoleId(
         json['userRoleId'] ?? json['roleNum'] ?? json['role'],
       ),
@@ -122,6 +130,8 @@ class User {
       'id': id,
       'username': username,
       'email': email,
+      'authProvider': authProvider,
+      'guardianUserId': guardianUserId,
       'userRoleId': userRoleId,
       'licenseStatus': licenseStatus,
       'gender': gender,

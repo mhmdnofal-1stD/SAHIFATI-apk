@@ -3,6 +3,7 @@ import 'package:quran/quran.dart' as quran;
 import 'package:provider/provider.dart';
 
 import '../../core/constants/colors.dart';
+import '../../core/constants/fonts.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/card_model.dart';
 import '../../providers/cards_provider.dart';
@@ -348,9 +349,10 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final valueStyle = useQuranVerseStyle
         ? AppTypography.of(context).quranVerse.copyWith(
+              fontFamily: AppFonts.versesFont,
               fontSize: 24,
               height: 1.9,
-            color: AppColors.blackFontColor,
+              color: AppColors.blackFontColor,
             )
         : AppTypography.of(context).bodyDefault.copyWith(
               fontSize: 14,

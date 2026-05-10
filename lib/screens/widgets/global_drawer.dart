@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/users_controller.dart';
 import '../../providers/evaluations_provider.dart';
+import '../../providers/language_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
 import '../questions_screen/questions_screen.dart';
@@ -14,8 +15,6 @@ import '../welcome_screen/welcome_screen.dart';
 import '../main_screen/main_screen.dart';
 import '../../services/teacher_supervisions_services.dart';
 import 'custom_text.dart';
-
-import '../cards_screen/cards_list_screen.dart';
 
 Widget _buildDrawerTitle({
   required String text,
@@ -45,6 +44,74 @@ Widget _buildDrawerTitle({
   );
 }
 
+List<Map<String, String>> _availableLanguages(LanguageProvider provider) {
+  return provider.languages
+      .where((language) =>
+          (language['code'] ?? '').trim().isNotEmpty &&
+          (language['name'] ?? '').trim().isNotEmpty)
+      .map(
+        (language) => {
+          'code': language['code']!.trim().toLowerCase(),
+          'name': language['name']!.trim(),
+        },
+      )
+      .toList(growable: false);
+}
+
+Future<void> _openLanguagePicker(
+  BuildContext context,
+  LanguageProvider languageProvider,
+) async {
+  if (!languageProvider.isLoadingLanguages && !languageProvider.hasFetchedLanguages) {
+    await languageProvider.fetchLanguages();
+  }
+
+  if (!context.mounted) {
+    return;
+  }
+
+  final languages = _availableLanguages(languageProvider);
+  if (languages.isEmpty) {
+    return;
+  }
+
+  await showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              child: Text(
+                'language'.tr,
+                style: Theme.of(sheetContext).textTheme.titleMedium,
+              ),
+            ),
+            for (final language in languages)
+              ListTile(
+                title: Text(language['name']!),
+                trailing: language['code'] ==
+                        languageProvider.langCode.toLowerCase()
+                    ? Icon(
+                        Icons.check,
+                        color: Theme.of(sheetContext).colorScheme.primary,
+                      )
+                    : null,
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await languageProvider.changeLanguage(language['code']!);
+                },
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class GlobalDrawer extends StatelessWidget {
   const GlobalDrawer({super.key});
 
@@ -67,6 +134,45 @@ class GlobalDrawer extends StatelessWidget {
             children: [
               ListTile(
                 onTap: () {
+                  Get.offAllNamed(WelcomeScreen.routeName);
+                },
+                title: _buildDrawerTitle(
+                  text: 'drawer_home'.tr,
+                  icon: Icons.home_outlined,
+                ),
+              ),
+              ListTile(
+                onTap: () {
+                  Get.offAllNamed(MainScreen.routeName);
+                },
+                title: _buildDrawerTitle(
+                  text: 'صحيفتي',
+                  icon: Icons.auto_stories_outlined,
+                ),
+              ),
+              Consumer<UsersProvider>(
+                builder: (context, usersProvider, _) {
+                  return _SupervisionDashboardTile(
+                    hasDelegatedUser: usersProvider.hasPushedSelectedUser,
+                  );
+                },
+              ),
+              ListTile(
+                onTap: () async {
+                  final evaluationsProvider =
+                      context.read<EvaluationsProvider>();
+                  final schoolProvider = context.read<SchoolProvider>();
+                  await schoolProvider.getQuickQuestionsSchool();
+                  await evaluationsProvider.getAllEvaluations();
+                  Get.to(const QuestionsScreen());
+                },
+                title: _buildDrawerTitle(
+                  text: 'quick_questions'.tr,
+                  icon: Icons.question_answer_sharp,
+                ),
+              ),
+              ListTile(
+                onTap: () {
                   Get.to(() => const ProfileScreen());
                 },
                 title: _buildDrawerTitle(
@@ -83,57 +189,14 @@ class GlobalDrawer extends StatelessWidget {
                   icon: Icons.verified_outlined,
                 ),
               ),
-              ListTile(
-                onTap: () {
-                  Get.to(() => const SettingsScreen());
-                },
-                title: _buildDrawerTitle(
-                  text: 'settings'.tr,
-                  icon: Icons.settings,
-                ),
-              ),
-              ListTile(
-                onTap: () {
-                  Get.to(() => const SettingsScreen());
-                },
-                title: _buildDrawerTitle(
-                  text: 'language'.tr,
-                  icon: Icons.language,
-                ),
-              ),
-              ListTile(
-                onTap: () async {
-                  final evaluationsProvider =
-                      context.read<EvaluationsProvider>();
-                  final schoolProvider = context.read<SchoolProvider>();
-                  await schoolProvider.getQuickQuestionsSchool();
-                  await evaluationsProvider.getAllEvaluations();
-                  Get.to(const QuestionsScreen());
-                },
-                title: _buildDrawerTitle(
-                  text: 'quick_questions'.tr,
-                  icon: Icons.question_answer_sharp,
-                ),
-              ),
-              Consumer<UsersProvider>(
-                builder: (context, usersProvider, _) {
-                  final role = usersProvider.selectedUser?.userRoleId ?? 0;
-                  if (role == 0) return const SizedBox.shrink();
+              Consumer<LanguageProvider>(
+                builder: (context, languageProvider, _) {
                   return ListTile(
-                    onTap: () {
-                      Get.toNamed(CardsListScreen.routeName);
-                    },
+                    onTap: () => _openLanguagePicker(context, languageProvider),
                     title: _buildDrawerTitle(
-                      text: 'البطاقات العلمية',
-                      icon: Icons.library_books_outlined,
+                      text: 'language'.tr,
+                      icon: Icons.language,
                     ),
-                  );
-                },
-              ),
-              Consumer<UsersProvider>(
-                builder: (context, usersProvider, _) {
-                  return _SupervisionDashboardTile(
-                    hasDelegatedUser: usersProvider.hasPushedSelectedUser,
                   );
                 },
               ),
@@ -162,20 +225,11 @@ class GlobalDrawer extends StatelessWidget {
               ),
               ListTile(
                 onTap: () {
-                  Get.offAllNamed(WelcomeScreen.routeName);
+                  Get.to(() => const SettingsScreen());
                 },
                 title: _buildDrawerTitle(
-                  text: 'drawer_home'.tr,
-                  icon: Icons.home_outlined,
-                ),
-              ),
-              ListTile(
-                onTap: () {
-                  Get.offAllNamed(MainScreen.routeName);
-                },
-                title: _buildDrawerTitle(
-                  text: 'drawer_browse'.tr,
-                  icon: Icons.auto_stories_outlined,
+                  text: 'settings'.tr,
+                  icon: Icons.settings,
                 ),
               ),
               ListTile(

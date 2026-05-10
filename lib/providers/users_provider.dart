@@ -28,6 +28,7 @@ class UsersProvider with ChangeNotifier {
   static const String _storedDeviceUsersKey = 'stored_device_users';
   static const String _storedAccountSessionsKey = 'stored_account_sessions';
   static const String _activeUserDataKey = 'userData';
+  static const String _manualLogoutKey = 'manual_logout_with_stored_sessions';
 
   factory UsersProvider() => _instance;
 
@@ -231,6 +232,7 @@ class UsersProvider with ChangeNotifier {
       refreshToken: refreshToken,
       setActive: true,
     );
+    await prefs.remove(_manualLogoutKey);
     await _setActiveUserSnapshot(user);
   }
 
@@ -1278,15 +1280,23 @@ class UsersProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _usersService.logout();
-    await clearPersistedSession();
+    await _deactivateCurrentSession(preserveStoredSession: true);
   }
 
   Future<void> clearPersistedSession() async {
+    await _deactivateCurrentSession(preserveStoredSession: false);
+  }
+
+  Future<void> _deactivateCurrentSession({
+    required bool preserveStoredSession,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await _migrateLegacySessionIfNeeded(prefs);
     final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
 
-    if (activeAccountKey != null && activeAccountKey.isNotEmpty) {
+    if (!preserveStoredSession &&
+        activeAccountKey != null &&
+        activeAccountKey.isNotEmpty) {
       await _removeStoredSessionByAccountKey(activeAccountKey);
     }
 
@@ -1294,6 +1304,11 @@ class UsersProvider with ChangeNotifier {
     await prefs.remove('accessToken');
     await prefs.remove('refreshToken');
     await prefs.remove('password');
+    if (preserveStoredSession) {
+      await prefs.setBool(_manualLogoutKey, true);
+    } else {
+      await prefs.remove(_manualLogoutKey);
+    }
     await SecureSessionStorage.setActiveAccountKey(null);
     _resetPushNotificationsSession(cancelSubscription: true);
     selectedUser = null;
@@ -1605,11 +1620,17 @@ class UsersProvider with ChangeNotifier {
 
       final sessions = await _readStoredAccountSessions(prefs);
       if (sessions.isEmpty) {
+        await prefs.remove(_manualLogoutKey);
         return false;
       }
 
       String? activeAccountKey =
           await SecureSessionStorage.readActiveAccountKey();
+      final manualLogout = prefs.getBool(_manualLogoutKey) == true;
+      if (manualLogout && (activeAccountKey == null || activeAccountKey.isEmpty)) {
+        return false;
+      }
+
       if (activeAccountKey == null || activeAccountKey.isEmpty) {
         activeAccountKey = sessions.keys.first;
         await SecureSessionStorage.setActiveAccountKey(activeAccountKey);
@@ -1642,6 +1663,7 @@ class UsersProvider with ChangeNotifier {
       showComprehensionUnderline = selectedUser!.showComprehensionUnderline;
       _resetNotificationsState();
       await _setActiveUserSnapshot(selectedUser!);
+      await prefs.remove(_manualLogoutKey);
       await checkFirstLogin(user: selectedUser);
       _resetPushNotificationsSession();
       await _bootstrapPushNotificationsForCurrentUser();
@@ -1753,6 +1775,7 @@ class UsersProvider with ChangeNotifier {
 
     final user = User.fromJson(Map<String, dynamic>.from(rawUserData));
     await SecureSessionStorage.setActiveAccountKey(accountKey);
+    await prefs.remove(_manualLogoutKey);
     await _setActiveUserSnapshot(user);
     selectedUser = user;
     isLicenseLoading = false;
@@ -1807,9 +1830,13 @@ class UsersProvider with ChangeNotifier {
 
     final storedUsersList = await _readStoredDeviceUsersList(prefs);
 
-    // Check if user already exists
+    // Check if user already exists — match by id so managed_child accounts
+    // (which have no email) are correctly deduped.
     final int existingIndex = storedUsersList.indexWhere(
-      (element) => element['email'] == user.email,
+      (element) {
+        final storedId = element['id'];
+        return storedId != null && storedId == user.id;
+      },
     );
 
     final Map<String, dynamic> userMap = user.toMap();
@@ -1889,5 +1916,113 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
+  Future<void> removeUserFromDeviceById(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedUsersList = await _readStoredDeviceUsersList(prefs);
+
+    if (storedUsersList.isNotEmpty) {
+      final dynamic removedUser = storedUsersList.cast<dynamic>().firstWhere(
+            (element) => element['id'] == userId,
+            orElse: () => null,
+          );
+      storedUsersList.removeWhere((element) => element['id'] == userId);
+
+      await prefs.setString(
+          _storedDeviceUsersKey, json.encode(storedUsersList));
+
+      if (removedUser is Map) {
+        final accountKey = _accountKeyFromUserMap(
+          Map<String, dynamic>.from(removedUser),
+        );
+        if (accountKey != null) {
+          await _removeStoredSessionByAccountKey(accountKey, notify: true);
+          await _usersService.clearOfflineCacheForAccountKey(accountKey);
+        }
+      }
+    }
+  }
+
+  // ── Child account methods ─────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> createChildAccount(
+    String displayName, {
+    DateTime? dateOfBirth,
+  }) async {
+    final body = <String, dynamic>{'displayName': displayName};
+    if (dateOfBirth != null) {
+      body['dateOfBirth'] = dateOfBirth.toIso8601String();
+    }
+    final response =
+        await SahifatyApi().post(url: 'auth/child', body: body);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    }
+    final data = json.decode(response.body);
+    throw data['message'] ?? 'child_create_error';
+  }
+
+  Future<List<Map<String, dynamic>>> getChildAccounts() async {
+    final response = await SahifatyApi().get('auth/child');
+    if (response.statusCode == 200) {
+      final list = json.decode(response.body) as List<dynamic>;
+      return list.cast<Map<String, dynamic>>();
+    }
+    final data = json.decode(response.body);
+    throw data['message'] ?? 'child_list_error';
+  }
+
+  Future<void> switchToChild(String childId, {String? pin}) async {
+    setLoading();
+    try {
+      final body = <String, dynamic>{'childId': childId};
+      if (pin != null) body['pin'] = pin;
+      final response =
+          await SahifatyApi().post(url: 'auth/child/switch', body: body);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final data = json.decode(response.body);
+        throw data['message'] ?? 'child_switch_error';
+      }
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final accessToken =
+          (data['accessToken'] ?? data['token']) as String?;
+      final refreshToken = data['refreshToken'] as String?;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('auth_invalid_response');
+      }
+      final user = User.fromJson(data);
+      await saveUserToDevice(user);
+      await _persistAccountSession(user, accessToken,
+          refreshToken: refreshToken);
+      selectedUser = user;
+      showMemorizationColors = user.showMemorizationColors;
+      showComprehensionUnderline = user.showComprehensionUnderline;
+      await checkFirstLogin(user: user);
+      _resetPushNotificationsSession();
+      await _bootstrapPushNotificationsForCurrentUser();
+      notifyListeners();
+    } catch (ex) {
+      rethrow;
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<void> setChildPin(String childId, String pin) async {
+    final response = await SahifatyApi().post(
+        url: 'auth/child/pin',
+        body: <String, dynamic>{'childId': childId, 'pin': pin});
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final data = json.decode(response.body);
+      throw data['message'] ?? 'child_pin_error';
+    }
+  }
+
+  Future<void> deleteChildAccount(String childId) async {
+    final response = await SahifatyApi().delete('auth/child/$childId');
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      final data = json.decode(response.body);
+      throw data['message'] ?? 'child_delete_error';
+    }
+  }
 }
 

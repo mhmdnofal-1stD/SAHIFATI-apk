@@ -14927,40 +14927,89 @@
     },
     {
       "id": 106,
-      "name": "Israel",
-      "emoji": "🇮🇱",
-      "iso2": "IL",
-      "phoneCode": 972,
+      "name": "فلسطين",
+      "emoji": "🇵🇸",
+      "iso2": "PS",
+      "phoneCode": 970,
       "cities": [
         {
           "value": "Jerusalem",
-          "displayName": "ירושלים"
+          "displayName": "القدس"
         },
         {
-          "value": "Tel Aviv-Yafo",
-          "displayName": "תל אביב-יפו"
+          "value": "Gaza",
+          "displayName": "غزة"
+        },
+        {
+          "value": "Hebron",
+          "displayName": "الخليل"
+        },
+        {
+          "value": "Nablus",
+          "displayName": "نابلس"
         },
         {
           "value": "Haifa",
-          "displayName": "חיפה"
+          "displayName": "حيفا"
+        },
+        {
+          "value": "Jaffa",
+          "displayName": "يافا"
+        },
+        {
+          "value": "Akka",
+          "displayName": "عكا"
+        },
+        {
+          "value": "Bethlehem",
+          "displayName": "بيت لحم"
         },
         {
           "value": "Beersheba",
-          "displayName": "באר שבע"
+          "displayName": "بئر السبع"
         },
         {
           "value": "Nazareth",
-          "displayName": "נצרת"
+          "displayName": "الناصرة"
         },
         {
+          "value": "Qudsaya",
+          "displayName": "قدسيا"
+        },
+        {
+          "value": "Jenin",
+          "displayName": "جنين"
+        },
+        {
+          "value": "Safed",
+          "displayName": "صفد"
+        },
+        {
+          "value": "Tiberias",
+          "displayName": "طبريا"
+        },
+        {
+          "value": "Qalqilya",
+          "displayName": "قلقيلية"
+        },
+        {
+          "value": "Tulkarm",
+          "displayName": "طولكرم"
+        },
+        {
+          "value": "Ramallah",
+          "displayName": "رام الله"
+        },
+
+        {
           "value": "Ramla",
-          "displayName": "רמלה"
+          "displayName": "الرملة"
         }
       ],
-      "nativeName": "יִשְׂרָאֵל",
+      "nativeName": "فلسطين",
       "languages": [
-        "he",
-        "ar"
+        "ar",
+        "he"
       ]
     },
     {

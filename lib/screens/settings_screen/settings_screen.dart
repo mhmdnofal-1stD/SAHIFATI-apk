@@ -8,9 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/general_provider.dart';
-import '../../providers/language_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
+import 'manage_children_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_of_service_screen.dart';
 
@@ -23,19 +23,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late TapGestureRecognizer _emailRecognizer;
+  late TapGestureRecognizer _websiteRecognizer;
 
   @override
   void initState() {
     super.initState();
     _emailRecognizer = TapGestureRecognizer()..onTap = _launchEmail;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<LanguageProvider>(context, listen: false).fetchLanguages();
-    });
+    _websiteRecognizer = TapGestureRecognizer()..onTap = _launchWebsite;
   }
 
   @override
   void dispose() {
     _emailRecognizer.dispose();
+    _websiteRecognizer.dispose();
     super.dispose();
   }
 
@@ -50,6 +50,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('settings_email_client_error'.tr),
+          ),
+        );
+      }
+    } catch (error) {
+      debugPrint(error.toString());
+    }
+  }
+
+  Future<void> _launchWebsite() async {
+    final uri = Uri.parse('https://sahifati.org');
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+          mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('notifications_cta_launch_failed'.tr),
           ),
         );
       }
@@ -85,53 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.all(25.0),
           child: Column(
             children: [
-              Consumer<LanguageProvider>(
-                builder: (context, languageProvider, _) {
-                  final hasLanguages = languageProvider.languages.isNotEmpty;
-                  final selectedLanguage = languageProvider.languages.any(
-                    (language) => language['code'] == languageProvider.langCode,
-                  )
-                      ? languageProvider.langCode
-                      : null;
-
-                  return ListTile(
-                    leading: const Icon(Icons.language),
-                    title: Text(
-                      'language'.tr,
-                      style: AppTypography.of(context).listTileTitle,
-                    ),
-                    trailing: languageProvider.isLoadingLanguages
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : DropdownButton<String>(
-                            value: selectedLanguage,
-                            underline: const SizedBox(),
-                            hint: Text(
-                              hasLanguages ? 'language'.tr : 'loading'.tr,
-                            ),
-                            items: languageProvider.languages
-                                .map<DropdownMenuItem<String>>((language) {
-                              return DropdownMenuItem<String>(
-                                value: language['code'],
-                                child: Text(language['name'] ?? ''),
-                              );
-                            }).toList(),
-                            onChanged: hasLanguages ? (String? value) async {
-                              if (value != null) {
-                                await languageProvider.changeLanguage(value);
-                                if (mounted) {
-                                  setState(() {});
-                                }
-                              }
-                            } : null,
-                          ),
-                  );
-                },
-              ),
-              const Divider(),
               Consumer<GeneralProvider>(
                 builder: (context, generalProvider, _) {
                   return SwitchListTile(
@@ -177,6 +146,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               const Divider(),
+              Consumer<UsersProvider>(
+                builder: (context, usersProvider, _) {
+                  final user = usersProvider.selectedUser;
+                  if (user != null && !user.isChildAccount) {
+                    return Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(
+                            Icons.family_restroom_rounded,
+                            color: AppColors.primaryPurple,
+                          ),
+                          title: Text(
+                            'child_manage_settings_entry'.tr,
+                            style: AppTypography.of(context).listTileTitle,
+                          ),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          onTap: () {
+                            Get.to(() => const ManageChildrenScreen());
+                          },
+                        ),
+                        const Divider(),
+                      ],
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.delete_forever, color: Colors.red),
                 title: Text(
@@ -244,25 +240,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: EdgeInsets.only(
                   bottom: SizeConfig.getProportionalHeight(10),
                 ),
-                child: RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: AppTypography.of(context)
-                        .bodyDefault
-                        .copyWith(color: Colors.black),
-                    children: [
-                      TextSpan(text: '${'feedback'.tr} '),
-                      TextSpan(
-                        text: '  info@sahifati.com',
-                        style: AppTypography.of(context).bodyDefault.copyWith(
-                              decoration: TextDecoration.underline,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w600,
-                            ),
-                        recognizer: _emailRecognizer,
+                child: Column(
+                  children: [
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: AppTypography.of(context)
+                            .bodyDefault
+                            .copyWith(color: Colors.black),
+                        children: [
+                          TextSpan(text: '${'feedback'.tr} '),
+                          TextSpan(
+                            text: '  info@sahifati.com',
+                            style: AppTypography.of(context)
+                                .bodyDefault
+                                .copyWith(
+                                  decoration: TextDecoration.underline,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                            recognizer: _emailRecognizer,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    RichText(
+                      textAlign: TextAlign.center,
+                      text: TextSpan(
+                        style: AppTypography.of(context)
+                            .bodyDefault
+                            .copyWith(color: Colors.black54),
+                        children: [
+                          const TextSpan(text: 'sahifati.org'),
+                        ],
+                        recognizer: _websiteRecognizer,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

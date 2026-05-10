@@ -68,9 +68,21 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   }
 
   void _prepareLoginForUser(Map<String, dynamic> userData) {
+    // Child accounts cannot login independently — they are accessed via the
+    // guardian's "Manage Children" screen.
+    if (userData['authProvider'] == 'managed_child') {
+      Get.snackbar(
+        'child_session_expired_title'.tr,
+        'child_session_expired_body'.tr,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     final email = userData['email'];
 
-    if (email == null) {
+    if (email == null || (email as String).isEmpty) {
       Get.snackbar(
         'auth_saved_accounts_error_title'.tr,
         'auth_saved_accounts_incomplete_user_error'.tr,
@@ -195,6 +207,12 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
     }
 
     _prepareLoginForUser(userData);
+  }
+
+  Future<void> _removeUserById(int userId) async {
+    final usersProvider = Provider.of<UsersProvider>(context, listen: false);
+    await usersProvider.removeUserFromDeviceById(userId);
+    await _loadStoredUsers();
   }
 
   Future<void> _removeUser(String email) async {
@@ -379,7 +397,10 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
 
   Widget _buildStoredUserCard(Map<String, dynamic> user) {
     final statusColor = _statusColor(user);
-    final hasEmail = user['email'] != null;
+    final userId = user['id'];
+    final isChild = user['authProvider'] == 'managed_child';
+    final hasEmail = user['email'] != null &&
+        (user['email'] as String).isNotEmpty;
 
     return Material(
       color: _cardBackground(user),
@@ -413,11 +434,34 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                         ),
                       ],
                     ),
-                    child: Icon(
-                      user['hasActiveSession'] == true
-                          ? Icons.bolt_rounded
-                          : Icons.person_outline_rounded,
-                      color: AppColors.primaryPurple,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Icon(
+                            user['hasActiveSession'] == true
+                                ? Icons.bolt_rounded
+                                : Icons.person_outline_rounded,
+                            color: AppColors.primaryPurple,
+                          ),
+                        ),
+                        if (isChild)
+                          Positioned(
+                            right: 2,
+                            bottom: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: AppColors.successColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.child_care_rounded,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -459,9 +503,15 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                     tooltip: 'auth_saved_accounts_remove'.tr,
                     icon: const Icon(Icons.close_rounded,
                         color: Color(0xFF7A808A)),
-                    onPressed: hasEmail
-                        ? () => _removeUser(user['email'].toString())
-                        : null,
+                    onPressed: userId != null
+                        ? () => _removeUserById(
+                              userId is int
+                                  ? userId
+                                  : int.tryParse(userId.toString()) ?? 0,
+                            )
+                        : hasEmail
+                            ? () => _removeUser(user['email'].toString())
+                            : null,
                   ),
                 ],
               ),

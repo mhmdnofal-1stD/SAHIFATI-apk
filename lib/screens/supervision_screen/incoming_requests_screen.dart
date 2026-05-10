@@ -704,10 +704,6 @@ class _LinkCard extends StatelessWidget {
       counterpart,
       fallback: 'profile_unknown_user'.tr,
     );
-    final secondaryLabelKey = roleInLink == 'teacher'
-        ? 'supervision_active_student_badge'
-        : 'supervision_active_teacher_badge';
-    final acceptedAt = _formatAcceptedAt(link['acceptedAt']);
     final studentId = counterpart['_id'] is num
         ? (counterpart['_id'] as num).toInt()
         : (counterpart['id'] is num
@@ -724,66 +720,19 @@ class _LinkCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEAE0),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              roleInLink == 'teacher'
-                  ? Icons.person_search_rounded
-                  : Icons.school_rounded,
-              color: AppColors.primaryPurple,
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        textDirection: TextDirection.rtl,
-                        style: AppTypography.of(context)
-                            .listTileTitle
-                            .copyWith(color: AppColors.primaryPurple),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F0FB),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        secondaryLabelKey.tr,
-                        textDirection: TextDirection.rtl,
-                        style: AppTypography.of(context)
-                            .badgeLabel
-                            .copyWith(color: AppColors.primaryPurple),
-                      ),
-                    ),
-                  ],
+                Text(
+                  title,
+                  textDirection: TextDirection.rtl,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.of(context)
+                      .listTileTitle
+                      .copyWith(color: AppColors.primaryPurple),
                 ),
-                if (acceptedAt != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'supervision_link_active_since'
-                        .trParams({'date': acceptedAt}),
-                    textDirection: TextDirection.rtl,
-                    style: AppTypography.of(context)
-                        .bodySecondary
-                        .copyWith(color: const Color(0xFF4B5563)),
-                  ),
-                ],
                 if (roleInLink == 'teacher' && studentId != null) ...[
                   const SizedBox(height: 8),
                   _StudentMemorizationStats(studentId: studentId),
@@ -812,20 +761,6 @@ class _LinkCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String? _formatAcceptedAt(dynamic rawValue) {
-    if (rawValue is! String || rawValue.trim().isEmpty) {
-      return null;
-    }
-    final parsed = DateTime.tryParse(rawValue);
-    if (parsed == null) {
-      return null;
-    }
-    final local = parsed.toLocal();
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    return '${local.year}-$month-$day';
   }
 }
 
