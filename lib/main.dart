@@ -9,6 +9,7 @@ import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
+import 'controllers/filter_types.dart';
 import 'core/constants/colors.dart';
 import 'core/constants/fonts.dart';
 import 'core/typography/app_typography.dart';
@@ -22,6 +23,8 @@ import 'providers/surahs_provider.dart';
 import 'providers/users_provider.dart';
 import 'providers/language_provider.dart';
 import 'services/evaluations_services.dart';
+import 'models/user.dart';
+import 'models/surah.dart';
 import 'screens/authentication_screens/email_verification_pending_screen.dart';
 import 'screens/authentication_screens/email_verification_result_screen.dart';
 import 'screens/authentication_screens/forget_password_screen.dart';
@@ -105,6 +108,14 @@ class MyApp extends StatelessWidget {
   final Locale initialLocale;
   const MyApp({super.key, required this.initialLocale});
 
+  String _initialRouteForWeb() {
+    if (_isLocalReadingPreviewRequest()) {
+      return '/preview-reading';
+    }
+
+    return '/';
+  }
+
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
@@ -180,13 +191,32 @@ class MyApp extends StatelessWidget {
           secondary: AppColors.buttonColor,
         ),
       ),
-      initialRoute: '/',
+      initialRoute: _initialRouteForWeb(),
       unknownRoute: GetPage(
         name: '/route-fallback',
         page: () => const InitialScreen(),
       ),
       getPages: [
         GetPage(name: '/', page: () => const InitialScreen()),
+        GetPage(
+          name: '/preview-reading',
+          page: () {
+            if (!kIsWeb) {
+              return const InitialScreen();
+            }
+
+            _seedLocalReadingPreviewUser();
+            return IndexPage(
+              surah: Surah(
+                id: 1,
+                nameAr: 'الفاتحة',
+                ayahCount: 7,
+              ),
+              filterTypeId: FilterTypes.thirds,
+              page: 1,
+            );
+          },
+        ),
         GetPage(
           name: '/login',
           page: () => const LoginScreen(firstScreen: true),
@@ -292,6 +322,11 @@ class MyApp extends StatelessWidget {
               return const InitialScreen();
             }
 
+            if (_isLocalReadingPreviewRequest()) {
+              _seedLocalReadingPreviewUser();
+              return readingPage;
+            }
+
             return AuthenticatedRouteGate(child: readingPage);
           },
         ),
@@ -346,6 +381,38 @@ bool _hasLegacyMinifiedReadingHash(Uri uri) {
   return uri.fragment.contains('minified:');
 }
 
+bool _isLocalReadingPreviewRequest() {
+  if (!kIsWeb) {
+    return false;
+  }
+
+  final host = Uri.base.host.toLowerCase();
+  if (host != '127.0.0.1' && host != 'localhost') {
+    return false;
+  }
+
+  return (Uri.base.queryParameters['preview'] ?? '0') == '1';
+}
+
+void _seedLocalReadingPreviewUser() {
+  final usersProvider = UsersProvider();
+  if (usersProvider.selectedUser != null) {
+    return;
+  }
+
+  usersProvider.selectedUser = User.fromJson({
+    'id': 1,
+    'username': 'preview-reader',
+    'email': 'preview@sahifati.local',
+    'userRoleId': 2,
+    'licenseStatus': 'active',
+    'authProvider': 'local_preview',
+    'showMemorizationColors': true,
+    'showComprehensionUnderline': true,
+    'allowedSubjectKeys': <String>[],
+  });
+}
+
 class InitialScreen extends StatefulWidget {
   const InitialScreen({super.key});
 
@@ -365,6 +432,19 @@ class _InitialScreenState extends State<InitialScreen> {
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
     try {
+      if (_isLocalReadingPreviewRequest()) {
+        _seedLocalReadingPreviewUser();
+        if (!mounted) {
+          return;
+        }
+
+        Get.offAllNamed(
+          '/preview-reading',
+          parameters: Uri.base.queryParameters,
+        );
+        return;
+      }
+
       await usersProvider.loadPendingVerificationState();
 
       final passwordResetIntent = resolvePasswordResetRoute(Uri.base);

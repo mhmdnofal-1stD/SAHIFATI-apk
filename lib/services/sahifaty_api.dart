@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
@@ -50,7 +51,10 @@ class SahifatyApi {
         refreshToken: newRefreshToken ?? refreshToken,
       );
       return true;
-    } catch (_) {
+    } catch (e, stack) {
+      if (kDebugMode) {
+        debugPrint('Token refresh failed: $e\n$stack');
+      }
       return false;
     }
   }
@@ -60,11 +64,9 @@ class SahifatyApi {
     if (!auth) return {'Content-Type': 'application/json'};
 
     final token = await SecureSessionStorage.readAccessToken() ?? '';
-    final refreshToken = await SecureSessionStorage.readRefreshToken() ?? '';
 
     return {
       'Authorization': 'Bearer $token',
-      'X-Refresh-Token': refreshToken,
       'Content-Type': 'application/json',
       'accept': '*/*'
     };

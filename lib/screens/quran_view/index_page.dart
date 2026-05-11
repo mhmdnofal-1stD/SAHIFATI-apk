@@ -423,9 +423,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   static const int _mushafFirstPage = 1;
   static const int _mushafLastPage = 604;
   static const double _mushafLineHeight = 31;
-  static const double _mushafWordFontSize = 20;
+  static const double _mushafWordFontSize = 24;
   static const double _mushafLandscapeLineHeight = 40;
-  static const double _mushafLandscapeWordFontSize = 25.5;
+  static const double _mushafLandscapeWordFontSize = 30.5;
   static const Map<int, Map<int, _MushafLineFineTune>>
       _mushafLineFineTuneOverrides = <int, Map<int, _MushafLineFineTune>>{};
   static final RegExp _mushafVisualMarksPattern = RegExp(
@@ -1798,12 +1798,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
       final isLandscapeReader =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-      final readerBodyPadding = isLandscapeReader
-        ? const EdgeInsets.fromLTRB(8, 4, 8, 8)
-        : const EdgeInsets.fromLTRB(4, 0, 4, 3);
-      final readerSurfacePadding = isLandscapeReader
-        ? const EdgeInsets.symmetric(vertical: 5, horizontal: 4)
-        : const EdgeInsets.symmetric(vertical: 2, horizontal: 2);
+        final readerBodyPadding = isLandscapeReader
+          ? const EdgeInsets.fromLTRB(0, 4, 0, 8)
+          : const EdgeInsets.fromLTRB(0, 0, 0, 3);
+        final readerSurfacePadding = isLandscapeReader
+          ? const EdgeInsets.symmetric(vertical: 5, horizontal: 0)
+          : const EdgeInsets.symmetric(vertical: 2, horizontal: 0);
       final readerSurfaceTopMargin = isLandscapeReader ? 4.0 : 0.0;
 
         return Theme(
@@ -3268,8 +3268,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       isDarkMode: isDarkMode,
       margin: EdgeInsets.symmetric(vertical: isLandscapeReader ? 4 : 0),
       contentPadding: isLandscapeReader
-          ? const EdgeInsets.fromLTRB(12, 8, 12, 8)
-          : const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+          : const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: _buildAyatWidgets(
@@ -3286,7 +3286,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     if (isLandscapeReader) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
+        padding: const EdgeInsets.fromLTRB(0, 6, 0, 6),
         child: SizedBox(
           width: constraints.maxWidth,
           height: isIntroPage ? constraints.maxHeight : null,
@@ -4070,13 +4070,7 @@ class _ReaderRenderedPage extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             Positioned.fill(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: dividerOnLeft ? 18 : 6,
-                  right: dividerOnLeft ? 6 : 18,
-                ),
-                child: pagePanel,
-              ),
+              child: pagePanel,
             ),
             Positioned(
               top: 2,
@@ -4092,13 +4086,7 @@ class _ReaderRenderedPage extends StatelessWidget {
       composedPage = Stack(
         clipBehavior: Clip.none,
         children: [
-          Padding(
-            padding: EdgeInsets.only(
-              left: dividerOnLeft ? 18 : 6,
-              right: dividerOnLeft ? 6 : 18,
-            ),
-            child: pagePanel,
-          ),
+          pagePanel,
           Positioned(
             top: 2,
             bottom: 2,
