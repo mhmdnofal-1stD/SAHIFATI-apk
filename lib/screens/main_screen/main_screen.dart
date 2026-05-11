@@ -25,6 +25,7 @@ import '../widgets/no_pop_scope.dart';
 import '../widgets/notifications_bell_button.dart';
 import '../widgets/responsive_content_shell.dart';
 import '../widgets/surah_picker_dialog.dart';
+import '../../widgets/app_progress_overlay.dart';
 
 class MainScreen extends StatefulWidget {
   static const String routeName = '/browse';
@@ -130,7 +131,12 @@ class _MainScreenState extends State<MainScreen> {
 
       if (widget.comesFirst) {
         final evaluationsProvider = context.read<EvaluationsProvider>();
-        unawaited(evaluationsProvider.getAllEvaluations());
+        unawaited(
+          AppProgressOverlay.showUntilDone(
+            evaluationsProvider.getAllEvaluations(),
+            message: 'جاري تحميل بيانات التقييمات...',
+          ),
+        );
       }
 
       _bootstrapChartDataIfNeeded();
@@ -180,6 +186,7 @@ class _MainScreenState extends State<MainScreen> {
 
     _isChartBootstrapInFlight = true;
     _chartBootstrapUserId = selectedUserId;
+    AppProgressOverlay.show('جاري تحميل بيانات القرآن...', progress: 0.2);
     _debugChartBootstrap(
       'request:start',
       selectedUserId: selectedUserId,
@@ -187,6 +194,7 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     try {
+      AppProgressOverlay.updateStep('جاري حساب بيانات الخريطة...', progress: 0.6);
       await evaluationsProvider.getQuranChartData(
         selectedUserId,
         filters: widget.initialChartFilters,
@@ -194,6 +202,7 @@ class _MainScreenState extends State<MainScreen> {
     } catch (_) {
       // The chart widget already shows its own error state if needed.
     } finally {
+      AppProgressOverlay.hide();
       _isChartBootstrapInFlight = false;
       _debugChartBootstrap(
         'request:end',

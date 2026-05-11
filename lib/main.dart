@@ -42,6 +42,7 @@ import 'screens/supervision_screen/incoming_requests_screen.dart';
 import 'screens/settings_screen/my_licenses_screen.dart';
 import 'services/localization_service.dart';
 import 'services/typography_config_service.dart';
+import 'widgets/app_progress_overlay.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -191,6 +192,8 @@ class MyApp extends StatelessWidget {
           secondary: AppColors.buttonColor,
         ),
       ),
+      builder: (context, child) =>
+          AppProgressOverlayWrapper(child: child ?? const SizedBox.shrink()),
       initialRoute: _initialRouteForWeb(),
       unknownRoute: GetPage(
         name: '/route-fallback',
@@ -413,6 +416,23 @@ void _seedLocalReadingPreviewUser() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Startup progress stage
+// ---------------------------------------------------------------------------
+
+@immutable
+class _StartupStage {
+  const _StartupStage({required this.message, required this.progress});
+
+  final String message;
+  final double progress;
+
+  static const initial =
+      _StartupStage(message: 'جاري التشغيل...', progress: 0.0);
+}
+
+// ---------------------------------------------------------------------------
+
 class InitialScreen extends StatefulWidget {
   const InitialScreen({super.key});
 
@@ -421,6 +441,20 @@ class InitialScreen extends StatefulWidget {
 }
 
 class _InitialScreenState extends State<InitialScreen> {
+  final _stage = ValueNotifier<_StartupStage>(_StartupStage.initial);
+
+  void _reportStage(String message, double progress) {
+    if (mounted) {
+      _stage.value = _StartupStage(message: message, progress: progress);
+    }
+  }
+
+  @override
+  void dispose() {
+    _stage.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -432,6 +466,8 @@ class _InitialScreenState extends State<InitialScreen> {
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
     try {
+      _reportStage('جاري التحقق من الجلسة...', 0.10);
+
       if (_isLocalReadingPreviewRequest()) {
         _seedLocalReadingPreviewUser();
         if (!mounted) {
@@ -446,6 +482,7 @@ class _InitialScreenState extends State<InitialScreen> {
       }
 
       await usersProvider.loadPendingVerificationState();
+      _reportStage('جاري فحص مسار التوجيه...', 0.20);
 
       final passwordResetIntent = resolvePasswordResetRoute(Uri.base);
       if (!mounted) {
@@ -542,6 +579,7 @@ class _InitialScreenState extends State<InitialScreen> {
         return;
       }
 
+      _reportStage('جاري التحقق من الهوية...', 0.35);
       final bool isLoggedIn = await usersProvider.tryAutoLogin();
 
       if (!mounted) {
@@ -550,7 +588,12 @@ class _InitialScreenState extends State<InitialScreen> {
 
       if (isLoggedIn && usersProvider.selectedUser != null) {
         try {
-          await usersProvider.ensureLicenseStateLoaded(forceRefresh: true);
+          // Use cached license status to avoid blocking startup on a network
+          // call. A background refresh runs after the app is shown.
+          _reportStage('جاري فحص الترخيص...', 0.55);
+          await usersProvider.ensureLicenseStateLoaded(forceRefresh: false);
+          // Refresh license in background without blocking navigation.
+          unawaited(usersProvider.ensureLicenseStateLoaded(forceRefresh: true));
 
           if (_hasLegacyMinifiedReadingHash(Uri.base) &&
               usersProvider.hasActiveLicense) {
@@ -570,6 +613,7 @@ class _InitialScreenState extends State<InitialScreen> {
             }
           }
 
+          _reportStage('جاري تحميل بيانات التلاوة...', 0.75);
           await navigateAfterSuccessfulLogin(
             userId: usersProvider.selectedUser!.id,
             isFirstLogin: usersProvider.isFirstLogin,
@@ -578,6 +622,7 @@ class _InitialScreenState extends State<InitialScreen> {
             loadChartData: (userId) =>
                 evaluationsProvider.getQuranChartData(userId),
           );
+          _reportStage('جاهز!', 1.0);
           if (!mounted) {
             return;
           }
@@ -608,9 +653,103 @@ class _InitialScreenState extends State<InitialScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
+    return ValueListenableBuilder<_StartupStage>(
+      valueListenable: _stage,
+      builder: (context, stage, _) {
+        return _StartupLoadingScreen(stage: stage);
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Startup loading screen
+// ---------------------------------------------------------------------------
+
+class _StartupLoadingScreen extends StatelessWidget {
+  const _StartupLoadingScreen({required this.stage});
+
+  final _StartupStage stage;
+
+  @override
+  Widget build(BuildContext context) {
+    const bg = AppColors.backgroundColor;
+    const barColor = AppColors.buttonColor;
+    const barBg = AppColors.lineColor;
+    const textColor = AppColors.blackFontColor;
+    const mutedColor = AppColors.mutedText;
+
+    return Scaffold(
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            children: [
+              const Spacer(flex: 3),
+              // App mark
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: barColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: barColor.withValues(alpha: 0.28),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Text(
+                    'ص',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'صحيفتي',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: AppFonts.primaryFont,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(flex: 2),
+              // Progress bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: stage.progress <= 0 ? null : stage.progress,
+                  minHeight: 5,
+                  backgroundColor: barBg,
+                  valueColor: const AlwaysStoppedAnimation<Color>(barColor),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                stage.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: mutedColor,
+                  fontSize: 14,
+                  fontFamily: AppFonts.primaryFont,
+                  height: 1.4,
+                ),
+              ),
+              const Spacer(flex: 1),
+            ],
+          ),
+        ),
       ),
     );
   }

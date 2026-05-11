@@ -2890,6 +2890,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     EvaluationsProvider evaluationProvider,
     bool isDarkMode,
     bool isLandscapeReader,
+    double pageFontScale,
   ) {
     final pattern = _resolveMushafLinePattern(line);
     final fineTune = _resolveMushafLineFineTune(
@@ -2898,52 +2899,21 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       pattern: pattern,
       isLandscapeReader: isLandscapeReader,
     );
-    final resolvedFontSize = _resolveMushafWordFontSize(
-      isLandscapeReader: isLandscapeReader,
-      fineTune: fineTune,
-    );
+    final baseFontSize =
+        isLandscapeReader ? _mushafLandscapeWordFontSize : _mushafWordFontSize;
+    final resolvedFontSize = baseFontSize * pageFontScale;
     final resolvedLineHeight = _resolveMushafLineHeight(
       isLandscapeReader: isLandscapeReader,
-      fineTune: fineTune,
+      fineTune: const _MushafLineFineTune(),
     );
-    final measureStyle = TextStyle(
-      fontSize: resolvedFontSize,
-      height: 1,
-      color: isDarkMode ? Colors.white : AppColors.blackFontColor,
-      fontFamily: AppFonts.versesFont,
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCenteredLine =
             (fineTune.forceCentered || pattern.isCentered) && !isLandscapeReader;
-        final horizontalInset =
-            (isCenteredLine || isLandscapeReader) ? fineTune.horizontalInset : 0.0;
-        final availableWidth = constraints.maxWidth.isFinite
-            ? math.max(0.0, constraints.maxWidth - (horizontalInset * 2))
-            : double.infinity;
-
-        var fitScale = 1.0;
-        if (!isLandscapeReader && availableWidth.isFinite && availableWidth > 0) {
-          final estimatedWidth = _estimateMushafLineWidthForFit(
-            line: line,
-            ayahByKey: ayahByKey,
-            textStyle: measureStyle,
-            pattern: pattern,
-            fineTune: fineTune,
-            isLandscapeReader: isLandscapeReader,
-            isCenteredLine: isCenteredLine,
-          );
-          if (estimatedWidth > availableWidth) {
-            fitScale = math.min(1.0, (availableWidth / estimatedWidth) * 0.985);
-          }
-        }
-
-        final effectiveFontSize = resolvedFontSize * fitScale;
-        final effectiveGapScale = fineTune.gapScale * fitScale;
+        final effectiveFontSize = resolvedFontSize;
         final effectiveGapFineTune = _MushafLineFineTune(
           forceCentered: fineTune.forceCentered,
-          gapScale: effectiveGapScale,
+          gapScale: fineTune.gapScale,
           fontScale: fineTune.fontScale,
           lineHeightScale: fineTune.lineHeightScale,
           horizontalInset: fineTune.horizontalInset,
@@ -3091,12 +3061,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           0,
           (sum, value) => sum + value,
         );
-        final visualLineScale = !isLandscapeReader &&
-                availableWidth.isFinite &&
-                availableWidth > 0 &&
-                intrinsicTokenWidth > availableWidth
-            ? math.min(1.0, (availableWidth / intrinsicTokenWidth) * 0.985)
-            : 1.0;
 
         if (isCenteredLine) {
           final gapWidths = pattern.isCentered
@@ -3106,7 +3070,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                       .max(
                         6.0,
                         (pattern.tokenSpacing == 0 ? 8.0 : pattern.tokenSpacing) *
-                            effectiveGapScale,
+                          fineTune.gapScale,
                       )
                       .toDouble(),
                   growable: false,
@@ -3148,13 +3112,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             textDirection: TextDirection.rtl,
             children: centeredChildren,
           );
-          if (visualLineScale < 1.0 || availableWidth.isFinite) {
-            lineChild = FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.center,
-              child: lineChild,
-            );
-          }
 
           return SizedBox(
             width: double.infinity,
@@ -3173,13 +3130,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 ? 0
                 : math.max(
                     1,
-                    (pattern.outerFlex * effectiveGapScale).round(),
+                    (pattern.outerFlex * fineTune.gapScale).round(),
                   ));
         final gapFlexes = List<int>.generate(
           pattern.gapFlexes.length,
           (index) => math.max(
             1,
-            (pattern.gapFlexes[index] * effectiveGapScale).round(),
+            (pattern.gapFlexes[index] * fineTune.gapScale).round(),
           ),
           growable: false,
         );
@@ -3230,13 +3187,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           textDirection: TextDirection.rtl,
           children: distributedChildren,
         );
-        if (visualLineScale < 1.0 || distributedAvailableWidth.isFinite) {
-          lineChild = FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: lineChild,
-          );
-        }
 
         return SizedBox(
           width: double.infinity,
@@ -3263,6 +3213,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required bool isLandscapeReader,
   }) {
     final isIntroPage = page == 1 || page == 2;
+    final pageFontScale =
+        isLandscapeReader ? _mushafLandscapePageFontScale : _mushafPageFontScale;
     final pageWidget = _ReaderRenderedPage(
       pageNumber: page,
       isDarkMode: isDarkMode,
@@ -3280,6 +3232,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           _hasConnection,
           isDarkMode,
           isLandscapeReader,
+          pageFontScale,
         ),
       ),
     );
@@ -3327,6 +3280,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
   }
 
+  static const double _mushafPageFontScale = 0.90;
+  static const double _mushafLandscapePageFontScale = 0.88;
+
   List<Widget> _buildMushafLayoutWidgets(
     MushafPageLayout layout,
     List<Ayat> ayat,
@@ -3334,6 +3290,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     EvaluationsProvider evaluationProvider,
     bool isDarkMode,
     bool isLandscapeReader,
+    double pageFontScale,
   ) {
     if (layout.lines.isEmpty) {
       return const <Widget>[];
@@ -3356,6 +3313,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
               evaluationProvider,
               isDarkMode,
               isLandscapeReader,
+              pageFontScale,
             ),
           );
           break;
@@ -3405,6 +3363,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     bool hasConnection,
     bool isDarkMode,
     bool isLandscapeReader,
+    double pageFontScale,
   ) {
     final layout = _mushafLayoutsByPage[pageNumber];
     if (layout != null) {
@@ -3415,6 +3374,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         evaluationProvider,
         isDarkMode,
         isLandscapeReader,
+        pageFontScale,
       );
       if (lineAwareWidgets.isNotEmpty) {
         return lineAwareWidgets;
@@ -3451,9 +3411,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         groups.add(currentGroup);
         currentGroup = <Ayat>[];
       }
+
       currentGroup.add(ayah);
       currentSurahId = ayah.surah.id;
     }
+
     if (currentGroup.isNotEmpty) {
       groups.add(currentGroup);
     }
@@ -4075,8 +4037,8 @@ class _ReaderRenderedPage extends StatelessWidget {
             Positioned(
               top: 2,
               bottom: 2,
-              left: dividerOnLeft ? 11 : null,
-              right: dividerOnLeft ? null : 11,
+              left: dividerOnLeft ? 0 : null,
+              right: dividerOnLeft ? null : 0,
               child: _buildRecitationDivider(borderColor),
             ),
           ],
@@ -4090,8 +4052,8 @@ class _ReaderRenderedPage extends StatelessWidget {
           Positioned(
             top: 2,
             bottom: 2,
-            left: dividerOnLeft ? 11 : null,
-            right: dividerOnLeft ? null : 11,
+            left: dividerOnLeft ? 0 : null,
+            right: dividerOnLeft ? null : 0,
             child: _buildRecitationDivider(borderColor),
           ),
         ],
