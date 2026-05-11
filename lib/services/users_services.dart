@@ -304,7 +304,21 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    try {
+      final refreshToken = await SecureSessionStorage.readRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) return;
+      await http
+          .post(
+            Uri.parse('$_baseURL/auth/logout'),
+            headers: _authHeaders,
+            body: json.encode({'refreshToken': refreshToken}),
+          )
+          .timeout(_timeout);
+    } catch (_) {
+      // Best-effort: local session cleanup proceeds regardless of server response.
+    }
+  }
 
   /// Exchanges [refreshToken] for a new access + refresh token pair.
   /// Returns null if the token is invalid / expired or the request fails.
@@ -361,6 +375,39 @@ class UsersServices with ChangeNotifier {
         return cached;
       }
 
+      rethrow;
+    }
+  }
+
+  Future<dynamic> loginChild({
+    required String guardianEmail,
+    required String childName,
+    required String pin,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/child/login'),
+            headers: _authHeaders,
+            body: json.encode({
+              'guardianEmail': guardianEmail,
+              'childName': childName,
+              'pin': pin,
+            }),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return AuthData.fromJson(responseData);
+      }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'invalid credentials',
+      );
+    } catch (ex) {
       rethrow;
     }
   }

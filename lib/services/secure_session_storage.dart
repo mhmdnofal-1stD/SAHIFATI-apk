@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SecureSessionStorage {
   SecureSessionStorage._();
@@ -122,6 +124,40 @@ class SecureSessionStorage {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _refreshTokenKey);
     await _storage.delete(key: _activeAccountKey);
+  }
+
+  /// Fully expires the active account's session: removes tokens from secure
+  /// storage AND removes the session record from SharedPreferences so the
+  /// SelectUserScreen reflects the expired state immediately without waiting
+  /// for the user to tap "instant login" and silently fail.
+  static Future<void> expireActiveSession() async {
+    final accountKey = await readActiveAccountKey();
+    if (accountKey == null || accountKey.isEmpty) return;
+
+    // 1. Remove tokens from secure storage.
+    await deleteAccountSessionTokens(accountKey);
+
+    // 2. Remove the session record from SharedPreferences.
+    const sessionsKey = 'stored_account_sessions';
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString(sessionsKey);
+    if (rawJson != null && rawJson.isNotEmpty) {
+      try {
+        final decoded = json.decode(rawJson);
+        if (decoded is Map) {
+          final sessions = Map<String, dynamic>.from(decoded);
+          sessions.remove(accountKey);
+          if (sessions.isEmpty) {
+            await prefs.remove(sessionsKey);
+          } else {
+            await prefs.setString(sessionsKey, json.encode(sessions));
+          }
+        }
+      } catch (_) {
+        // Malformed JSON — remove entirely to avoid a permanently broken state.
+        await prefs.remove(sessionsKey);
+      }
+    }
   }
 
   static Future<void> migrateLegacySessionToAccount(String accountKey) async {

@@ -79,7 +79,9 @@ class _AddChildScreenState extends State<AddChildScreen> {
           child: AppBar(
             backgroundColor: AppColors.backgroundColor,
             elevation: 0,
-            leading: const CustomBackButton(),
+            leading: CustomBackButton(
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             title: Text(
               'child_add_title'.tr,
               style: AppTypography.of(context)

@@ -364,6 +364,8 @@ class UsersProvider with ChangeNotifier {
         });
       case 'SOCIAL_ACCOUNT_ALREADY_LINKED':
         return 'social_account_already_linked'.tr;
+      case 'CHILD_PIN_NOT_SET':
+        return 'child_pin_not_set'.tr;
       default:
         return null;
     }
@@ -457,6 +459,14 @@ class UsersProvider with ChangeNotifier {
 
     if (trimmed == 'password must contain at least one symbol') {
       return 'auth_password_validation_symbol'.tr;
+    }
+
+    if (trimmed == 'child_pin_not_set') {
+      return 'child_pin_not_set'.tr;
+    }
+
+    if (trimmed == 'child_login_child_name_required') {
+      return 'child_login_child_name_required'.tr;
     }
 
     if (trimmed.startsWith('Please wait ') &&
@@ -1112,6 +1122,32 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
+  Future<AuthData> loginAsChild({
+    required String guardianEmail,
+    required String childName,
+    required String pin,
+  }) async {
+    setLoading();
+    try {
+      final result = await _usersService.loginChild(
+        guardianEmail: guardianEmail,
+        childName: childName,
+        pin: pin,
+      );
+
+      if (result is AuthData) {
+        if (result.user != null) {
+          await saveUserToDevice(result.user!);
+        }
+        return result;
+      }
+
+      throw result;
+    } finally {
+      resetLoading();
+    }
+  }
+
   Future<AuthData> finalizeAuthenticatedUser(AuthData authData) async {
     if (authData.user == null || authData.accessToken == null) {
       throw _buildSocialAuthError(
@@ -1292,12 +1328,25 @@ class UsersProvider with ChangeNotifier {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await _migrateLegacySessionIfNeeded(prefs);
-    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
 
-    if (!preserveStoredSession &&
-        activeAccountKey != null &&
-        activeAccountKey.isNotEmpty) {
-      await _removeStoredSessionByAccountKey(activeAccountKey);
+    if (preserveStoredSession) {
+      // Only remove the active user's session and tokens.
+      // Other device accounts must keep their valid sessions intact.
+      final activeAccountKey =
+          await SecureSessionStorage.readActiveAccountKey();
+      if (activeAccountKey != null && activeAccountKey.isNotEmpty) {
+        final sessions = await _readStoredAccountSessions(prefs);
+        sessions.remove(activeAccountKey);
+        await _writeStoredAccountSessions(prefs, sessions);
+        await SecureSessionStorage.deleteAccountSessionTokens(activeAccountKey);
+      }
+      // Clean up any stale legacy global-scope tokens.
+      await SecureSessionStorage.clearSessionTokens();
+    } else {
+      final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      if (activeAccountKey != null && activeAccountKey.isNotEmpty) {
+        await _removeStoredSessionByAccountKey(activeAccountKey);
+      }
     }
 
     await prefs.remove(_activeUserDataKey);

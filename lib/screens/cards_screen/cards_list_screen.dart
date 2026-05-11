@@ -112,7 +112,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
           ),
 
           // ── Status filter chips (for special roles) ───────────────────
-          if (userRole >= 3) _StatusFilterRow(userRole: userRole),
+          if (userRole >= 2) _StatusFilterRow(userRole: userRole),
 
           // ── List ─────────────────────────────────────────────────────
           Expanded(

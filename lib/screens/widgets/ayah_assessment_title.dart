@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:quran/quran.dart' as quran;
 
+import '../../core/constants/fonts.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/ayat.dart';
 import '../../services/ayah_translation_library_service.dart';
@@ -63,10 +64,27 @@ Widget buildAyahAssessmentDialogTitle({
         arabicText,
         textAlign: TextAlign.center,
         textDirection: TextDirection.rtl,
-        style: typography.quranVerse,
+        softWrap: true,
+        maxLines: null,
+        textHeightBehavior: const TextHeightBehavior(
+          applyHeightToFirstAscent: true,
+          applyHeightToLastDescent: true,
+        ),
+        strutStyle: const StrutStyle(
+          fontFamily: AppFonts.versesFont,
+          fontSize: 19,
+          height: 1.55,
+          forceStrutHeight: true,
+        ),
+        style: typography.quranVerse.copyWith(
+          fontFamily: AppFonts.versesFont,
+          fontSize: 19,
+          height: 1.55,
+          letterSpacing: 0,
+        ),
       ),
       if (translation != null) ...[
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Directionality(
           textDirection: isRtlAyahTranslationLanguage(languageCode)
               ? TextDirection.rtl

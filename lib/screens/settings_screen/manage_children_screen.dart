@@ -6,7 +6,7 @@ import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
-import 'add_child_screen.dart';
+import '../authentication_screens/add_child_screen.dart';
 
 class ManageChildrenScreen extends StatefulWidget {
   const ManageChildrenScreen({super.key});
@@ -417,7 +417,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           child: AppBar(
             backgroundColor: AppColors.backgroundColor,
             elevation: 0,
-            leading: const CustomBackButton(),
+            leading: CustomBackButton(
+              onPressed: () => Navigator.of(context).pop(),
+            ),
             title: Text(
               'child_manage_title'.tr,
               style: AppTypography.of(context)

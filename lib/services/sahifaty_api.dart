@@ -122,12 +122,10 @@ class SahifatyApi {
             isRetry: true,
           );
         }
-        // Refresh failed: clear stored tokens for active account and redirect
-        // to the account-selection screen (WhatsApp-style re-auth).
-        final accountKey = await SecureSessionStorage.readActiveAccountKey();
-        if (accountKey != null && accountKey.isNotEmpty) {
-          await SecureSessionStorage.deleteAccountSessionTokens(accountKey);
-        }
+        // Refresh failed: expire the active session fully (tokens + session
+        // record) so SelectUserScreen shows "requires login" immediately,
+        // then redirect for WhatsApp-style re-authentication.
+        await SecureSessionStorage.expireActiveSession();
         Get.offAllNamed('/select-user');
         throw Exception('service_api_unauthorized'.tr);
       }

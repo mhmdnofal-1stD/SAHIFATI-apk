@@ -14,6 +14,7 @@ import 'login_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/auth_screen_shell.dart';
 import 'widgets/custom_auth_footer.dart';
+import 'child_login_screen.dart';
 
 /// Resolves the human-facing identity for a stored device account row.
 ///
@@ -68,14 +69,14 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   }
 
   void _prepareLoginForUser(Map<String, dynamic> userData) {
-    // Child accounts cannot login independently — they are accessed via the
-    // guardian's "Manage Children" screen.
     if (userData['authProvider'] == 'managed_child') {
-      Get.snackbar(
-        'child_session_expired_title'.tr,
-        'child_session_expired_body'.tr,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      Get.to(
+        () => ChildLoginScreen(
+          initialChildName: resolveStoredAccountDisplayName(
+            Map<String, dynamic>.from(userData),
+            fallback: 'auth_saved_accounts_user_fallback'.tr,
+          ),
+        ),
       );
       return;
     }
