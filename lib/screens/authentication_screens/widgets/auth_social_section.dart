@@ -8,26 +8,16 @@ enum AuthSocialStatusTone { error, info }
 class AuthSocialSection extends StatelessWidget {
   const AuthSocialSection({
     super.key,
-    required this.googleControl,
-    this.appleControl,
-    required this.onFacebookPressed,
-    required this.isBusy,
-    this.showFacebook = true,
+    required this.controls,
     this.showEmailMethod = false,
-    this.googleHint,
-    this.facebookHint,
     this.statusMessage,
     this.statusTone = AuthSocialStatusTone.error,
   });
 
-  final Widget googleControl;
-  final Widget? appleControl;
-  final VoidCallback? onFacebookPressed;
-  final bool isBusy;
-  final bool showFacebook;
+  /// Pre-built social-button widgets in display order.
+  /// Assembled by [SocialAuthAction.buildSocialSection].
+  final List<Widget> controls;
   final bool showEmailMethod;
-  final String? googleHint;
-  final String? facebookHint;
   final String? statusMessage;
   final AuthSocialStatusTone statusTone;
 
@@ -44,19 +34,7 @@ class AuthSocialSection extends StatelessWidget {
           icon: Icons.alternate_email_rounded,
           labelKey: 'auth_method_email',
         ),
-      googleControl,
-      if (appleControl != null) appleControl!,
-      if (showFacebook)
-        AuthCompactSocialButton(
-          semanticLabel: 'social_provider_facebook'.tr,
-          onPressed: onFacebookPressed,
-          isBusy: isBusy,
-          icon: const Icon(
-            Icons.facebook_rounded,
-            color: Color(0xFF1877F2),
-            size: 25,
-          ),
-        ),
+      ...controls,
     ];
 
     return Column(

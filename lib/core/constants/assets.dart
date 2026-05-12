@@ -14,6 +14,7 @@ class Assets {
 
   /// Icons
   static String googleIcon = "$rootIcons/ic_google.png";
+  static String huaweiIcon = "$rootIcons/ic_huawei.svg";
 
 
 }

@@ -441,7 +441,7 @@ packages:
     source: hosted
     version: "6.2.4"
   google_sign_in_platform_interface:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: google_sign_in_platform_interface
       sha256: "7f59208c42b415a3cca203571128d6f84f885fead2d5b53eb65a9e27f2965bb5"
@@ -472,6 +472,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  huawei_account:
+    dependency: "direct main"
+    description:
+      name: huawei_account
+      sha256: "8be98953d7aa25d431d1ced7331aa341cfb0a75a00307d049b2b0a1f97496e90"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.12.0+304"
   image:
     dependency: transitive
     description:

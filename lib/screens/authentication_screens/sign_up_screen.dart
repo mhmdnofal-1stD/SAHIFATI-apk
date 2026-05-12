@@ -1,10 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-import 'package:sahifaty/core/auth/post_auth_navigation.dart';
-import 'package:sahifaty/core/auth/social_auth_config.dart';
-import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import '../../controllers/users_controller.dart';
@@ -12,11 +8,10 @@ import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
+import 'social_auth_action.dart';
 import 'widgets/auth_screen_shell.dart';
-import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
-import 'widgets/google_web_auth_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -25,12 +20,10 @@ class SignUpScreen extends StatefulWidget {
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignUpScreenState extends State<SignUpScreen> with SocialAuthAction {
   late UsersController _userController;
   bool _isProcessing = false;
   String? _inlineError;
-  String? _socialStatusMessage;
-  bool _socialStatusIsError = true;
 
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
@@ -134,115 +127,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
-  String _providerLabel(String provider) {
-    switch (provider) {
-      case 'google':
-        return 'social_provider_google'.tr;
-      case 'facebook':
-        return 'social_provider_facebook'.tr;
-      case 'apple':
-        return 'Apple';
-      default:
-        return provider;
-    }
-  }
-
-  String _resolveSocialErrorMessage(
-    Object error,
-    UsersProvider usersProvider,
-  ) {
-    if (error is Map) {
-      final code = error['errorCode'];
-      final provider = error['existingProvider'];
-      if (code == 'SOCIAL_LOGIN_CANCELLED') {
-        final socialProvider = (error['provider'] ?? '').toString();
-        if (!kIsWeb && socialProvider == 'google') {
-          return 'social_google_mobile_interrupted'.tr;
-        }
-        return 'social_cancelled'.tr;
-      }
-      if (code == 'SOCIAL_CONFIG_MISSING') {
-        final socialProvider = error['provider'];
-        if (socialProvider == 'google') {
-          return kIsWeb
-              ? 'social_google_requires_client_id'.tr
-              : 'social_google_requires_mobile_config'.tr;
-        }
-        if (socialProvider == 'facebook') {
-          return 'social_facebook_requires_app_id'.tr;
-        }
-        if (socialProvider == 'apple') {
-          return 'social_apple_requires_web_config'.tr;
-        }
-      }
-      if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
-        return 'social_provider_temporarily_unavailable'.trParams({
-          'provider':
-              _providerLabel((error['provider'] ?? 'provider').toString()),
-        });
-      }
-      if (code == 'SOCIAL_ID_TOKEN_MISSING' ||
-          code == 'SOCIAL_ACCESS_TOKEN_MISSING') {
-        return 'social_missing_id_token'.tr;
-      }
-      if (code == 'ACCOUNT_EXISTS_WITH_PASSWORD') {
-        return 'social_account_exists_with_password'.tr;
-      }
-      if (code == 'ACCOUNT_EXISTS_WITH_DIFFERENT_PROVIDER') {
-        return 'social_account_exists_with_different_provider'.trParams({
-          'provider': _providerLabel((provider ?? 'provider').toString()),
-        });
-      }
-    }
-
-    final message = usersProvider.extractErrorMessage(error);
-    if (message.toLowerCase().contains('cancel')) {
-      return 'social_cancelled'.tr;
-    }
-    return message;
-  }
-
-  Future<void> _completeSocialSignup(
-    Future<dynamic> Function() action,
-    UsersProvider usersProvider,
-    EvaluationsProvider evaluationsProvider,
-  ) async {
-    if (_isProcessing || usersProvider.isLoading) {
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _inlineError = null;
-      _socialStatusMessage = null;
-      _socialStatusIsError = true;
-    });
-
-    try {
-      await action();
-      if (!mounted || usersProvider.selectedUser == null) {
-        return;
-      }
-
-      await navigateAfterSuccessfulLogin(
-        userId: usersProvider.selectedUser!.id,
-        isFirstLogin: usersProvider.isFirstLogin,
-        hasActiveLicense: usersProvider.hasActiveLicense,
-        loadChartData: (userId) =>
-            evaluationsProvider.getQuranChartData(userId),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _socialStatusMessage = _resolveSocialErrorMessage(error, usersProvider);
-        _socialStatusIsError = true;
-      });
-    }
-  }
-
   Widget _buildInlineErrorBanner(String message) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -272,81 +156,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildGoogleControl(
-    UsersProvider usersProvider,
-    EvaluationsProvider evaluationsProvider,
-  ) {
-    if (kIsWeb && SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
-      return GoogleWebAuthButton(
-        initialize: usersProvider.ensureGoogleInitialized,
-        isBusy: usersProvider.isLoading,
-        isSignupContext: true,
-        onIdToken: (idToken) async {
-          await _completeSocialSignup(
-            () => usersProvider.signInWithGoogleIdToken(idToken),
-            usersProvider,
-            evaluationsProvider,
-          );
-        },
-        onError: (error) {
-          if (!mounted) {
-            return;
-          }
-          setState(() {
-            _socialStatusMessage = _resolveSocialErrorMessage(
-              error,
-              usersProvider,
-            );
-            _socialStatusIsError = true;
-          });
-        },
-      );
-    }
-
-    return AuthCompactSocialButton(
-      semanticLabel: 'social_provider_google'.tr,
-      onPressed: (!kIsWeb && !usersProvider.isLoading)
-          ? () => _completeSocialSignup(
-                usersProvider.signInWithGoogle,
-                usersProvider,
-                evaluationsProvider,
-              )
-          : null,
-      isBusy: usersProvider.isLoading,
-      icon: Image.asset(
-        Assets.googleIcon,
-        width: 24,
-        height: 24,
-      ),
-    );
-  }
-
-  Widget? _buildAppleControl(
-    UsersProvider usersProvider,
-    EvaluationsProvider evaluationsProvider,
-  ) {
-    if (!SocialAuthConfig.isAppleConfiguredForCurrentPlatform) {
-      return null;
-    }
-
-    return AuthCompactSocialButton(
-      semanticLabel: 'Apple',
-      onPressed: usersProvider.isLoading
-          ? null
-          : () => _completeSocialSignup(
-                usersProvider.signInWithApple,
-                usersProvider,
-                evaluationsProvider,
-              ),
-      isBusy: usersProvider.isLoading,
-      icon: const Icon(
-        Icons.apple_rounded,
-        size: 26,
-        color: Color(0xFF111111),
       ),
     );
   }
@@ -450,29 +259,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
             const SizedBox(height: 22),
-            AuthSocialSection(
-              googleControl: _buildGoogleControl(
-                usersProvider,
-                evaluationsProvider,
-              ),
-              appleControl: _buildAppleControl(
-                usersProvider,
-                evaluationsProvider,
-              ),
-              showEmailMethod: false,
-              showFacebook: SocialAuthConfig.facebookAuthEnabled,
-              onFacebookPressed: usersProvider.isLoading
-                  ? null
-                  : () => _completeSocialSignup(
-                        usersProvider.signInWithFacebook,
-                        usersProvider,
-                        evaluationsProvider,
-                      ),
-              isBusy: usersProvider.isLoading,
-              statusMessage: _socialStatusMessage,
-              statusTone: _socialStatusIsError
-                  ? AuthSocialStatusTone.error
-                  : AuthSocialStatusTone.info,
+            buildSocialSection(
+              usersProvider,
+              evaluationsProvider,
+              isSignupContext: true,
             ),
             const SizedBox(height: 22),
             Center(

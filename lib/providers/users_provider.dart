@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:huawei_account/huawei_account.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -558,6 +559,8 @@ class UsersProvider with ChangeNotifier {
         return 'social_provider_facebook'.tr;
       case 'apple':
         return 'Apple';
+      case 'huawei':
+        return 'social_provider_huawei'.tr;
       default:
         return provider;
     }
@@ -1404,6 +1407,48 @@ class UsersProvider with ChangeNotifier {
       if (manageLoading) {
         resetLoading();
       }
+    }
+  }
+
+  Future<AuthData> signInWithHuawei() async {
+    setLoading();
+    try {
+      if (!SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform) {
+        throw _buildSocialAuthError(
+          'SOCIAL_CONFIG_MISSING',
+          'social_huawei_requires_app_id'.tr,
+          provider: 'huawei',
+        );
+      }
+
+      final authParams = AccountAuthParamsHelper(AccountAuthParams.defaultAuthRequestParam)
+        ..setEmail()
+        ..setIdToken()
+        ..setProfile();
+
+      final authService = AccountAuthManager.getService(authParams.createParams());
+      final AuthAccount account = await authService.signIn();
+
+      final token = account.idToken ?? '';
+
+      if (token.isEmpty) {
+        throw _buildSocialAuthError(
+          'SOCIAL_ID_TOKEN_MISSING',
+          'social_missing_id_token'.tr,
+          provider: 'huawei',
+        );
+      }
+
+      final result = await _usersService.loginWithHuawei(token);
+      if (result is! AuthData) {
+        throw result;
+      }
+
+      return await finalizeAuthenticatedUser(result);
+    } catch (ex) {
+      rethrow;
+    } finally {
+      resetLoading();
     }
   }
 

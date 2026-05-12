@@ -329,6 +329,31 @@ class UsersServices with ChangeNotifier {
     }
   }
 
+  Future<dynamic> loginWithHuawei(String token) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/social/huawei'),
+            headers: _authHeaders,
+            body: json.encode({'token': token}),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        return AuthData.fromJson(responseData);
+      }
+
+      return _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'social_huawei_sign_in_failed'.tr,
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     try {
       final refreshToken = await SecureSessionStorage.readRefreshToken();

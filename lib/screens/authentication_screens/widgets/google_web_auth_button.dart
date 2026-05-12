@@ -90,9 +90,11 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized) {
+    // Show spinner while initializing, while a sign-in submission is in
+    // progress, or while the parent is busy (e.g., another auth op).
+    if (!_isInitialized || _isSubmitting || widget.isBusy) {
       return const SizedBox(
-        width: 240,
+        width: 56,
         height: 56,
         child: Center(
           child: SizedBox(
@@ -104,31 +106,14 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
       );
     }
 
-    return SizedBox(
-      width: 240,
-      height: 56,
-      child: AbsorbPointer(
-        absorbing: widget.isBusy || _isSubmitting,
-        child: Opacity(
-          opacity: widget.isBusy || _isSubmitting ? 0.7 : 1,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Center(
-                child: buildGoogleWebButton(
-                  isSignupContext: widget.isSignupContext,
-                  locale: Get.locale?.languageCode,
-                ),
-              ),
-              if (_isSubmitting)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2.4),
-                ),
-            ],
-          ),
-        ),
+    // Render the GIS sign-in button. Clicking it triggers the Google sign-in
+    // popup; the result fires on authenticationEvents which _subscription handles.
+    return Semantics(
+      button: true,
+      label: 'social_provider_google'.tr,
+      child: buildGoogleWebButton(
+        isSignupContext: widget.isSignupContext,
+        locale: null,
       ),
     );
   }

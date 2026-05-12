@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Huawei flower logo (4 petals) -->
+  <g transform="translate(24,24)">
+    <!-- Top petal -->
+    <ellipse rx="5.5" ry="10" fill="#CF0A2C" transform="rotate(0) translate(0,-7)"/>
+    <!-- Right petal -->
+    <ellipse rx="5.5" ry="10" fill="#CF0A2C" transform="rotate(90) translate(0,-7)"/>
+    <!-- Bottom petal -->
+    <ellipse rx="5.5" ry="10" fill="#CF0A2C" transform="rotate(180) translate(0,-7)"/>
+    <!-- Left petal -->
+    <ellipse rx="5.5" ry="10" fill="#CF0A2C" transform="rotate(270) translate(0,-7)"/>
+  </g>
+</svg>

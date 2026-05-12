@@ -15,6 +15,8 @@ class SocialAuthConfig {
       String.fromEnvironment('FACEBOOK_APP_ID');
   static const String facebookApiVersion =
       String.fromEnvironment('FACEBOOK_API_VERSION', defaultValue: 'v22.0');
+  static const String huaweiAppId =
+      String.fromEnvironment('HUAWEI_APP_ID');
 
   static bool get isGoogleConfiguredForCurrentPlatform {
     if (kIsWeb) {
@@ -25,6 +27,11 @@ class SocialAuthConfig {
   }
 
   static bool get isFacebookConfiguredForCurrentPlatform {
+    // Facebook JS SDK initialization is unreliable on web (SDK load failures,
+    // CORS, domain validation). Disable on web; Facebook login still works on
+    // Android/iOS via the native SDK.
+    if (kIsWeb) return false;
+
     if (!facebookAuthEnabled) {
       return false;
     }
@@ -38,6 +45,13 @@ class SocialAuthConfig {
     }
 
     return appleWebClientId.isNotEmpty && appleRedirectUri.isNotEmpty;
+  }
+
+  /// Huawei Account Kit is Android-only and never available on web.
+  static bool get isHuaweiConfiguredForCurrentPlatform {
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    return huaweiAppId.isNotEmpty;
   }
 
   static String? get googleClientIdOrNull =>
