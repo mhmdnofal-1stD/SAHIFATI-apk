@@ -417,6 +417,11 @@ void _seedLocalReadingPreviewUser() {
 }
 
 // ---------------------------------------------------------------------------
+// App version
+// ---------------------------------------------------------------------------
+
+const String _kAppVersion = '1.0.8';
+
 // Startup progress stage
 // ---------------------------------------------------------------------------
 
@@ -722,6 +727,16 @@ class _StartupLoadingScreen extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                   fontFamily: AppFonts.primaryFont,
                   letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'v$_kAppVersion',
+                style: TextStyle(
+                  color: mutedColor,
+                  fontSize: 12,
+                  fontFamily: AppFonts.primaryFont,
+                  letterSpacing: 0.8,
                 ),
               ),
               const Spacer(flex: 2),

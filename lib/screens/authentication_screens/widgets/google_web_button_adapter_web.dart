@@ -7,11 +7,11 @@ Widget buildGoogleWebButton({
 }) {
   return google_web.renderButton(
     configuration: google_web.GSIButtonConfiguration(
-      type: google_web.GSIButtonType.icon,
+      type: google_web.GSIButtonType.standard,
       theme: google_web.GSIButtonTheme.outline,
-      size: google_web.GSIButtonSize.large,
+      size: google_web.GSIButtonSize.medium,
       shape: google_web.GSIButtonShape.pill,
-      minimumWidth: 40,
+      minimumWidth: 240,
       locale: locale,
     ),
   );

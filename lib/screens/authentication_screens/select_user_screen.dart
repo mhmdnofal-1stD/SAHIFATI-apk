@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:sahifaty/core/constants/assets.dart';
 import '../../core/auth/post_auth_navigation.dart';
+import '../../core/auth/social_auth_config.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/size_config.dart';
@@ -13,7 +16,9 @@ import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
 import 'sign_up_screen.dart';
 import 'widgets/auth_screen_shell.dart';
+import 'widgets/auth_social_section.dart';
 import 'widgets/custom_auth_footer.dart';
+import 'widgets/google_web_auth_button.dart';
 import 'child_login_screen.dart';
 
 /// Resolves the human-facing identity for a stored device account row.
@@ -48,6 +53,8 @@ class SelectUserScreen extends StatefulWidget {
 class _SelectUserScreenState extends State<SelectUserScreen> {
   List<Map<String, dynamic>> _storedUsers = [];
   bool _isLoading = true;
+  String? _socialStatusMessage;
+  bool _socialStatusIsError = true;
 
   @override
   void initState() {
@@ -228,6 +235,94 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
 
   void _openSignup() {
     Get.to(() => const SignUpScreen());
+  }
+
+  Future<void> _completeSocialLogin(
+    Future<dynamic> Function() action,
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _socialStatusMessage = null;
+      _socialStatusIsError = true;
+    });
+    try {
+      await action();
+      if (!mounted || usersProvider.selectedUser == null) return;
+      await navigateAfterSuccessfulLogin(
+        userId: usersProvider.selectedUser!.id,
+        isFirstLogin: usersProvider.isFirstLogin,
+        hasActiveLicense: usersProvider.hasActiveLicense,
+        loadChartData: (userId) =>
+            evaluationsProvider.getQuranChartData(userId),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _socialStatusMessage = usersProvider.extractErrorMessage(error);
+        _socialStatusIsError = true;
+      });
+    }
+  }
+
+  Widget _buildGoogleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (kIsWeb && SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
+      return GoogleWebAuthButton(
+        initialize: usersProvider.ensureGoogleInitialized,
+        isBusy: usersProvider.isLoading,
+        isSignupContext: false,
+        onIdToken: (idToken) async {
+          await _completeSocialLogin(
+            () => usersProvider.signInWithGoogleIdToken(idToken),
+            usersProvider,
+            evaluationsProvider,
+          );
+        },
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            _socialStatusMessage = usersProvider.extractErrorMessage(error);
+            _socialStatusIsError = true;
+          });
+        },
+      );
+    }
+    return AuthCompactSocialButton(
+      semanticLabel: 'social_provider_google'.tr,
+      onPressed: (!kIsWeb && !usersProvider.isLoading)
+          ? () => _completeSocialLogin(
+                usersProvider.signInWithGoogle,
+                usersProvider,
+                evaluationsProvider,
+              )
+          : null,
+      isBusy: usersProvider.isLoading,
+      icon: Image.asset(Assets.googleIcon, width: 24, height: 24),
+    );
+  }
+
+  Widget? _buildAppleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (!SocialAuthConfig.isAppleConfiguredForCurrentPlatform) return null;
+    return AuthCompactSocialButton(
+      semanticLabel: 'Apple',
+      onPressed: usersProvider.isLoading
+          ? null
+          : () => _completeSocialLogin(
+                usersProvider.signInWithApple,
+                usersProvider,
+                evaluationsProvider,
+              ),
+      isBusy: usersProvider.isLoading,
+      icon: const Icon(Icons.apple_rounded, size: 26,
+          color: Color(0xFF111111)),
+    );
   }
 
   String _statusText(Map<String, dynamic> user) {
@@ -615,6 +710,40 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                       ),
                 ),
               ),
+            ),
+            const SizedBox(height: 14),
+            Consumer2<UsersProvider, EvaluationsProvider>(
+              builder: (context, usersProvider, evaluationsProvider, _) {
+                final hasGoogle =
+                    SocialAuthConfig.isGoogleConfiguredForCurrentPlatform;
+                final hasFacebook =
+                    SocialAuthConfig.facebookAuthEnabled &&
+                    SocialAuthConfig.isFacebookConfiguredForCurrentPlatform;
+                final hasApple =
+                    SocialAuthConfig.isAppleConfiguredForCurrentPlatform;
+                if (!hasGoogle && !hasFacebook && !hasApple) {
+                  return const SizedBox.shrink();
+                }
+                return AuthSocialSection(
+                  googleControl: _buildGoogleControl(
+                      usersProvider, evaluationsProvider),
+                  appleControl: _buildAppleControl(
+                      usersProvider, evaluationsProvider),
+                  showFacebook: SocialAuthConfig.facebookAuthEnabled,
+                  isBusy: usersProvider.isLoading,
+                  onFacebookPressed: usersProvider.isLoading
+                      ? null
+                      : () => _completeSocialLogin(
+                            usersProvider.signInWithFacebook,
+                            usersProvider,
+                            evaluationsProvider,
+                          ),
+                  statusMessage: _socialStatusMessage,
+                  statusTone: _socialStatusIsError
+                      ? AuthSocialStatusTone.error
+                      : AuthSocialStatusTone.info,
+                );
+              },
             ),
             const SizedBox(height: 14),
             Center(

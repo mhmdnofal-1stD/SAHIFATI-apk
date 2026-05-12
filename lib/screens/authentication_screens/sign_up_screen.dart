@@ -140,6 +140,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return 'social_provider_google'.tr;
       case 'facebook':
         return 'social_provider_facebook'.tr;
+      case 'apple':
+        return 'Apple';
       default:
         return provider;
     }
@@ -168,6 +170,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         }
         if (socialProvider == 'facebook') {
           return 'social_facebook_requires_app_id'.tr;
+        }
+        if (socialProvider == 'apple') {
+          return 'social_apple_requires_web_config'.tr;
         }
       }
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
@@ -320,6 +325,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  Widget? _buildAppleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (!SocialAuthConfig.isAppleConfiguredForCurrentPlatform) {
+      return null;
+    }
+
+    return AuthCompactSocialButton(
+      semanticLabel: 'Apple',
+      onPressed: usersProvider.isLoading
+          ? null
+          : () => _completeSocialSignup(
+                usersProvider.signInWithApple,
+                usersProvider,
+                evaluationsProvider,
+              ),
+      isBusy: usersProvider.isLoading,
+      icon: const Icon(
+        Icons.apple_rounded,
+        size: 26,
+        color: Color(0xFF111111),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final usersProvider = Provider.of<UsersProvider>(context);
@@ -421,6 +452,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(height: 22),
             AuthSocialSection(
               googleControl: _buildGoogleControl(
+                usersProvider,
+                evaluationsProvider,
+              ),
+              appleControl: _buildAppleControl(
                 usersProvider,
                 evaluationsProvider,
               ),

@@ -6,6 +6,7 @@ import '../../providers/evaluations_provider.dart';
 import '../../providers/language_provider.dart';
 import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
+import '../cards_screen/cards_list_screen.dart';
 import '../questions_screen/questions_screen.dart';
 import '../settings_screen/settings_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
@@ -188,6 +189,23 @@ class GlobalDrawer extends StatelessWidget {
                   text: 'drawer_my_licenses'.tr,
                   icon: Icons.verified_outlined,
                 ),
+              ),
+              Consumer<UsersProvider>(
+                builder: (context, usersProvider, _) {
+                  final roleId = usersProvider.selectedUser?.userRoleId;
+                  if (roleId != 3 && roleId != 4 && roleId != 5) {
+                    return const SizedBox.shrink();
+                  }
+                  return ListTile(
+                    onTap: () {
+                      Get.toNamed(CardsListScreen.routeName);
+                    },
+                    title: _buildDrawerTitle(
+                      text: 'ادارة البطاقات',
+                      icon: Icons.library_books_outlined,
+                    ),
+                  );
+                },
               ),
               Consumer<LanguageProvider>(
                 builder: (context, languageProvider, _) {

@@ -9,6 +9,7 @@ class AuthSocialSection extends StatelessWidget {
   const AuthSocialSection({
     super.key,
     required this.googleControl,
+    this.appleControl,
     required this.onFacebookPressed,
     required this.isBusy,
     this.showFacebook = true,
@@ -20,6 +21,7 @@ class AuthSocialSection extends StatelessWidget {
   });
 
   final Widget googleControl;
+  final Widget? appleControl;
   final VoidCallback? onFacebookPressed;
   final bool isBusy;
   final bool showFacebook;
@@ -42,11 +44,8 @@ class AuthSocialSection extends StatelessWidget {
           icon: Icons.alternate_email_rounded,
           labelKey: 'auth_method_email',
         ),
-      SizedBox(
-        width: 56,
-        height: 56,
-        child: Center(child: googleControl),
-      ),
+      googleControl,
+      if (appleControl != null) appleControl!,
       if (showFacebook)
         AuthCompactSocialButton(
           semanticLabel: 'social_provider_facebook'.tr,
@@ -63,29 +62,22 @@ class AuthSocialSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: 56,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Align(
-                alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
-                child: Text(
-                  _sectionLabel(),
-                  textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
-                  style: AppTypography.of(context).inputLabel.copyWith(
-                        color: const Color(0xFF58657A),
-                      ),
+        Align(
+          alignment: isRtl ? Alignment.centerRight : Alignment.centerLeft,
+          child: Text(
+            _sectionLabel(),
+            textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+            style: AppTypography.of(context).inputLabel.copyWith(
+                  color: const Color(0xFF58657A),
                 ),
-              ),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 14,
-                runSpacing: 8,
-                children: iconChildren,
-              ),
-            ],
           ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 14,
+          runSpacing: 8,
+          children: iconChildren,
         ),
         if (statusMessage != null) ...[
           const SizedBox(height: 14),

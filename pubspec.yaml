@@ -1,6 +1,6 @@
 name: sahifaty
 
-version: 1.0.7+11
+version: 1.0.8+12
 
 environment:
   sdk: ^3.5.4
@@ -25,6 +25,7 @@ dependencies:
   connectivity_plus: ^7.0.0
   google_sign_in: ^7.2.0
   google_sign_in_web: ^1.1.0
+  sign_in_with_apple: ^7.0.1
   flutter_facebook_auth: ^7.1.2
   flutter_svg: ^2.2.3
   url_launcher: ^6.3.2

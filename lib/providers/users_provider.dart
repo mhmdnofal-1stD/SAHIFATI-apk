@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
@@ -555,6 +556,8 @@ class UsersProvider with ChangeNotifier {
         return 'social_provider_google'.tr;
       case 'facebook':
         return 'social_provider_facebook'.tr;
+      case 'apple':
+        return 'Apple';
       default:
         return provider;
     }
@@ -621,6 +624,96 @@ class UsersProvider with ChangeNotifier {
     );
 
     _facebookWebInitialized = true;
+  }
+
+  Future<AuthData> signInWithApple() async {
+    setLoading();
+    try {
+      if (!SocialAuthConfig.isAppleConfiguredForCurrentPlatform) {
+        throw _buildSocialAuthError(
+          'SOCIAL_CONFIG_MISSING',
+          'social_apple_requires_web_config'.tr,
+          provider: 'apple',
+        );
+      }
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        webAuthenticationOptions: WebAuthenticationOptions(
+          clientId: SocialAuthConfig.appleWebClientId,
+          redirectUri: SocialAuthConfig.appleRedirectUriOrNull!,
+        ),
+      );
+
+      final identityToken = appleCredential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        throw _buildSocialAuthError(
+          'SOCIAL_ID_TOKEN_MISSING',
+          'social_missing_id_token'.tr,
+          provider: 'apple',
+        );
+      }
+
+      return await signInWithAppleIdentityToken(
+        identityToken,
+        manageLoading: false,
+      );
+    } on SignInWithAppleAuthorizationException catch (error) {
+      if (error.code == AuthorizationErrorCode.canceled) {
+        throw _buildSocialAuthError(
+          'SOCIAL_LOGIN_CANCELLED',
+          'social_cancelled'.tr,
+          provider: 'apple',
+        );
+      }
+
+      if (error.code == AuthorizationErrorCode.invalidResponse) {
+        throw _buildSocialAuthError(
+          'SOCIAL_AUTH_INVALID_RESPONSE',
+          'social_auth_invalid_response'.tr,
+          provider: 'apple',
+        );
+      }
+
+      throw _buildSocialAuthError(
+        'SOCIAL_LOGIN_FAILED',
+        'social_apple_sign_in_failed'.tr,
+        provider: 'apple',
+      );
+    } catch (_) {
+      throw _buildSocialAuthError(
+        'SOCIAL_LOGIN_FAILED',
+        'social_apple_sign_in_failed'.tr,
+        provider: 'apple',
+      );
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<AuthData> signInWithAppleIdentityToken(
+    String identityToken, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      setLoading();
+    }
+
+    try {
+      final result = await _usersService.loginWithApple(identityToken);
+      if (result is! AuthData) {
+        throw result;
+      }
+
+      return await finalizeAuthenticatedUser(result);
+    } finally {
+      if (manageLoading) {
+        resetLoading();
+      }
+    }
   }
 
   void _applyReadingDisplayPreferencesFromProfile(
@@ -1995,11 +2088,11 @@ class UsersProvider with ChangeNotifier {
 
   Future<Map<String, dynamic>> createChildAccount(
     String displayName, {
-    DateTime? dateOfBirth,
+    int? birthYear,
   }) async {
     final body = <String, dynamic>{'displayName': displayName};
-    if (dateOfBirth != null) {
-      body['dateOfBirth'] = dateOfBirth.toIso8601String();
+    if (birthYear != null) {
+      body['birthYear'] = birthYear;
     }
     final response =
         await SahifatyApi().post(url: 'auth/child', body: body);

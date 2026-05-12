@@ -5,6 +5,10 @@ class SocialAuthConfig {
       String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
   static const String googleServerClientId =
       String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+  static const String appleWebClientId =
+    String.fromEnvironment('APPLE_WEB_CLIENT_ID');
+  static const String appleRedirectUri =
+    String.fromEnvironment('APPLE_REDIRECT_URI');
   static const bool facebookAuthEnabled =
     bool.fromEnvironment('FACEBOOK_AUTH_ENABLED', defaultValue: false);
   static const String facebookAppId =
@@ -28,6 +32,14 @@ class SocialAuthConfig {
     return facebookAppId.isNotEmpty;
   }
 
+  static bool get isAppleConfiguredForCurrentPlatform {
+    if (!kIsWeb) {
+      return false;
+    }
+
+    return appleWebClientId.isNotEmpty && appleRedirectUri.isNotEmpty;
+  }
+
   static String? get googleClientIdOrNull =>
       googleWebClientId.isEmpty ? null : googleWebClientId;
 
@@ -36,4 +48,12 @@ class SocialAuthConfig {
 
   static String? get facebookAppIdOrNull =>
       facebookAppId.isEmpty ? null : facebookAppId;
+
+  static Uri? get appleRedirectUriOrNull {
+    if (appleRedirectUri.isEmpty) {
+      return null;
+    }
+
+    return Uri.tryParse(appleRedirectUri);
+  }
 }

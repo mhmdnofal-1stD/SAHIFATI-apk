@@ -92,7 +92,7 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       return const SizedBox(
-        width: 56,
+        width: 240,
         height: 56,
         child: Center(
           child: SizedBox(
@@ -105,7 +105,7 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
     }
 
     return SizedBox(
-      width: 56,
+      width: 240,
       height: 56,
       child: AbsorbPointer(
         absorbing: widget.isBusy || _isSubmitting,

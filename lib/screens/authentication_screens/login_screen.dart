@@ -115,6 +115,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'social_provider_google'.tr;
       case 'facebook':
         return 'social_provider_facebook'.tr;
+      case 'apple':
+        return 'Apple';
       default:
         return provider;
     }
@@ -143,6 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         if (socialProvider == 'facebook') {
           return 'social_facebook_requires_app_id'.tr;
+        }
+        if (socialProvider == 'apple') {
+          return 'social_apple_requires_web_config'.tr;
         }
       }
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
@@ -284,6 +289,32 @@ class _LoginScreenState extends State<LoginScreen> {
         Assets.googleIcon,
         width: 24,
         height: 24,
+      ),
+    );
+  }
+
+  Widget? _buildAppleControl(
+    UsersProvider usersProvider,
+    EvaluationsProvider evaluationsProvider,
+  ) {
+    if (!SocialAuthConfig.isAppleConfiguredForCurrentPlatform) {
+      return null;
+    }
+
+    return AuthCompactSocialButton(
+      semanticLabel: 'Apple',
+      onPressed: usersProvider.isLoading
+          ? null
+          : () => _completeSocialLogin(
+                usersProvider.signInWithApple,
+                usersProvider,
+                evaluationsProvider,
+              ),
+      isBusy: usersProvider.isLoading,
+      icon: const Icon(
+        Icons.apple_rounded,
+        size: 26,
+        color: Color(0xFF111111),
       ),
     );
   }
@@ -535,6 +566,10 @@ class _LoginScreenState extends State<LoginScreen> {
             SizedBox(height: sectionGap),
             AuthSocialSection(
               googleControl: _buildGoogleControl(
+                usersProvider,
+                evaluationsProvider,
+              ),
+              appleControl: _buildAppleControl(
                 usersProvider,
                 evaluationsProvider,
               ),

@@ -197,6 +197,18 @@
       display: flex;
     }
 
+    /* Flutter platform views (iframes, etc.) must always use LTR positioning.
+       Setting dir="rtl" on <html> causes flt-glass-pane to be placed at x=1084
+       (the right edge of the flutter-view) instead of x=0, because RTL block
+       flow starts from the right. This offsets all platform views (Google
+       Sign-In button, maps, etc.) outside the visible viewport.
+       Fix: position flt-glass-pane absolutely so it always covers the canvas
+       regardless of the document's text direction. */
+    flt-glass-pane {
+      position: absolute !important;
+      inset: 0 !important;
+    }
+
     .boot-retry {
       border: 0;
       border-radius: 999px;

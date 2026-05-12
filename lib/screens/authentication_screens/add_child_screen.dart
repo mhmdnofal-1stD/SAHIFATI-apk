@@ -17,7 +17,7 @@ class AddChildScreen extends StatefulWidget {
 class _AddChildScreenState extends State<AddChildScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  DateTime? _dateOfBirth;
+  int? _birthYear;
   bool _isSaving = false;
 
   @override
@@ -26,18 +26,56 @@ class _AddChildScreenState extends State<AddChildScreen> {
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickYear() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final years = List.generate(16, (i) => now.year - 3 - i);
+    final picked = await showModalBottomSheet<int>(
       context: context,
-      initialDate: DateTime(now.year - 8),
-      firstDate: DateTime(now.year - 18),
-      lastDate: DateTime(now.year - 3),
-      helpText: 'child_dob_picker_title'.tr,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SizedBox(
+        height: 340,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'child_dob_picker_title'.tr,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: years.length,
+                itemBuilder: (_, i) => ListTile(
+                  title: Text(
+                    years[i].toString(),
+                    textAlign: TextAlign.center,
+                  ),
+                  selected: years[i] == _birthYear,
+                  selectedTileColor:
+                      AppColors.primaryPurple.withValues(alpha: 0.08),
+                  onTap: () => Navigator.pop(ctx, years[i]),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    if (picked != null) {
-      setState(() => _dateOfBirth = picked);
-    }
+    if (picked != null) setState(() => _birthYear = picked);
   }
 
   Future<void> _submit() async {
@@ -49,7 +87,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           Provider.of<UsersProvider>(context, listen: false);
       await usersProvider.createChildAccount(
         _nameController.text.trim(),
-        dateOfBirth: _dateOfBirth,
+        birthYear: _birthYear,
       );
       if (mounted) {
         Get.back(result: true);
@@ -135,7 +173,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ),
               const SizedBox(height: 20),
               InkWell(
-                onTap: _pickDate,
+                onTap: _pickYear,
                 borderRadius: BorderRadius.circular(14),
                 child: InputDecorator(
                   decoration: InputDecoration(
@@ -145,20 +183,20 @@ class _AddChildScreenState extends State<AddChildScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    suffixIcon: _dateOfBirth != null
+                    suffixIcon: _birthYear != null
                         ? IconButton(
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () =>
-                                setState(() => _dateOfBirth = null),
+                                setState(() => _birthYear = null),
                           )
                         : null,
                   ),
                   child: Text(
-                    _dateOfBirth != null
-                        ? '${_dateOfBirth!.year}/${_dateOfBirth!.month.toString().padLeft(2, '0')}/${_dateOfBirth!.day.toString().padLeft(2, '0')}'
+                    _birthYear != null
+                        ? _birthYear.toString()
                         : 'child_dob_optional'.tr,
                     style: AppTypography.of(context).bodyDefault.copyWith(
-                          color: _dateOfBirth != null
+                          color: _birthYear != null
                               ? AppColors.blackFontColor
                               : AppColors.mutedText,
                         ),
