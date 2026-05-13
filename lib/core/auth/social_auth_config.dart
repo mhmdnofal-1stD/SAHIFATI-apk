@@ -27,11 +27,6 @@ class SocialAuthConfig {
   }
 
   static bool get isFacebookConfiguredForCurrentPlatform {
-    // Facebook JS SDK initialization is unreliable on web (SDK load failures,
-    // CORS, domain validation). Disable on web; Facebook login still works on
-    // Android/iOS via the native SDK.
-    if (kIsWeb) return false;
-
     if (!facebookAuthEnabled) {
       return false;
     }

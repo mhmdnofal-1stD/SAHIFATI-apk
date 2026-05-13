@@ -92,6 +92,7 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
         }
         if (p == 'facebook') return 'social_facebook_requires_app_id'.tr;
         if (p == 'apple') return 'social_apple_requires_web_config'.tr;
+        if (p == 'huawei') return 'social_huawei_requires_app_id'.tr;
       }
 
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {

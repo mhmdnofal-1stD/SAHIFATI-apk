@@ -414,7 +414,7 @@ class _LoginScreenState extends State<LoginScreen> with SocialAuthAction {
 class _OwnerBrandingCard extends StatelessWidget {
   const _OwnerBrandingCard();
 
-  static const String _flutterBetaVersionLabel = 'Beta 00.00.05';
+  static const String _flutterBetaVersionLabel = 'Beta 00.00.06';
 
   @override
   Widget build(BuildContext context) {

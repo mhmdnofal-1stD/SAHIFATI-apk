@@ -496,7 +496,7 @@
   "social_facebook_sign_in_failed": "تعذر إكمال تسجيل الدخول عبر Facebook الآن.",
   "social_apple_sign_in_failed": "تعذر إكمال تسجيل الدخول عبر Apple الآن.",
   "social_huawei_sign_in_failed": "تعذر إكمال تسجيل الدخول عبر Huawei الآن.",
-  "social_huawei_requires_app_id": "تسجيل الدخول عبر Huawei غير مهيأ بعد. أضف معرّف تطبيق Huawei.",
+  "social_huawei_requires_app_id": "تسجيل الدخول عبر Huawei متاح على Android فقط ويتطلب تهيئة معرّف تطبيق Huawei.",
   "social_google_card_title": "Google",
   "social_google_card_subtitle": "استخدم حساب Google موثوق للمتابعة بسرعة.",
   "social_facebook_card_title": "Facebook",

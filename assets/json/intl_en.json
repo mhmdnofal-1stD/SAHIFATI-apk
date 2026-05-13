@@ -496,7 +496,7 @@
   "social_facebook_sign_in_failed": "Facebook sign-in could not be completed right now.",
   "social_apple_sign_in_failed": "Apple sign-in could not be completed right now.",
   "social_huawei_sign_in_failed": "Huawei sign-in could not be completed right now.",
-  "social_huawei_requires_app_id": "Huawei sign-in is not configured yet. Please add the Huawei App ID.",
+  "social_huawei_requires_app_id": "Huawei sign-in is available on Android only and requires Huawei App ID configuration.",
   "social_google_card_title": "Google",
   "social_google_card_subtitle": "Use a trusted Google account to continue quickly.",
   "social_facebook_card_title": "Facebook",
