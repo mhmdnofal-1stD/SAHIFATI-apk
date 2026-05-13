@@ -42,6 +42,7 @@ import '../widgets/pending_sync_banner.dart';
 import '../widgets/quran_filter_runtime.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 import '../widgets/unified_quran_filter_sheet.dart';
+import '../../widgets/app_progress_overlay.dart';
 
 enum _ReadingNavigationMode { page, hizbQuarter }
 
@@ -329,73 +330,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
   String _trParams(String key, Map<String, String> params) =>
       key.trParams(params);
-
-  Future<List<Ayat>> _readerAvailabilitySourceAyat(
-    int userId,
-    EvaluationsProvider evaluationsProvider,
-  ) async {
-    if (_filterMemoEvaluationIds.isEmpty && _filterCompreEvaluationIds.isEmpty) {
-      return List<Ayat>.from(_allAyat, growable: false);
-    }
-
-    final resolvedEvaluations =
-        await evaluationsProvider.loadResolvedUserEvaluations(userId);
-    final evaluationsByAyahId = <int, UserEvaluation>{
-      for (final evaluation in resolvedEvaluations)
-        if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
-          (evaluation.ayah?.id ?? evaluation.ayahId)!: evaluation,
-    };
-
-    return _allAyat.where((ayah) {
-      final ayahId = ayah.id;
-      final userEvaluation = ayah.userEvaluation ??
-          (ayahId == null ? null : evaluationsByAyahId[ayahId]);
-      if (userEvaluation != null) {
-        ayah.userEvaluation ??= userEvaluation;
-      }
-      return _matchesSelectedEvaluationFilters(userEvaluation);
-    }).toList(growable: false);
-  }
-
-  Future<List<Ayat>> _filterAyatForReaderFilters(
-    Iterable<Ayat> sourceAyat,
-    QuranChartFilters filters,
-  ) async {
-    final allowedSchoolAyahIds = await _schoolFilterScopeService
-        .resolveAllowedAyahIds(filters);
-    return _localQuranChartService.filterAyat(
-      sourceAyat.toList(growable: false),
-      filters,
-      allowedSchoolAyahIds: allowedSchoolAyahIds,
-    );
-  }
-
-  Future<UnifiedFilterAvailableData> _buildReaderAvailableData(
-    int userId,
-    EvaluationsProvider evaluationsProvider,
-  ) async {
-    if (evaluationsProvider.evaluations.isEmpty) {
-      try {
-        await evaluationsProvider.getAllEvaluations();
-      } catch (_) {
-        // Keep going so the sheet can still render content-based filters.
-      }
-    }
-
-    final sourceAyat = await _readerAvailabilitySourceAyat(
-      userId,
-      evaluationsProvider,
-    );
-    return _filterAvailabilityBuilder.build(
-      filters: _currentReaderChartFilters(),
-      loadScopedAyat: (filters) => _filterAyatForReaderFilters(
-        sourceAyat,
-        filters,
-      ),
-      memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
-      comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
-    );
-  }
 
   Future<void> _refreshReaderAllowedSchoolScope() async {
     final filters = _currentReaderChartFilters();
@@ -1480,11 +1414,24 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     if (selectedUser == null) {
       return;
     }
-    await _ensureAllAyatIndexedByPage();
-    final availableData = await _buildReaderAvailableData(
-      selectedUser.id,
-      evaluationsProvider,
+    if (evaluationsProvider.evaluations.isEmpty) {
+      AppProgressOverlay.show('filter_loading_data'.tr, progress: 0.0);
+      try {
+        await evaluationsProvider.getAllEvaluations();
+      } catch (_) {}
+    }
+    final availableData = await _filterAvailabilityBuilder.buildForDisplay(
+      memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
+      comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
+      onProgress: (p, label) {
+        if (label.isEmpty) {
+          AppProgressOverlay.hide();
+        } else {
+          AppProgressOverlay.show(label, progress: p);
+        }
+      },
     );
+    AppProgressOverlay.hide();
     if (!mounted) {
       return;
     }

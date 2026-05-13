@@ -1,0 +1,3 @@
+source,state,city,country,phone_code,user_count,notes
+users_collection,,,,962,1,"country/city/state unavailable; phone code only present in current data"
+users_collection,California,,,682,1,"legacy state value present without canonical country/city mapping"

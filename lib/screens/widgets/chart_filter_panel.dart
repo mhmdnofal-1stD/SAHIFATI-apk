@@ -4,11 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/ayat.dart';
 import '../../providers/evaluations_provider.dart';
 import '../../services/evaluations_services.dart';
-import '../../services/local_quran_chart_service.dart';
-import '../../services/school_filter_scope_service.dart';
+import '../../widgets/app_progress_overlay.dart';
 import 'quran_filter_runtime.dart';
 import 'unified_quran_filter_sheet.dart';
 
@@ -38,10 +36,6 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
   String? _availableDataScopeKey;
   final QuranFilterAvailabilityBuilder _availabilityBuilder =
       const QuranFilterAvailabilityBuilder();
-  final LocalQuranChartService _localQuranChartService =
-      const LocalQuranChartService();
-  final SchoolFilterScopeService _schoolFilterScopeService =
-      const SchoolFilterScopeService();
 
   Future<void> _openFilterPopup() async {
     await _ensureAvailableDataLoaded();
@@ -66,7 +60,7 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
 
   Future<void> _ensureAvailableDataLoaded() async {
     final provider = context.read<EvaluationsProvider>();
-    final scopeKey = _availableDataKey(provider.chartFilters);
+    final scopeKey = Get.locale?.languageCode ?? 'ar';
     if ((_availableData != null && _availableDataScopeKey == scopeKey) ||
         _availableDataLoading) {
       return;
@@ -80,12 +74,18 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
           // Keep going so the filter can still render any locally available data.
         }
       }
-      final availableData = await _availabilityBuilder.build(
-        filters: provider.chartFilters,
-        loadScopedAyat: _loadScopedEvaluatedAyat,
+      final availableData = await _availabilityBuilder.buildForDisplay(
         memorizationEvaluations: provider.memorizationEvaluations,
         comprehensionEvaluations: provider.comprehensionEvaluations,
+        onProgress: (p, label) {
+          if (label.isEmpty) {
+            AppProgressOverlay.hide();
+          } else {
+            AppProgressOverlay.show(label, progress: p);
+          }
+        },
       );
+      AppProgressOverlay.hide();
 
       if (!mounted) return;
       setState(() {
@@ -93,8 +93,6 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         _availableDataScopeKey = scopeKey;
       });
     } catch (_) {
-      // Fall back to evaluation-only filters only when the scoped ayah load
-      // itself fails. Subject and school lookups degrade independently above.
       if (!mounted) return;
       setState(() {
         _availableData = UnifiedFilterAvailableData(
@@ -111,52 +109,6 @@ class _ChartFilterPanelState extends State<ChartFilterPanel> {
         setState(() => _availableDataLoading = false);
       }
     }
-  }
-
-  String _availableDataKey(QuranChartFilters filters) {
-    return '${Get.locale?.languageCode ?? 'ar'}:${filters.toCacheKey()}';
-  }
-
-  Future<List<Ayat>> _loadScopedEvaluatedAyat(QuranChartFilters filters) async {
-    final provider = context.read<EvaluationsProvider>();
-    final userEvaluations = await provider.loadResolvedUserEvaluations(
-      widget.userId,
-    );
-    final memoEvaluationIds = filters.memoEvaluationIds.toSet();
-    final comprehensionEvaluationIds =
-        filters.comprehensionEvaluationIds.toSet();
-    final allAyat = userEvaluations
-        .where((evaluation) {
-          if (memoEvaluationIds.isNotEmpty &&
-              !memoEvaluationIds.contains(evaluation.memoId)) {
-            return false;
-          }
-          if (comprehensionEvaluationIds.isNotEmpty &&
-              !comprehensionEvaluationIds.contains(evaluation.compreId)) {
-            return false;
-          }
-          return true;
-        })
-        .map((evaluation) => evaluation.ayah)
-        .whereType<Ayat>()
-        .fold<Map<int, Ayat>>(<int, Ayat>{}, (acc, ayah) {
-      final ayahId = ayah.id;
-      if (ayahId != null) {
-        acc[ayahId] = ayah;
-      }
-      return acc;
-    })
-        .values
-        .toList(growable: false);
-
-    final allowedSchoolAyahIds = await _schoolFilterScopeService
-        .resolveAllowedAyahIds(filters);
-
-    return _localQuranChartService.filterAyat(
-      allAyat,
-      filters,
-      allowedSchoolAyahIds: allowedSchoolAyahIds,
-    );
   }
 
   Future<void> _applySelection(UnifiedFilterSelection selection) async {

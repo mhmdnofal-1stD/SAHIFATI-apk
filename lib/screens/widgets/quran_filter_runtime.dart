@@ -474,6 +474,112 @@ class QuranFilterAvailabilityBuilder {
 
     return null;
   }
+
+  /// Loads all subjects and schools from their cached services without
+  /// fetching or computing any scoped-ayah statistics. The popup opens
+  /// instantly; result counts are computed only when the user presses Apply.
+  ///
+  /// [onProgress] is called with a value in [0.0, 1.0] and a display label
+  /// so callers can show a loading indicator (e.g. AppProgressOverlay).
+  Future<UnifiedFilterAvailableData> buildForDisplay({
+    required List<Evaluation> memorizationEvaluations,
+    required List<Evaluation> comprehensionEvaluations,
+    void Function(double progress, String label)? onProgress,
+  }) async {
+    final locale = Get.locale?.languageCode ?? 'ar';
+
+    onProgress?.call(0.1, 'filter_loading_data'.tr);
+
+    _SubjectData subjectData;
+    try {
+      onProgress?.call(0.2, 'filter_loading_subjects'.tr);
+      subjectData = await _loadAllSubjectData(locale);
+      onProgress?.call(0.55, 'filter_loading_subjects'.tr);
+    } catch (_) {
+      subjectData = const _SubjectData(
+        labels: <String, String>{},
+        hierarchy: <SubjectHierarchyItem>[],
+        counts: <String, int>{},
+      );
+    }
+
+    List<UnifiedFilterSchoolGroup> schoolGroups;
+    try {
+      onProgress?.call(0.6, 'filter_loading_schools'.tr);
+      schoolGroups = await _loadAllSchoolGroupsFromCatalog(locale);
+      onProgress?.call(0.95, 'filter_loading_schools'.tr);
+    } catch (_) {
+      schoolGroups = const <UnifiedFilterSchoolGroup>[];
+    }
+
+    onProgress?.call(1.0, '');
+
+    return UnifiedFilterAvailableData(
+      subjects: subjectData.labels,
+      subjectAyahCounts: const <String, int>{},
+      subjectHierarchy: subjectData.hierarchy,
+      schoolGroups: schoolGroups,
+      memorizationEvaluations: memorizationEvaluations,
+      comprehensionEvaluations: comprehensionEvaluations,
+    );
+  }
+
+  Future<_SubjectData> _loadAllSubjectData(String locale) async {
+    final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
+    final labels = <String, String>{};
+    for (final subject in hierarchy) {
+      final key = subject.key.trim();
+      if (key.isEmpty) continue;
+      final label = subject.displayName(locale).trim();
+      labels[key] = label.isEmpty ? key : label;
+    }
+    return _SubjectData(
+      labels: labels,
+      hierarchy: hierarchy,
+      counts: const <String, int>{},
+    );
+  }
+
+  Future<List<UnifiedFilterSchoolGroup>> _loadAllSchoolGroupsFromCatalog(
+    String locale,
+  ) async {
+    final schools = await SchoolServices().getAllSchools();
+    final groups = <UnifiedFilterSchoolGroup>[];
+
+    for (final school in schools) {
+      final schoolId = school.id;
+      if (schoolId == null) continue;
+
+      final seenLevels = <int>{};
+      final levels = <UnifiedFilterSchoolLevel>[];
+      final sortedCatalogLevels = school.levels.toList()
+        ..sort((a, b) => (a.level ?? 0).compareTo(b.level ?? 0));
+
+      for (final level in sortedCatalogLevels) {
+        final number = level.level;
+        if (number == null || !seenLevels.add(number)) continue;
+        final translationKey = 'level_$number';
+        final translated = translationKey.tr;
+        final levelLabel = _localizedLevelName(level.name, locale) ??
+            _schoolLevelNameFromCatalog(school, number, locale) ??
+            (translated == translationKey ? number.toString() : translated);
+        levels.add(UnifiedFilterSchoolLevel(
+          key: '$schoolId:$number',
+          label: levelLabel,
+          level: number,
+        ));
+      }
+
+      if (levels.isEmpty) continue;
+      groups.add(UnifiedFilterSchoolGroup(
+        label: _localizedSchoolName(school, locale),
+        levels: levels,
+      ));
+    }
+
+    groups.sort((a, b) => a.label.compareTo(b.label));
+    return groups;
+  }
 }
 
 class _FilterCardTrigger extends StatelessWidget {
