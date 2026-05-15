@@ -440,12 +440,15 @@ class LocalizationService extends Translations {
           continue;
         }
         normalizedCodes.add(normalizedCode);
-        if (normalizedCodes.length >= _maxRecentLanguageCodes) {
-          break;
-        }
       }
 
-      return normalizedCodes;
+      if (normalizedCodes.length <= _maxRecentLanguageCodes) {
+        return normalizedCodes;
+      }
+
+      return normalizedCodes.sublist(
+        normalizedCodes.length - _maxRecentLanguageCodes,
+      );
     } on TimeoutException {
       debugPrint('LocalizationService: timed out reading recent language codes');
       return const <String>[];

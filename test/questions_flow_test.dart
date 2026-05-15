@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/models/ayat.dart';
+import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/models/evaluation.dart' as app_models;
 import 'package:sahifaty/models/school.dart';
 import 'package:sahifaty/models/school_level.dart';
@@ -451,7 +452,7 @@ void main() {
       saveButton.style?.backgroundColor?.resolve(<WidgetState>{
         WidgetState.disabled,
       }),
-      const Color(0xFF132A4A).withValues(alpha: 0.32),
+      AppColors.primaryPurple.withValues(alpha: 0.32),
     );
 
     await tester.tap(find.text('Strong'));
@@ -461,7 +462,7 @@ void main() {
     expect(saveButton.onPressed, isNotNull);
     expect(
       saveButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-      const Color(0xFF132A4A),
+      AppColors.primaryPurple,
     );
   });
 }

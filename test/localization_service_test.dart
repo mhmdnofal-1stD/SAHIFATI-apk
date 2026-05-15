@@ -58,4 +58,17 @@ void main() {
       orderedEquals(const <String>['en', 'tr']),
     );
   });
+
+  test('init loads concrete Arabic UI labels from the bundled seed', () async {
+    SharedPreferences.setMockInitialValues({
+      'language_code': 'ar',
+    });
+
+    final service = LocalizationService();
+    await service.init();
+
+    expect(service.keys['ar']?['drawer_home'], 'الرئيسية');
+    expect(service.keys['ar']?['quick_questions'], 'الأسئلة السريعة');
+    expect(service.keys['ar_AE']?['logout'], 'تسجيل الخروج');
+  });
 }

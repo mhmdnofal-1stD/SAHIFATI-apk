@@ -94,9 +94,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
       }
     } catch (error) {
       if (mounted) {
+        final message = error.toString().replaceFirst('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error.toString()),
+            content: Text(message),
             backgroundColor: Colors.red,
           ),
         );

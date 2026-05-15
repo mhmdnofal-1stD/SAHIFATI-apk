@@ -20,6 +20,12 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
   bool _isLoading = true;
   String? _error;
 
+  String _childUsername(Map<String, dynamic> child) {
+    return child['username']?.toString() ??
+        child['displayName']?.toString() ??
+        'child_name_unknown'.tr;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -69,7 +75,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
     String? pin;
 
     if (hasPin == true && mounted) {
-      pin = await _promptForPin(child['displayName']?.toString() ?? '');
+      pin = await _promptForPin(_childUsername(child));
       if (pin == null) return; // user cancelled
     }
 
@@ -201,7 +207,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
 
   Future<void> _deleteChild(Map<String, dynamic> child) async {
     final childId = child['userId']?.toString() ?? child['id']?.toString();
-    final childName = child['displayName']?.toString() ?? '';
+    final childName = _childUsername(child);
     if (childId == null) return;
 
     final confirmed = await showDialog<bool>(
@@ -250,7 +256,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
   }
 
   Widget _buildChildCard(Map<String, dynamic> child) {
-    final name = child['displayName']?.toString() ?? 'child_name_unknown'.tr;
+    final name = _childUsername(child);
     final hasPin = child['hasPin'] == true;
     final dobRaw = child['dateOfBirth']?.toString();
     String? dobLabel;

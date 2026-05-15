@@ -545,8 +545,10 @@ class _WelcomeStoryCard extends StatelessWidget {
                         label: Text(
                           isBusy
                               ? 'welcome_primary_cta_loading'.tr
-                              : 'الاسئلة السريعة',
-                          textDirection: TextDirection.rtl,
+                            : 'start_evaluation'.tr,
+                          textDirection: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                            ? TextDirection.rtl
+                            : TextDirection.ltr,
                           style: AppTypography.of(context)
                               .buttonPrimary
                               .copyWith(color: Colors.white),
@@ -595,8 +597,10 @@ class _WelcomeStoryCard extends StatelessWidget {
                         label: Text(
                           isOpeningSahifa
                               ? 'welcome_secondary_cta_loading'.tr
-                              : 'صحيفتي',
-                          textDirection: TextDirection.rtl,
+                            : 'welcome_secondary_cta'.tr,
+                          textDirection: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                            ? TextDirection.rtl
+                            : TextDirection.ltr,
                           style: AppTypography.of(context)
                               .buttonSecondary
                               .copyWith(color: AppColors.primaryPurple),
@@ -698,6 +702,16 @@ class _WelcomeMetricsCard extends StatelessWidget {
               ],
             ),
             SizedBox(height: compactViewport ? 10 : 12),
+            Text(
+              'welcome_chart_top_label'.tr,
+              textDirection: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+              style: AppTypography.of(context)
+                  .sectionTitle
+                  .copyWith(color: AppColors.primaryPurple),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               height: compactViewport ? 240 : 280,
               child: Padding(

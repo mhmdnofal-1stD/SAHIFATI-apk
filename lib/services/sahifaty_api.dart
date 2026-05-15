@@ -33,7 +33,9 @@ class SahifatyApi {
         body: json.encode({'refreshToken': refreshToken}),
       ).timeout(const Duration(seconds: 30));
 
-      if (response.statusCode != 200) return false;
+      if (response.statusCode != 200) {
+        return false;
+      }
 
       final data = json.decode(response.body);
       final newAccessToken =
@@ -59,11 +61,25 @@ class SahifatyApi {
     }
   }
 
+  static Future<String> _resolveBearerToken() async {
+    final accessToken = await SecureSessionStorage.readAccessToken();
+    if (SecureSessionStorage.isAccessTokenUsable(accessToken)) {
+      return accessToken ?? '';
+    }
+
+    final refreshed = await _tryRefreshTokens();
+    if (!refreshed) {
+      return '';
+    }
+
+    return await SecureSessionStorage.readAccessToken() ?? '';
+  }
+
   // Get headers with token
   Future<Map<String, String>> _getHeaders({bool auth = true}) async {
     if (!auth) return {'Content-Type': 'application/json'};
 
-    final token = await SecureSessionStorage.readAccessToken() ?? '';
+    final token = await _resolveBearerToken();
 
     return {
       'Authorization': 'Bearer $token',

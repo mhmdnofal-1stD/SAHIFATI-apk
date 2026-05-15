@@ -21,6 +21,8 @@ class InfoIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasOverlay = Overlay.maybeOf(context) != null;
+
     return IconButton(
       icon: Icon(
         Icons.info_outline_rounded,
@@ -33,7 +35,7 @@ class InfoIconButton extends StatelessWidget {
         minHeight: size + 10,
       ),
       visualDensity: VisualDensity.compact,
-      tooltip: 'info'.tr,
+      tooltip: hasOverlay ? 'info'.tr : null,
       onPressed: () => _show(context),
     );
   }

@@ -334,8 +334,16 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           ),
                           const SizedBox(height: 16),
                         ],
-                        if (hasMemoOptions || hasCompreOptions)
-                          const SizedBox.shrink(),
+                        if (hasMemoOptions || hasCompreOptions) ...[
+                          Text(
+                            'assessment_dialog_hint'.tr,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.of(context)
+                                .bodySmall
+                                .copyWith(color: AppColors.mutedText),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                       ],
                     ],
                   ),

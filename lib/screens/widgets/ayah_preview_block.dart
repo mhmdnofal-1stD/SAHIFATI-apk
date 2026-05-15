@@ -31,30 +31,44 @@ class AyahPreviewBlock extends StatelessWidget {
       languageCode: languageCode,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          resolveAyahArabicText(ayah),
-          textAlign: textAlign,
-          textDirection: TextDirection.rtl,
-          style: arabicStyle ?? typography.quranVerse,
-        ),
-        if (translation != null) ...[
-          SizedBox(height: spacing),
-          Directionality(
-            textDirection:
-                isRtlTranslation ? TextDirection.rtl : TextDirection.ltr,
-            child: Text(
-              translation,
-              textAlign: TextAlign.start,
-              softWrap: true,
-              style: (translationStyle ?? typography.bodySecondary)
-                  .copyWith(height: 1.7),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                resolveAyahArabicText(ayah),
+                textAlign: textAlign,
+                textDirection: TextDirection.rtl,
+                softWrap: true,
+                maxLines: null,
+                overflow: TextOverflow.visible,
+                textWidthBasis: TextWidthBasis.parent,
+                style: arabicStyle ?? typography.quranVerse,
+              ),
+              if (translation != null) ...[
+                SizedBox(height: spacing),
+                Directionality(
+                  textDirection:
+                      isRtlTranslation ? TextDirection.rtl : TextDirection.ltr,
+                  child: Text(
+                    translation,
+                    textAlign: TextAlign.start,
+                    softWrap: true,
+                    maxLines: null,
+                    overflow: TextOverflow.visible,
+                    textWidthBasis: TextWidthBasis.parent,
+                    style: (translationStyle ?? typography.bodySecondary)
+                        .copyWith(height: 1.7),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-      ],
+        );
+      },
     );
   }
 }

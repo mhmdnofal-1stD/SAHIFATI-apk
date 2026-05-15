@@ -28,8 +28,47 @@ int? _parseUserRoleId(dynamic rawRole) {
   }
 }
 
+String _normalizeAccountKeyPart(String value) {
+  return value.trim().toLowerCase();
+}
+
+String deriveUserAccountKeyFromMap(Map<String, dynamic> json) {
+  final explicitAccountKey = json['accountKey']?.toString().trim() ?? '';
+  if (explicitAccountKey.isNotEmpty) {
+    return explicitAccountKey;
+  }
+
+  final rawIdValue = json['rawId'] ?? json['id'] ?? json['_id'];
+  final rawId = rawIdValue?.toString().trim() ?? '';
+  if (rawId.isNotEmpty) {
+    return int.tryParse(rawId) != null ? rawId : 'id:$rawId';
+  }
+
+  final email = (json['email'] as String?)?.trim() ?? '';
+  if (email.isNotEmpty) {
+    return 'email:${_normalizeAccountKeyPart(email)}';
+  }
+
+  final authProvider = (json['authProvider'] as String?)?.trim() ?? '';
+  final guardianUserId = json['guardianUserId']?.toString().trim() ?? '';
+  final username = (json['username'] as String?)?.trim() ?? '';
+  if (authProvider == 'managed_child' &&
+      guardianUserId.isNotEmpty &&
+      username.isNotEmpty) {
+    return 'managed_child:${_normalizeAccountKeyPart(guardianUserId)}:${_normalizeAccountKeyPart(username)}';
+  }
+
+  if (username.isNotEmpty) {
+    return 'username:${_normalizeAccountKeyPart(username)}';
+  }
+
+  return 'id:0';
+}
+
 class User {
   int id;
+  String rawId;
+  String accountKey;
   String username;
   String email;
   String? authProvider;
@@ -62,6 +101,8 @@ class User {
   User({
     required this.id,
     String? username,
+    String? rawId,
+    String? accountKey,
     this.email = '',
     this.authProvider,
     this.guardianUserId,
@@ -85,14 +126,28 @@ class User {
     this.showMemorizationColors = true,
     this.showComprehensionUnderline = true,
     this.allowedSubjectKeys = const [],
-  }) : username = (username ?? '').trim();
+  })  : username = (username ?? '').trim(),
+        rawId = (rawId ?? (id != 0 ? id.toString() : '')).trim(),
+        accountKey = (accountKey != null && accountKey.trim().isNotEmpty)
+            ? accountKey.trim()
+            : deriveUserAccountKeyFromMap({
+                'rawId': (rawId ?? (id != 0 ? id.toString() : '')).trim(),
+                'id': id,
+                'email': email,
+                'username': (username ?? '').trim(),
+                'authProvider': authProvider,
+                'guardianUserId': guardianUserId,
+              });
 
   // from JSON
   factory User.fromJson(Map<String, dynamic> json) {
     final rawId = json['id'] ?? json['_id'];
+    final rawIdString = rawId?.toString().trim() ?? '';
 
     return User(
       id: rawId is int ? rawId : int.tryParse('${rawId ?? 0}') ?? 0,
+      rawId: rawIdString,
+      accountKey: deriveUserAccountKeyFromMap(json),
       username: (json['username'] ?? '') as String,
       email: (json['email'] as String?) ?? '',
       authProvider: json['authProvider'] as String?,
@@ -128,6 +183,8 @@ class User {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'rawId': rawId,
+      'accountKey': accountKey,
       'username': username,
       'email': email,
       'authProvider': authProvider,
@@ -167,7 +224,7 @@ class User {
 
   @override
   String toString() {
-    return 'User(id: $id, username: $username, email: $email, userRoleId: $userRoleId, '
+    return 'User(id: $id, rawId: $rawId, accountKey: $accountKey, username: $username, email: $email, userRoleId: $userRoleId, '
         'licenseStatus: $licenseStatus, gender: $gender, birthYear: $birthYear, '
         'countryCode: $countryCode, country: $country, city: $city, state: $state, '
         'mobile: $mobile, educationLevel: $educationLevel, workType: $workType, '

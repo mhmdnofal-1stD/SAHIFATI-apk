@@ -105,6 +105,13 @@ class _ContentItemCardState extends State<ContentItemCard> {
     return EvaluationsController().getColorForEvaluationModel(memoEvaluation);
   }
 
+  Color _cardForegroundColor(Color backgroundColor) {
+    final brightness = ThemeData.estimateBrightnessForColor(backgroundColor);
+    return brightness == Brightness.dark
+        ? AppColors.whiteFontColor
+        : Colors.black87;
+  }
+
   bool _isUnderlined(UserEvaluation? userEvaluation) {
     if (userEvaluation == null) {
       return false;
@@ -470,6 +477,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                             final ayah = ayahs[index];
                             final cardColor =
                                 _cardColorForEvaluation(ayah.userEvaluation);
+                            final cardForegroundColor =
+                                _cardForegroundColor(cardColor);
 
                             return Card(
                               color: cardColor,
@@ -484,12 +493,12 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                     translationStyle: AppTypography.of(context)
                                         .bodySecondary
                                         .copyWith(
-                                          color: AppColors.whiteFontColor,
+                                        color: cardForegroundColor,
                                         ),
                                     arabicStyle: AppTypography.of(context)
                                         .quranVerse
                                         .copyWith(
-                                          color: AppColors.whiteFontColor,
+                                        color: cardForegroundColor,
                                           fontSize: 18,
                                           fontFamily: AppFonts.versesFont,
                                           decoration:
@@ -497,7 +506,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                                   ? TextDecoration.underline
                                                   : TextDecoration.none,
                                           decorationColor:
-                                              AppColors.whiteFontColor,
+                                          cardForegroundColor,
                                         ),
                                   ),
                                   const SizedBox(height: 10),
@@ -819,6 +828,8 @@ class _ContentItemCardState extends State<ContentItemCard> {
                             final ayah = ayahs[index];
                             final cardColor =
                                 _cardColorForEvaluation(ayah.userEvaluation);
+                            final cardForegroundColor =
+                                _cardForegroundColor(cardColor);
 
                             return Card(
                               color: cardColor,
@@ -840,12 +851,15 @@ class _ContentItemCardState extends State<ContentItemCard> {
                                       arabicStyle: AppTypography.of(context)
                                           .quranVerse
                                           .copyWith(
+                                          color: cardForegroundColor,
                                             fontSize: 18,
                                             fontFamily: AppFonts.versesFont,
                                             decoration: _isUnderlined(
                                                         ayah.userEvaluation)
                                                     ? TextDecoration.underline
                                                     : TextDecoration.none,
+                                          decorationColor:
+                                            cardForegroundColor,
                                           ),
                                     ),
                                     const SizedBox(height: 10),
@@ -1028,25 +1042,23 @@ class _ContentItemCardState extends State<ContentItemCard> {
           );
 
     final titleColor = outlined ? AppColors.primaryPurple : Colors.white;
-    final buttonChild = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
+    final buttonChild = Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
       children: [
         Icon(
           icon,
           size: 18,
           color: titleColor,
         ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.of(context)
-                .buttonPrimary
-                .copyWith(color: titleColor, fontSize: 13.5),
-          ),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: AppTypography.of(context)
+              .buttonPrimary
+              .copyWith(color: titleColor, fontSize: 13.5),
         ),
       ],
     );
@@ -1114,10 +1126,52 @@ class _ContentItemCardState extends State<ContentItemCard> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final useCompactLayout = constraints.maxWidth < 520;
+            final statusBadge = Container(
+              width: useCompactLayout ? double.infinity : null,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 6,
+              ),
+              decoration: BoxDecoration(
+                color: _statusColor(),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize:
+                    useCompactLayout ? MainAxisSize.max : MainAxisSize.min,
+                children: [
+                  Icon(
+                    widget.isCompleted == true
+                        ? Icons.verified_rounded
+                        : Icons.pending_actions_rounded,
+                    size: 14,
+                    color: AppColors.buttonColor,
+                  ),
+                  const SizedBox(width: 6),
+                  if (useCompactLayout)
+                    Expanded(
+                      child: Text(
+                        _statusLabel(),
+                        style: AppTypography.of(context)
+                            .badgeLabel
+                            .copyWith(color: AppColors.primaryPurple),
+                      ),
+                    )
+                  else
+                    Text(
+                      _statusLabel(),
+                      style: AppTypography.of(context)
+                          .badgeLabel
+                          .copyWith(color: AppColors.primaryPurple),
+                    ),
+                ],
+              ),
+            );
+
+            final titleRow = Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Padding(
@@ -1137,77 +1191,92 @@ class _ContentItemCardState extends State<ContentItemCard> {
                         .copyWith(color: AppColors.primaryPurple),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _statusColor(),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              ],
+            );
+
+            final actions = useCompactLayout
+                ? Column(
                     children: [
-                      Icon(
-                        widget.isCompleted == true
-                            ? Icons.verified_rounded
-                            : Icons.pending_actions_rounded,
-                        size: 14,
-                        color: AppColors.buttonColor,
+                      _buildActionButton(
+                        onPressed: canInteract
+                            ? () => _evaluateUnit(context, languageProvider)
+                            : null,
+                        title: 'content_item_card_action_rate_unit_title'.tr,
+                        icon: Icons.auto_awesome,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _statusLabel(),
-                        style: AppTypography.of(context)
-                            .badgeLabel
-                            .copyWith(color: AppColors.primaryPurple),
+                      const SizedBox(height: 10),
+                      _buildActionButton(
+                        onPressed: canInteract
+                            ? () => _showIndividualEvaluation(
+                                context, languageProvider)
+                            : null,
+                        title:
+                            'content_item_card_action_review_verses_title'.tr,
+                        icon: Icons.menu_book_rounded,
+                        outlined: true,
                       ),
                     ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
+                          onPressed: canInteract
+                              ? () => _evaluateUnit(context, languageProvider)
+                              : null,
+                          title: 'content_item_card_action_rate_unit_title'.tr,
+                          icon: Icons.auto_awesome,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildActionButton(
+                          onPressed: canInteract
+                              ? () => _showIndividualEvaluation(
+                                  context, languageProvider)
+                              : null,
+                          title:
+                              'content_item_card_action_review_verses_title'.tr,
+                          icon: Icons.menu_book_rounded,
+                          outlined: true,
+                        ),
+                      ),
+                    ],
+                  );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (useCompactLayout) ...[
+                  titleRow,
+                  const SizedBox(height: 10),
+                  statusBadge,
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(child: titleRow),
+                      const SizedBox(width: 10),
+                      statusBadge,
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (isEvaluating)
-              const Center(child: CircularProgressIndicator())
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      onPressed: canInteract
-                          ? () => _evaluateUnit(context, languageProvider)
-                          : null,
-                      title: 'content_item_card_action_rate_unit_title'.tr,
-                      icon: Icons.auto_awesome,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildActionButton(
-                      onPressed: canInteract
-                          ? () => _showIndividualEvaluation(
-                              context, languageProvider)
-                          : null,
-                      title: 'content_item_card_action_review_verses_title'.tr,
-                      icon: Icons.menu_book_rounded,
-                      outlined: true,
-                    ),
+                const SizedBox(height: 12),
+                if (isEvaluating)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  actions,
+                if (_isJuzType) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    'content_item_card_juz_hint'.tr,
+                    style: AppTypography.of(context)
+                        .bodySmall
+                        .copyWith(color: AppColors.mutedText),
                   ),
                 ],
-              ),
-            if (_isJuzType) ...[
-              const SizedBox(height: 10),
-              Text(
-                'content_item_card_juz_hint'.tr,
-                style: AppTypography.of(context)
-                    .bodySmall
-                    .copyWith(color: AppColors.mutedText),
-              ),
-            ],
-          ],
+              ],
+            );
+          },
         ),
       ),
     );

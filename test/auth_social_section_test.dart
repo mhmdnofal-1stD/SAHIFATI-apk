@@ -32,9 +32,9 @@ Future<void> _pumpSection(
       home: Material(
         child: Center(
           child: AuthSocialSection(
-            googleControl: const SizedBox(width: 20, height: 20),
-            onFacebookPressed: () {},
-            isBusy: false,
+            controls: const [
+              SizedBox(width: 20, height: 20),
+            ],
             statusMessage: statusMessage,
           ),
         ),

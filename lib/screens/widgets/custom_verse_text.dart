@@ -30,6 +30,7 @@ class CustomVerseText extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Checkbox(
@@ -44,6 +45,10 @@ class CustomVerseText extends StatelessWidget {
               text,
               textDirection: TextDirection.rtl,
               textAlign: TextAlign.start,
+              softWrap: true,
+              maxLines: null,
+              overflow: TextOverflow.visible,
+              textWidthBasis: TextWidthBasis.parent,
               style: AppTypography.of(context)
                   .quranVerse
                   .copyWith(
@@ -74,39 +79,47 @@ class CustomVerseText2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTypography.of(context);
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: text,
-            style: t.quranVerse.copyWith(color: backgroundColor),
-          ),
-
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFE0E0E0),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          child: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: text,
+                  style: t.quranVerse.copyWith(color: backgroundColor),
                 ),
-                child: Text(
-                  _toArabicNumber(verseNumber),
-                  textDirection: TextDirection.rtl,
-                  style: t.quranAyahMarker,
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFE0E0E0),
+                      ),
+                      child: Text(
+                        _toArabicNumber(verseNumber),
+                        textDirection: TextDirection.rtl,
+                        style: t.quranAyahMarker,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const TextSpan(text: ' '),
+              ],
             ),
+            textDirection: TextDirection.rtl,
+            textAlign: TextAlign.justify,
+            softWrap: true,
+            maxLines: null,
+            overflow: TextOverflow.visible,
+            textWidthBasis: TextWidthBasis.parent,
           ),
-
-          // 🔹 Optional small space after the verse
-          const TextSpan(text: ' '),
-        ],
-      ),
-      textDirection: TextDirection.rtl,
-      textAlign: TextAlign.justify,
+        );
+      },
     );
   }
 

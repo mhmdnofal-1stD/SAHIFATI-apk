@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/controllers/filter_types.dart';
@@ -14,6 +13,7 @@ import 'package:sahifaty/providers/surahs_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/first_pie_chart_screen/first_pie_chart_screen.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
+import 'package:sahifaty/screens/widgets/bar_chart_widget.dart';
 
 class _FlowTranslations extends Translations {
   @override
@@ -29,6 +29,18 @@ class _FlowTranslations extends Translations {
           'switch_user': 'Switch user',
           'logout': 'Logout',
           'verses': 'verses',
+          'main_screen_gateway_badge': 'Your reading and exploration gateway',
+          'sahifa_screen_header_badge_first': 'This is the start of your Sahifa',
+          'sahifa_screen_header_body': 'This screen is not a separate dashboard. It is a quick summary that helps you understand your current state, then move into reading from a clearer starting point.',
+          'sahifa_screen_summary_title': 'Your Sahifa summary right now',
+          'sahifa_screen_memorization_summary': 'This summary is built from @evaluated verses that were actually categorized inside the Sahifa, while @remaining verses still remain outside this summary until they are assessed later.',
+          'sahifa_screen_metric_remaining': 'Verses still without assessment',
+          'sahifa_screen_top_signal_title': 'Strongest current signal',
+          'sahifa_screen_top_signal_body': '@name currently covers @count verses in this view.',
+          'assessment_dimension_memorization': 'Memorization',
+          'assessment_dimension_comprehension': 'Comprehension',
+          'main_screen_hizb_error_title': 'We could not prepare the hizb path',
+          'welcome_chart_retry': 'Retry',
         },
       };
 }
@@ -132,7 +144,7 @@ void main() {
     expect(find.textContaining('4 verses that were actually categorized'), findsOneWidget);
     expect(find.text('Verses still without assessment'), findsOneWidget);
     expect(find.text('Strongest current signal'), findsOneWidget);
-    expect(find.byType(BarChart), findsOneWidget);
+    expect(find.byType(BarChartWidget), findsOneWidget);
     expect(find.text('Uncategorized'), findsNothing);
   });
 
@@ -160,7 +172,7 @@ void main() {
     );
 
     expect(find.text('Your reading and exploration gateway'), findsOneWidget);
-    expect(find.text('Start through hizbs'), findsOneWidget);
+    expect(find.text('Hizbs'), findsOneWidget);
     expect(find.text('We could not prepare the hizb path'), findsOneWidget);
     expect(find.text('Hizb path failed'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);

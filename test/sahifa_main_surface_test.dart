@@ -74,6 +74,19 @@ class _SurfaceTranslations extends Translations {
       };
 }
 
+class _NoStretchScrollBehavior extends MaterialScrollBehavior {
+  const _NoStretchScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    return child;
+  }
+}
+
 Future<void> _pumpSurface(
   WidgetTester tester, {
   required Widget child,
@@ -82,6 +95,11 @@ Future<void> _pumpSurface(
   GeneralProvider? generalProvider,
   SurahsProvider? surahsProvider,
 }) async {
+  Get.clearTranslations();
+  Get.addTranslations(_SurfaceTranslations().keys);
+  Get.locale = const Locale('en');
+  Get.fallbackLocale = const Locale('en');
+
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -104,11 +122,21 @@ Future<void> _pumpSurface(
           value: SchoolProvider(),
         ),
       ],
-      child: GetMaterialApp(
-        translations: _SurfaceTranslations(),
-        locale: const Locale('en'),
-        fallbackLocale: const Locale('en'),
-        home: child,
+      child: MediaQuery(
+        data: const MediaQueryData(size: Size(800, 600)),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: ScrollConfiguration(
+            behavior: const _NoStretchScrollBehavior(),
+            child: ScaffoldMessenger(
+              child: Material(
+                child: Scaffold(
+                  body: child,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -140,7 +168,12 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const MainScreen(comesFirst: false),
+      child: const MainScreen(
+        comesFirst: false,
+        autoBootstrapChart: false,
+        useResponsiveShell: false,
+        useScaffoldFrame: false,
+      ),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
@@ -173,12 +206,17 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const MainScreen(comesFirst: false),
+      child: const MainScreen(
+        comesFirst: false,
+        autoBootstrapChart: false,
+        useResponsiveShell: false,
+        useScaffoldFrame: false,
+      ),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('A saved reading session is waiting'), findsOneWidget);
     expect(find.text('Resume reading'), findsWidgets);
@@ -211,7 +249,12 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const MainScreen(comesFirst: false),
+      child: const MainScreen(
+        comesFirst: false,
+        autoBootstrapChart: false,
+        useResponsiveShell: false,
+        useScaffoldFrame: false,
+      ),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
     );
@@ -229,7 +272,11 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const MainScreen(),
+      child: const MainScreen(
+        autoBootstrapChart: false,
+        useResponsiveShell: false,
+        useScaffoldFrame: false,
+      ),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
       generalProvider: generalProvider,
@@ -259,13 +306,17 @@ void main() {
 
     await _pumpSurface(
       tester,
-      child: const MainScreen(),
+      child: const MainScreen(
+        autoBootstrapChart: false,
+        useResponsiveShell: false,
+        useScaffoldFrame: false,
+      ),
       usersProvider: usersProvider,
       evaluationsProvider: evaluationsProvider,
       generalProvider: generalProvider,
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Resume your last reading'), findsOneWidget);
     expect(find.text('Resume reading'), findsOneWidget);

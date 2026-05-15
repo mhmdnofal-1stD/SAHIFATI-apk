@@ -39,6 +39,8 @@ class ResponsiveContentShell extends StatelessWidget {
         final contentWidth = availableWidth > maxContentWidth
             ? maxContentWidth
             : availableWidth;
+        final centeredHorizontalPadding =
+          gutter + ((availableWidth - contentWidth) / 2);
         final boundedHeight = viewportConstraints.hasBoundedHeight
             ? viewportConstraints.maxHeight
             : MediaQuery.sizeOf(context).height;
@@ -46,29 +48,31 @@ class ResponsiveContentShell extends StatelessWidget {
         return SizedBox(
           width: double.infinity,
           height: boundedHeight,
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: gutter),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: contentWidth),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const PendingSyncBanner(),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, contentConstraints) {
-                          SizeConfig().initWithConstraints(
-                            context,
-                            contentConstraints,
-                          );
-                          return builder?.call(context) ?? child!;
-                        },
-                      ),
+          child: Padding(
+            padding:
+                EdgeInsets.symmetric(horizontal: centeredHorizontalPadding),
+            child: SizedBox(
+              width: contentWidth,
+              height: boundedHeight,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const PendingSyncBanner(),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        SizeConfig().initWithConstraints(
+                          context,
+                          BoxConstraints(
+                            maxWidth: contentWidth,
+                            maxHeight: boundedHeight,
+                          ),
+                        );
+                        return builder?.call(context) ?? child!;
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

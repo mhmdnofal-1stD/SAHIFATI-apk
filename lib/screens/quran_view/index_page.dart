@@ -2686,32 +2686,57 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required Color underlineColor,
     required double underlineThickness,
   }) {
+    const underlineSideInset = 4.0;
     final cleanTextStyle = textStyle.copyWith(
       decoration: TextDecoration.none,
       decorationColor: null,
       decorationThickness: null,
     );
+    final textWidth = _measureMushafTextWidth(
+      text: text,
+      textStyle: cleanTextStyle,
+    );
+    final textHeight = _measureMushafTextHeight(
+      text: text,
+      textStyle: cleanTextStyle,
+    );
+    final underlineTop = _resolveMushafUnderlineTop(
+      text: text,
+      textStyle: cleanTextStyle,
+      underlineThickness: underlineThickness,
+    );
+    final totalHeight = math.max(
+      textHeight + underlineThickness + 1.0,
+      underlineTop + underlineThickness + 1.0,
+    );
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: underlineThickness <= 1.8 ? 0.4 : 0.7),
+    return SizedBox(
+      width: textWidth + (underlineSideInset * 2),
+      height: totalHeight,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: underlineThickness + 1.4),
-            child: Text(
-              text,
-              textDirection: TextDirection.rtl,
-              style: cleanTextStyle,
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                text,
+                textDirection: TextDirection.rtl,
+                softWrap: false,
+                maxLines: 1,
+                overflow: TextOverflow.visible,
+                style: cleanTextStyle,
+              ),
             ),
           ),
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            top: underlineTop,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: underlineColor,
+                borderRadius: BorderRadius.circular(underlineThickness),
               ),
               child: SizedBox(height: underlineThickness),
             ),
@@ -2727,32 +2752,31 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required double fontSize,
     double? width,
   }) {
-    final bottomInset = underlineThickness <= 1.8 ? 0.4 : 0.7;
+    final connectorHeight = fontSize + underlineThickness + 5.0;
+    final underlineTop = connectorHeight - underlineThickness - 1.0;
 
     Widget connector = Padding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: underlineThickness + 1.4),
-            child: SizedBox(
-              width: width,
-              height: fontSize,
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: underlineColor,
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        height: connectorHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(width: width, height: connectorHeight),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: underlineTop,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: underlineColor,
+                  borderRadius: BorderRadius.circular(underlineThickness),
+                ),
+                child: SizedBox(height: underlineThickness),
               ),
-              child: SizedBox(height: underlineThickness),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 
@@ -2773,6 +2797,40 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       maxLines: 1,
     )..layout();
     return painter.width;
+  }
+
+  double _measureMushafTextHeight({
+    required String text,
+    required TextStyle textStyle,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: textStyle),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+    )..layout();
+    return painter.height;
+  }
+
+  double _resolveMushafUnderlineTop({
+    required String text,
+    required TextStyle textStyle,
+    required double underlineThickness,
+  }) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: textStyle),
+      textDirection: TextDirection.rtl,
+      maxLines: 1,
+    )..layout();
+    final metrics = painter.computeLineMetrics();
+    if (metrics.isNotEmpty) {
+      final baseline = metrics.first.baseline;
+      return math.max(0.0, baseline + underlineThickness + 10.2);
+    }
+
+    return math.max(
+      0.0,
+      (textStyle.fontSize ?? _mushafWordFontSize) * 1.28,
+    );
   }
 
   double _estimateMushafLineWidthForFit({
@@ -2895,7 +2953,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           final underlineColor = presentation?.verseTextStyle.decorationColor ??
               presentation?.badgeTextColor ??
               (baseWordStyle.color ?? defaultStyle.color!);
-          final underlineThickness = isLandscapeReader ? 2.0 : 1.8;
+          final underlineThickness = isLandscapeReader ? 1.6 : 1.45;
           final plainWordStyle = baseWordStyle.copyWith(
             decoration: TextDecoration.none,
             decorationColor: null,
@@ -3065,7 +3123,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             height: resolvedLineHeight,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: fineTune.horizontalInset),
-              child: Center(child: lineChild),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: lineChild,
+                ),
+              ),
             ),
           );
         }
@@ -3142,7 +3206,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             padding: EdgeInsets.symmetric(
               horizontal: isLandscapeReader ? fineTune.horizontalInset : 0,
             ),
-            child: Center(child: lineChild),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: lineChild,
+              ),
+            ),
           ),
         );
       },
@@ -3162,6 +3232,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final isIntroPage = page == 1 || page == 2;
     final pageFontScale =
         isLandscapeReader ? _mushafLandscapePageFontScale : _mushafPageFontScale;
+    final pageViewportWidth = isLandscapeReader
+        ? math.min(constraints.maxWidth, 760.0)
+        : constraints.maxWidth;
     final pageWidget = _ReaderRenderedPage(
       pageNumber: page,
       isDarkMode: isDarkMode,
@@ -3187,10 +3260,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     if (isLandscapeReader) {
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(0, 6, 0, 6),
-        child: SizedBox(
-          width: constraints.maxWidth,
-          height: isIntroPage ? constraints.maxHeight : null,
-          child: pageWidget,
+        child: Center(
+          child: SizedBox(
+            width: pageViewportWidth,
+            height: isIntroPage ? constraints.maxHeight : null,
+            child: pageWidget,
+          ),
         ),
       );
     }
@@ -3211,13 +3286,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       child: Align(
         alignment: Alignment.topCenter,
         child: SizedBox(
-          width: constraints.maxWidth,
+          width: pageViewportWidth,
           height: constraints.maxHeight,
           child: FittedBox(
             fit: BoxFit.contain,
             alignment: Alignment.topCenter,
             child: SizedBox(
-              width: constraints.maxWidth,
+              width: pageViewportWidth,
               height: isIntroPage ? constraints.maxHeight : null,
               child: pageWidget,
             ),
@@ -3766,43 +3841,29 @@ class _ReaderRenderedPage extends StatelessWidget {
   }
 
   Widget _buildRecitationDivider(Color color) {
-    final primaryColor = Color.lerp(color, Colors.black, 0.32) ?? color;
-    final secondaryColor = Color.lerp(color, Colors.black, 0.12) ?? color;
+    final primaryColor = Color.lerp(color, Colors.black, 0.22) ?? color;
+    final secondaryColor = Color.lerp(color, Colors.white, 0.18) ?? color;
     return IgnorePointer(
       child: SizedBox(
-        width: 14,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 2.2,
-              decoration: BoxDecoration(
-                color: secondaryColor,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: secondaryColor.withValues(alpha: 0.22),
-                    blurRadius: 3,
-                  ),
-                ],
+        width: 10,
+        child: Center(
+          child: Container(
+            width: 3,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [secondaryColor, primaryColor, secondaryColor],
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: 0.16),
+                  blurRadius: 3,
+                ),
+              ],
             ),
-            const SizedBox(width: 4),
-            Container(
-              width: 4.2,
-              decoration: BoxDecoration(
-                color: primaryColor,
-                borderRadius: BorderRadius.circular(999),
-                boxShadow: [
-                  BoxShadow(
-                    color: primaryColor.withValues(alpha: 0.26),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SecureSessionStorage {
   SecureSessionStorage._();
 
+  static const Duration _defaultTokenExpirySkew = Duration(seconds: 90);
+
   static const _accessTokenKey = 'accessToken';
   static const _refreshTokenKey = 'refreshToken';
   static const _activeAccountKey = 'active_session_account_key';
@@ -87,6 +89,44 @@ class SecureSessionStorage {
     }
 
     return _storage.read(key: _accessTokenKey);
+  }
+
+  static bool isAccessTokenUsable(
+    String? token, {
+    Duration expirySkew = _defaultTokenExpirySkew,
+  }) {
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+
+    final parts = token.split('.');
+    if (parts.length != 3) {
+      return false;
+    }
+
+    try {
+      final normalizedPayload = base64Url.normalize(parts[1]);
+      final payloadJson = utf8.decode(base64Url.decode(normalizedPayload));
+      final payload = json.decode(payloadJson);
+      if (payload is! Map) {
+        return false;
+      }
+
+      final expRaw = payload['exp'];
+      final exp = expRaw is int
+          ? expRaw
+          : expRaw is num
+              ? expRaw.toInt()
+              : int.tryParse(expRaw?.toString() ?? '');
+      if (exp == null) {
+        return false;
+      }
+
+      final expiresAt = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return expiresAt.isAfter(DateTime.now().add(expirySkew));
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<String?> readRefreshToken({String? accountKey}) async {

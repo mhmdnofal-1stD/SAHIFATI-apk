@@ -71,18 +71,14 @@ class UsersProvider with ChangeNotifier {
   @visibleForTesting
   Future<AuthData?> Function(String refreshToken)? debugRefreshTokensOverride;
 
-  String _accountKeyForUser(User user) => user.id.toString();
+  String _accountKeyForUser(User user) => user.accountKey;
 
   String _onboardingCompletionKeyForUser(User user) =>
       '${_legacyOnboardingCompleteKey}_${_accountKeyForUser(user)}';
 
   String? _accountKeyFromUserMap(Map<String, dynamic> userMap) {
-    final id = userMap['id'];
-    if (id == null) {
-      return null;
-    }
-
-    return id.toString();
+    final accountKey = deriveUserAccountKeyFromMap(userMap).trim();
+    return accountKey.isEmpty ? null : accountKey;
   }
 
   Map<String, dynamic> _buildStoredSessionRecord(User user) {
@@ -254,7 +250,7 @@ class UsersProvider with ChangeNotifier {
     final accessToken = await SecureSessionStorage.readAccessToken(
       accountKey: accountKey,
     );
-    if (accessToken != null && accessToken.isNotEmpty) {
+    if (SecureSessionStorage.isAccessTokenUsable(accessToken)) {
       return accessToken;
     }
 
@@ -465,6 +461,10 @@ class UsersProvider with ChangeNotifier {
 
     if (trimmed == 'child_pin_not_set') {
       return 'child_pin_not_set'.tr;
+    }
+
+    if (trimmed == 'child_name_taken') {
+      return 'child_name_taken'.tr;
     }
 
     if (trimmed == 'child_login_child_name_required') {
@@ -1220,15 +1220,15 @@ class UsersProvider with ChangeNotifier {
 
   Future<AuthData> loginAsChild({
     required String guardianEmail,
-    required String childName,
-    required String pin,
+    required String password,
+    required String childId,
   }) async {
     setLoading();
     try {
       final result = await _usersService.loginChild(
         guardianEmail: guardianEmail,
-        childName: childName,
-        pin: pin,
+        password: password,
+        childId: childId,
       );
 
       if (result is AuthData) {
@@ -1244,6 +1244,16 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getChildLoginOptions({
+    required String guardianEmail,
+    required String password,
+  }) {
+    return _usersService.getChildLoginOptions(
+      guardianEmail: guardianEmail,
+      password: password,
+    );
+  }
+
   Future<AuthData> finalizeAuthenticatedUser(AuthData authData) async {
     if (authData.user == null || authData.accessToken == null) {
       throw _buildSocialAuthError(
@@ -1254,8 +1264,12 @@ class UsersProvider with ChangeNotifier {
 
     final user = User(
       id: authData.user!.id,
+      rawId: authData.user!.rawId,
+      accountKey: authData.user!.accountKey,
       username: authData.user!.username,
       email: authData.user!.email,
+      authProvider: authData.user!.authProvider,
+      guardianUserId: authData.user!.guardianUserId,
       userRoleId: authData.user!.userRoleId,
       licenseStatus: authData.user!.licenseStatus,
     );
@@ -1698,6 +1712,9 @@ class UsersProvider with ChangeNotifier {
     final normalizedProfile = <String, dynamic>{
       ...profile,
       'id': profile['id'] ?? profile['_id'] ?? fallbackUser?.id,
+      'rawId':
+          profile['rawId'] ?? profile['id'] ?? profile['_id'] ?? fallbackUser?.rawId,
+      'accountKey': profile['accountKey'] ?? fallbackUser?.accountKey,
       'email': profile['email'] ?? fallbackUser?.email ?? '',
       'username': profile['username'] ?? fallbackUser?.username ?? '',
       'userRoleId': profile['userRoleId'] ?? fallbackUser?.userRoleId,
@@ -1784,6 +1801,11 @@ class UsersProvider with ChangeNotifier {
       final normalizedProfile = <String, dynamic>{
         ...profile,
         'id': profile['id'] ?? profile['_id'] ?? activeAccountUser?.id,
+        'rawId': profile['rawId'] ??
+            profile['id'] ??
+            profile['_id'] ??
+            activeAccountUser?.rawId,
+        'accountKey': profile['accountKey'] ?? activeAccountUser?.accountKey,
         'email': profile['email'] ?? activeAccountUser?.email ?? '',
         'username': profile['username'] ?? username,
         'userRoleId': profile['userRoleId'] ?? activeAccountUser?.userRoleId,
@@ -2016,14 +2038,14 @@ class UsersProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
 
     final storedUsersList = await _readStoredDeviceUsersList(prefs);
+    final accountKey = _accountKeyForUser(user);
 
-    // Check if user already exists — match by id so managed_child accounts
-    // (which have no email) are correctly deduped.
+    // Check if user already exists — match by stable account key so stored
+    // sessions remain bound to the same logical account even if id shapes vary.
     final int existingIndex = storedUsersList.indexWhere(
-      (element) {
-        final storedId = element['id'];
-        return storedId != null && storedId == user.id;
-      },
+      (element) =>
+          _accountKeyFromUserMap(Map<String, dynamic>.from(element)) ==
+          accountKey,
     );
 
     final Map<String, dynamic> userMap = user.toMap();
@@ -2132,10 +2154,10 @@ class UsersProvider with ChangeNotifier {
   // ── Child account methods ─────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> createChildAccount(
-    String displayName, {
+    String username, {
     int? birthYear,
   }) async {
-    final body = <String, dynamic>{'displayName': displayName};
+    final body = <String, dynamic>{'username': username};
     if (birthYear != null) {
       body['birthYear'] = birthYear;
     }
@@ -2145,7 +2167,11 @@ class UsersProvider with ChangeNotifier {
       return json.decode(response.body) as Map<String, dynamic>;
     }
     final data = json.decode(response.body);
-    throw data['message'] ?? 'child_create_error';
+    throw Exception(
+      data is Map
+          ? extractErrorMessage(Map<String, dynamic>.from(data))
+          : 'child_create_error'.tr,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getChildAccounts() async {

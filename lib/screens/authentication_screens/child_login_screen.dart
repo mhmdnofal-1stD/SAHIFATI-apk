@@ -27,32 +27,83 @@ class ChildLoginScreen extends StatefulWidget {
 class _ChildLoginScreenState extends State<ChildLoginScreen> {
   final TextEditingController _guardianEmailController =
       TextEditingController();
-  final TextEditingController _childNameController = TextEditingController();
-  final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _guardianPasswordController =
+      TextEditingController();
 
+  List<Map<String, dynamic>> _childOptions = [];
+  String? _selectedChildId;
   String? _inlineError;
   bool _isBusy = false;
+  bool _isLoadingChildren = false;
 
   @override
   void initState() {
     super.initState();
-    _childNameController.text = widget.initialChildName?.trim() ?? '';
+    _guardianEmailController.addListener(_resetLoadedChildren);
+    _guardianPasswordController.addListener(_resetLoadedChildren);
   }
 
   @override
   void dispose() {
+    _guardianEmailController.removeListener(_resetLoadedChildren);
+    _guardianPasswordController.removeListener(_resetLoadedChildren);
     _guardianEmailController.dispose();
-    _childNameController.dispose();
-    _pinController.dispose();
+    _guardianPasswordController.dispose();
     super.dispose();
   }
 
-  bool _hasValidInput() {
-    final guardianEmail = _guardianEmailController.text.trim();
-    final childName = _childNameController.text.trim();
-    final pin = _pinController.text.trim();
+  void _resetLoadedChildren() {
+    if (!_childOptions.isNotEmpty && _selectedChildId == null && _inlineError == null) {
+      return;
+    }
 
-    if (guardianEmail.isEmpty || childName.isEmpty || pin.isEmpty) {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _childOptions = [];
+      _selectedChildId = null;
+      _inlineError = null;
+    });
+  }
+
+  String _childId(Map<String, dynamic> child) {
+    return child['childId']?.toString() ??
+        child['userId']?.toString() ??
+        child['id']?.toString() ??
+        '';
+  }
+
+  String _childUsername(Map<String, dynamic> child) {
+    return child['username']?.toString() ??
+        child['displayName']?.toString() ??
+        '';
+  }
+
+  String? _resolveInitialChildId(List<Map<String, dynamic>> children) {
+    final initialName = widget.initialChildName?.trim().toLowerCase();
+    if (initialName == null || initialName.isEmpty) {
+      return null;
+    }
+
+    for (final child in children) {
+      if (_childUsername(child).trim().toLowerCase() == initialName) {
+        final childId = _childId(child);
+        if (childId.isNotEmpty) {
+          return childId;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  bool _hasValidGuardianCredentials() {
+    final guardianEmail = _guardianEmailController.text.trim();
+    final password = _guardianPasswordController.text;
+
+    if (guardianEmail.isEmpty || password.isEmpty) {
       setState(() {
         _inlineError = 'all_fields_required'.tr;
       });
@@ -66,18 +117,75 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
       return false;
     }
 
-    if (!RegExp(r'^\d{4,8}$').hasMatch(pin)) {
-      setState(() {
-        _inlineError = 'child_pin_not_set'.tr;
-      });
-      return false;
-    }
-
     return true;
   }
 
+  Future<void> _loadChildOptions() async {
+    if (_isBusy || _isLoadingChildren || !_hasValidGuardianCredentials()) {
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    final usersProvider = Provider.of<UsersProvider>(context, listen: false);
+
+    setState(() {
+      _isLoadingChildren = true;
+      _inlineError = null;
+    });
+
+    try {
+      final options = await usersProvider.getChildLoginOptions(
+        guardianEmail: _guardianEmailController.text.trim(),
+        password: _guardianPasswordController.text,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      final initialChildId = _resolveInitialChildId(options);
+      setState(() {
+        _childOptions = options;
+        _selectedChildId = initialChildId ??
+            (options.length == 1 ? _childId(options.first) : null);
+        _inlineError = options.isEmpty ? 'child_login_no_children'.tr : null;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _inlineError = usersProvider.extractErrorMessage(error);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingChildren = false;
+        });
+      }
+    }
+  }
+
   Future<void> _submit() async {
-    if (_isBusy || !_hasValidInput()) {
+    if (_isBusy) {
+      return;
+    }
+
+    if (_childOptions.isEmpty) {
+      await _loadChildOptions();
+      return;
+    }
+
+    if (!_hasValidGuardianCredentials()) {
+      return;
+    }
+
+    final childId = _selectedChildId?.trim() ?? '';
+    if (childId.isEmpty) {
+      setState(() {
+        _inlineError = 'child_login_child_required'.tr;
+      });
       return;
     }
 
@@ -94,8 +202,8 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
     try {
       final authData = await usersProvider.loginAsChild(
         guardianEmail: _guardianEmailController.text.trim(),
-        childName: _childNameController.text.trim(),
-        pin: _pinController.text.trim(),
+        password: _guardianPasswordController.text,
+        childId: childId,
       );
 
       await usersProvider.finalizeAuthenticatedUser(authData);
@@ -205,27 +313,71 @@ class _ChildLoginScreenState extends State<ChildLoginScreen> {
           ),
           SizedBox(height: fieldGap),
           CustomAuthenticationTextField(
-            hintText: 'child_login_child_name_hint'.tr,
-            semanticLabel: 'child_login_child_name_label'.tr,
-            leadingIcon: Icons.child_care_rounded,
-            obscureText: false,
-            textEditingController: _childNameController,
-            borderColor: AppColors.textFieldBorderColor,
-            textInputAction: TextInputAction.next,
-          ),
-          SizedBox(height: fieldGap),
-          CustomAuthenticationTextField(
-            hintText: 'child_login_pin_hint'.tr,
-            semanticLabel: 'child_login_pin_label'.tr,
+            hintText: 'child_login_guardian_password_hint'.tr,
+            semanticLabel: 'child_login_guardian_password_label'.tr,
             leadingIcon: Icons.lock_outline_rounded,
             obscureText: true,
-            textEditingController: _pinController,
+            textEditingController: _guardianPasswordController,
             borderColor: AppColors.textFieldBorderColor,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
+            textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.password],
-            onSubmitted: (_) => _submit(),
           ),
+          SizedBox(height: fieldGap),
+          SizedBox(
+            height: 52,
+            child: OutlinedButton.icon(
+              onPressed: (_isBusy || _isLoadingChildren) ? null : _loadChildOptions,
+              icon: _isLoadingChildren
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2.1),
+                    )
+                  : const Icon(Icons.badge_outlined),
+              label: Text('child_login_load_children'.tr),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primaryPurple),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+            ),
+          ),
+          if (_childOptions.isNotEmpty) ...[
+            SizedBox(height: fieldGap),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_selectedChildId ?? _childOptions.length),
+              initialValue: _selectedChildId,
+              decoration: InputDecoration(
+                labelText: 'child_login_children_label'.tr,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                prefixIcon: const Icon(
+                  Icons.child_care_rounded,
+                  color: AppColors.primaryPurple,
+                ),
+                filled: true,
+                fillColor: AppColors.panelColor,
+              ),
+              items: _childOptions
+                  .map(
+                    (child) => DropdownMenuItem<String>(
+                      value: _childId(child),
+                      child: Text(_childUsername(child)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _isBusy
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _selectedChildId = value;
+                        _inlineError = null;
+                      });
+                    },
+            ),
+          ],
           if (_inlineError != null) ...[
             SizedBox(height: fieldGap),
             _buildInlineErrorBanner(_inlineError!),

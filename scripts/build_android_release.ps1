@@ -1,6 +1,9 @@
 [CmdletBinding()]
 param(
+  [ValidateSet('apk', 'aab')]
+  [string]$Artifact = 'apk',
   [string]$GoogleServerClientId = '605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com',
+  [string]$HuaweiAppId = '',
   [switch]$SplitPerAbi = $true,
   [switch]$Obfuscate = $true
 )
@@ -12,6 +15,7 @@ $projectRoot = Split-Path -Parent $scriptDir
 $androidDir = Join-Path $projectRoot 'android'
 $keyPropertiesPath = Join-Path $androidDir 'key.properties'
 $appBuildGradlePath = Join-Path $androidDir 'app\build.gradle'
+$agconnectServicesPath = Join-Path $androidDir 'app\agconnect-services.json'
 
 if (-not (Test-Path $keyPropertiesPath)) {
   throw "Missing Android signing config at $keyPropertiesPath"
@@ -50,11 +54,22 @@ $applicationId = $applicationIdMatch.Matches[0].Groups[1].Value
 Write-Host '========================================'
 Write-Host '  Sahifati Android Release Build'
 Write-Host '========================================'
+Write-Host "Artifact                : $Artifact"
 Write-Host "Application ID          : $applicationId"
 Write-Host "Google Server Client ID : $GoogleServerClientId"
+if ([string]::IsNullOrWhiteSpace($HuaweiAppId)) {
+  Write-Host 'Huawei App ID           : <not set>'
+}
+else {
+  Write-Host "Huawei App ID           : $HuaweiAppId"
+}
 Write-Host "Signing alias           : $keyAlias"
 Write-Host "Signing store           : $resolvedStorePath"
 Write-Host ''
+
+if (-not [string]::IsNullOrWhiteSpace($HuaweiAppId) -and -not (Test-Path $agconnectServicesPath)) {
+  throw "Huawei build requested but missing AG Connect config at $agconnectServicesPath"
+}
 
 Write-Host '[1/2] Signing fingerprints'
 & keytool -list -v -keystore $resolvedStorePath -alias $keyAlias -storepass $storePassword -keypass $keyPassword |
@@ -62,17 +77,26 @@ Write-Host '[1/2] Signing fingerprints'
   ForEach-Object { Write-Host ('  ' + $_.ToString().Trim()) }
 
 Write-Host ''
-Write-Host '[2/2] Building release APK'
+if ($Artifact -eq 'aab' -and $SplitPerAbi) {
+  Write-Host 'Split per ABI           : ignored for AAB builds'
+}
+
+$artifactLabel = if ($Artifact -eq 'aab') { 'AAB' } else { 'APK' }
+Write-Host "[2/2] Building release $artifactLabel"
 
 $buildArgs = @(
   'build',
-  'apk',
+  $(if ($Artifact -eq 'aab') { 'appbundle' } else { 'apk' }),
   '--release',
   '--tree-shake-icons',
   "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GoogleServerClientId"
 )
 
-if ($SplitPerAbi) {
+if (-not [string]::IsNullOrWhiteSpace($HuaweiAppId)) {
+  $buildArgs += "--dart-define=HUAWEI_APP_ID=$HuaweiAppId"
+}
+
+if ($Artifact -eq 'apk' -and $SplitPerAbi) {
   $buildArgs += '--split-per-abi'
 }
 
@@ -85,12 +109,20 @@ Push-Location $projectRoot
 try {
   & flutter @buildArgs
   if ($LASTEXITCODE -ne 0) {
-    throw "flutter build apk failed with exit code $LASTEXITCODE"
+    throw "flutter build $Artifact failed with exit code $LASTEXITCODE"
   }
 }
 finally {
   Pop-Location
 }
 
+$outputPath = if ($Artifact -eq 'aab') {
+  Join-Path $projectRoot 'build\app\outputs\bundle\release\app-release.aab'
+}
+else {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk'
+}
+
 Write-Host ''
 Write-Host 'Build completed successfully.'
+Write-Host "Output                  : $outputPath"

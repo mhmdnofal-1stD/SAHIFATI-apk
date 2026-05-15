@@ -347,8 +347,7 @@ class _BrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasBrandSubtitle = brandSubtitle?.trim().isNotEmpty ?? false;
-
-    return Row(
+    final brandBlock = Row(
       children: [
         Container(
           width: 64,
@@ -397,8 +396,33 @@ class _BrandHeader extends StatelessWidget {
             ],
           ),
         ),
-        const AuthLanguageSwitch(),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              brandBlock,
+              const SizedBox(height: 12),
+              const Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: AuthLanguageSwitch(),
+              ),
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: brandBlock),
+            const SizedBox(width: 12),
+            const AuthLanguageSwitch(),
+          ],
+        );
+      },
     );
   }
 }

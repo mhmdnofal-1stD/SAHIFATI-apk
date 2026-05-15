@@ -429,10 +429,42 @@ class UsersServices with ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getChildLoginOptions({
+    required String guardianEmail,
+    required String password,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/child/login/options'),
+            headers: _authHeaders,
+            body: json.encode({
+              'guardianEmail': guardianEmail,
+              'password': password,
+            }),
+          )
+          .timeout(_timeout);
+
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200) {
+        final list = responseData as List<dynamic>;
+        return list.map((entry) => Map<String, dynamic>.from(entry as Map)).toList();
+      }
+
+      throw _normalizeErrorResponse(
+        response.statusCode,
+        responseData,
+        'invalid credentials',
+      );
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
   Future<dynamic> loginChild({
     required String guardianEmail,
-    required String childName,
-    required String pin,
+    required String password,
+    required String childId,
   }) async {
     try {
       final response = await http
@@ -441,8 +473,8 @@ class UsersServices with ChangeNotifier {
             headers: _authHeaders,
             body: json.encode({
               'guardianEmail': guardianEmail,
-              'childName': childName,
-              'pin': pin,
+              'password': password,
+              'childId': childId,
             }),
           )
           .timeout(_timeout);
@@ -844,24 +876,7 @@ class UsersServices with ChangeNotifier {
 
   Future<dynamic> deleteAccount(int userId) async {
     try {
-      final token = await SecureSessionStorage.readAccessToken();
-
-      if (token == null) {
-        throw 'service_users_missing_auth_token'.tr;
-      }
-
-      Map<String, String> headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
-
-      var response = await http
-          .delete(
-            Uri.parse('$_baseURL/users/$userId'),
-            headers: headers,
-          )
-          .timeout(_timeout);
+      final response = await SahifatyApi().delete('users/$userId');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         return true;
