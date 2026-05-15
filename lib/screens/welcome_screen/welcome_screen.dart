@@ -431,8 +431,6 @@ class _WelcomeStoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final busy = isBusy || isOpeningSahifa;
-    final width = MediaQuery.sizeOf(context).width;
-    final useSingleRowLayout = width >= 620;
 
     return Container(
       padding: EdgeInsets.all(compactViewport ? 18 : 22),
@@ -451,11 +449,13 @@ class _WelcomeStoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (useSingleRowLayout)
-            const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                SizedBox(
+                  width: 144,
                   child: _ValueCard(
                     titleKey: 'welcome_kickoff_value_1_title',
                     bodyKey: 'welcome_kickoff_value_1_body',
@@ -463,8 +463,9 @@ class _WelcomeStoryCard extends StatelessWidget {
                     tint: AppColors.warmSurface,
                   ),
                 ),
-                SizedBox(width: 12),
-                Expanded(
+                SizedBox(width: 8),
+                SizedBox(
+                  width: 144,
                   child: _ValueCard(
                     titleKey: 'welcome_kickoff_value_2_title',
                     bodyKey: 'welcome_kickoff_value_2_body',
@@ -472,8 +473,9 @@ class _WelcomeStoryCard extends StatelessWidget {
                     tint: Color(0xFFF2F7E7),
                   ),
                 ),
-                SizedBox(width: 12),
-                Expanded(
+                SizedBox(width: 8),
+                SizedBox(
+                  width: 144,
                   child: _ValueCard(
                     titleKey: 'welcome_kickoff_value_3_title',
                     bodyKey: 'welcome_kickoff_value_3_body',
@@ -482,31 +484,7 @@ class _WelcomeStoryCard extends StatelessWidget {
                   ),
                 ),
               ],
-            )
-          else
-            const Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _ValueCard(
-                  titleKey: 'welcome_kickoff_value_1_title',
-                  bodyKey: 'welcome_kickoff_value_1_body',
-                  icon: Icons.timer_outlined,
-                  tint: AppColors.warmSurface,
-                ),
-                _ValueCard(
-                  titleKey: 'welcome_kickoff_value_2_title',
-                  bodyKey: 'welcome_kickoff_value_2_body',
-                  icon: Icons.insights_outlined,
-                  tint: Color(0xFFF2F7E7),
-                ),
-                _ValueCard(
-                  titleKey: 'welcome_kickoff_value_3_title',
-                  bodyKey: 'welcome_kickoff_value_3_body',
-                  icon: Icons.route_outlined,
-                  tint: AppColors.mintSurface,
-                ),
-              ],
+            ),
             ),
           SizedBox(height: compactViewport ? 18 : 22),
           if (errorMessage != null) ...[
@@ -794,7 +772,7 @@ class _ValueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
       decoration: BoxDecoration(
         color: tint,
         borderRadius: BorderRadius.circular(22),
@@ -822,9 +800,11 @@ class _ValueCard extends StatelessWidget {
           Text(
             titleKey.tr,
             textDirection: TextDirection.rtl,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.of(context)
                 .listTileTitle
-                .copyWith(color: AppColors.primaryPurple),
+                .copyWith(color: AppColors.primaryPurple, fontSize: 14.5),
           ),
         ],
       ),

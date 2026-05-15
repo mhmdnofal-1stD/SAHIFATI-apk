@@ -140,13 +140,10 @@ class _MainScreenState extends State<MainScreen> {
       }
 
       if (widget.comesFirst) {
-        final evaluationsProvider = context.read<EvaluationsProvider>();
-        unawaited(
-          AppProgressOverlay.showUntilDone(
-            evaluationsProvider.getAllEvaluations(),
-            message: 'جاري تحميل بيانات التقييمات...',
-          ),
-        );
+        // Load evaluations in the background — the chart and filter panels
+        // handle their own loading states, so there is no need to block the
+        // main screen with a full-screen overlay on every startup.
+        unawaited(context.read<EvaluationsProvider>().getAllEvaluations());
       }
 
       if (widget.autoBootstrapChart) {
@@ -207,7 +204,9 @@ class _MainScreenState extends State<MainScreen> {
 
     _isChartBootstrapInFlight = true;
     _chartBootstrapUserId = selectedUserId;
-    AppProgressOverlay.show('جاري تحميل بيانات القرآن...', progress: 0.2);
+    // The chart widget renders _BrowseLoadingPlaceholder while
+    // _isChartBootstrapInFlight is true via showLoadingState — no
+    // full-screen overlay needed here.
     _debugChartBootstrap(
       'request:start',
       selectedUserId: selectedUserId,
@@ -215,7 +214,6 @@ class _MainScreenState extends State<MainScreen> {
     );
 
     try {
-      AppProgressOverlay.updateStep('جاري حساب بيانات الخريطة...', progress: 0.6);
       await evaluationsProvider.getQuranChartData(
         selectedUserId,
         filters: widget.initialChartFilters,

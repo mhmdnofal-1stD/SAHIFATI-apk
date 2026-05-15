@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -5,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:sahifaty/models/auth_data.dart';
 import '../core/constants/api.dart';
 import '../models/user_notification_item.dart';
+import 'app_exception.dart';
 import 'offline_assessment_store.dart';
 import 'secure_session_storage.dart';
 import 'sahifaty_api.dart';
@@ -371,10 +373,18 @@ class UsersServices with ChangeNotifier {
   }
 
   /// Exchanges [refreshToken] for a new access + refresh token pair.
-  /// Returns null if the token is invalid / expired or the request fails.
+  ///
+  /// Returns [AuthData] on success.
+  /// Returns **null** when the server explicitly rejects the token (non-200
+  /// HTTP response) — callers should treat this as a definitive auth failure
+  /// and remove the stored session.
+  /// **Throws** [FetchDataException] on network/connectivity errors — callers
+  /// must NOT remove the stored session in this case; the token may still be
+  /// valid and the failure is transient.
   Future<AuthData?> refreshTokens(String refreshToken) async {
+    http.Response response;
     try {
-      final response = await http
+      response = await http
           .post(
             Uri.parse('$_baseURL/auth/refresh'),
             headers: {
@@ -384,16 +394,19 @@ class UsersServices with ChangeNotifier {
             body: json.encode({'refreshToken': refreshToken}),
           )
           .timeout(_timeout);
-
-      if (response.statusCode == 200) {
-        return AuthData.fromJson(
-          Map<String, dynamic>.from(json.decode(response.body) as Map),
-        );
-      }
-      return null;
-    } catch (_) {
-      return null;
+    } on http.ClientException {
+      throw FetchDataException('service_api_no_internet'.tr);
+    } on TimeoutException {
+      throw FetchDataException('service_api_no_internet'.tr);
     }
+
+    if (response.statusCode == 200) {
+      return AuthData.fromJson(
+        Map<String, dynamic>.from(json.decode(response.body) as Map),
+      );
+    }
+    // Non-200 means the server explicitly rejected the refresh token.
+    return null;
   }
 
   /// Clears all per-account offline cached data for [accountKey].

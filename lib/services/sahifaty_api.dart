@@ -21,44 +21,61 @@ class SahifatyApi {
     });
   }
 
+  /// Attempts to exchange the stored refresh token for a new token pair.
+  ///
+  /// Returns **true** when tokens are refreshed successfully.
+  /// Returns **false** when the server explicitly rejects the refresh token
+  /// (HTTP 401 / 403) — callers should treat this as a definitive auth
+  /// failure and expire the session.
+  /// **Throws** [FetchDataException] on network / connectivity / server
+  /// errors — callers must NOT expire the session in this case because the
+  /// failure is transient and the stored tokens may still be valid.
   static Future<bool> _doRefresh() async {
-    try {
-      final refreshToken = await SecureSessionStorage.readRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) return false;
+    final refreshToken = await SecureSessionStorage.readRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}/auth/refresh');
-      final response = await http.post(
+    final uri = Uri.parse('${ApiConfig.baseUrl}/auth/refresh');
+    http.Response response;
+    try {
+      response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json', 'accept': '*/*'},
         body: json.encode({'refreshToken': refreshToken}),
       ).timeout(const Duration(seconds: 30));
+    } on http.ClientException {
+      throw FetchDataException('service_api_no_internet'.tr);
+    } on TimeoutException {
+      throw FetchDataException('service_api_no_internet'.tr);
+    }
 
-      if (response.statusCode != 200) {
-        return false;
-      }
-
-      final data = json.decode(response.body);
-      final newAccessToken =
-          data is Map ? data['accessToken'] as String? : null;
-      final newRefreshToken =
-          data is Map ? data['refreshToken'] as String? : null;
-      if (newAccessToken == null || newAccessToken.isEmpty) return false;
-
-      final accountKey = await SecureSessionStorage.readActiveAccountKey();
-      if (accountKey == null || accountKey.isEmpty) return false;
-
-      await SecureSessionStorage.writeAccountSessionTokens(
-        accountKey: accountKey,
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken ?? refreshToken,
-      );
-      return true;
-    } catch (e, stack) {
-      if (kDebugMode) {
-        debugPrint('Token refresh failed: $e\n$stack');
-      }
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      // Server definitively rejected the refresh token.
       return false;
     }
+    if (response.statusCode != 200) {
+      // Server-side error (5xx etc.) — treat as transient, keep session.
+      if (kDebugMode) {
+        debugPrint('Token refresh returned ${response.statusCode} — treating as transient');
+      }
+      throw FetchDataException('service_api_no_internet'.tr);
+    }
+
+    final data = json.decode(response.body);
+    final newAccessToken =
+        data is Map ? data['accessToken'] as String? : null;
+    final newRefreshToken =
+        data is Map ? data['refreshToken'] as String? : null;
+    if (newAccessToken == null || newAccessToken.isEmpty) return false;
+
+    final accountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (accountKey == null || accountKey.isEmpty) return false;
+
+    await SecureSessionStorage.writeAccountSessionTokens(
+      accountKey: accountKey,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken ?? refreshToken,
+    );
+    return true;
   }
 
   static Future<String> _resolveBearerToken() async {
@@ -130,7 +147,15 @@ class SahifatyApi {
       // Intercept 401: attempt a silent token refresh, then retry once.
       // Not triggered for unauthenticated requests or the retry itself.
       if (response.statusCode == 401 && auth && !isRetry) {
-        final refreshed = await _tryRefreshTokens();
+        bool refreshed;
+        try {
+          refreshed = await _tryRefreshTokens();
+        } catch (_) {
+          // Network / transient error during refresh — the stored session is
+          // still intact.  Propagate as a network error so the UI can show a
+          // retry prompt instead of forcing the user back to the login screen.
+          throw FetchDataException('service_api_no_internet'.tr);
+        }
         if (refreshed) {
           return _request(
             url,
@@ -140,9 +165,8 @@ class SahifatyApi {
             isRetry: true,
           );
         }
-        // Refresh failed: expire the active session fully (tokens + session
-        // record) so SelectUserScreen shows "requires login" immediately,
-        // then redirect for WhatsApp-style re-authentication.
+        // Refresh token definitively rejected by the server: expire the
+        // active session fully and redirect to re-authentication.
         await SecureSessionStorage.expireActiveSession();
         Get.offAllNamed('/select-user');
         throw Exception('service_api_unauthorized'.tr);

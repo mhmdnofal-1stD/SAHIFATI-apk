@@ -243,7 +243,9 @@ class QuranFilterAvailabilityBuilder {
         .where((ayah) => ayah.id != null)
         .map((ayah) => ayah.id!)
         .toSet();
-    final schools = await SchoolServices().getAllSchools(forceRefresh: true);
+    // Use cache-first loading (with automatic background refresh) to avoid
+    // a blocking network round-trip every time the filter panel is opened.
+    final schools = await SchoolServices().getAllSchools();
     final schoolById = <int, School>{
       for (final school in schools)
         if (school.id != null) school.id!: school,

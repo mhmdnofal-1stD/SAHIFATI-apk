@@ -94,7 +94,8 @@ Future<void> main() async {
   // the background.
   // Translation bundles are now expected to be fully available offline at
   // startup, including ayah translations, so startup does not trigger a
-  // network refresh for translations.
+  // blocking refresh for translations.
+  unawaited(LocalizationService.refreshFromRemote());
 
   // Pull the latest typography config in the background and update the
   // controller so live text styles re-render with the admin's overrides.

@@ -24,7 +24,6 @@ import 'package:sahifaty/services/local_quran_chart_service.dart';
 import 'package:sahifaty/services/school_filter_scope_service.dart';
 import 'package:sahifaty/services/teacher_recommendations_service.dart';
 import 'package:sahifaty/services/users_services.dart';
-import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import '../../controllers/general_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/constants/fonts.dart';
@@ -1283,25 +1282,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _handleExitReading() async {
-    final selectedUser = context.read<UsersProvider>().selectedUser;
-    await _readingSessionStore.updateAutoResumeForUser(
-      selectedUser?.id,
-      false,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (Navigator.of(context).canPop()) {
-      Get.back();
-      return;
-    }
-
-    Get.off(const MainScreen());
-  }
-
   Future<void> _navigateToJuz(int juz) async {
     await _ensureAllAyatIndexedByPage();
     int? targetPage;
@@ -1794,7 +1774,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
                     child: Directionality(
                       textDirection: TextDirection.rtl,
                       child: Row(
@@ -1815,13 +1795,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          _ReaderToolIcon(
-                            icon: Icons.chevron_left_rounded,
-                            tooltip: _tr('quran_reading_exit_tooltip'),
-                            isDarkMode: isDarkMode,
-                            onTap: _handleExitReading,
-                          ),
-                          const SizedBox(width: 8),
                           Flexible(
                             child: _ReaderSurahPill(
                               surahName: (_activeSurah ?? widget.surah)
@@ -1887,6 +1860,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                   tooltip: _readingNotice!,
                                   isDarkMode: isDarkMode,
                                   flat: true,
+                                  iconSize: 15,
+                                  tapAreaSize: 28,
                                   onTap: _showReadingNoticeDialog,
                                 ),
                             ],
@@ -3596,6 +3571,8 @@ class _ReaderToolIcon extends StatelessWidget {
     required this.onTap,
     this.isActive = false,
     this.flat = false,
+    this.iconSize = 20.0,
+    this.tapAreaSize = 40.0,
   });
 
   final IconData icon;
@@ -3604,6 +3581,8 @@ class _ReaderToolIcon extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isActive;
   final bool flat;
+  final double iconSize;
+  final double tapAreaSize;
 
   @override
   Widget build(BuildContext context) {
@@ -3630,9 +3609,9 @@ class _ReaderToolIcon extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(icon, size: 20, color: foreground),
+            width: tapAreaSize,
+            height: tapAreaSize,
+            child: Icon(icon, size: iconSize, color: foreground),
           ),
         ),
       ),
@@ -3932,7 +3911,7 @@ class _ReaderRenderedPage extends StatelessWidget {
 
     final fillColor = isDarkMode ? const Color(0xFF201C12) : const Color(0xFFF7F3E4);
     final widthFactor = pageNumber == 1
-      ? (isLandscapeReader ? 0.70 : 0.76)
+      ? 1.0
         : (isLandscapeReader ? 0.76 : 0.82);
     final mainFrame = SizedBox(
       width: double.infinity,
@@ -3940,7 +3919,6 @@ class _ReaderRenderedPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: fillColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor, width: 1.25),
         ),
         child: Padding(
           padding: const EdgeInsets.all(2),
@@ -4007,21 +3985,13 @@ class _ReaderRenderedPage extends StatelessWidget {
     final borderColor =
         isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
     final bgColor =
-        isDarkMode ? const Color(0xFF1C1A15) : const Color(0xFFFDFAF3);
+      isDarkMode ? const Color(0xFF1C1A15) : const Color(0xFFFFFDF5);
 
     final pagePanel = Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: borderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDarkMode ? 0.30 : 0.12),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: _buildPageContent(
         borderColor: borderColor,

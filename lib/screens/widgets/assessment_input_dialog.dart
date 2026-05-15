@@ -195,11 +195,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                   )
                                   .toList(),
                             ),
-                          ] else
-                            Text(
-                              'assessment_dialog_memorization_unavailable'.tr,
-                              textAlign: TextAlign.center,
-                            ),
+                          ],
                           const SizedBox(height: 20),
                           if (hasCompreOptions) ...[
                             Text(
@@ -229,11 +225,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                   )
                                   .toList(),
                             ),
-                          ] else
-                            Text(
-                              'assessment_dialog_comprehension_unavailable'.tr,
-                              textAlign: TextAlign.center,
-                            ),
+                          ],
                           const SizedBox(height: 16),
                         ],
                         if (subjectNamesFuture != null) ...[

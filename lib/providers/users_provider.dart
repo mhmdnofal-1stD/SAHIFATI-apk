@@ -15,6 +15,7 @@ import '../core/constants/colors.dart';
 import '../models/user_notification_item.dart';
 import '../models/user.dart';
 import '../services/push_notifications_service.dart';
+import '../services/app_exception.dart';
 import '../services/sahifaty_api.dart';
 import '../services/secure_session_storage.dart';
 import '../services/users_services.dart';
@@ -258,13 +259,28 @@ class UsersProvider with ChangeNotifier {
       accountKey: accountKey,
     );
     if (refreshToken == null || refreshToken.isEmpty) {
+      // No refresh token stored at all — definitive auth failure.
       await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
       return null;
     }
 
-    final refreshed = await _refreshTokensForSession(refreshToken);
+    // Attempt to exchange the refresh token for a new access token.
+    // _refreshTokensForSession throws FetchDataException on network/timeout
+    // errors and returns null when the server explicitly rejects the token.
+    // Only clear the stored session in the latter case; transient network
+    // failures must leave the session intact so the user is not silently
+    // signed out due to a momentary connectivity problem.
+    AuthData? refreshed;
+    try {
+      refreshed = await _refreshTokensForSession(refreshToken);
+    } catch (_) {
+      // Network or transient error — keep session alive, let caller handle.
+      return null;
+    }
+
     final refreshedAccessToken = refreshed?.accessToken;
     if (refreshedAccessToken == null || refreshedAccessToken.isEmpty) {
+      // Server responded but explicitly rejected the refresh token.
       await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
       return null;
     }
@@ -1033,7 +1049,11 @@ class UsersProvider with ChangeNotifier {
       promoWorkspaceError = null;
     } catch (error) {
       if (_isUnauthorizedError(error)) {
-        await clearPersistedSession();
+        // SahifatyApi has already expired the active session tokens and
+        // triggered navigation to /select-user.  Do NOT call
+        // clearPersistedSession() here — it would wipe every stored account,
+        // including ones that are still valid, which is wrong in multi-account
+        // scenarios.
         promoWorkspaceError = 'service_api_unauthorized'.tr;
         return;
       }
@@ -1878,7 +1898,14 @@ class UsersProvider with ChangeNotifier {
       await _bootstrapPushNotificationsForCurrentUser();
       notifyListeners();
       return true;
+    } on FetchDataException {
+      // Transient network / connectivity error — the stored tokens are still
+      // valid.  Return false without touching the session so the user can
+      // retry on next app launch or reconnect without being signed out.
+      return false;
     } catch (_) {
+      // Only reached for genuine data-corruption errors (e.g. malformed
+      // stored JSON that User.fromJson cannot parse).  Safe to clear.
       await clearPersistedSession();
       return false;
     }

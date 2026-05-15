@@ -193,7 +193,8 @@ class GlobalDrawer extends StatelessWidget {
               Consumer<UsersProvider>(
                 builder: (context, usersProvider, _) {
                   final roleId = usersProvider.selectedUser?.userRoleId;
-                  if (roleId != 3 && roleId != 4 && roleId != 5) {
+                  // Show cards management for all authenticated roles (1-5); hide for role 0 or unauthenticated
+                  if (roleId == null || roleId == 0) {
                     return const SizedBox.shrink();
                   }
                   return ListTile(

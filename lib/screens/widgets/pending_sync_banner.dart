@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/typography/app_typography.dart';
 import '../../providers/evaluations_provider.dart';
 
 class PendingSyncBanner extends StatelessWidget {
@@ -19,82 +18,40 @@ class PendingSyncBanner extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final isArabic = (Get.locale?.languageCode ?? 'ar') == 'ar';
-        final title = 'pending_sync_title'.tr;
-        final subtitle = pendingSyncCount == 1
-            ? 'pending_sync_body_single'.tr
-            : 'pending_sync_body_plural'
-                .trParams({'count': pendingSyncCount.toString()});
+        final label = pendingSyncCount > 99 ? '99+' : pendingSyncCount.toString();
 
         return Padding(
           padding: EdgeInsets.only(bottom: bottomPadding),
-          child: Directionality(
-            textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF4DB),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE2BE66)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x14000000),
-                    blurRadius: 14,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFE7AE),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.sync_problem_rounded,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Tooltip(
+              message: 'pending_sync_title'.tr,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4DB),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE2BE66), width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_upload_outlined,
                       color: Color(0xFF8A5A00),
+                      size: 14,
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: AppTypography.of(context).bannerTitle,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: AppTypography.of(context).bannerBody,
-                        ),
-                      ],
+                    const SizedBox(width: 5),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF8A5A00),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8A5A00),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      pendingSyncCount.toString(),
-                      style: AppTypography.of(context)
-                          .badgeCount
-                          .copyWith(color: Colors.white),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
