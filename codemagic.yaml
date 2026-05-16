@@ -1,26 +1,8 @@
 workflows:
-
-  # ─────────────────────────────────────────────────────────────────
-  # iOS → App Store / TestFlight
-  #
-  # ما تحتاج إعداده مرة واحدة في واجهة Codemagic قبل أول build:
-  #
-  # 1. Team → Integrations → App Store Connect
-  #    أنشئ API Key في App Store Connect (Users & Access → Integrations → App Store Connect API)
-  #    ثم أضفه في Codemagic باسم "Sahifati ASC Key"
-  #
-  # 2. Team → Environment variables → أنشئ مجموعة باسم flutter_secrets
-  #    وأضف فيها المتغيرات التالية (Secure = ✔):
-  #      GOOGLE_SERVER_CLIENT_ID  =  605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com
-  #      APPLE_WEB_CLIENT_ID      =  (اتركه فارغاً حتى تنشئ Services ID لاحقاً)
-  #      APPLE_REDIRECT_URI       =  (اتركه فارغاً حتى تنشئ Services ID لاحقاً)
-  #
-  # 3. في App Store Connect → Users & Access → تأكد أن التطبيق org.sahifati.app
-  #    لديه "Sign In with Apple" مفعّلاً في Identifiers
-  # ─────────────────────────────────────────────────────────────────
   ios-release:
     name: iOS Release (App Store)
     max_build_duration: 60
+    instance_type: mac_mini_m2
 
     integrations:
       app_store_connect: Sahifati ASC Key
@@ -29,40 +11,40 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: org.sahifati.app
+      groups:
+        - flutter_secrets
+      vars:
+        FLUTTER_VERSION: stable
       flutter: stable
       xcode: latest
-      cocoapods: default
-      groups:
-        - flutter_secrets   # GOOGLE_SERVER_CLIENT_ID, APPLE_WEB_CLIENT_ID, APPLE_REDIRECT_URI
 
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
 
-      - name: Install CocoaPods
-        script: find . -name "Podfile" -execdir pod install \;
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios
+          pod install
 
       - name: Build iOS IPA
         script: |
           flutter build ipa --release \
-            --tree-shake-icons \
-            --obfuscate \
-            --split-debug-info=build/app/outputs/symbols \
             --dart-define=API_BASE_URL=https://sahifati.org/api \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com \
             --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID \
-            --dart-define=APPLE_WEB_CLIENT_ID=$APPLE_WEB_CLIENT_ID \
-            --dart-define=APPLE_REDIRECT_URI=$APPLE_REDIRECT_URI \
+            --dart-define=APPLE_WEB_CLIENT_ID=org.sahifati.app.signin \
+            --dart-define=APPLE_REDIRECT_URI=https://sahifati.org/api/auth/social/apple/callback \
             --dart-define=FACEBOOK_AUTH_ENABLED=true \
             --dart-define=FACEBOOK_APP_ID=824178674089653 \
-            --dart-define=FACEBOOK_API_VERSION=v22.0
+            --dart-define=HUAWEI_APP_ID=116918405
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
         beta_groups:
-          - Sahifati-External    # اسم مجموعة الاختبار في TestFlight — عدّله إن اختلف
+          - Sahifati-External

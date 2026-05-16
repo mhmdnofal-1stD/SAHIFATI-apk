@@ -43,13 +43,13 @@ class EvaluationsProvider with ChangeNotifier {
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
   final LocalQuranChartService _localQuranChartService =
       const LocalQuranChartService();
-    final SchoolFilterScopeService _schoolFilterScopeService =
+  final SchoolFilterScopeService _schoolFilterScopeService =
       const SchoolFilterScopeService();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isSyncingPending = false;
-    final Set<String> _hydratedUserEvaluationScopes = <String>{};
-    final Map<String, Future<void>> _userEvaluationCacheWarmups =
+  final Set<String> _hydratedUserEvaluationScopes = <String>{};
+  final Map<String, Future<void>> _userEvaluationCacheWarmups =
       <String, Future<void>>{};
   int pendingSyncCount = 0;
   int? _activeEvaluationUserId;
@@ -252,8 +252,8 @@ class EvaluationsProvider with ChangeNotifier {
   }) async {
     final allAyat = await AyatController().loadAllAyat();
     final resolvedUserEvaluations = await loadResolvedUserEvaluations(userId);
-    final allowedSchoolAyahIds = await _schoolFilterScopeService
-        .resolveAllowedAyahIds(filters);
+    final allowedSchoolAyahIds =
+        await _schoolFilterScopeService.resolveAllowedAyahIds(filters);
     return _localQuranChartService.buildChartPayload(
       allAyat: allAyat,
       userEvaluations: resolvedUserEvaluations,
@@ -350,7 +350,8 @@ class EvaluationsProvider with ChangeNotifier {
       );
     }
 
-    final cachedEvaluations = await _readCachedUserEvaluations(scopeKey: scopeKey);
+    final cachedEvaluations =
+        await _readCachedUserEvaluations(scopeKey: scopeKey);
     final mergedByAyahId = <int, UserEvaluation>{
       for (final evaluation in cachedEvaluations)
         if ((evaluation.ayah?.id ?? evaluation.ayahId) != null)
@@ -815,8 +816,8 @@ class EvaluationsProvider with ChangeNotifier {
   }
 
   void resetForAccountSwitch() {
-    userEvaluations.clear();
-    chartEvaluationData.clear();
+    userEvaluations = <UserEvaluation>[];
+    chartEvaluationData = <ChartEvaluationData>[];
     totalCount = 0;
     chartDimension = 'memorization';
     chartDataSource = null;
@@ -839,8 +840,8 @@ class EvaluationsProvider with ChangeNotifier {
     }
 
     if (_activeEvaluationUserId != null) {
-      userEvaluations.clear();
-      chartEvaluationData.clear();
+      userEvaluations = <UserEvaluation>[];
+      chartEvaluationData = <ChartEvaluationData>[];
       totalCount = 0;
       chartDimension = 'memorization';
       chartDataSource = null;
@@ -901,7 +902,7 @@ class EvaluationsProvider with ChangeNotifier {
               Map<String, dynamic>.from(item),
             ),
           )
-          .toList(growable: false);
+          .toList(growable: true);
     } catch (_) {
       return const <UserEvaluation>[];
     }
@@ -975,7 +976,7 @@ class EvaluationsProvider with ChangeNotifier {
             mergedByAyahId[ayahId] = evaluation;
           }
         }
-        userEvaluations = mergedByAyahId.values.toList(growable: false);
+        userEvaluations = mergedByAyahId.values.toList(growable: true);
         _refreshUserEvaluationMetadata();
       }
 
@@ -1093,7 +1094,8 @@ class EvaluationsProvider with ChangeNotifier {
     }
 
     try {
-      final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+      final payload =
+          utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
       final decoded = jsonDecode(payload);
       if (decoded is! Map) {
         return null;

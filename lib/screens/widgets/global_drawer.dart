@@ -63,7 +63,8 @@ Future<void> _openLanguagePicker(
   BuildContext context,
   LanguageProvider languageProvider,
 ) async {
-  if (!languageProvider.isLoadingLanguages && !languageProvider.hasFetchedLanguages) {
+  if (!languageProvider.isLoadingLanguages &&
+      !languageProvider.hasFetchedLanguages) {
     await languageProvider.fetchLanguages();
   }
 
@@ -94,13 +95,13 @@ Future<void> _openLanguagePicker(
             for (final language in languages)
               ListTile(
                 title: Text(language['name']!),
-                trailing: language['code'] ==
-                        languageProvider.langCode.toLowerCase()
-                    ? Icon(
-                        Icons.check,
-                        color: Theme.of(sheetContext).colorScheme.primary,
-                      )
-                    : null,
+                trailing:
+                    language['code'] == languageProvider.langCode.toLowerCase()
+                        ? Icon(
+                            Icons.check,
+                            color: Theme.of(sheetContext).colorScheme.primary,
+                          )
+                        : null,
                 onTap: () async {
                   Navigator.of(sheetContext).pop();
                   await languageProvider.changeLanguage(language['code']!);
@@ -192,7 +193,7 @@ class GlobalDrawer extends StatelessWidget {
               ),
               Consumer<UsersProvider>(
                 builder: (context, usersProvider, _) {
-                  final roleId = usersProvider.selectedUser?.userRoleId;
+                  final roleId = usersProvider.activeAccountUser?.userRoleId;
                   // Show cards management for all authenticated roles (1-5); hide for role 0 or unauthenticated
                   if (roleId == null || roleId == 0) {
                     return const SizedBox.shrink();
@@ -308,8 +309,10 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
       ]);
       final requests = results[0] as List<Map<String, dynamic>>;
       final limits = results[1] as Map<String, dynamic>;
-      final teacherActiveCount = (limits['teacherActiveCount'] as num?)?.toInt() ?? 0;
-      final studentActiveCount = (limits['studentActiveCount'] as num?)?.toInt() ?? 0;
+      final teacherActiveCount =
+          (limits['teacherActiveCount'] as num?)?.toInt() ?? 0;
+      final studentActiveCount =
+          (limits['studentActiveCount'] as num?)?.toInt() ?? 0;
       return requests.isNotEmpty ||
           teacherActiveCount > 0 ||
           studentActiveCount > 0 ||
@@ -324,8 +327,7 @@ class _SupervisionDashboardTileState extends State<_SupervisionDashboardTile> {
     return FutureBuilder<bool>(
       future: _visibilityFuture,
       builder: (context, snapshot) {
-        final canAccessSupervision = snapshot.data ??
-            widget.hasDelegatedUser;
+        final canAccessSupervision = snapshot.data ?? widget.hasDelegatedUser;
         if (!canAccessSupervision) {
           return const SizedBox.shrink();
         }

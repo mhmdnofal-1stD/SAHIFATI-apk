@@ -73,9 +73,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
 
   Future<void> _bootstrap() async {
     final usersProvider = context.read<UsersProvider>();
-    if (usersProvider.selectedUser == null) {
+    if (usersProvider.activeAccountUser == null) {
       final isLoggedIn = await usersProvider.tryAutoLogin();
-      if (!isLoggedIn || usersProvider.selectedUser == null) {
+      if (!isLoggedIn || usersProvider.activeAccountUser == null) {
         if (mounted) {
           Get.offAllNamed('/login');
         }
@@ -619,7 +619,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
         ((giftPool?['lifetimeContributed'] ?? 0) as num).toInt();
     final giftConsumed = ((giftPool?['lifetimeConsumed'] ?? 0) as num).toInt();
     final licenseStatus =
-        usersProvider.selectedUser?.licenseStatus ?? 'pending';
+        usersProvider.activeAccountUser?.licenseStatus ?? 'pending';
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,

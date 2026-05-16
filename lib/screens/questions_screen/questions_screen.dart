@@ -43,8 +43,9 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final schoolProvider = context.read<SchoolProvider>();
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final levels = _readLevels(schoolProvider);
+    final activeUser = usersProvider.activeAccountUser;
 
-    if (usersProvider.selectedUser == null || levels.isEmpty) {
+    if (activeUser == null || levels.isEmpty) {
       return;
     }
 
@@ -54,7 +55,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
 
     try {
       await evaluationsProvider.preloadQuestionLevelData(
-        usersProvider.selectedUser!.id,
+        activeUser.id,
         levels[selectedIndex].content,
       );
     } catch (error) {
@@ -125,7 +126,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   ) {
     return levels.fold<int>(
       0,
-      (total, level) => total + _countCompletedItems(evaluationsProvider, level.content),
+      (total, level) =>
+          total + _countCompletedItems(evaluationsProvider, level.content),
     );
   }
 
@@ -218,11 +220,11 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
         ? 0
         : _countCompletedItems(evaluationsProvider, currentLevel.content);
     final currentLevelTotal = currentLevel?.content.length ?? 0;
-    final overallCompletedLevels = isSchoolReady
-        ? _countCompletedLevels(evaluationsProvider, levels)
-        : 0;
+    final overallCompletedLevels =
+        isSchoolReady ? _countCompletedLevels(evaluationsProvider, levels) : 0;
     final isLastLevel = isSchoolReady && selectedIndex == totalLevels - 1;
-    final levelProgress = totalLevels == 0 ? 0.0 : (selectedIndex + 1) / totalLevels;
+    final levelProgress =
+        totalLevels == 0 ? 0.0 : (selectedIndex + 1) / totalLevels;
 
     return NoPopScope(
       child: Scaffold(
@@ -301,12 +303,13 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                             controller: _scrollController,
                             children: [
                               _QuestionsHeader(
-                                eyebrow: 'questions_screen_level_eyebrow'
-                                    .trParams({
+                                eyebrow:
+                                    'questions_screen_level_eyebrow'.trParams({
                                   'current': '${selectedIndex + 1}',
                                   'total': '$totalLevels',
                                 }),
-                                title: currentLevel?.name?[Get.locale?.languageCode ?? 'ar'] ??
+                                title: currentLevel?.name?[
+                                        Get.locale?.languageCode ?? 'ar'] ??
                                     'questions_screen_level_fallback_title'.tr,
                                 subtitle: 'questions_screen_level_subtitle'.tr,
                                 progress: levelProgress,
@@ -318,34 +321,39 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                               if (_isBusy)
                                 _QuestionsStatusBanner(
                                   icon: Icons.sync,
-                                  title: 'questions_screen_status_loading_title'.tr,
-                                  body: 'questions_screen_status_loading_body'.tr,
+                                  title: 'questions_screen_status_loading_title'
+                                      .tr,
+                                  body:
+                                      'questions_screen_status_loading_body'.tr,
                                 ),
                               if (_levelLoadError != null)
                                 _QuestionsStatusBanner(
                                   icon: Icons.error_outline,
                                   color: const Color(0xFFFFF2F0),
                                   borderColor: const Color(0xFFE8B4AE),
-                                  title: 'questions_screen_status_error_title'.tr,
+                                  title:
+                                      'questions_screen_status_error_title'.tr,
                                   body: _levelLoadError!,
                                   actionLabel: 'welcome_chart_retry'.tr,
                                   onAction: _preloadSelectedLevel,
                                 ),
                               if (currentLevelTotal == 0)
                                 _QuestionsEmptyState(
-                                  title: 'questions_screen_empty_level_title'.tr,
+                                  title:
+                                      'questions_screen_empty_level_title'.tr,
                                   body: 'questions_screen_empty_level_body'.tr,
                                 )
                               else
                                 ...currentLevel!.content.asMap().entries.map(
-                                  (entry) => ContentItemCard(
-                                    content: entry.value,
-                                    index: entry.key,
-                                    isCompleted: evaluationsProvider
-                                        .getQuestionContentCompletion(entry.value),
-                                    isLoadingStatus: _isBusy,
-                                  ),
-                                ),
+                                      (entry) => ContentItemCard(
+                                        content: entry.value,
+                                        index: entry.key,
+                                        isCompleted: evaluationsProvider
+                                            .getQuestionContentCompletion(
+                                                entry.value),
+                                        isLoadingStatus: _isBusy,
+                                      ),
+                                    ),
                               const SizedBox(height: 12),
                               _QuestionsFooter(
                                 isBusy: _isBusy,
@@ -356,14 +364,17 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                                     ? null
                                     : () => _changeLevel(selectedIndex - 1),
                                 onNext: isLastLevel
-                                    ? () => _openCompletionSummary(skipped: false)
+                                    ? () =>
+                                        _openCompletionSummary(skipped: false)
                                     : () => _changeLevel(selectedIndex + 1),
-                                onFinishForNow: () => _openCompletionSummary(skipped: true),
+                                onFinishForNow: () =>
+                                    _openCompletionSummary(skipped: true),
                                 previousLabel: 'previous_level'.tr,
                                 nextLabel: isLastLevel
                                     ? 'questions_screen_summary_label'.tr
                                     : 'next_level'.tr,
-                                finishLabel: 'questions_screen_finish_now_label'.tr,
+                                finishLabel:
+                                    'questions_screen_finish_now_label'.tr,
                               ),
                             ],
                           ),
@@ -412,14 +423,14 @@ class _QuestionsHeader extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.lineColor),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x10112038),
-              blurRadius: 20,
-              offset: Offset(0, 8),
-            ),
-          ],
+        border: Border.all(color: AppColors.lineColor),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10112038),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -23,8 +23,7 @@ class CardDetailScreen extends StatefulWidget {
 
 class _CardDetailScreenState extends State<CardDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
-  final TextEditingController _rejectReasonController =
-      TextEditingController();
+  final TextEditingController _rejectReasonController = TextEditingController();
   bool _isSubmitting = false;
   bool _showRejectForm = false;
 
@@ -46,7 +45,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
   // ── Role helpers ─────────────────────────────────────────────────────────────
 
   int get _userRole =>
-      context.read<UsersProvider>().selectedUser?.userRoleId ?? 0;
+      context.read<UsersProvider>().activeAccountUser?.userRoleId ?? 0;
 
   bool _canChangeStatus(CardModel card) {
     if (_userRole == 2) return true; // admin always
@@ -193,8 +192,7 @@ class _CardDetailScreenState extends State<CardDetailScreen> {
                 if (_showRejectForm) ...[
                   _RejectReasonCard(
                     controller: _rejectReasonController,
-                    onCancel: () =>
-                        setState(() => _showRejectForm = false),
+                    onCancel: () => setState(() => _showRejectForm = false),
                     onConfirm: () => _submitStatus('مرفوضة'),
                     isSubmitting: _isSubmitting,
                   ),
@@ -233,8 +231,8 @@ class _InfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(12),
-        border: const Border.fromBorderSide(
-            BorderSide(color: AppColors.lineColor)),
+        border:
+            const Border.fromBorderSide(BorderSide(color: AppColors.lineColor)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -394,8 +392,8 @@ class _ResearchersSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(12),
-        border: const Border.fromBorderSide(
-            BorderSide(color: AppColors.lineColor)),
+        border:
+            const Border.fromBorderSide(BorderSide(color: AppColors.lineColor)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -412,11 +410,10 @@ class _ResearchersSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Text(
                   '${r['username'] ?? ''} — ${r['email'] ?? ''}',
-                  style:
-                      AppTypography.of(context).bodyDefault.copyWith(
-                            fontSize: 13,
-                            color: AppColors.mutedText,
-                          ),
+                  style: AppTypography.of(context).bodyDefault.copyWith(
+                        fontSize: 13,
+                        color: AppColors.mutedText,
+                      ),
                   textDirection: TextDirection.rtl,
                 ),
               )),
@@ -437,8 +434,8 @@ class _CommentsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(12),
-        border: const Border.fromBorderSide(
-            BorderSide(color: AppColors.lineColor)),
+        border:
+            const Border.fromBorderSide(BorderSide(color: AppColors.lineColor)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -505,8 +502,8 @@ class _CommentInputCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.panelColor,
         borderRadius: BorderRadius.circular(12),
-        border: const Border.fromBorderSide(
-            BorderSide(color: AppColors.lineColor)),
+        border:
+            const Border.fromBorderSide(BorderSide(color: AppColors.lineColor)),
       ),
       padding: const EdgeInsets.all(12),
       child: Row(
@@ -559,8 +556,8 @@ class _RejectReasonCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFEEEE),
         borderRadius: BorderRadius.circular(12),
-        border: const Border.fromBorderSide(
-            BorderSide(color: Color(0xFFFFCCCC))),
+        border:
+            const Border.fromBorderSide(BorderSide(color: Color(0xFFFFCCCC))),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -580,7 +577,8 @@ class _RejectReasonCard extends StatelessWidget {
             maxLines: 3,
             decoration: InputDecoration(
               hintText: 'اذكر سبب الرفض...',
-              hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
+              hintStyle:
+                  const TextStyle(color: AppColors.mutedText, fontSize: 13),
               filled: true,
               fillColor: AppColors.panelColor,
               border: OutlineInputBorder(
@@ -650,8 +648,7 @@ class _WorkflowActions extends StatelessWidget {
                 : isApprove
                     ? AppColors.successColor
                     : AppColors.brandAccent,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           ),
           child: Text(
             status,

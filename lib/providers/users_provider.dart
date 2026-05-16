@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -39,6 +38,7 @@ class UsersProvider with ChangeNotifier {
 
   User? selectedUser;
   User? _previousUser;
+  bool _isViewingDelegatedUser = false;
   String? pendingVerificationEmail;
   DateTime? pendingVerificationSentAt;
 
@@ -260,7 +260,8 @@ class UsersProvider with ChangeNotifier {
     );
     if (refreshToken == null || refreshToken.isEmpty) {
       // No refresh token stored at all — definitive auth failure.
-      await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
+      await _removeStoredSessionByAccountKey(accountKey,
+          notify: notifyOnFailure);
       return null;
     }
 
@@ -281,7 +282,8 @@ class UsersProvider with ChangeNotifier {
     final refreshedAccessToken = refreshed?.accessToken;
     if (refreshedAccessToken == null || refreshedAccessToken.isEmpty) {
       // Server responded but explicitly rejected the refresh token.
-      await _removeStoredSessionByAccountKey(accountKey, notify: notifyOnFailure);
+      await _removeStoredSessionByAccountKey(accountKey,
+          notify: notifyOnFailure);
       return null;
     }
 
@@ -615,8 +617,9 @@ class UsersProvider with ChangeNotifier {
     }
 
     await _googleSignIn.initialize(
-      clientId: SocialAuthConfig.googleClientIdOrNull,
-      serverClientId: SocialAuthConfig.googleServerClientIdOrNull,
+      clientId: kIsWeb ? SocialAuthConfig.googleClientIdOrNull : null,
+      serverClientId:
+          kIsWeb ? null : SocialAuthConfig.googleServerClientIdOrNull,
     );
 
     _googleInitialized = true;
@@ -661,10 +664,12 @@ class UsersProvider with ChangeNotifier {
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
-        webAuthenticationOptions: WebAuthenticationOptions(
-          clientId: SocialAuthConfig.appleWebClientId,
-          redirectUri: SocialAuthConfig.appleRedirectUriOrNull!,
-        ),
+        webAuthenticationOptions: kIsWeb
+            ? WebAuthenticationOptions(
+                clientId: SocialAuthConfig.appleWebClientId,
+                redirectUri: SocialAuthConfig.appleRedirectUriOrNull!,
+              )
+            : null,
       );
 
       final identityToken = appleCredential.identityToken;
@@ -1455,12 +1460,14 @@ class UsersProvider with ChangeNotifier {
         );
       }
 
-      final authParams = AccountAuthParamsHelper(AccountAuthParams.defaultAuthRequestParam)
-        ..setEmail()
-        ..setIdToken()
-        ..setProfile();
+      final authParams =
+          AccountAuthParamsHelper(AccountAuthParams.defaultAuthRequestParam)
+            ..setEmail()
+            ..setIdToken()
+            ..setProfile();
 
-      final authService = AccountAuthManager.getService(authParams.createParams());
+      final authService =
+          AccountAuthManager.getService(authParams.createParams());
       final AuthAccount account = await authService.signIn();
 
       final token = account.idToken ?? '';
@@ -1515,7 +1522,8 @@ class UsersProvider with ChangeNotifier {
       // Clean up any stale legacy global-scope tokens.
       await SecureSessionStorage.clearSessionTokens();
     } else {
-      final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+      final activeAccountKey =
+          await SecureSessionStorage.readActiveAccountKey();
       if (activeAccountKey != null && activeAccountKey.isNotEmpty) {
         await _removeStoredSessionByAccountKey(activeAccountKey);
       }
@@ -1685,7 +1693,10 @@ class UsersProvider with ChangeNotifier {
       selectedUser != null &&
       _previousUser!.id != selectedUser!.id;
 
-  User? get activeAccountUser => hasPushedSelectedUser ? _previousUser : selectedUser;
+  bool get isViewingDelegatedUser => _isViewingDelegatedUser;
+
+  User? get activeAccountUser =>
+      hasPushedSelectedUser ? _previousUser : selectedUser;
 
   void setSelectedUser(User user) {
     selectedUser = user;
@@ -1695,6 +1706,7 @@ class UsersProvider with ChangeNotifier {
   }
 
   void pushSelectedUser(User user) {
+    _isViewingDelegatedUser = true;
     _previousUser = selectedUser;
     setSelectedUser(user);
   }
@@ -1706,6 +1718,7 @@ class UsersProvider with ChangeNotifier {
     }
 
     _previousUser = null;
+    _isViewingDelegatedUser = false;
     setSelectedUser(previousUser);
   }
 
@@ -1732,8 +1745,10 @@ class UsersProvider with ChangeNotifier {
     final normalizedProfile = <String, dynamic>{
       ...profile,
       'id': profile['id'] ?? profile['_id'] ?? fallbackUser?.id,
-      'rawId':
-          profile['rawId'] ?? profile['id'] ?? profile['_id'] ?? fallbackUser?.rawId,
+      'rawId': profile['rawId'] ??
+          profile['id'] ??
+          profile['_id'] ??
+          fallbackUser?.rawId,
       'accountKey': profile['accountKey'] ?? fallbackUser?.accountKey,
       'email': profile['email'] ?? fallbackUser?.email ?? '',
       'username': profile['username'] ?? fallbackUser?.username ?? '',
@@ -1856,7 +1871,8 @@ class UsersProvider with ChangeNotifier {
       String? activeAccountKey =
           await SecureSessionStorage.readActiveAccountKey();
       final manualLogout = prefs.getBool(_manualLogoutKey) == true;
-      if (manualLogout && (activeAccountKey == null || activeAccountKey.isEmpty)) {
+      if (manualLogout &&
+          (activeAccountKey == null || activeAccountKey.isEmpty)) {
         return false;
       }
 
@@ -2188,8 +2204,7 @@ class UsersProvider with ChangeNotifier {
     if (birthYear != null) {
       body['birthYear'] = birthYear;
     }
-    final response =
-        await SahifatyApi().post(url: 'auth/child', body: body);
+    final response = await SahifatyApi().post(url: 'auth/child', body: body);
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body) as Map<String, dynamic>;
     }
@@ -2223,8 +2238,7 @@ class UsersProvider with ChangeNotifier {
         throw data['message'] ?? 'child_switch_error';
       }
       final data = json.decode(response.body) as Map<String, dynamic>;
-      final accessToken =
-          (data['accessToken'] ?? data['token']) as String?;
+      final accessToken = (data['accessToken'] ?? data['token']) as String?;
       final refreshToken = data['refreshToken'] as String?;
       if (accessToken == null || accessToken.isEmpty) {
         throw Exception('auth_invalid_response');
@@ -2265,4 +2279,3 @@ class UsersProvider with ChangeNotifier {
     }
   }
 }
-

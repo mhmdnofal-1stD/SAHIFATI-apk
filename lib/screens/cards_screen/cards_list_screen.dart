@@ -49,7 +49,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
   @override
   Widget build(BuildContext context) {
     final userRole =
-        context.watch<UsersProvider>().selectedUser?.userRoleId ?? 0;
+        context.watch<UsersProvider>().activeAccountUser?.userRoleId ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,

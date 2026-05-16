@@ -148,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(),
               Consumer<UsersProvider>(
                 builder: (context, usersProvider, _) {
-                  final user = usersProvider.selectedUser;
+                  final user = usersProvider.activeAccountUser;
                   if (user != null && !user.isChildAccount) {
                     return Column(
                       children: [
@@ -161,7 +161,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             'child_manage_settings_entry'.tr,
                             style: AppTypography.of(context).listTileTitle,
                           ),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          trailing:
+                              const Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () {
                             Get.to(() => const ManageChildrenScreen());
                           },
@@ -252,13 +253,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextSpan(text: '${'feedback'.tr} '),
                           TextSpan(
                             text: '  info@sahifati.com',
-                            style: AppTypography.of(context)
-                                .bodyDefault
-                                .copyWith(
-                                  decoration: TextDecoration.underline,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            style:
+                                AppTypography.of(context).bodyDefault.copyWith(
+                                      decoration: TextDecoration.underline,
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                             recognizer: _emailRecognizer,
                           ),
                         ],

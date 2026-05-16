@@ -6,17 +6,13 @@ class SocialAuthConfig {
   static const String googleServerClientId =
       String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
   static const String appleWebClientId =
-    String.fromEnvironment('APPLE_WEB_CLIENT_ID');
+      String.fromEnvironment('APPLE_WEB_CLIENT_ID');
   static const String appleRedirectUri =
-    String.fromEnvironment('APPLE_REDIRECT_URI');
-  static const bool facebookAuthEnabled =
-    bool.fromEnvironment('FACEBOOK_AUTH_ENABLED', defaultValue: false);
-  static const String facebookAppId =
-      String.fromEnvironment('FACEBOOK_APP_ID');
+      String.fromEnvironment('APPLE_REDIRECT_URI');
+  static const String facebookAppId = String.fromEnvironment('FACEBOOK_APP_ID');
   static const String facebookApiVersion =
       String.fromEnvironment('FACEBOOK_API_VERSION', defaultValue: 'v22.0');
-  static const String huaweiAppId =
-      String.fromEnvironment('HUAWEI_APP_ID');
+  static const String huaweiAppId = String.fromEnvironment('HUAWEI_APP_ID');
 
   static bool get isGoogleConfiguredForCurrentPlatform {
     if (kIsWeb) {
@@ -27,19 +23,20 @@ class SocialAuthConfig {
   }
 
   static bool get isFacebookConfiguredForCurrentPlatform {
-    if (!facebookAuthEnabled) {
-      return false;
+    if (kIsWeb) {
+      return true;
     }
 
     return facebookAppId.isNotEmpty;
   }
 
   static bool get isAppleConfiguredForCurrentPlatform {
-    if (!kIsWeb) {
-      return false;
+    if (kIsWeb) {
+      return true;
     }
-
-    return appleWebClientId.isNotEmpty && appleRedirectUri.isNotEmpty;
+    // Native iOS/macOS: Sign In with Apple is built-in, no external config needed
+    return defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
   }
 
   /// Huawei Account Kit is Android-only and never available on web.

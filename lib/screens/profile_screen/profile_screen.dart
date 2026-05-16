@@ -167,6 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();
     final user = usersProvider.selectedUser;
+    final isViewingStudent = usersProvider.hasPushedSelectedUser;
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.shortestSide < 600;
 
@@ -189,27 +190,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .appBarTitle
               .copyWith(color: AppColors.primaryPurple),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 8),
-            child: Tooltip(
-              message: 'profile_add_supervisor_tooltip'.tr,
-              child: Material(
-                color: AppColors.primaryPurple,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: _handleAddSupervisor,
-                  child: const SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: Icon(Icons.add_rounded, color: Colors.white),
+        actions: isViewingStudent
+            ? const []
+            : [
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: Tooltip(
+                    message: 'profile_add_supervisor_tooltip'.tr,
+                    child: Material(
+                      color: AppColors.primaryPurple,
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: _handleAddSupervisor,
+                        child: const SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: Icon(Icons.add_rounded, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
-        ],
+              ],
       ),
       body: SafeArea(
         child: RefreshIndicator(
@@ -233,39 +236,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       email: user?.email ?? '',
                     ),
                     const SizedBox(height: 18),
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: _supervisionCodeFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState != ConnectionState.done) {
-                          return const _QrCardLoading();
-                        }
-                        if (snapshot.hasError) {
-                          return _QrCardError(
-                            message: snapshot.error.toString(),
-                            onRetry: _reload,
+                    if (!isViewingStudent) ...[
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _supervisionCodeFuture,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                              ConnectionState.done) {
+                            return const _QrCardLoading();
+                          }
+                          if (snapshot.hasError) {
+                            return _QrCardError(
+                              message: snapshot.error.toString(),
+                              onRetry: _reload,
+                            );
+                          }
+                          final data = snapshot.data!;
+                          final username = (data['username'] as String?)
+                                      ?.trim()
+                                      .isNotEmpty ==
+                                  true
+                              ? data['username'] as String
+                              : (user?.username ?? user?.email ?? '');
+                          final shareUrl = data['shareUrl'] as String;
+                          return _QrShareCard(
+                            qrCardKey: _qrCardKey,
+                            username: username,
+                            shareUrl: shareUrl,
+                            onShare: () => _handleShare(shareUrl, username),
+                            onSave: _handleSave,
                           );
-                        }
-                        final data = snapshot.data!;
-                        final username =
-                            (data['username'] as String?)?.trim().isNotEmpty ==
-                                    true
-                                ? data['username'] as String
-                                : (user?.username ?? user?.email ?? '');
-                        final shareUrl = data['shareUrl'] as String;
-                        return _QrShareCard(
-                          qrCardKey: _qrCardKey,
-                          username: username,
-                          shareUrl: shareUrl,
-                          onShare: () => _handleShare(shareUrl, username),
-                          onSave: _handleSave,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _SupervisorIntroCard(
-                      onAddSupervisor: _handleAddSupervisor,
-                    ),
-                    const SizedBox(height: 16),
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _SupervisorIntroCard(
+                        onAddSupervisor: _handleAddSupervisor,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     const ProfileDetailsForm(),
                   ],
                 ),
@@ -623,7 +630,8 @@ class _QrCardError extends StatelessWidget {
           const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: () => onRetry(),
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.primaryPurple),
+            icon: const Icon(Icons.refresh_rounded,
+                color: AppColors.primaryPurple),
             label: Text(
               'profile_qr_retry'.tr,
               style: AppTypography.of(context)

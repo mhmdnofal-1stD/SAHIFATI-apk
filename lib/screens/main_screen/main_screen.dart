@@ -72,8 +72,10 @@ class _MainScreenState extends State<MainScreen> {
     }
     if (evaluationsProvider != null) {
       buffer.write(' loading=${evaluationsProvider.isLoading}');
-      buffer.write(' entries=${evaluationsProvider.chartEvaluationData.length}');
-      buffer.write(' hasError=${(evaluationsProvider.chartLoadError ?? '').isNotEmpty}');
+      buffer
+          .write(' entries=${evaluationsProvider.chartEvaluationData.length}');
+      buffer.write(
+          ' hasError=${(evaluationsProvider.chartLoadError ?? '').isNotEmpty}');
     }
     debugPrint(buffer.toString());
   }
@@ -242,7 +244,7 @@ class _MainScreenState extends State<MainScreen> {
     final selectedUserId = usersProvider.selectedUser?.id;
     final hasChartData = evaluationsProvider.chartEvaluationData.isNotEmpty;
     final showLoadingState = widget.comesFirst &&
-      !hasChartData &&
+        !hasChartData &&
         (evaluationsProvider.isLoading ||
             _isChartBootstrapInFlight ||
             selectedUserId == null ||
@@ -273,8 +275,8 @@ class _MainScreenState extends State<MainScreen> {
             (availableContentWidth >= 920 ? 920.0 : availableContentWidth) >=
                 520;
         final summaryMode = widget.comesFirst ||
-          (!widget.useScaffoldFrame &&
-            generalProvider.mainScreenView == FilterTypes.thirds);
+            (!widget.useScaffoldFrame &&
+                generalProvider.mainScreenView == FilterTypes.thirds);
         final activeChartEntries = evaluationsProvider.chartEvaluationData
             .where((entry) =>
                 entry.evaluationId != 0 && (entry.verseCount ?? 0) > 0)
@@ -288,10 +290,10 @@ class _MainScreenState extends State<MainScreen> {
           0,
           (sum, entry) => sum + ((entry.verseCount ?? 0).round()),
         );
-        final remainingVerseCount = evaluationsProvider.totalCount >
-                categorizedVerseCount
-            ? evaluationsProvider.totalCount - categorizedVerseCount
-            : 0;
+        final remainingVerseCount =
+            evaluationsProvider.totalCount > categorizedVerseCount
+                ? evaluationsProvider.totalCount - categorizedVerseCount
+                : 0;
 
         String filterTypeLabel(int? filterTypeId) {
           switch (filterTypeId) {
@@ -553,16 +555,15 @@ class _MainScreenState extends State<MainScreen> {
                                     'comprehension'
                                 ? 'sahifa_screen_comprehension_summary'
                                     .trParams({
-                                    'evaluated': categorizedVerseCount
-                                        .toString(),
-                                    'remaining': remainingVerseCount
-                                        .toString(),
+                                    'evaluated':
+                                        categorizedVerseCount.toString(),
+                                    'remaining': remainingVerseCount.toString(),
                                   })
-                                : 'sahifa_screen_memorization_summary'.trParams({
-                                    'evaluated': categorizedVerseCount
-                                        .toString(),
-                                    'remaining': remainingVerseCount
-                                        .toString(),
+                                : 'sahifa_screen_memorization_summary'
+                                    .trParams({
+                                    'evaluated':
+                                        categorizedVerseCount.toString(),
+                                    'remaining': remainingVerseCount.toString(),
                                   }),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -574,7 +575,8 @@ class _MainScreenState extends State<MainScreen> {
                                       ? (_) {}
                                       : (dimension) {
                                           unawaited(
-                                            evaluationsProvider.getQuranChartData(
+                                            evaluationsProvider
+                                                .getQuranChartData(
                                               selectedUserId,
                                               dimension: dimension,
                                               filters: evaluationsProvider
@@ -586,8 +588,8 @@ class _MainScreenState extends State<MainScreen> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'sahifa_screen_metric_remaining'.tr,
-                                  style: AppTypography.of(context)
-                                      .subsectionTitle,
+                                  style:
+                                      AppTypography.of(context).subsectionTitle,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -597,8 +599,8 @@ class _MainScreenState extends State<MainScreen> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'sahifa_screen_top_signal_title'.tr,
-                                  style: AppTypography.of(context)
-                                      .subsectionTitle,
+                                  style:
+                                      AppTypography.of(context).subsectionTitle,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -649,7 +651,7 @@ class _MainScreenState extends State<MainScreen> {
                                 ],
                               )
                             : Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(child: introCard),
                                   if (filterPanel != null) ...[
@@ -680,8 +682,7 @@ class _MainScreenState extends State<MainScreen> {
                                 ],
                               )
                             : Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.stretch,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   resumeBtn,
                                   const SizedBox(height: 10),

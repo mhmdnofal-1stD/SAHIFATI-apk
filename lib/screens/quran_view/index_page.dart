@@ -311,8 +311,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Ayat ayah,
     EvaluationsProvider evaluationsProvider,
   ) {
-    final userEvaluation =
-        ayah.userEvaluation ?? evaluationsProvider.getUserEvaluationForAyah(ayah.id);
+    final userEvaluation = ayah.userEvaluation ??
+        evaluationsProvider.getUserEvaluationForAyah(ayah.id);
     if (!_matchesSelectedEvaluationFilters(userEvaluation)) {
       return false;
     }
@@ -337,8 +337,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
-    _activeReaderAllowedSchoolAyahIds = await _schoolFilterScopeService
-        .resolveAllowedAyahIds(filters);
+    _activeReaderAllowedSchoolAyahIds =
+        await _schoolFilterScopeService.resolveAllowedAyahIds(filters);
   }
 
   bool get _isPageNavigation =>
@@ -1044,17 +1044,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   bool _isSupervisorViewingStudent(UsersProvider usersProvider) {
-    final viewer = _viewerUser;
     final selectedUser = usersProvider.selectedUser;
-    if (viewer == null || selectedUser == null) {
+    final activeAccountUser = usersProvider.activeAccountUser;
+    if (selectedUser == null || activeAccountUser == null) {
       return false;
     }
 
-    return usersProvider.hasPushedSelectedUser && viewer.id != selectedUser.id;
+    return usersProvider.isViewingDelegatedUser ||
+        (usersProvider.hasPushedSelectedUser &&
+            activeAccountUser.id != selectedUser.id);
   }
 
   bool _canTapAyah(UsersProvider usersProvider) {
-    return _canOpenAssessment;
+    return _canOpenAssessment || _isSupervisorViewingStudent(usersProvider);
   }
 
   int? _evaluationTargetUserId(UsersProvider usersProvider) {
@@ -1063,6 +1065,197 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     return usersProvider.selectedUser?.id;
+  }
+
+  Future<bool?> _showRecommendationConfirmationDialog({
+    required String title,
+    required Widget body,
+    required String confirmLabel,
+  }) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: body,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('cancel'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _applyTeacherRecommendationsToAyahs(
+    Iterable<Ayat> ayahs,
+    List<TeacherRecommendation> recommendations,
+  ) {
+    final recommendationsByAyah = <int, List<TeacherRecommendation>>{};
+    for (final recommendation in recommendations) {
+      recommendationsByAyah
+          .putIfAbsent(recommendation.ayahId, () => <TeacherRecommendation>[])
+          .add(recommendation);
+    }
+
+    for (final ayah in ayahs) {
+      ayah.teacherRecommendations =
+          recommendationsByAyah[ayah.id] ?? <TeacherRecommendation>[];
+    }
+  }
+
+  Future<void> _openRecommendationDialogForAyah(
+    Ayat ayah,
+    LanguageProvider languageProvider,
+  ) async {
+    await _ensureViewerUserLoaded();
+    if (!mounted) {
+      return;
+    }
+
+    final usersProvider = context.read<UsersProvider>();
+    final targetUserId = _evaluationTargetUserId(usersProvider);
+    if (targetUserId == null || ayah.id == null) {
+      return;
+    }
+
+    _removeMenu();
+
+    final confirmed = await _showRecommendationConfirmationDialog(
+      title: 'إرسال توصية للطالب',
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'سيتم إرسال توصية لهذا الطالب على هذه الآية.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 14),
+          buildAyahAssessmentDialogTitle(
+            context: context,
+            ayah: ayah,
+            languageCode: languageProvider.langCode,
+          ),
+        ],
+      ),
+      confirmLabel: 'إرسال التوصية',
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      final result = await _teacherRecommendationsService.createRecommendation(
+        studentId: targetUserId,
+        ayahId: ayah.id!,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        final nextRecommendations = <TeacherRecommendation>[
+          ...ayah.teacherRecommendations.where(
+            (item) => item.id != result.recommendation.id,
+          ),
+          result.recommendation,
+        ];
+        ayah.teacherRecommendations = nextRecommendations;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم إرسال التوصية للطالب.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', '').trim(),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _openRecommendationDialogForSelectedAyahs() async {
+    final ayahs = _selectedAyahs();
+    if (ayahs.isEmpty) {
+      return;
+    }
+
+    final ayahsWithIds = ayahs.where((ayah) => ayah.id != null).toList();
+    if (ayahsWithIds.isEmpty) {
+      return;
+    }
+
+    final usersProvider = context.read<UsersProvider>();
+    final targetUserId = _evaluationTargetUserId(usersProvider);
+    if (targetUserId == null) {
+      return;
+    }
+
+    _removeMenu();
+
+    final confirmed = await _showRecommendationConfirmationDialog(
+      title: 'إرسال توصية جماعية',
+      body: Text(
+        'سيتم إرسال توصية لهذه الآيات إلى الطالب.',
+        style: Theme.of(context).textTheme.bodyMedium,
+      ),
+      confirmLabel: 'إرسال التوصيات',
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    try {
+      final result =
+          await _teacherRecommendationsService.createRecommendationsBulk(
+        studentId: targetUserId,
+        ayahIds: ayahsWithIds.map((ayah) => ayah.id!).toList(),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _applyTeacherRecommendationsToAyahs(
+          ayahsWithIds,
+          result.recommendations,
+        );
+        _selectedAyahKeys.clear();
+        _isAyahSelectionMode = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم إرسال التوصيات للطالب.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', '').trim(),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _openAssessmentDialogForAyah(
@@ -1076,6 +1269,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     final usersProvider = context.read<UsersProvider>();
+    final isSupervisorViewingStudent =
+        _isSupervisorViewingStudent(usersProvider);
+
+    if (isSupervisorViewingStudent) {
+      await _openRecommendationDialogForAyah(ayah, languageProvider);
+      return;
+    }
+
     final targetUserId = _evaluationTargetUserId(usersProvider);
 
     if (!_canOpenAssessment) {
@@ -1164,6 +1365,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     EvaluationsProvider evaluationsProvider,
     LanguageProvider languageProvider,
   ) async {
+    final usersProvider = context.read<UsersProvider>();
+    if (_isSupervisorViewingStudent(usersProvider)) {
+      await _openRecommendationDialogForSelectedAyahs();
+      return;
+    }
+
     if (!_canOpenAssessment) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1206,7 +1413,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
-    final usersProvider = context.read<UsersProvider>();
     final targetUserId = _evaluationTargetUserId(usersProvider);
 
     try {
@@ -1700,9 +1906,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final usersProvider = Provider.of<UsersProvider>(context);
+    final isSupervisorViewingStudent =
+        _isSupervisorViewingStudent(usersProvider);
     final ayahTapTooltip = _isAyahSelectionMode
-      ? 'quran_reading_multi_select_mode_tooltip'.tr
-      : 'quran_reading_assessment_tap_tooltip'.tr;
+        ? 'quran_reading_multi_select_mode_tooltip'.tr
+        : isSupervisorViewingStudent
+            ? 'اضغط على آية لإرسال توصية'
+            : 'quran_reading_assessment_tap_tooltip'.tr;
 
     if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
@@ -1723,15 +1933,15 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return Consumer<GeneralProvider>(
       builder: (context, generalProvider, _) {
         final isDarkMode = generalProvider.themeMode == ThemeMode.dark;
-      final isLandscapeReader =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+        final isLandscapeReader =
+            MediaQuery.orientationOf(context) == Orientation.landscape;
         final readerBodyPadding = isLandscapeReader
-          ? const EdgeInsets.fromLTRB(0, 4, 0, 8)
-          : const EdgeInsets.fromLTRB(0, 0, 0, 3);
+            ? const EdgeInsets.fromLTRB(0, 4, 0, 8)
+            : const EdgeInsets.fromLTRB(0, 0, 0, 3);
         final readerSurfacePadding = isLandscapeReader
-          ? const EdgeInsets.symmetric(vertical: 5, horizontal: 0)
-          : const EdgeInsets.symmetric(vertical: 2, horizontal: 0);
-      final readerSurfaceTopMargin = isLandscapeReader ? 4.0 : 0.0;
+            ? const EdgeInsets.symmetric(vertical: 5, horizontal: 0)
+            : const EdgeInsets.symmetric(vertical: 2, horizontal: 0);
+        final readerSurfaceTopMargin = isLandscapeReader ? 4.0 : 0.0;
 
         return Theme(
           data: isDarkMode
@@ -1797,12 +2007,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           const SizedBox(width: 6),
                           Flexible(
                             child: _ReaderSurahPill(
-                              surahName: (_activeSurah ?? widget.surah)
-                                  .displayName(
-                                    localeCode: languageProvider.langCode,
-                                  ),
+                              surahName:
+                                  (_activeSurah ?? widget.surah).displayName(
+                                localeCode: languageProvider.langCode,
+                              ),
                               isDarkMode: isDarkMode,
-                              tooltip: _tr('quran_reading_surah_picker_tooltip'),
+                              tooltip:
+                                  _tr('quran_reading_surah_picker_tooltip'),
                               onTap: _openSurahPicker,
                             ),
                           ),
@@ -1982,11 +2193,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                               .keyboard_double_arrow_up_rounded,
                                         ),
                                         label: Text(
-                                          'quran_reading_bulk_apply_selected'
-                                              .trParams({
-                                            'count': _selectedAyahKeys.length
-                                                .toString(),
-                                          }),
+                                          isSupervisorViewingStudent
+                                              ? 'إرسال ${_selectedAyahKeys.length} توصيات'
+                                              : 'quran_reading_bulk_apply_selected'
+                                                  .trParams({
+                                                  'count': _selectedAyahKeys
+                                                      .length
+                                                      .toString(),
+                                                }),
                                         ),
                                       ),
                                     ),
@@ -2032,7 +2246,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                                     .toString(),
                                                           },
                                                         )
-                                                      : widget.surah.displayName(
+                                                      : widget.surah
+                                                          .displayName(
                                                           localeCode:
                                                               languageProvider
                                                                   .langCode,
@@ -2040,7 +2255,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                   style: TextStyle(
                                                     color: isDarkMode
                                                         ? Colors.white
-                                                        : AppColors.primaryPurple,
+                                                        : AppColors
+                                                            .primaryPurple,
                                                     fontWeight: FontWeight.w700,
                                                     fontSize: 18,
                                                   ),
@@ -2134,12 +2350,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     EvaluationsProvider evaluationProvider,
     bool isDarkMode,
   ) {
-    final userEvaluation =
-        ayah.userEvaluation ?? evaluationProvider.getUserEvaluationForAyah(ayah.id);
+    final userEvaluation = ayah.userEvaluation ??
+        evaluationProvider.getUserEvaluationForAyah(ayah.id);
     final isSelected = _selectedAyahKeys.contains(_ayahSelectionKey(ayah));
 
-    final defaultColor =
-        isDarkMode ? Colors.white : AppColors.blackFontColor;
+    final defaultColor = isDarkMode ? Colors.white : AppColors.blackFontColor;
     final fadedColor =
         isDarkMode ? const Color(0xFF4A4A4A) : const Color(0xFFCFCFCF);
     final isFiltered = _hasAnyActiveReaderFilter &&
@@ -2154,8 +2369,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         !isFiltered && _showMemorizationColors && memoEvaluation != null;
     final accentColor = hasMemorizationAccent
         ? _resolveReadableVerseColor(
-            preferredColor:
-                EvaluationsController().getColorForEvaluationModel(memoEvaluation),
+            preferredColor: EvaluationsController()
+                .getColorForEvaluationModel(memoEvaluation),
             fallbackColor:
                 isDarkMode ? const Color(0xFFE6DFD0) : AppColors.buttonColor,
             isDarkMode: isDarkMode,
@@ -2164,8 +2379,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final verseColor = isFiltered
         ? fadedColor
         : (hasMemorizationAccent ? accentColor : defaultColor);
-    final selectedBackgroundColor =
-        isSelected ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.12) : null;
+    final selectedBackgroundColor = isSelected
+        ? accentColor.withValues(alpha: isDarkMode ? 0.22 : 0.12)
+        : null;
     final selectedBadgeTextColor = isSelected
         ? (ThemeData.estimateBrightnessForColor(accentColor) == Brightness.dark
             ? Colors.white
@@ -2313,9 +2529,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return manualOverride;
     }
 
-    final tokenLengths = line.words
-        .map(_mushafVisualTokenLength)
-        .toList(growable: false);
+    final tokenLengths =
+        line.words.map(_mushafVisualTokenLength).toList(growable: false);
     if (tokenLengths.isEmpty) {
       return const _MushafLineFineTune();
     }
@@ -2362,7 +2577,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       );
     }
 
-    if (!pattern.isCentered && tokenCount >= 5 && tokenCount <= 6 && totalChars <= 16) {
+    if (!pattern.isCentered &&
+        tokenCount >= 5 &&
+        tokenCount <= 6 &&
+        totalChars <= 16) {
       return const _MushafLineFineTune(
         forceCentered: true,
         gapScale: 0.92,
@@ -2390,7 +2608,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       );
     }
 
-    if (!pattern.isCentered && longestToken - shortestToken >= 5 && tokenCount <= 5) {
+    if (!pattern.isCentered &&
+        longestToken - shortestToken >= 5 &&
+        tokenCount <= 5) {
       return const _MushafLineFineTune();
     }
 
@@ -2406,9 +2626,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Color? accentColor,
   }) {
     final frameColor = _mushafFrameColor(isDarkMode);
-    final markerTextColor = accentColor == null || accentColor == textStyle.color
-        ? frameColor
-        : accentColor;
+    final markerTextColor =
+        accentColor == null || accentColor == textStyle.color
+            ? frameColor
+            : accentColor;
     final markerNumberSize = math
         .max(
           11.0,
@@ -2471,9 +2692,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   ) {
     final frameColor = _mushafFrameColor(isDarkMode);
     final lineHeight = _resolveMushafLineHeight(
-      isLandscapeReader: isLandscapeReader,
-      fineTune: const _MushafLineFineTune(lineHeightScale: 1.0),
-    ) + 1;
+          isLandscapeReader: isLandscapeReader,
+          fineTune: const _MushafLineFineTune(lineHeightScale: 1.0),
+        ) +
+        1;
 
     return SizedBox(
       width: double.infinity,
@@ -2588,9 +2810,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return const _MushafLinePattern.centered(tokenSpacing: 0);
     }
 
-    final tokenLengths = line.words
-        .map(_mushafVisualTokenLength)
-        .toList(growable: false);
+    final tokenLengths =
+        line.words.map(_mushafVisualTokenLength).toList(growable: false);
     final totalChars = tokenLengths.fold<int>(0, (sum, value) => sum + value);
     final averageChars = totalChars / tokenCount;
     final isSparseLine =
@@ -2833,7 +3054,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       } else {
         totalWidth +=
             _measureMushafTextWidth(text: word.text, textStyle: textStyle) +
-            tokenPaddingWidth;
+                tokenPaddingWidth;
       }
 
       if (!isCenteredLine || index >= line.words.length - 1) {
@@ -2888,8 +3109,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCenteredLine =
-            (fineTune.forceCentered || pattern.isCentered) && !isLandscapeReader;
+        final isCenteredLine = (fineTune.forceCentered || pattern.isCentered) &&
+            !isLandscapeReader;
         final effectiveFontSize = resolvedFontSize;
         final effectiveGapFineTune = _MushafLineFineTune(
           forceCentered: fineTune.forceCentered,
@@ -2923,8 +3144,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             fontSize: effectiveFontSize,
             height: 1,
           );
-          final showAyahUnderline =
-              presentation?.verseTextStyle.decoration == TextDecoration.underline;
+          final showAyahUnderline = presentation?.verseTextStyle.decoration ==
+              TextDecoration.underline;
           final underlineColor = presentation?.verseTextStyle.decorationColor ??
               presentation?.badgeTextColor ??
               (baseWordStyle.color ?? defaultStyle.color!);
@@ -3049,8 +3270,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   math
                       .max(
                         6.0,
-                        (pattern.tokenSpacing == 0 ? 8.0 : pattern.tokenSpacing) *
-                          fineTune.gapScale,
+                        (pattern.tokenSpacing == 0
+                                ? 8.0
+                                : pattern.tokenSpacing) *
+                            fineTune.gapScale,
                       )
                       .toDouble(),
                   growable: false,
@@ -3097,7 +3320,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
             width: double.infinity,
             height: resolvedLineHeight,
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: fineTune.horizontalInset),
+              padding:
+                  EdgeInsets.symmetric(horizontal: fineTune.horizontalInset),
               child: Center(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -3128,16 +3352,16 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         );
         final totalGapUnits = (outerFlex * 2) +
             gapFlexes.fold<int>(0, (sum, value) => sum + value);
-        final horizontalPadding = isLandscapeReader ? fineTune.horizontalInset * 2 : 0.0;
+        final horizontalPadding =
+            isLandscapeReader ? fineTune.horizontalInset * 2 : 0.0;
         final distributedAvailableWidth = constraints.maxWidth.isFinite
             ? math.max(0.0, constraints.maxWidth - horizontalPadding)
             : double.infinity;
         final remainingGapWidth = distributedAvailableWidth.isFinite
             ? math.max(0.0, distributedAvailableWidth - intrinsicTokenWidth)
             : 0.0;
-        final gapUnitWidth = totalGapUnits > 0
-            ? remainingGapWidth / totalGapUnits
-            : 0.0;
+        final gapUnitWidth =
+            totalGapUnits > 0 ? remainingGapWidth / totalGapUnits : 0.0;
         final outerGapWidth = gapUnitWidth * outerFlex;
 
         if (outerGapWidth > 0) {
@@ -3205,8 +3429,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required bool isLandscapeReader,
   }) {
     final isIntroPage = page == 1 || page == 2;
-    final pageFontScale =
-        isLandscapeReader ? _mushafLandscapePageFontScale : _mushafPageFontScale;
+    final pageFontScale = isLandscapeReader
+        ? _mushafLandscapePageFontScale
+        : _mushafPageFontScale;
     final pageViewportWidth = isLandscapeReader
         ? math.min(constraints.maxWidth, 760.0)
         : constraints.maxWidth;
@@ -3589,7 +3814,7 @@ class _ReaderToolIcon extends StatelessWidget {
     final disabled = onTap == null;
     final foreground = isDarkMode
         ? (disabled ? const Color(0xFF6B7280) : Colors.white)
-      : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
+        : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
     final background = flat
         ? Colors.transparent
         : (isDarkMode ? const Color(0xFF1F242E) : const Color(0xFFEFEAE0));
@@ -3597,7 +3822,7 @@ class _ReaderToolIcon extends StatelessWidget {
     final activeOverlay = isActive
         ? (isDarkMode
             ? Colors.white.withValues(alpha: 0.10)
-        : AppColors.primaryPurple.withValues(alpha: 0.10))
+            : AppColors.primaryPurple.withValues(alpha: 0.10))
         : null;
 
     return Tooltip(
@@ -3718,8 +3943,7 @@ class _ReaderProgressLabel extends StatelessWidget {
         fontSize: 18,
         fontFeatures: const [FontFeature.tabularFigures()],
         decoration: onTap != null ? TextDecoration.underline : null,
-        decorationStyle:
-            onTap != null ? TextDecorationStyle.dotted : null,
+        decorationStyle: onTap != null ? TextDecorationStyle.dotted : null,
       ),
     );
 
@@ -3909,10 +4133,10 @@ class _ReaderRenderedPage extends StatelessWidget {
       return baseContent;
     }
 
-    final fillColor = isDarkMode ? const Color(0xFF201C12) : const Color(0xFFF7F3E4);
-    final widthFactor = pageNumber == 1
-      ? 1.0
-        : (isLandscapeReader ? 0.76 : 0.82);
+    final fillColor =
+        isDarkMode ? const Color(0xFF201C12) : const Color(0xFFF7F3E4);
+    final widthFactor =
+        pageNumber == 1 ? 1.0 : (isLandscapeReader ? 0.76 : 0.82);
     final mainFrame = SizedBox(
       width: double.infinity,
       child: Container(
@@ -3985,7 +4209,7 @@ class _ReaderRenderedPage extends StatelessWidget {
     final borderColor =
         isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
     final bgColor =
-      isDarkMode ? const Color(0xFF1C1A15) : const Color(0xFFFFFDF5);
+        isDarkMode ? const Color(0xFF1C1A15) : const Color(0xFFFFFDF5);
 
     final pagePanel = Container(
       clipBehavior: Clip.hardEdge,
@@ -4107,7 +4331,6 @@ class _MushafLineTokenData {
   final double? underlineThickness;
 }
 
-
 class _ReaderInlineChevron extends StatelessWidget {
   const _ReaderInlineChevron({
     required this.icon,
@@ -4124,7 +4347,7 @@ class _ReaderInlineChevron extends StatelessWidget {
     final disabled = onTap == null;
     final foreground = isDarkMode
         ? (disabled ? const Color(0xFF5B6271) : Colors.white)
-      : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
+        : (disabled ? AppColors.mutedText : AppColors.primaryPurple);
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: onTap,
