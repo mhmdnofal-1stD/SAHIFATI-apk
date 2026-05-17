@@ -31,8 +31,8 @@ workflows:
         script: |
           flutter build ipa --release \
             --dart-define=API_BASE_URL=https://sahifati.org/api \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID=$GOOGLE_SERVER_CLIENT_ID \
+            --dart-define=GOOGLE_WEB_CLIENT_ID=821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID=821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com \
             --dart-define=APPLE_WEB_CLIENT_ID=org.sahifati.app.signin \
             --dart-define=APPLE_REDIRECT_URI=https://sahifati.org/api/auth/social/apple/callback \
             --dart-define=FACEBOOK_AUTH_ENABLED=true \

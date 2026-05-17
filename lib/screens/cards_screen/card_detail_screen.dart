@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:quran/quran.dart' as quran;
 import 'package:provider/provider.dart';
 
@@ -524,9 +525,9 @@ class _CommentInputCard extends StatelessWidget {
               controller: controller,
               textDirection: TextDirection.rtl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                hintText: 'أضف تعليقًا...',
-                hintStyle: TextStyle(color: AppColors.mutedText, fontSize: 13),
+              decoration: InputDecoration(
+                hintText: 'card_comment_hint'.tr,
+                hintStyle: const TextStyle(color: AppColors.mutedText, fontSize: 13),
                 border: InputBorder.none,
               ),
             ),
@@ -564,7 +565,7 @@ class _RejectReasonCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            'سبب الرفض',
+            'card_reject_reason_title'.tr,
             style: AppTypography.of(context).bodyDefault.copyWith(
                   color: AppColors.errorColor,
                   fontWeight: FontWeight.w600,
@@ -576,7 +577,7 @@ class _RejectReasonCard extends StatelessWidget {
             textDirection: TextDirection.rtl,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'اذكر سبب الرفض...',
+              hintText: 'card_reject_reason_hint'.tr,
               hintStyle:
                   const TextStyle(color: AppColors.mutedText, fontSize: 13),
               filled: true,

@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/services/ayat_services.dart';
 import 'package:sahifaty/services/localization_service.dart';
 import '../models/ayat.dart';
@@ -21,45 +20,12 @@ class AyatProvider with ChangeNotifier {
     setLoading();
 
     try {
-      Map<String, dynamic> res;
-      final hasConnection = await GeneralController().checkConnectivity();
-
-      if (!hasConnection) {
-        // 📴 No internet → Load from local JSON
-        final String jsonString =
-            await rootBundle.loadString('assets/json/data.json');
-        final Map<String, dynamic> jsonMap = json.decode(jsonString);
-        final List<dynamic> allAyat = jsonMap['data'] ?? [];
-
-        // 🔍 Filter by surah.id
-        final filteredAyat = allAyat.where((ayah) {
-          final surah = ayah['surah'];
-          return surah != null && surah['id'] == surahId;
-        }).toList();
-
-        res = {
-          'data': filteredAyat,
-          'totalPages': 1,
-          'total': filteredAyat.length,
-        };
-      } else {
-        // 🌐 Online → Load from API
-        final locale = await LocalizationService.getCurrentLocale();
-        res = await _ayatServices.getAyatBySurahId(
-          surahId,
-          languageCode: locale.languageCode,
-        );
-      }
-
-      var data = res['data'];
-      if (data is! List) {
-        throw Exception('Unexpected response format: expected a list');
-      }
-
-      // 🧩 Map to your Ayat model
-      surahAyat = data.map<Ayat>((ayah) => Ayat.fromJson(ayah)).toList();
-      surahAyatTotalPages = res['totalPages'];
-      surahAyatTotalCount = res['total'];
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatBySurahId(
+        surahId,
+        languageCode: locale.languageCode,
+      );
+      _applyAyatResponse(res);
     } catch (e) {
       if (kDebugMode) {
         print("❌ Error loading Ayat: $e");
@@ -67,6 +33,84 @@ class AyatProvider with ChangeNotifier {
     } finally {
       resetLoading();
     }
+  }
+
+  Future<List<Ayat>> getAyatByHizb(int hizb) async {
+    setLoading();
+    try {
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatByHizb(
+        hizb,
+        languageCode: locale.languageCode,
+      );
+      return _applyAyatResponse(res);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading Hizb Ayat: $e');
+      }
+      surahAyat = [];
+      surahAyatTotalPages = 1;
+      surahAyatTotalCount = 0;
+      return const [];
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<List<Ayat>> getAyatByJuz(int juz) async {
+    setLoading();
+    try {
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatByJuz(
+        juz,
+        languageCode: locale.languageCode,
+      );
+      return _applyAyatResponse(res);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading Juz Ayat: $e');
+      }
+      surahAyat = [];
+      surahAyatTotalPages = 1;
+      surahAyatTotalCount = 0;
+      return const [];
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<List<Ayat>> getAyatByHizbQuarter(int hizbQuarter) async {
+    setLoading();
+    try {
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatByHizbQuarter(
+        hizbQuarter,
+        languageCode: locale.languageCode,
+      );
+      return _applyAyatResponse(res);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading Hizb Quarter Ayat: $e');
+      }
+      surahAyat = [];
+      surahAyatTotalPages = 1;
+      surahAyatTotalCount = 0;
+      return const [];
+    } finally {
+      resetLoading();
+    }
+  }
+
+  List<Ayat> _applyAyatResponse(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is! List) {
+      throw Exception('Unexpected response format: expected a list');
+    }
+
+    surahAyat = data.map<Ayat>((ayah) => Ayat.fromJson(ayah)).toList();
+    surahAyatTotalPages = (res['totalPages'] as num?)?.toInt() ?? 1;
+    surahAyatTotalCount = (res['total'] as num?)?.toInt() ?? surahAyat.length;
+    return surahAyat;
   }
 
   void setLoading() {

@@ -30,10 +30,10 @@ class TranslationLibraryService {
 
   /// Loads the translations map for [languageCode] for use at startup.
   ///
-  /// Resolution order:
-  /// 1. Bundled assets seed (`assets/json/intl_<lang>.json`) when available.
-  /// 2. Cached bundle from a previous successful fetch.
-  /// 3. Empty map.
+  /// Resolution order (highest to lowest priority):
+  /// 1. Ayah translation seed (when includeAyahSeed is true).
+  /// 2. Cached bundle from a previous successful API fetch.
+  /// 3. Bundled assets seed (`assets/json/intl_<lang>.json`).
   ///
   /// Network is never touched here; remote refresh is performed separately by
   /// [refreshInBackground].
@@ -47,7 +47,7 @@ class TranslationLibraryService {
     final cached = await _readCachedBundle(languageCode);
     if (!includeAyahSeed) {
       if (cached != null && cached.isNotEmpty) {
-        return _mergeBundles(cached, seed);
+        return _mergeBundles(seed, cached);
       }
 
       return seed;
@@ -55,7 +55,7 @@ class TranslationLibraryService {
 
     final ayahSeed = await AyahTranslationLibraryService.loadSeed(languageCode);
     if (cached != null && cached.isNotEmpty) {
-      return _mergeBundles(_mergeBundles(cached, seed), ayahSeed);
+      return _mergeBundles(_mergeBundles(seed, cached), ayahSeed);
     }
 
     return _mergeBundles(seed, ayahSeed);

@@ -518,7 +518,7 @@ class QuranFilterAvailabilityBuilder {
 
     return UnifiedFilterAvailableData(
       subjects: subjectData.labels,
-      subjectAyahCounts: const <String, int>{},
+      subjectAyahCounts: subjectData.counts,
       subjectHierarchy: subjectData.hierarchy,
       schoolGroups: schoolGroups,
       memorizationEvaluations: memorizationEvaluations,
@@ -527,7 +527,13 @@ class QuranFilterAvailabilityBuilder {
   }
 
   Future<_SubjectData> _loadAllSubjectData(String locale) async {
-    final hierarchy = await SubjectsLookupService.instance.loadHierarchy();
+    final results = await Future.wait([
+      SubjectsLookupService.instance.loadHierarchy(),
+      AyatController().loadAllAyat(),
+    ]);
+    final hierarchy = results[0] as List<SubjectHierarchyItem>;
+    final allAyat = results[1] as List<Ayat>;
+
     final labels = <String, String>{};
     for (final subject in hierarchy) {
       final key = subject.key.trim();
@@ -535,17 +541,45 @@ class QuranFilterAvailabilityBuilder {
       final label = subject.displayName(locale).trim();
       labels[key] = label.isEmpty ? key : label;
     }
+
+    final counts = <String, int>{};
+    for (final ayah in allAyat) {
+      for (final rawKey in ayah.subjects ?? const <String>[]) {
+        final key = rawKey.toString().trim();
+        if (key.isEmpty) continue;
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+
     return _SubjectData(
       labels: labels,
       hierarchy: hierarchy,
-      counts: const <String, int>{},
+      counts: counts,
     );
   }
 
   Future<List<UnifiedFilterSchoolGroup>> _loadAllSchoolGroupsFromCatalog(
     String locale,
   ) async {
-    final schools = await SchoolServices().getAllSchools();
+    final results = await Future.wait([
+      SchoolServices().getAllSchools(),
+      AyatController().loadAllAyat(),
+    ]);
+    final schools = results[0] as List<School>;
+    final allAyat = results[1] as List<Ayat>;
+
+    // Build per-level ayah count map from bundled data.json.
+    final levelCounts = <String, int>{};
+    for (final ayah in allAyat) {
+      for (final sl in ayah.schoolLevels ?? const <SchoolLevel>[]) {
+        final schoolId = sl.schoolId;
+        final level = sl.level;
+        if (schoolId == null || level == null) continue;
+        final key = '$schoolId:$level';
+        levelCounts[key] = (levelCounts[key] ?? 0) + 1;
+      }
+    }
+
     final groups = <UnifiedFilterSchoolGroup>[];
 
     for (final school in schools) {
@@ -569,13 +603,19 @@ class QuranFilterAvailabilityBuilder {
           key: '$schoolId:$number',
           label: levelLabel,
           level: number,
+          availableAyahCount: levelCounts['$schoolId:$number'] ?? 0,
         ));
       }
 
       if (levels.isEmpty) continue;
+      final groupCount = levels.fold<int>(
+        0,
+        (sum, l) => sum + l.availableAyahCount,
+      );
       groups.add(UnifiedFilterSchoolGroup(
         label: _localizedSchoolName(school, locale),
         levels: levels,
+        availableAyahCount: groupCount,
       ));
     }
 

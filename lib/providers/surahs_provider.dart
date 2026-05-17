@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sahifaty/controllers/general_controller.dart';
 import 'package:sahifaty/models/surah.dart';
 import 'package:sahifaty/services/surahs_services.dart';
 
@@ -15,14 +16,40 @@ class SurahsProvider with ChangeNotifier {
 
   Future<void> getSurahsByJuz(int juz) async {
     setLoading();
-    var res = await _surahsServices.getSurahsByJuz(juz);
-    var data = res['data'];
-    if (data is! List) {
-      throw Exception('Unexpected response format: expected a list');
+    try {
+      final hasConnection = await GeneralController().checkConnectivity();
+      final res = hasConnection
+          ? await _surahsServices.getSurahsByJuz(juz)
+          : await _loadSurahsByJuzFromLocalData(juz);
+      final data = res['data'];
+      if (data is! List) {
+        throw Exception('Unexpected response format: expected a list');
+      }
+      surahsByJuz = data.map<Surah>((surah) => Surah.fromJson(surah)).toList();
+      totalSurahs = (res['total'] as num?)?.toInt() ?? surahsByJuz.length;
+    } finally {
+      resetLoading();
     }
-    surahsByJuz = data.map<Surah>((surah) => Surah.fromJson(surah)).toList();
-    totalSurahs = res['total'];
-    resetLoading();
+  }
+
+  Future<Map<String, dynamic>> _loadSurahsByJuzFromLocalData(int juz) async {
+    final String response = await rootBundle.loadString('assets/json/data.json');
+    final Map<String, dynamic> jsonData = json.decode(response);
+    final List<dynamic> ayahs = jsonData['data'] ?? [];
+
+    final allSurahs = ayahs
+        .where((item) => item is Map && item['juz'] == juz)
+        .map((item) => Surah.fromJson(Map<String, dynamic>.from(item['surah'] as Map)))
+        .toList(growable: false);
+
+    final uniqueSurahs = {
+      for (final surah in allSurahs) surah.id: surah.toMap(),
+    }.values.toList(growable: false);
+
+    return {
+      'data': uniqueSurahs,
+      'total': uniqueSurahs.length,
+    };
   }
 
   Future<void> loadAllHizbSurahs(

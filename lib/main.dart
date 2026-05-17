@@ -471,6 +471,12 @@ class _InitialScreenState extends State<InitialScreen> {
     final usersProvider = Provider.of<UsersProvider>(context, listen: false);
     final evaluationsProvider =
         Provider.of<EvaluationsProvider>(context, listen: false);
+    // Warm up the Facebook and Google JS SDKs in the background so the first
+    // button click doesn't stall while the SDK loads.
+    if (kIsWeb) {
+      usersProvider.ensureFacebookInitialized().catchError((_) {});
+      usersProvider.ensureGoogleInitialized().catchError((_) {});
+    }
     try {
       _reportStage('جاري التحقق من الجلسة...', 0.10);
 

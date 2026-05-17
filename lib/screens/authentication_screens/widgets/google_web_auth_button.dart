@@ -30,6 +30,7 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
   StreamSubscription<GoogleSignInAuthenticationEvent>? _subscription;
   bool _isInitialized = false;
   bool _isSubmitting = false;
+  bool _initFailed = false;
 
   @override
   void initState() {
@@ -78,6 +79,7 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
         setState(() => _isInitialized = true);
       }
     } catch (error) {
+      if (mounted) setState(() => _initFailed = true);
       widget.onError(error);
     }
   }
@@ -90,6 +92,12 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
 
   @override
   Widget build(BuildContext context) {
+    // If initialization failed, show a disabled placeholder so the UI
+    // doesn't keep spinning forever.
+    if (_initFailed) {
+      return const SizedBox(width: 56, height: 56);
+    }
+
     // Show spinner while initializing, while a sign-in submission is in
     // progress, or while the parent is busy (e.g., another auth op).
     if (!_isInitialized || _isSubmitting || widget.isBusy) {

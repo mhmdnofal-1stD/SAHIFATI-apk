@@ -202,11 +202,15 @@
        (the right edge of the flutter-view) instead of x=0, because RTL block
        flow starts from the right. This offsets all platform views (Google
        Sign-In button, maps, etc.) outside the visible viewport.
-       Fix: position flt-glass-pane absolutely so it always covers the canvas
-       regardless of the document's text direction. */
+       Fix 1: position flt-glass-pane absolutely so it always covers the canvas
+       regardless of the document's text direction.
+       Fix 2: force LTR direction on flt-glass-pane so that inline platform views
+       (display:inline; position:static) flow from the left rather than the right.
+       Without this, flt-platform-view ends up at left=682 in a 464px viewport. */
     flt-glass-pane {
       position: absolute !important;
       inset: 0 !important;
+      direction: ltr !important;
     }
 
     .boot-retry {
@@ -244,6 +248,10 @@
       }
     }
   </style>
+  <!-- Apple Sign In JS SDK — required by sign_in_with_apple_web which calls
+       AppleID.auth.init() and AppleID.auth.signIn() directly via @JS interop.
+       Must be loaded before Flutter initialises so the symbols are available. -->
+  <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 </head>
 <body>
   <div id="boot-screen" aria-live="polite">

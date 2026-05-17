@@ -219,8 +219,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   bool get _hasAnyActiveReaderFilter =>
       _hasActiveDisplayFilter || _hasActiveScopeFilter;
 
-  bool get _hasSelectedAyahs => _selectedAyahKeys.isNotEmpty;
-
   int _ayahSelectionKey(Ayat ayah) {
     return ayah.id ?? ((ayah.surah.id * 1000) + ayah.ayahNo);
   }
@@ -355,12 +353,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   // surahs, navigation is clamped to that scope (Hard-scope behavior).
   static const int _mushafFirstPage = 1;
   static const int _mushafLastPage = 604;
-  static const double _mushafLineHeight = 31;
-  static const double _mushafWordFontSize = 24;
-  static const double _mushafLandscapeLineHeight = 40;
-  static const double _mushafLandscapeWordFontSize = 30.5;
-  static const Map<int, Map<int, _MushafLineFineTune>>
-      _mushafLineFineTuneOverrides = <int, Map<int, _MushafLineFineTune>>{};
+  static const double _mushafLineHeight = 34;
+  static const double _mushafWordFontSize = 26;
+  static const double _mushafLandscapeLineHeight = 43;
+  static const double _mushafLandscapeWordFontSize = 32.5;
   static final RegExp _mushafVisualMarksPattern = RegExp(
     r'[\s\u0640\u064B-\u065F\u0670\u06D6-\u06ED]',
   );
@@ -1917,7 +1913,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     if (evaluationProvider.isLoading && _ayat.isEmpty) {
       return const NoPopScope(
         child: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
         ),
       );
     }
@@ -1925,7 +1923,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     if (!_isConnectivityResolved && _ayat.isEmpty) {
       return const NoPopScope(
         child: Scaffold(
-          body: Center(child: CircularProgressIndicator()),
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
         ),
       );
     }
@@ -1965,7 +1965,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   scaffoldBackgroundColor: AppColors.backgroundColor,
                   brightness: Brightness.light,
                   textTheme: const TextTheme(
-                    bodyLarge: TextStyle(color: AppColors.blackFontColor),
+                    bodyLarge: TextStyle(color: Colors.black),
                   ),
                   colorScheme: const ColorScheme.light(
                     surface: AppColors.backgroundColor,
@@ -2162,49 +2162,49 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                     ),
                                   ),
                                 ),
-                                if (_isAyahSelectionMode && _hasSelectedAyahs)
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 10,
-                                      bottom: 2,
+                            if (_selectedAyahKeys.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 10,
+                                  bottom: 2,
+                                ),
+                                child: Center(
+                                  child: FilledButton.icon(
+                                    onPressed: () =>
+                                        _openBulkAssessmentForSelectedAyahs(
+                                      evaluationProvider,
+                                      languageProvider,
                                     ),
-                                    child: Center(
-                                      child: FilledButton.icon(
-                                        onPressed: () =>
-                                            _openBulkAssessmentForSelectedAyahs(
-                                          evaluationProvider,
-                                          languageProvider,
-                                        ),
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor:
-                                              AppColors.primaryPurple,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 22,
-                                            vertical: 14,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(18),
-                                          ),
-                                        ),
-                                        icon: const Icon(
-                                          Icons
-                                              .keyboard_double_arrow_up_rounded,
-                                        ),
-                                        label: Text(
-                                          isSupervisorViewingStudent
-                                              ? 'إرسال ${_selectedAyahKeys.length} توصيات'
-                                              : 'quran_reading_bulk_apply_selected'
-                                                  .trParams({
-                                                  'count': _selectedAyahKeys
-                                                      .length
-                                                      .toString(),
-                                                }),
-                                        ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor:
+                                          AppColors.primaryPurple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 22,
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(18),
                                       ),
                                     ),
+                                    icon: const Icon(
+                                      Icons
+                                          .keyboard_double_arrow_up_rounded,
+                                    ),
+                                    label: Text(
+                                      isSupervisorViewingStudent
+                                          ? 'إرسال ${_selectedAyahKeys.length} توصيات'
+                                          : 'quran_reading_bulk_apply_selected'
+                                              .trParams({
+                                              'count': _selectedAyahKeys
+                                                  .length
+                                                  .toString(),
+                                            }),
+                                    ),
                                   ),
+                                ),
+                              ),
                                 if (_hasNavigationControls)
                                   Padding(
                                     padding: const EdgeInsets.only(
@@ -2258,14 +2258,14 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                                         : AppColors
                                                             .primaryPurple,
                                                     fontWeight: FontWeight.w700,
-                                                    fontSize: 18,
+                                                      fontSize: 20,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Icon(
                                                   Icons
                                                       .keyboard_arrow_down_rounded,
-                                                  size: 22,
+                                                    size: 24,
                                                   color: isDarkMode
                                                       ? const Color(
                                                           0xFFE6DFD0,
@@ -2491,15 +2491,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         .join();
   }
 
-  double _resolveMushafWordFontSize({
-    required bool isLandscapeReader,
-    required _MushafLineFineTune fineTune,
-  }) {
-    final baseSize =
-        isLandscapeReader ? _mushafLandscapeWordFontSize : _mushafWordFontSize;
-    return baseSize * fineTune.fontScale;
-  }
-
   double _resolveMushafLineHeight({
     required bool isLandscapeReader,
     required _MushafLineFineTune fineTune,
@@ -2513,8 +2504,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     int gapFlex,
     _MushafLineFineTune fineTune,
   ) {
-    final baseWidth = 5.5 + (gapFlex * 2.1);
-    return math.max(5.0, baseWidth * fineTune.gapScale).toDouble();
+    final baseWidth = gapFlex <= 1 ? 8.0 : gapFlex == 2 ? 12.0 : 16.0;
+    return baseWidth * fineTune.gapScale;
   }
 
   _MushafLineFineTune _resolveMushafLineFineTune({
@@ -2523,57 +2514,25 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required _MushafLinePattern pattern,
     required bool isLandscapeReader,
   }) {
-    final manualOverride =
-        _mushafLineFineTuneOverrides[pageNumber]?[line.lineNumber];
-    if (manualOverride != null) {
-      return manualOverride;
-    }
-
-    final tokenLengths =
-        line.words.map(_mushafVisualTokenLength).toList(growable: false);
-    if (tokenLengths.isEmpty) {
+    final tokenCount = line.words.length;
+    if (tokenCount <= 1) {
       return const _MushafLineFineTune();
     }
 
-    final tokenCount = tokenLengths.length;
+    final tokenLengths = line.words
+        .map(_mushafVisualTokenLength)
+        .toList(growable: false);
     final totalChars = tokenLengths.fold<int>(0, (sum, value) => sum + value);
     final longestToken = tokenLengths.reduce(math.max);
     final shortestToken = tokenLengths.reduce(math.min);
 
-    if (isLandscapeReader) {
-      if (pattern.isCentered || tokenCount <= 4 || totalChars <= 12) {
-        return const _MushafLineFineTune(
-          forceCentered: true,
-          gapScale: 0.68,
-          fontScale: 1.24,
-          lineHeightScale: 1.0,
-          horizontalInset: 34,
-        );
-      }
-      if (tokenCount <= 6 && totalChars <= 20) {
-        return const _MushafLineFineTune(
-          forceCentered: true,
-          gapScale: 0.74,
-          fontScale: 1.18,
-          lineHeightScale: 1.0,
-          horizontalInset: 24,
-        );
-      }
-      if (tokenCount >= 7 || totalChars >= 28) {
-        return const _MushafLineFineTune(
-          forceCentered: true,
-          gapScale: 0.78,
-          fontScale: 1.1,
-          lineHeightScale: 1.0,
-          horizontalInset: 10,
-        );
-      }
+    if (tokenCount <= 6 && totalChars <= 20) {
       return const _MushafLineFineTune(
         forceCentered: true,
-        gapScale: 0.76,
-        fontScale: 1.14,
+        gapScale: 0.74,
+        fontScale: 1.18,
         lineHeightScale: 1.0,
-        horizontalInset: 18,
+        horizontalInset: 24,
       );
     }
 
@@ -2608,13 +2567,27 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       );
     }
 
-    if (!pattern.isCentered &&
-        longestToken - shortestToken >= 5 &&
-        tokenCount <= 5) {
+    if (!pattern.isCentered && longestToken - shortestToken >= 5 && tokenCount <= 5) {
       return const _MushafLineFineTune();
     }
 
-    return const _MushafLineFineTune();
+    if (tokenCount >= 7 || totalChars >= 28) {
+      return const _MushafLineFineTune(
+        forceCentered: true,
+        gapScale: 0.78,
+        fontScale: 1.1,
+        lineHeightScale: 1.0,
+        horizontalInset: 10,
+      );
+    }
+
+    return const _MushafLineFineTune(
+      forceCentered: true,
+      gapScale: 0.76,
+      fontScale: 1.14,
+      lineHeightScale: 1.0,
+      horizontalInset: 18,
+    );
   }
 
   Widget _buildMushafAyahMarker({
@@ -3027,60 +3000,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       0.0,
       (textStyle.fontSize ?? _mushafWordFontSize) * 1.28,
     );
-  }
-
-  double _estimateMushafLineWidthForFit({
-    required MushafRenderableLine line,
-    required Map<String, Ayat> ayahByKey,
-    required TextStyle textStyle,
-    required _MushafLinePattern pattern,
-    required _MushafLineFineTune fineTune,
-    required bool isLandscapeReader,
-    required bool isCenteredLine,
-  }) {
-    const tokenPaddingWidth = 3.0;
-    final markerWidth = isLandscapeReader ? 30.0 : 24.0;
-    final recommendationBadgeWidth = isLandscapeReader ? 28.0 : 24.0;
-    var totalWidth = 0.0;
-
-    for (var index = 0; index < line.words.length; index += 1) {
-      final word = line.words[index];
-      if (word.isVerseEnd) {
-        totalWidth += markerWidth + tokenPaddingWidth;
-        final ayah = ayahByKey[_mushafAyahKey(word.surahId, word.ayahNo)];
-        if (ayah != null && ayah.teacherRecommendations.isNotEmpty) {
-          totalWidth += 4 + recommendationBadgeWidth;
-        }
-      } else {
-        totalWidth +=
-            _measureMushafTextWidth(text: word.text, textStyle: textStyle) +
-                tokenPaddingWidth;
-      }
-
-      if (!isCenteredLine || index >= line.words.length - 1) {
-        continue;
-      }
-
-      if (pattern.isCentered) {
-        totalWidth += math
-            .max(
-              6.0,
-              (pattern.tokenSpacing == 0 ? 8.0 : pattern.tokenSpacing) *
-                  fineTune.gapScale,
-            )
-            .toDouble();
-        continue;
-      }
-
-      if (index < pattern.gapFlexes.length) {
-        totalWidth += _resolveLandscapeGapWidth(
-          pattern.gapFlexes[index],
-          fineTune,
-        );
-      }
-    }
-
-    return totalWidth;
   }
 
   Widget _buildMushafWordLine(
@@ -3502,8 +3421,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
   }
 
-  static const double _mushafPageFontScale = 0.90;
-  static const double _mushafLandscapePageFontScale = 0.88;
+  static const double _mushafPageFontScale = 1.0;
+  static const double _mushafLandscapePageFontScale = 0.98;
 
   List<Widget> _buildMushafLayoutWidgets(
     MushafPageLayout layout,
@@ -3903,7 +3822,7 @@ class _ReaderSurahPill extends StatelessWidget {
             softWrap: false,
             style: TextStyle(
               color: foreground,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w800,
               fontFamily: AppFonts.primaryFont,
               fontFamilyFallback: const <String>[AppFonts.versesFont],
@@ -4415,7 +4334,7 @@ class _ReaderJuzPickerState extends State<_ReaderJuzPicker> {
               _tr('quran_reading_juz_picker_title'),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -4506,7 +4425,7 @@ class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
               _tr('quran_reading_surah_picker_title'),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -4526,7 +4445,7 @@ class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
                       surahNumber.toString(),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontSize: 18,
                       ),
                     ),
                     title: Text(
@@ -4538,7 +4457,7 @@ class _ReaderSurahPickerState extends State<_ReaderSurahPicker> {
                         fontWeight:
                             isCurrent ? FontWeight.w800 : FontWeight.w600,
                         fontFamily: AppFonts.versesFont,
-                        fontSize: 18,
+                        fontSize: 20,
                       ),
                     ),
                     onTap: () => Navigator.of(context).pop(surahNumber),
@@ -4636,7 +4555,7 @@ class _ReaderPagePickerState extends State<_ReaderPagePicker> {
               _tr('quran_reading_page_picker_title'),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
             ),

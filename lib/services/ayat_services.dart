@@ -1,20 +1,49 @@
 import 'dart:convert';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
+
+import 'offline_assessment_store.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
 class AyatServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
 
   String _buildAyatQuery(Map<String, String> queryParameters) {
     return 'ayat?${Uri(queryParameters: queryParameters).query}';
   }
 
+  Future<bool> _isOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    return !results.contains(ConnectivityResult.none);
+  }
+
   Future<Map<String, dynamic>> _getAyat(
     Map<String, String> queryParameters,
+    {
+    required String type,
+    required String key,
+  }
   ) async {
+    if (!await _isOnline()) {
+      final cached = await _offlineStore.getCachedAyatJson(
+        type: type,
+        key: key,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        return jsonDecode(cached) as Map<String, dynamic>;
+      }
+      throw Exception('service_ayat_load_failed'.tr);
+    }
+
     final res = await _sahifatyApi.get(_buildAyatQuery(queryParameters));
 
     if (res.statusCode == 200) {
+      await _offlineStore.cacheAyatJson(
+        type: type,
+        key: key,
+        rawJson: res.body,
+      );
       return jsonDecode(res.body) as Map<String, dynamic>;
     }
 
@@ -31,7 +60,7 @@ class AyatServices {
         'limit': '1000',
         if (languageCode != null && languageCode.isNotEmpty)
           'language': languageCode,
-      });
+      }, type: 'surah', key: surahId.toString());
     } catch (ex) {
       rethrow;
     }
@@ -47,7 +76,7 @@ class AyatServices {
         'limit': '1000',
         if (languageCode != null && languageCode.isNotEmpty)
           'language': languageCode,
-      });
+      }, type: 'hizb', key: hizb.toString());
     } catch (ex) {
       rethrow;
     }
@@ -63,7 +92,7 @@ class AyatServices {
         'limit': '1000',
         if (languageCode != null && languageCode.isNotEmpty)
           'language': languageCode,
-      });
+      }, type: 'hizbQuarter', key: hizbQuarter.toString());
     } catch (ex) {
       rethrow;
     }
@@ -79,7 +108,7 @@ class AyatServices {
         'limit': '1000',
         if (languageCode != null && languageCode.isNotEmpty)
           'language': languageCode,
-      });
+      }, type: 'juz', key: juz.toString());
     } catch (ex) {
       rethrow;
     }
@@ -95,7 +124,7 @@ class AyatServices {
         'limit': '1000',
         if (languageCode != null && languageCode.isNotEmpty)
           'language': languageCode,
-      });
+      }, type: 'page', key: page.toString());
     } catch (ex) {
       rethrow;
     }

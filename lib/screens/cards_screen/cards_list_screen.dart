@@ -71,7 +71,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
               controller: _searchController,
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
-                hintText: 'بحث في البطاقات...',
+                hintText: 'cards_search_hint'.tr,
                 hintStyle: const TextStyle(
                   color: AppColors.mutedText,
                   fontSize: 14,
@@ -137,14 +137,14 @@ class _CardsListScreenState extends State<CardsListScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          message.isEmpty ? 'تعذّر تحميل البطاقات' : message,
+                          message.isEmpty ? 'cards_load_error'.tr : message,
                           textAlign: TextAlign.center,
                           style: AppTypography.of(context).bodyDefault,
                         ),
                         const SizedBox(height: 12),
                         ElevatedButton(
                           onPressed: () => provider.loadCards(reset: true),
-                          child: const Text('إعادة المحاولة'),
+                          child: Text('cards_retry'.tr),
                         ),
                       ],
                     ),
@@ -154,7 +154,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
                 if (provider.cards.isEmpty) {
                   return Center(
                     child: Text(
-                      'لا توجد بطاقات',
+                      'cards_empty'.tr,
                       style: AppTypography.of(context).bodyDefault.copyWith(
                             color: AppColors.mutedText,
                           ),
@@ -191,13 +191,13 @@ class _CardsListScreenState extends State<CardsListScreen> {
   String _titleForRole(int role) {
     switch (role) {
       case 3:
-        return 'بطاقاتي البحثية';
+        return 'cards_my_research'.tr;
       case 4:
-        return 'قائمة المراجعة';
+        return 'cards_review_queue'.tr;
       case 5:
-        return 'قائمة القبول';
+        return 'cards_accept_queue'.tr;
       default:
-        return 'البطاقات العلمية';
+        return 'cards_scientific'.tr;
     }
   }
 }

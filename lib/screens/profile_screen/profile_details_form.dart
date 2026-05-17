@@ -564,18 +564,6 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
     return option['label'] ?? '';
   }
 
-  String _labelForOption(
-    List<Map<String, String>> options,
-    String? value,
-    String fallbackKey,
-  ) {
-    final match = options.firstWhere(
-      (option) => option['value'] == value,
-      orElse: () => {'labelKey': fallbackKey},
-    );
-    return _optionLabel(match);
-  }
-
   @override
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();

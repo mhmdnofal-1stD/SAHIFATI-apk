@@ -11,12 +11,18 @@ Widget buildGoogleWebButton({
   required String? locale,
 }) {
   final plugin = GoogleSignInPlatform.instance as GoogleSignInPlugin;
-  return plugin.renderButton(
-    configuration: GSIButtonConfiguration(
-      type: GSIButtonType.icon,
-      size: GSIButtonSize.large,
-      theme: GSIButtonTheme.outline,
-      locale: locale,
+  // Wrap in an explicit SizedBox so the HtmlElementView has proper dimensions
+  // in the Wrap layout — without this the view collapses to 0×0 and is invisible.
+  return SizedBox(
+    width: 56,
+    height: 56,
+    child: plugin.renderButton(
+      configuration: GSIButtonConfiguration(
+        type: GSIButtonType.icon,
+        size: GSIButtonSize.large,
+        theme: GSIButtonTheme.outline,
+        locale: locale,
+      ),
     ),
   );
 }

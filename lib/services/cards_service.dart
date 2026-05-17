@@ -1,12 +1,36 @@
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/card_model.dart';
+import 'offline_assessment_store.dart';
 import 'sahifaty_api.dart';
+import 'secure_session_storage.dart';
 
 class CardsService {
   final SahifatyApi _api = SahifatyApi();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
+
+  Future<bool> _isOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    return !results.contains(ConnectivityResult.none);
+  }
+
+  Future<String> _resolveScopeKey() async {
+    final accountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (accountKey != null && accountKey.trim().isNotEmpty) {
+      return accountKey.trim();
+    }
+    return 'default';
+  }
+
+  static String _buildFilterKey({String? status, String? search}) {
+    final statusPart = (status != null && status.isNotEmpty) ? status : 'all';
+    final searchPart =
+        (search != null && search.isNotEmpty) ? 'search' : 'no_search';
+    return 'status.$statusPart.$searchPart';
+  }
 
   /// Fetches a paginated list of cards.
   ///
@@ -23,6 +47,22 @@ class CardsService {
     String orderBy = 'createdAt',
     String orderDirection = 'desc',
   }) async {
+    final online = await _isOnline();
+    final scopeKey = await _resolveScopeKey();
+    final filterKey = _buildFilterKey(status: status, search: search);
+
+    if (!online) {
+      final cached = await _offlineStore.getCachedCardsJson(
+        scopeKey: scopeKey,
+        page: page,
+        filterKey: filterKey,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        return _parseCardsResult(cached, page);
+      }
+      throw Exception('no_cached_cards_available');
+    }
+
     final params = <String, String>{
       'page': page.toString(),
       'limit': limit.toString(),
@@ -36,29 +76,58 @@ class CardsService {
     final response = await _api.get('cards?$query');
 
     if (response.statusCode == 200) {
-      final decoded = json.decode(response.body);
-      final body = decoded is Map<String, dynamic>
-          ? decoded
-          : <String, dynamic>{'data': decoded};
-      final rawData =
-          body['data'] ?? body['items'] ?? body['cards'] ?? const [];
-      final data = rawData is List ? rawData : const [];
-      return (
-        cards: data
-            .whereType<Map>()
-            .map((e) => CardModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList(),
-        total: _asInt(body['total']) ?? data.length,
-        page: _asInt(body['page']) ?? page,
-        pages: _asInt(body['totalPages']) ?? _asInt(body['pages']) ?? 1,
+      await _offlineStore.cacheCardsJson(
+        scopeKey: scopeKey,
+        page: page,
+        filterKey: filterKey,
+        rawJson: response.body,
       );
+      return _parseCardsResult(response.body, page);
     }
     throw Exception(_extractMessage(response, fallback: 'cards_load_failed'));
   }
 
+  ({List<CardModel> cards, int total, int page, int pages}) _parseCardsResult(
+    String rawJson,
+    int requestedPage,
+  ) {
+    final decoded = json.decode(rawJson);
+    final body = decoded is Map<String, dynamic>
+        ? decoded
+        : <String, dynamic>{'data': decoded};
+    final rawData =
+        body['data'] ?? body['items'] ?? body['cards'] ?? const [];
+    final data = rawData is List ? rawData : const [];
+    return (
+      cards: data
+          .whereType<Map>()
+          .map((e) => CardModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+      total: _asInt(body['total']) ?? data.length,
+      page: _asInt(body['page']) ?? requestedPage,
+      pages: _asInt(body['totalPages']) ?? _asInt(body['pages']) ?? 1,
+    );
+  }
+
   Future<CardModel> getCard(int id) async {
+    final online = await _isOnline();
+
+    if (!online) {
+      final cached = await _offlineStore.getCachedCardJson(id: id.toString());
+      if (cached != null && cached.isNotEmpty) {
+        return CardModel.fromJson(
+          Map<String, dynamic>.from(json.decode(cached) as Map),
+        );
+      }
+      throw Exception('no_cached_card_available');
+    }
+
     final response = await _api.get('cards/$id');
     if (response.statusCode == 200) {
+      await _offlineStore.cacheCardJson(
+        id: id.toString(),
+        rawJson: response.body,
+      );
       return CardModel.fromJson(
         Map<String, dynamic>.from(json.decode(response.body) as Map),
       );
@@ -73,6 +142,10 @@ class CardsService {
     String? comment,
     String? rejectReason,
   }) async {
+    if (!await _isOnline()) {
+      throw Exception('offline_write_not_supported');
+    }
+
     final body = <String, dynamic>{'status': status};
     if (comment != null && comment.trim().isNotEmpty) body['comment'] = comment;
     if (rejectReason != null && rejectReason.trim().isNotEmpty) {
@@ -91,6 +164,10 @@ class CardsService {
 
   /// Adds a review comment without changing status.
   Future<CardModel> addComment(int id, String comment) async {
+    if (!await _isOnline()) {
+      throw Exception('offline_write_not_supported');
+    }
+
     final response = await _api.put(
       url: 'cards/$id',
       body: {'comment': comment},

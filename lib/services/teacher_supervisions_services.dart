@@ -1,13 +1,32 @@
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
 
+import 'offline_assessment_store.dart';
 import 'sahifaty_api.dart';
+import 'secure_session_storage.dart';
 
 class TeacherSupervisionsService {
+  final SahifatyApi _api = SahifatyApi();
+  final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
+
+  Future<bool> _isOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    return !results.contains(ConnectivityResult.none);
+  }
+
+  Future<String> _resolveScopeKey() async {
+    final accountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (accountKey != null && accountKey.trim().isNotEmpty) {
+      return accountKey.trim();
+    }
+    return 'default';
+  }
+
   Future<Map<String, dynamic>> previewByCode(String code) async {
     final normalized = code.trim().toUpperCase();
-    final response = await SahifatyApi().get(
+    final response = await _api.get(
       'teacher-supervisions/preview-by-code/$normalized',
     );
     final body = json.decode(response.body);
@@ -21,8 +40,10 @@ class TeacherSupervisionsService {
   }
 
   Future<Map<String, dynamic>> scanByCode(String code) async {
+    await _throwIfOfflineWrite();
+
     final normalized = code.trim().toUpperCase();
-    final response = await SahifatyApi().post(
+    final response = await _api.post(
       url: 'teacher-supervisions/scan-by-code',
       body: {'code': normalized},
     );
@@ -34,40 +55,81 @@ class TeacherSupervisionsService {
   }
 
   Future<List<Map<String, dynamic>>> listIncomingRequests() async {
-    final response = await SahifatyApi().get(
-      'teacher-supervisions/requests/incoming',
-    );
+    final scopeKey = await _resolveScopeKey();
+    if (!await _isOnline()) {
+      final cached = await _offlineStore.getCachedSupervisionRequestsJson(
+        scopeKey: scopeKey,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        return _decodeListOfMaps(cached);
+      }
+      throw 'supervision_requests_load_failed'.tr;
+    }
+
+    final response = await _api.get('teacher-supervisions/requests/incoming');
     final body = json.decode(response.body);
     if (response.statusCode == 200 && body is List) {
-      return body
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList(growable: false);
+      await _offlineStore.cacheSupervisionRequestsJson(
+        scopeKey: scopeKey,
+        rawJson: response.body,
+      );
+      return _decodeListBody(body);
     }
     throw _extractMessage(body, 'supervision_requests_load_failed'.tr);
   }
 
   Future<List<Map<String, dynamic>>> listLinks() async {
-    final response = await SahifatyApi().get('teacher-supervisions/links');
+    final scopeKey = await _resolveScopeKey();
+    if (!await _isOnline()) {
+      final cached = await _offlineStore.getCachedSupervisionLinksJson(
+        scopeKey: scopeKey,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        return _decodeListOfMaps(cached);
+      }
+      throw 'supervision_links_load_failed'.tr;
+    }
+
+    final response = await _api.get('teacher-supervisions/links');
     final body = json.decode(response.body);
     if (response.statusCode == 200 && body is List) {
-      return body
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList(growable: false);
+      await _offlineStore.cacheSupervisionLinksJson(
+        scopeKey: scopeKey,
+        rawJson: response.body,
+      );
+      return _decodeListBody(body);
     }
     throw _extractMessage(body, 'supervision_links_load_failed'.tr);
   }
 
   Future<Map<String, dynamic>> getLimits() async {
-    final response = await SahifatyApi().get('teacher-supervisions/limits');
+    final scopeKey = await _resolveScopeKey();
+    if (!await _isOnline()) {
+      final cached = await _offlineStore.getCachedSupervisionLimitsJson(
+        scopeKey: scopeKey,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        return _decodeMapBody(json.decode(cached));
+      }
+      throw 'supervision_limits_load_failed'.tr;
+    }
+
+    final response = await _api.get('teacher-supervisions/limits');
     final body = json.decode(response.body);
     if (response.statusCode == 200) {
-      return Map<String, dynamic>.from(body as Map);
+      await _offlineStore.cacheSupervisionLimitsJson(
+        scopeKey: scopeKey,
+        rawJson: response.body,
+      );
+      return _decodeMapBody(body);
     }
     throw _extractMessage(body, 'supervision_limits_load_failed'.tr);
   }
 
   Future<Map<String, dynamic>> acceptRequest(int requestId) async {
-    final response = await SahifatyApi().post(
+    await _throwIfOfflineWrite();
+
+    final response = await _api.post(
       url: 'teacher-supervisions/requests/$requestId/accept',
       body: const {},
     );
@@ -94,7 +156,9 @@ class TeacherSupervisionsService {
     int requestId,
     int removeLinkId,
   ) async {
-    final response = await SahifatyApi().post(
+    await _throwIfOfflineWrite();
+
+    final response = await _api.post(
       url: 'teacher-supervisions/requests/$requestId/accept-with-remove',
       body: {'removeLinkId': removeLinkId},
     );
@@ -109,7 +173,9 @@ class TeacherSupervisionsService {
     int requestId, {
     String? reason,
   }) async {
-    final response = await SahifatyApi().post(
+    await _throwIfOfflineWrite();
+
+    final response = await _api.post(
       url: 'teacher-supervisions/requests/$requestId/reject',
       body: {if (reason != null && reason.trim().isNotEmpty) 'reason': reason},
     );
@@ -121,7 +187,9 @@ class TeacherSupervisionsService {
   }
 
   Future<Map<String, dynamic>> startOneTimeReview(int requestId) async {
-    final response = await SahifatyApi().post(
+    await _throwIfOfflineWrite();
+
+    final response = await _api.post(
       url: 'teacher-supervisions/requests/$requestId/one-time-review',
       body: const {},
     );
@@ -133,7 +201,9 @@ class TeacherSupervisionsService {
   }
 
   Future<Map<String, dynamic>> closeOneTimeReview(int sessionId) async {
-    final response = await SahifatyApi().post(
+    await _throwIfOfflineWrite();
+
+    final response = await _api.post(
       url: 'teacher-supervisions/one-time-reviews/$sessionId/close',
       body: const {},
     );
@@ -155,6 +225,34 @@ class TeacherSupervisionsService {
       }
     }
     return fallback;
+  }
+
+  Future<void> _throwIfOfflineWrite() async {
+    if (!await _isOnline()) {
+      throw Exception('offline_write_not_supported');
+    }
+  }
+
+  List<Map<String, dynamic>> _decodeListOfMaps(String rawJson) {
+    return _decodeListBody(json.decode(rawJson));
+  }
+
+  List<Map<String, dynamic>> _decodeListBody(dynamic body) {
+    if (body is! List) {
+      throw 'supervision_list_cache_invalid';
+    }
+
+    return body
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
+  }
+
+  Map<String, dynamic> _decodeMapBody(dynamic body) {
+    if (body is! Map) {
+      throw 'supervision_limits_cache_invalid';
+    }
+    return Map<String, dynamic>.from(body);
   }
 }
 

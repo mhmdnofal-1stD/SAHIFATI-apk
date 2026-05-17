@@ -15,6 +15,7 @@ import '../models/user_notification_item.dart';
 import '../models/user.dart';
 import '../services/push_notifications_service.dart';
 import '../services/app_exception.dart';
+import '../services/initial_data_sync_service.dart';
 import '../services/sahifaty_api.dart';
 import '../services/secure_session_storage.dart';
 import '../services/users_services.dart';
@@ -43,6 +44,8 @@ class UsersProvider with ChangeNotifier {
   DateTime? pendingVerificationSentAt;
 
   final UsersServices _usersService = UsersServices();
+    final InitialDataSyncService _initialDataSyncService =
+      InitialDataSyncService();
   final PushNotificationsService _pushNotificationsService =
       PushNotificationsService();
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
@@ -1310,6 +1313,7 @@ class UsersProvider with ChangeNotifier {
     await checkFirstLogin();
     _resetPushNotificationsSession();
     await _bootstrapPushNotificationsForCurrentUser();
+    unawaited(_initialDataSyncService.runIfNeeded(user.id));
     return authData;
   }
 
@@ -1391,7 +1395,9 @@ class UsersProvider with ChangeNotifier {
     setLoading();
     try {
       await ensureFacebookInitialized();
-      final LoginResult loginResult = await FacebookAuth.instance.login();
+      final LoginResult loginResult = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
       if (loginResult.status == LoginStatus.success) {
         final AccessToken? accessToken = loginResult.accessToken;
         if (accessToken == null) {
@@ -1912,6 +1918,7 @@ class UsersProvider with ChangeNotifier {
       await checkFirstLogin(user: selectedUser);
       _resetPushNotificationsSession();
       await _bootstrapPushNotificationsForCurrentUser();
+      unawaited(_initialDataSyncService.runIfNeeded(selectedUser!.id));
       notifyListeners();
       return true;
     } on FetchDataException {

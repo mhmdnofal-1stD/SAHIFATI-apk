@@ -203,7 +203,7 @@ class GlobalDrawer extends StatelessWidget {
                       Get.toNamed(CardsListScreen.routeName);
                     },
                     title: _buildDrawerTitle(
-                      text: 'ادارة البطاقات',
+                      text: 'drawer_cards'.tr,
                       icon: Icons.library_books_outlined,
                     ),
                   );
