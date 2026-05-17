@@ -1167,7 +1167,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إرسال التوصية للطالب.')),
+        const SnackBar(content: Text('تم إرسال التوصية للطالب.')),
       );
     } catch (error) {
       if (!mounted) {
@@ -1237,7 +1237,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إرسال التوصيات للطالب.')),
+        const SnackBar(content: Text('تم إرسال التوصيات للطالب.')),
       );
     } catch (error) {
       if (!mounted) {

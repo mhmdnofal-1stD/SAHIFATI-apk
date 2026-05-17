@@ -210,7 +210,7 @@ class MyApp extends StatelessWidget {
             }
 
             _seedLocalReadingPreviewUser();
-            return IndexPage(
+            return const IndexPage(
               surah: Surah(
                 id: 1,
                 nameAr: 'الفاتحة',

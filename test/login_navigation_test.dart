@@ -198,10 +198,10 @@ void main() {
             value: LanguageProvider(initialLangCode: 'en'),
           ),
         ],
-        child: GetMaterialApp(
-          locale: const Locale('en'),
-          fallbackLocale: const Locale('en'),
-          home: const SelectUserScreen(firstScreen: false),
+        child: const GetMaterialApp(
+          locale: Locale('en'),
+          fallbackLocale: Locale('en'),
+          home: SelectUserScreen(firstScreen: false),
         ),
       ),
     );

@@ -776,7 +776,7 @@ class _BrowseLoadingPlaceholder extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 44,
               height: 44,
               child: CircularProgressIndicator(

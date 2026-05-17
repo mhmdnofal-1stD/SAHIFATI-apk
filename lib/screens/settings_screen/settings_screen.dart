@@ -271,8 +271,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: AppTypography.of(context)
                             .bodyDefault
                             .copyWith(color: Colors.black54),
-                        children: [
-                          const TextSpan(text: 'sahifati.org'),
+                        children: const [
+                          TextSpan(text: 'sahifati.org'),
                         ],
                         recognizer: _websiteRecognizer,
                       ),
