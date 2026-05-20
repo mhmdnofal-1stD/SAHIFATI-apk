@@ -40,6 +40,7 @@ class QuestionsCompletionScreen extends StatefulWidget {
 
 class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
   bool _isOpeningReadingBrowser = false;
+  bool _isNavigatingToAuth = false;
   String? _errorMessage;
 
   QuranChartFilters _browseChartFilters() {
@@ -102,8 +103,36 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
     }
   }
 
+  void _openSignUp() {
+    if (_isNavigatingToAuth) {
+      return;
+    }
+
+    setState(() {
+      _isNavigatingToAuth = true;
+      _errorMessage = null;
+    });
+
+    Get.offAllNamed('/signup');
+  }
+
+  void _openLogin() {
+    if (_isNavigatingToAuth) {
+      return;
+    }
+
+    setState(() {
+      _isNavigatingToAuth = true;
+      _errorMessage = null;
+    });
+
+    Get.offAllNamed('/login');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final usersProvider = context.watch<UsersProvider>();
+    final isGuestFlow = usersProvider.selectedUser == null;
     final completionRatio = widget.totalItems == 0
         ? 0.0
         : widget.completedItems / widget.totalItems;
@@ -126,27 +155,29 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                     .copyWith(color: AppColors.blackFontColor),
               ),
               leading: const CustomBackButton(),
-              actions: [
-                Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () {
-                      if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
-                        Scaffold.of(context).openDrawer();
-                      } else {
-                        Scaffold.of(context).openEndDrawer();
-                      }
-                    },
-                  ),
-                ),
-              ],
+              actions: isGuestFlow
+                  ? const []
+                  : [
+                      Builder(
+                        builder: (context) => IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                              Scaffold.of(context).openDrawer();
+                            } else {
+                              Scaffold.of(context).openEndDrawer();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
             ),
           ),
         ),
-        drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+        drawer: !isGuestFlow && (Get.locale?.languageCode ?? 'ar') == 'ar'
             ? const GlobalDrawer()
             : null,
-        endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+        endDrawer: !isGuestFlow && (Get.locale?.languageCode ?? 'ar') == 'ar'
             ? null
             : const GlobalDrawer(),
         body: ResponsiveContentShell(
@@ -192,9 +223,11 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            widget.skipped
-                                ? 'questions_completion_heading_skipped'.tr
-                                : 'questions_completion_heading_complete'.tr,
+                            isGuestFlow
+                                ? 'questions_completion_heading_guest'.tr
+                                : widget.skipped
+                                    ? 'questions_completion_heading_skipped'.tr
+                                    : 'questions_completion_heading_complete'.tr,
                             style: AppTypography.of(context).pageHeading,
                           ),
                           const SizedBox(height: 18),
@@ -256,54 +289,94 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
                             ),
                           ],
                           const SizedBox(height: 18),
-                          Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            children: [
-                              FilledButton.icon(
-                              onPressed: _isOpeningReadingBrowser
-                                ? null
-                                : _openReadingBrowser,
-                              icon: _isOpeningReadingBrowser
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.auto_graph),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.buttonColor,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 14,
+                          if (isGuestFlow) ...[
+                            Text(
+                              'questions_completion_meaning_body_guest'.tr,
+                              style: AppTypography.of(context)
+                                  .bodySecondary
+                                  .copyWith(color: AppColors.mutedText),
+                            ),
+                            const SizedBox(height: 18),
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: _isNavigatingToAuth
+                                      ? null
+                                      : _openSignUp,
+                                  icon: const Icon(Icons.person_add_alt_1),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.buttonColor,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  label: Text('create_account'.tr),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: _isNavigatingToAuth
+                                      ? null
+                                      : _openLogin,
+                                  icon: const Icon(Icons.login_rounded),
+                                  label: Text('login'.tr),
+                                ),
+                              ],
+                            ),
+                          ] else
+                            Wrap(
+                              spacing: 12,
+                              runSpacing: 12,
+                              children: [
+                                FilledButton.icon(
+                                  onPressed: _isOpeningReadingBrowser
+                                      ? null
+                                      : _openReadingBrowser,
+                                  icon: _isOpeningReadingBrowser
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.auto_graph),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.buttonColor,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                  label: Text(
+                                    _isOpeningReadingBrowser
+                                        ? 'questions_completion_opening_label'
+                                            .tr
+                                        : 'questions_completion_continue_label'
+                                            .tr,
                                   ),
                                 ),
-                                label: Text(
-                                  _isOpeningReadingBrowser
-                                      ? 'questions_completion_opening_label'.tr
-                                      : 'questions_completion_continue_label'.tr,
+                                InfoIconButton(
+                                  message: widget.skipped
+                                      ? 'questions_completion_meaning_body_skipped'
+                                          .tr
+                                      : 'questions_completion_meaning_body_complete'
+                                          .tr,
+                                  color: AppColors.mutedText,
                                 ),
-                              ),
-                              InfoIconButton(
-                                message: widget.skipped
-                                    ? 'questions_completion_meaning_body_skipped'.tr
-                                    : 'questions_completion_meaning_body_complete'.tr,
-                                color: AppColors.mutedText,
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: _isOpeningReadingBrowser
-                                    ? null
-                                    : () => Get.back<void>(),
-                                icon: const Icon(Icons.arrow_back),
-                                label: Text(
-                                  'questions_completion_back_label'.tr,
+                                OutlinedButton.icon(
+                                  onPressed: _isOpeningReadingBrowser
+                                      ? null
+                                      : () => Get.back<void>(),
+                                  icon: const Icon(Icons.arrow_back),
+                                  label: Text(
+                                    'questions_completion_back_label'.tr,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                         ],
                       ),
                     ),

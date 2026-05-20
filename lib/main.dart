@@ -195,10 +195,8 @@ class MyApp extends StatelessWidget {
           secondary: AppColors.buttonColor,
         ),
       ),
-      builder: (context, child) => PrivacyConsentGate(
-        child: AppProgressOverlayWrapper(
-          child: child ?? const SizedBox.shrink(),
-        ),
+      builder: (context, child) => AppProgressOverlayWrapper(
+        child: child ?? const SizedBox.shrink(),
       ),
       initialRoute: _initialRouteForWeb(),
       unknownRoute: GetPage(
@@ -240,7 +238,9 @@ class MyApp extends StatelessWidget {
         ),
         GetPage(
           name: '/signup',
-          page: () => const SignUpScreen(),
+          page: () => const PrivacyConsentGate(
+            child: SignUpScreen(),
+          ),
         ),
         GetPage(
           name: '/forgot-password',

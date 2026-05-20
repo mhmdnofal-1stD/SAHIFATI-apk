@@ -35,7 +35,7 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
   @override
   void initState() {
     super.initState();
-    _phaseOneTimer = Timer(const Duration(milliseconds: 60), () {
+    _phaseOneTimer = Timer(const Duration(milliseconds: 110), () {
       if (!mounted) {
         return;
       }
@@ -44,7 +44,7 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
         _logoCentered = true;
       });
     });
-    _phaseTwoTimer = Timer(const Duration(milliseconds: 1450), () {
+    _phaseTwoTimer = Timer(const Duration(milliseconds: 1780), () {
       if (!mounted) {
         return;
       }
@@ -112,21 +112,21 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
-    final logoSize = _contentVisible
-        ? math.min(size.width * 0.22, 120.0)
-        : math.min(size.width * 0.30, 156.0);
-    final centeredLogoTop = (size.height - logoSize) * 0.53;
-    final topLogoTop = padding.top + 56;
+    final pageOneLogoSize = math.min(size.width * 0.33, 172.0);
+    final pageTwoLogoSize = math.min(size.width * 0.20, 108.0);
+    final logoSize = _contentVisible ? pageTwoLogoSize : pageOneLogoSize;
+    final centeredLogoTop = (size.height - logoSize) * 0.47;
+    final topLogoTop = padding.top + math.max(size.height * 0.04, 34.0);
     final logoTop = !_logoCentered
-        ? size.height + 48
+        ? size.height + 96
         : _contentVisible
             ? topLogoTop
             : centeredLogoTop;
     final contentHeight = math.min(
-      math.max(size.height * 0.58, 430.0),
-      size.height - (padding.top + 120),
+      math.max(size.height * 0.52, 412.0),
+      size.height - (padding.top + 92),
     );
-    final contentBottom = _contentVisible ? 0.0 : -(contentHeight + 48);
+    final contentBottom = _contentVisible ? 0.0 : -(contentHeight + 64);
 
     return Scaffold(
       backgroundColor: AppColors.buttonColor,
@@ -145,8 +145,8 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withAlpha(18),
-                    Colors.black.withAlpha(34),
+                    Colors.black.withAlpha(26),
+                    Colors.black.withAlpha(46),
                   ],
                 ),
               ),
@@ -154,7 +154,7 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
           ),
           AnimatedPositioned(
             duration: Duration(
-              milliseconds: _contentVisible ? 900 : 1300,
+              milliseconds: _contentVisible ? 820 : 1480,
             ),
             curve: _contentVisible
                 ? Curves.easeInOutCubic
@@ -162,7 +162,7 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
             top: logoTop,
             left: (size.width - logoSize) / 2,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 900),
+              duration: const Duration(milliseconds: 820),
               curve: Curves.easeInOutCubic,
               width: logoSize,
               height: logoSize,
@@ -173,13 +173,13 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
             ),
           ),
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 900),
+            duration: const Duration(milliseconds: 980),
             curve: Curves.easeOutCubic,
             left: 0,
             right: 0,
             bottom: contentBottom,
             child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 500),
+              duration: const Duration(milliseconds: 620),
               curve: Curves.easeOut,
               opacity: _contentVisible ? 1 : 0,
               child: _OnboardingContentSheet(
@@ -216,24 +216,24 @@ class _OnboardingContentSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final cardLogoSize = math.min(size.width * 0.24, 144.0);
+    final cardLogoSize = math.min(size.width * 0.22, 122.0);
     final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
           color: Colors.black,
           fontWeight: FontWeight.w800,
-          height: 1.3,
+          height: 1.24,
         );
     final bodyStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
           color: Colors.black.withAlpha(220),
-          height: 1.7,
+          height: 1.62,
         );
 
     return SizedBox(
       height: height,
       child: DecoratedBox(
-            decoration: const BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.panelColor,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
-              boxShadow: [
+          borderRadius: BorderRadius.vertical(top: Radius.circular(38)),
+          boxShadow: [
             BoxShadow(
               color: Color(0x3306140E),
               blurRadius: 24,
@@ -242,12 +242,12 @@ class _OnboardingContentSheet extends StatelessWidget {
           ],
         ),
         child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(34)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(38)),
           child: Stack(
             children: [
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.10,
+                  opacity: 0.08,
                   child: SvgPicture.asset(
                     Assets.onboardingBackgroundSvg,
                     fit: BoxFit.cover,
@@ -259,29 +259,35 @@ class _OnboardingContentSheet extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(24, 28, 24, 20 + bottomInset),
+                padding: EdgeInsets.fromLTRB(28, 34, 28, 24 + bottomInset),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       children: [
-                        Text(
-                          'هل تعرف كم تحفظ من القرآن الكريم اليوم؟',
-                          textAlign: TextAlign.center,
-                          style: titleStyle,
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 330),
+                          child: Text(
+                            'هل تعرف كم تحفظ من القرآن الكريم اليوم؟',
+                            textAlign: TextAlign.center,
+                            style: titleStyle,
+                          ),
                         ),
-                        const SizedBox(height: 26),
+                        const SizedBox(height: 30),
                         SvgPicture.asset(
                           Assets.logoSvg,
                           width: cardLogoSize,
                           height: cardLogoSize,
                           fit: BoxFit.contain,
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'إن كنت ترغب في حفظ سور أو أجزاء من القرآن الكريم، أو حتى تثبيت حفظك للسور التي تحفظها، فهذا التطبيق لك.',
-                          textAlign: TextAlign.center,
-                          style: bodyStyle,
+                        const SizedBox(height: 28),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 336),
+                          child: Text(
+                            'إن كنت ترغب في حفظ سور أو أجزاء من القرآن الكريم، أو حتى تثبيت حفظك للسور التي تحفظها، فهذا التطبيق لك.',
+                            textAlign: TextAlign.center,
+                            style: bodyStyle,
+                          ),
                         ),
                       ],
                     ),
@@ -308,9 +314,9 @@ class _OnboardingContentSheet extends StatelessWidget {
                           style: FilledButton.styleFrom(
                             backgroundColor: const Color(0xFF666557),
                             foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(58),
+                            minimumSize: const Size.fromHeight(60),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                           child: AnimatedSwitcher(
@@ -338,12 +344,12 @@ class _OnboardingContentSheet extends StatelessWidget {
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         TextButton(
                           onPressed: isStartingGuest ? null : onLoginPressed,
                           style: TextButton.styleFrom(
                             foregroundColor: Colors.black,
-                            minimumSize: const Size.fromHeight(50),
+                            minimumSize: const Size.fromHeight(52),
                             textStyle: Theme.of(context)
                                 .textTheme
                                 .titleLarge
