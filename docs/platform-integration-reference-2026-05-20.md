@@ -27,7 +27,7 @@
 
 ### Google
 - Client IDs (حسب السياق):
-  - `GOOGLE_SERVER_CLIENT_ID` (build script default): `605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com` (انظر `scripts/build_android_release.ps1`)
+  - `GOOGLE_SERVER_CLIENT_ID` (build script default): `821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com` (انظر `scripts/build_android_release.ps1`)
   - Codemagic override (`codemagic.yaml`): `GOOGLE_SERVER_CLIENT_ID` / `GOOGLE_WEB_CLIENT_ID` = `821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com`
 - أين تُستخدم: `lib/core/auth/social_auth_config.dart`, build `--dart-define`، وخدمات الويب الخلفية للتحقق.
 
@@ -42,7 +42,10 @@
 ### Apple (Sign in with Apple)
 - `APPLE_WEB_CLIENT_ID` = `org.sahifati.app.signin` (موجود كـ dart-define في build script)
 - `APPLE_REDIRECT_URI` = `https://sahifati.org/api/auth/social/apple/callback`
-- أين تُستخدم: `scripts/build_android_release.ps1` (Web flow), وكود الويب/خلفية للتحقق.
+- أين تُستخدم: `scripts/build_android_release.ps1`، وواجهة Flutter على الويب وAndroid، وخلفية التحقق من Apple token.
+- الحالة الحالية: تم تأكيد نجاح تجربة Sign in with Apple بعد نشر التصحيح بتاريخ 2026-05-20، وأصبح التدفق يعمل بعد عودة Apple وإرسال التوكن إلى الخلفية بالشكل المتوقع.
+- ملاحظة تشغيلية: على Android لا يكفي أن يصل callback إلى `/auth/social/apple/callback`. يجب أن يعيد الخادم Deeplink من نوع `intent://callback ... scheme=signinwithapple` حتى تستلم حزمة `sign_in_with_apple` النتيجة داخل التطبيق. أما على الويب فيبقى الرد HTML relay عبر `postMessage`.
+- ملاحظة توافق: endpoint `POST /auth/social/apple` في الخلفية يقبل الآن `idToken` كاسم الحقل الصحيح، ويقبل أيضًا `token` مؤقتًا للتوافق مع عملاء أقدم.
 
 ### Huawei (HMS)
 - `HUAWEI_APP_ID` = `116918405` (انظر `agconnect-services.json` و build args)
@@ -50,7 +53,7 @@
   - `app_id`: `116918405`
   - `package_name`: `org.sahifati.app`
   - `client_id` / `project_id` موجود داخل `client` و `oauth_client`
-- أين تُستخدم: `lib/core/auth/social_auth_config.dart`، البناء يمرر `--dart-define=HUAWEI_APP_ID`، وملفات `agconnect-services.json` مطلوبة في `android/app` للبناء الصحيح.
+- أين تُستخدم: المصدر التشغيلي الحقيقي على Android هو `android/app/agconnect-services.json` عبر AG Connect وHMS native SDK. قيمة `--dart-define=HUAWEI_APP_ID` تبقى مفيدة للتوثيق والبناء، لكنها ليست المصدر الوحيد الذي يجب أن يعتمد عليه التطبيق أثناء التشغيل.
 
 ### Signing / Keystore
 - `frontend_users/ui/android/key.properties`:
@@ -90,11 +93,24 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
   - وجود `key.properties` وإمكانية الوصول إلى keystore المشار إليه.
   - وجود `agconnect-services.json` في `android/app` إذا كان `HUAWEI_APP_ID` محدد.
   - تمرير قيم `GOOGLE_SERVER_CLIENT_ID`, `FACEBOOK_APP_ID`, `APPLE_WEB_CLIENT_ID` عبر `--dart-define` أو سكربت CI.
+- ملاحظة تشغيلية: بناء `apk` عبر `scripts/build_android_release.ps1` يستهدف الآن `android-arm64` افتراضيًا، ومع بقاء `SplitPerAbi` مفعّلًا تكون الحزمة الناتجة المتوقعة هي `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`.
 - رفع على Huawei AppGallery:
   1. سجل دخول إلى AppGallery Connect.
   2. في App / Distribute → Create Release، ارفع `app-release.aab`.
   3. تأكد من أن `package name` و`app id` في AppGallery يطابقان `org.sahifati.app` و`116918405`.
   4. في حال طلبت المراجع أذونات أو توثيق، أرفق لقطات الشاشة ودليل خطوات الاختبار (انظر قسم "ملاحظات المراجع" أدناه).
+
+### 4.1.1 ملاحظة تصحيحية مهمة لخطأ Huawei
+
+- الخطأ `huawei app id is not configured` ظهر لأن طبقة Flutter كانت تعتبر Huawei غير مهيأ إذا غابت قيمة `HUAWEI_APP_ID` الممررة عبر `--dart-define`، حتى لو كان `agconnect-services.json` موجودًا داخل مشروع Android ومهيأ بشكل صحيح.
+- هذا الشرط كان أشد من اللازم مقارنةً بالطرف الأصلي: حزمة `huawei_account` وطبقة AG Connect على Android تقرآن `client/app_id` مباشرة من `agconnect-services.json` أثناء التشغيل.
+- النتيجة: بعض builds اليدوية أو التشغيل عبر `flutter run` قد يفقد `dart-define` ويظهر الخطأ على جهاز Huawei رغم أن إعداد HMS الفعلي موجود.
+- التصحيح المعتمد في الكود: تم إلغاء جعل زر Huawei وتشغيله معتمدين على `dart-define` فقط، وأصبح التمكين على Android يعتمد على وجود المنصة نفسها، بينما تظل ملفات AG Connect هي المصدر التشغيلي الحقيقي.
+- ما يجب التحقق منه إذا عاد الخطأ مستقبلًا:
+  1. وجود `android/app/agconnect-services.json` داخل الحزمة المستخدمة للبناء.
+  2. تطابق `package_name` داخل الملف مع `org.sahifati.app`.
+  3. بقاء plugin `com.huawei.agconnect` مفعّلًا في `android/app/build.gradle`.
+  4. إن كان البناء يدويًا، فمرّر `HUAWEI_APP_ID` أيضًا حفاظًا على اتساق الوثائق والسجلات، لكن غيابه وحده لا ينبغي أن يعطل Huawei في الواجهة.
 
 صيانة/تحديث:
 - لتدوير Upload Key: قم بإنشاء keystore جديد واطلب عبر Huawei/Play Console إجراء رفع مفتاح جديد (اتبع خطوات المنصة). احتفظ بنسخة احتياطية في مكان آمن.
@@ -128,6 +144,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
   - في Apple Developer: تسجيل Service ID أو App ID مطابق لـ `org.sahifati.app.signin`، وتهيئة Redirect URI `https://sahifati.org/api/auth/social/apple/callback`.
   - في App Store Connect: تفعيل Sign In with Apple إن لزم.
 - البناء: `--dart-define=APPLE_WEB_CLIENT_ID` و `APPLE_REDIRECT_URI` تمرر من سكربت البناء.
+
+### 4.4.1 ملاحظة تصحيحية مهمة لخطأ Apple
+
+- إذا ظهر فشل Apple رغم أن الطلب وصل إلى `POST /auth/social/apple/callback` فهذا لا يعني أن التدفق اكتمل. الوصول إلى callback هو منتصف المسار فقط.
+- سبب الفشل الذي ثبت في الشيفرة كان مزدوجًا:
+  1. عميل Flutter كان يرسل Apple JWT إلى `POST /auth/social/apple` تحت الحقل `token` بينما الخادم كان يتوقع `idToken`.
+  2. callback على Android كان يعيد HTML relay خاصًا بالويب فقط، بينما حزمة `sign_in_with_apple` على Android تتطلب Deeplink راجعًا إلى التطبيق بصيغة `intent://callback?...#Intent;scheme=signinwithapple;...`.
+- التصحيح المعتمد:
+  1. الواجهة ترسل الآن `idToken` بالاسم الصحيح.
+  2. الخلفية تقبل `idToken` و`token` للتوافق العكسي.
+  3. redirectUri على Android يضيف `?platform=android`، والخادم يعيد عندها Deeplink Android بدل صفحة `postMessage` الخاصة بالويب.
+- النتيجة المؤكدة بعد النشر: التجربة نجحت فعليًا، ما يثبت أن سبب الفشل لم يكن في وصول طلب الربط من Apple بحد ذاته، بل في طبقة ما بعد callback بين شكل البيانات العائدة إلى التطبيق وشكل الحقل الذي تستقبله الخلفية.
+- ما يجب التحقق منه إذا عاد الخطأ مستقبلًا:
+  1. وجود `APPLE_WEB_CLIENT_ID` و`APPLE_REDIRECT_URI` في build الفعلي.
+  2. أن Return URL المسجل في Apple Developer يطابق `https://sahifati.org/api/auth/social/apple/callback`.
+  3. أن الحزمة النهائية على Android ما زالت تحتوي `SignInWithAppleCallback` داخل `AndroidManifest.xml`.
+  4. أن logs الخادم تبيّن بعد callback طلبًا لاحقًا إلى `POST /auth/social/apple`، لا الاكتفاء برؤية callback وحده.
 
 صيانة:
 - تدوير مفاتيح (Private Key) في Apple Developer يتطلب تحديث الخادم الذي يستخدم المفتاح لتوقيع/التحقق من التوكنات.

@@ -31,7 +31,7 @@
 | Google | نعم | نعم | نعم | نعم | `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_SERVER_CLIENT_ID` | جاهز | مسار العمل الأساسي قائم |
 | Facebook | نعم بعد تعديل 2026-05-12 | نعم | نعم | نعم | `FACEBOOK_AUTH_ENABLED`, `FACEBOOK_APP_ID`, وخلفيا `FACEBOOK_APP_SECRET` | جاهز كوديا، بانتظار موافقة Meta والنشر | يحتاج إعادة build/deploy لكي يظهر التفعيل على الويب في الإنتاج |
 | Apple | نعم | لا موثق حاليا | لا موثق حاليا | نعم | `APPLE_WEB_CLIENT_ID`, `APPLE_REDIRECT_URI`, وخلفيا `APPLE_CLIENT_ID` | جاهز جزئيا | يعتمد على بيانات Apple Developer غير المكتملة |
-| Huawei | لا | نعم | لا | نعم | `HUAWEI_APP_ID` | جاهز كوديا | يحتاج تهيئة HMS الفعلية وملفات المنصة |
+| Huawei | لا | نعم | لا | نعم | `android/app/agconnect-services.json` مع `HUAWEI_APP_ID` اختياريًا | جاهز كوديا | يعتمد تشغيليًا على AG Connect/HMS native config، وليس على dart-define وحده |
 
 ## حالة Facebook Login
 

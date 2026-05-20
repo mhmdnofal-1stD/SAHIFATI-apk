@@ -30,6 +30,7 @@ import 'screens/authentication_screens/email_verification_result_screen.dart';
 import 'screens/authentication_screens/forget_password_screen.dart';
 import 'screens/authentication_screens/license_activation_screen.dart';
 import 'screens/authentication_screens/login_screen.dart';
+import 'screens/authentication_screens/onboarding_launch_screen.dart';
 import 'screens/authentication_screens/select_user_screen.dart';
 import 'screens/authentication_screens/sign_up_screen.dart';
 import 'screens/cards_screen/card_detail_screen.dart';
@@ -224,6 +225,10 @@ class MyApp extends StatelessWidget {
               page: 1,
             );
           },
+        ),
+        GetPage(
+          name: OnboardingLaunchScreen.routeName,
+          page: () => const OnboardingLaunchScreen(),
         ),
         GetPage(
           name: '/login',
@@ -644,27 +649,22 @@ class _InitialScreenState extends State<InitialScreen> {
           }
         } catch (error) {
           debugPrint('Initial navigation fallback after cached session: $error');
-          await _routeToLoginOrSelectUser(usersProvider);
+          await _routeToUnauthenticatedEntry();
         }
       } else {
-        await _routeToLoginOrSelectUser(usersProvider);
+        await _routeToUnauthenticatedEntry();
       }
     } catch (error) {
       debugPrint('Initial session bootstrap failed: $error');
       if (!mounted) {
         return;
       }
-      await _routeToLoginOrSelectUser(usersProvider);
+      await _routeToUnauthenticatedEntry();
     }
   }
 
-  Future<void> _routeToLoginOrSelectUser(UsersProvider usersProvider) async {
-    final storedUsers = await usersProvider.getStoredDeviceUsers();
-    if (storedUsers.isNotEmpty) {
-      Get.offAllNamed('/select-user');
-    } else {
-      Get.offAllNamed('/login');
-    }
+  Future<void> _routeToUnauthenticatedEntry() async {
+    Get.offAllNamed(OnboardingLaunchScreen.routeName);
   }
 
   @override

@@ -169,11 +169,9 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
   }) {
     if (kIsWeb && SocialAuthConfig.isGoogleConfiguredForCurrentPlatform) {
       return GoogleWebAuthButton(
-        initialize: up.ensureGoogleInitialized,
         isBusy: up.isLoading,
-        isSignupContext: isSignupContext,
-        onIdToken: (idToken) => completeSocialAction(
-          () => up.signInWithGoogleIdToken(idToken),
+        onToken: (token) => completeSocialAction(
+          () => up.signInWithGoogleIdToken(token),
           up,
           ep,
         ),

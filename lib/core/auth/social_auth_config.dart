@@ -47,7 +47,7 @@ class SocialAuthConfig {
   static bool get isHuaweiConfiguredForCurrentPlatform {
     if (kIsWeb) return false;
     if (defaultTargetPlatform != TargetPlatform.android) return false;
-    return huaweiAppId.isNotEmpty;
+    return true;
   }
 
   static String? get googleClientIdOrNull =>
@@ -65,5 +65,34 @@ class SocialAuthConfig {
     }
 
     return Uri.tryParse(appleRedirectUri);
+  }
+
+  static Uri? get appleRedirectUriForCurrentPlatform {
+    final redirectUri = appleRedirectUriOrNull;
+    if (redirectUri == null) {
+      return null;
+    }
+
+    return appleRedirectUriForPlatform(
+      redirectUri,
+      isWeb: kIsWeb,
+      targetPlatform: defaultTargetPlatform,
+    );
+  }
+
+  @visibleForTesting
+  static Uri appleRedirectUriForPlatform(
+    Uri redirectUri, {
+    required bool isWeb,
+    required TargetPlatform targetPlatform,
+  }) {
+    if (isWeb || targetPlatform != TargetPlatform.android) {
+      return redirectUri;
+    }
+
+    final queryParameters = Map<String, String>.from(redirectUri.queryParameters);
+    queryParameters['platform'] = 'android';
+
+    return redirectUri.replace(queryParameters: queryParameters);
   }
 }

@@ -55,9 +55,20 @@ class _PrivacyConsentGateState extends State<PrivacyConsentGate> {
       return;
     }
 
+    final hostContext = Get.overlayContext;
+    if (hostContext == null ||
+        Navigator.maybeOf(hostContext, rootNavigator: true) == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showPrivacyConsentDialog();
+        }
+      });
+      return;
+    }
+
     _dialogVisible = true;
     await showDialog<void>(
-      context: context,
+      context: hostContext,
       barrierDismissible: false,
       builder: (dialogContext) {
         return PopScope(

@@ -9,6 +9,8 @@ class Assets {
   static String logo = "$rootImages/logo.png";
   static String logoSvg = "$rootImages/logo.svg";
   static String logoLightSvg = "$rootImages/logo-light.svg";
+  static String onboardingBackgroundSvg =
+      "$rootImages/onboarding_background.svg";
   static String organization1STDLogo = "$rootImages/1st_D_logo.svg";
 
 

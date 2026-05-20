@@ -27,7 +27,7 @@
   "auth_methods_label": "طرق سريعة",
   "auth_mode_login": "دخول",
   "auth_mode_signup": "حساب جديد",
-  "auth_owner_brand_caption": "مملوكة ومشغلة بواسطة",
+  "auth_owner_brand_caption": "By",
   "auth_password_validation_length": "يجب أن تتكون كلمة المرور من ثمانية أحرف على الأقل",
   "auth_password_validation_lowercase": "يجب أن تحتوي كلمة المرور على حرف صغير واحد على الأقل",
   "auth_password_validation_number": "يجب أن تحتوي كلمة المرور على رقم واحد على الأقل",

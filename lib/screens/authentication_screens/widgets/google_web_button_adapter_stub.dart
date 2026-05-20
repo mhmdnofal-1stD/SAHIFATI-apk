@@ -1,10 +1,9 @@
-import 'package:flutter/material.dart';
+Future<void> initializeGoogleWebPopupAuth({
+  required String clientId,
+}) async {}
 
-Future<void> triggerGoogleAuthenticate() async {}
-
-Widget buildGoogleWebButton({
-  required bool isSignupContext,
-  required String? locale,
-}) {
-  return const SizedBox.shrink();
+Future<String> requestGoogleWebAccessToken({
+  required String clientId,
+}) async {
+  throw UnsupportedError('Google web auth is only available on web.');
 }

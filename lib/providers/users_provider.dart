@@ -671,7 +671,8 @@ class UsersProvider with ChangeNotifier {
                 defaultTargetPlatform == TargetPlatform.android)
             ? WebAuthenticationOptions(
                 clientId: SocialAuthConfig.appleWebClientId,
-                redirectUri: SocialAuthConfig.appleRedirectUriOrNull!,
+                redirectUri:
+                    SocialAuthConfig.appleRedirectUriForCurrentPlatform!,
               )
             : null,
       );

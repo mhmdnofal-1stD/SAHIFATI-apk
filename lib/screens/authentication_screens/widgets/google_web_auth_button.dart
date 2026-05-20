@@ -2,24 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sahifaty/core/constants/assets.dart';
+import 'package:sahifaty/core/auth/social_auth_config.dart';
 
+import 'auth_social_section.dart';
 import 'google_web_button_adapter.dart';
 
 class GoogleWebAuthButton extends StatefulWidget {
   const GoogleWebAuthButton({
     super.key,
-    required this.onIdToken,
+    required this.onToken,
     required this.onError,
-    required this.initialize,
-    required this.isSignupContext,
     required this.isBusy,
   });
 
-  final Future<void> Function(String idToken) onIdToken;
+  final Future<void> Function(String token) onToken;
   final void Function(Object error) onError;
-  final Future<void> Function() initialize;
-  final bool isSignupContext;
   final bool isBusy;
 
   @override
@@ -27,7 +25,6 @@ class GoogleWebAuthButton extends StatefulWidget {
 }
 
 class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
-  StreamSubscription<GoogleSignInAuthenticationEvent>? _subscription;
   bool _isInitialized = false;
   bool _isSubmitting = false;
   bool _initFailed = false;
@@ -40,41 +37,9 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
 
   Future<void> _initialize() async {
     try {
-      await widget.initialize();
-      _subscription = GoogleSignIn.instance.authenticationEvents.listen(
-        (event) async {
-          if (event is! GoogleSignInAuthenticationEventSignIn) {
-            return;
-          }
-
-          final String? idToken = event.user.authentication.idToken;
-          if (idToken == null || idToken.isEmpty) {
-            widget.onError({
-              'errorCode': 'SOCIAL_ID_TOKEN_MISSING',
-              'provider': 'google',
-              'message': 'social_missing_id_token'.tr,
-            });
-            return;
-          }
-
-          if (_isSubmitting) {
-            return;
-          }
-
-          setState(() => _isSubmitting = true);
-          try {
-            await widget.onIdToken(idToken);
-          } catch (error) {
-            widget.onError(error);
-          } finally {
-            if (mounted) {
-              setState(() => _isSubmitting = false);
-            }
-          }
-        },
-        onError: widget.onError,
+      await initializeGoogleWebPopupAuth(
+        clientId: SocialAuthConfig.googleWebClientId,
       );
-
       if (mounted) {
         setState(() => _isInitialized = true);
       }
@@ -84,22 +49,35 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
     }
   }
 
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
+  Future<void> _startGoogleSignIn() async {
+    if (!_isInitialized || _isSubmitting || widget.isBusy) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isSubmitting = true);
+    }
+
+    try {
+      final token = await requestGoogleWebAccessToken(
+        clientId: SocialAuthConfig.googleWebClientId,
+      );
+      await widget.onToken(token);
+    } catch (error) {
+      widget.onError(error);
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // If initialization failed, show a disabled placeholder so the UI
-    // doesn't keep spinning forever.
     if (_initFailed) {
       return const SizedBox(width: 56, height: 56);
     }
 
-    // Show spinner while initializing, while a sign-in submission is in
-    // progress, or while the parent is busy (e.g., another auth op).
     if (!_isInitialized || _isSubmitting || widget.isBusy) {
       return const SizedBox(
         width: 56,
@@ -114,15 +92,11 @@ class _GoogleWebAuthButtonState extends State<GoogleWebAuthButton> {
       );
     }
 
-    // Render the GIS sign-in button. Clicking it triggers the Google sign-in
-    // popup; the result fires on authenticationEvents which _subscription handles.
-    return Semantics(
-      button: true,
-      label: 'social_provider_google'.tr,
-      child: buildGoogleWebButton(
-        isSignupContext: widget.isSignupContext,
-        locale: null,
-      ),
+    return AuthCompactSocialButton(
+      semanticLabel: 'social_provider_google'.tr,
+      onPressed: _startGoogleSignIn,
+      isBusy: false,
+      icon: Image.asset(Assets.googleIcon, width: 24, height: 24),
     );
   }
 }

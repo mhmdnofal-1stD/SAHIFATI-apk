@@ -2,12 +2,13 @@
 param(
   [ValidateSet('apk', 'aab')]
   [string]$Artifact = 'apk',
-  [string]$GoogleServerClientId = '605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com',
+  [string]$GoogleServerClientId = '821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com',
   [string]$FacebookAppId = '824178674089653',
   [string]$AppleWebClientId = 'org.sahifati.app.signin',
   [string]$AppleRedirectUri = 'https://sahifati.org/api/auth/social/apple/callback',
   [string]$HuaweiAppId = '116918405',
   [bool]$SplitPerAbi = $true,
+  [string]$ApkTargetPlatform = 'android-arm64',
   [bool]$Obfuscate = $true
 )
 
@@ -63,6 +64,9 @@ Write-Host "Google Server Client ID : $GoogleServerClientId"
 Write-Host "Facebook App ID         : $FacebookAppId"
 Write-Host "Apple Web Client ID     : $AppleWebClientId"
 Write-Host "Apple Redirect URI      : $AppleRedirectUri"
+if ($Artifact -eq 'apk') {
+  Write-Host "APK target platform     : $ApkTargetPlatform"
+}
 if ([string]::IsNullOrWhiteSpace($HuaweiAppId)) {
   Write-Host 'Huawei App ID           : <not set>'
 }
@@ -105,6 +109,11 @@ if (-not [string]::IsNullOrWhiteSpace($HuaweiAppId)) {
   $buildArgs += "--dart-define=HUAWEI_APP_ID=$HuaweiAppId"
 }
 
+if ($Artifact -eq 'apk' -and -not [string]::IsNullOrWhiteSpace($ApkTargetPlatform)) {
+  $buildArgs += '--target-platform'
+  $buildArgs += $ApkTargetPlatform
+}
+
 if ($Artifact -eq 'apk' -and $SplitPerAbi) {
   $buildArgs += '--split-per-abi'
 }
@@ -127,6 +136,12 @@ finally {
 
 $outputPath = if ($Artifact -eq 'aab') {
   Join-Path $projectRoot 'build\app\outputs\bundle\release\app-release.aab'
+}
+elseif ($SplitPerAbi -and $ApkTargetPlatform -eq 'android-arm64') {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'
+}
+elseif (-not $SplitPerAbi) {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-release.apk'
 }
 else {
   Join-Path $projectRoot 'build\app\outputs\flutter-apk'

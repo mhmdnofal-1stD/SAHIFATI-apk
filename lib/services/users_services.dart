@@ -306,13 +306,13 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-  Future<dynamic> loginWithApple(String token) async {
+  Future<dynamic> loginWithApple(String idToken) async {
     try {
       final response = await http
           .post(
             Uri.parse('$_baseURL/auth/social/apple'),
             headers: _authHeaders,
-            body: json.encode({'token': token}),
+            body: json.encode({'idToken': idToken}),
           )
           .timeout(_timeout);
 
