@@ -43,6 +43,7 @@ import 'screens/settings_screen/my_licenses_screen.dart';
 import 'services/localization_service.dart';
 import 'services/typography_config_service.dart';
 import 'widgets/app_progress_overlay.dart';
+import 'widgets/privacy_consent_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -193,8 +194,11 @@ class MyApp extends StatelessWidget {
           secondary: AppColors.buttonColor,
         ),
       ),
-      builder: (context, child) =>
-          AppProgressOverlayWrapper(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => PrivacyConsentGate(
+        child: AppProgressOverlayWrapper(
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
       initialRoute: _initialRouteForWeb(),
       unknownRoute: GetPage(
         name: '/route-fallback',

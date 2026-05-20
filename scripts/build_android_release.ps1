@@ -3,9 +3,12 @@ param(
   [ValidateSet('apk', 'aab')]
   [string]$Artifact = 'apk',
   [string]$GoogleServerClientId = '605484701854-h07an8isp8gr4jim786hi9tqegq62n5k.apps.googleusercontent.com',
-  [string]$HuaweiAppId = '',
-  [switch]$SplitPerAbi = $true,
-  [switch]$Obfuscate = $true
+  [string]$FacebookAppId = '824178674089653',
+  [string]$AppleWebClientId = 'org.sahifati.app.signin',
+  [string]$AppleRedirectUri = 'https://sahifati.org/api/auth/social/apple/callback',
+  [string]$HuaweiAppId = '116918405',
+  [bool]$SplitPerAbi = $true,
+  [bool]$Obfuscate = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,6 +60,9 @@ Write-Host '========================================'
 Write-Host "Artifact                : $Artifact"
 Write-Host "Application ID          : $applicationId"
 Write-Host "Google Server Client ID : $GoogleServerClientId"
+Write-Host "Facebook App ID         : $FacebookAppId"
+Write-Host "Apple Web Client ID     : $AppleWebClientId"
+Write-Host "Apple Redirect URI      : $AppleRedirectUri"
 if ([string]::IsNullOrWhiteSpace($HuaweiAppId)) {
   Write-Host 'Huawei App ID           : <not set>'
 }
@@ -89,7 +95,10 @@ $buildArgs = @(
   $(if ($Artifact -eq 'aab') { 'appbundle' } else { 'apk' }),
   '--release',
   '--tree-shake-icons',
-  "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GoogleServerClientId"
+  "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GoogleServerClientId",
+  "--dart-define=FACEBOOK_APP_ID=$FacebookAppId",
+  "--dart-define=APPLE_WEB_CLIENT_ID=$AppleWebClientId",
+  "--dart-define=APPLE_REDIRECT_URI=$AppleRedirectUri"
 )
 
 if (-not [string]::IsNullOrWhiteSpace($HuaweiAppId)) {

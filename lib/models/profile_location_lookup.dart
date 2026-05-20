@@ -57,6 +57,9 @@ String _normalizeLocationValue(String? value) {
   return buffer.toString();
 }
 
+const String _restrictedRegionIso2 = 'TW';
+const String _restrictedRegionDisplayName = 'China/Taiwan, China';
+
 class ProfileLocationLookup {
   final String source;
   final int countryCount;
@@ -197,9 +200,11 @@ class ProfileCountry {
   }
 
   String get localizedName =>
-      nativeName.trim().isEmpty ? name : nativeName.trim();
+      iso2.toUpperCase() == _restrictedRegionIso2
+          ? _restrictedRegionDisplayName
+          : (nativeName.trim().isEmpty ? name : nativeName.trim());
 
-  String get displayName => emoji.isEmpty ? localizedName : '$emoji $localizedName';
+    String get displayName => localizedName;
 
   bool matchesName(String? candidate) {
     final normalizedCandidate = _normalizeLocationValue(candidate);
@@ -208,7 +213,9 @@ class ProfileCountry {
     }
 
     return _normalizeLocationValue(name) == normalizedCandidate ||
-        _normalizeLocationValue(nativeName) == normalizedCandidate;
+        _normalizeLocationValue(nativeName) == normalizedCandidate ||
+        _normalizeLocationValue(_restrictedRegionDisplayName) ==
+            normalizedCandidate;
   }
 
   ProfileCity? findCity(String? value) {

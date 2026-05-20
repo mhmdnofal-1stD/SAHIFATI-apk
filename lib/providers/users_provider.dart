@@ -667,7 +667,8 @@ class UsersProvider with ChangeNotifier {
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
-        webAuthenticationOptions: kIsWeb
+        webAuthenticationOptions: (kIsWeb ||
+                defaultTargetPlatform == TargetPlatform.android)
             ? WebAuthenticationOptions(
                 clientId: SocialAuthConfig.appleWebClientId,
                 redirectUri: SocialAuthConfig.appleRedirectUriOrNull!,

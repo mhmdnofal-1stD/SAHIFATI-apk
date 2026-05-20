@@ -71,6 +71,14 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
   bool get _isReadOnlyStudentProfile =>
       context.read<UsersProvider>().hasPushedSelectedUser;
 
+    bool get _isArabicUi => Get.locale?.languageCode.toLowerCase() == 'ar';
+
+    String get _countryRegionLabel =>
+      _isArabicUi ? 'الدولة/المنطقة' : 'Country/Region';
+
+    String get _countryRegionPickerTitle =>
+      _isArabicUi ? 'اختر الدولة/المنطقة' : 'Choose country/region';
+
   @override
   void initState() {
     super.initState();
@@ -320,7 +328,7 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
       return;
     }
     final selectedCountry = await _showSearchablePicker<ProfileCountry>(
-      title: 'settings_picker_country_title'.tr,
+      title: _countryRegionPickerTitle,
       searchLabel: 'settings_picker_country_search'.tr,
       items: lookup.countries,
       itemLabel: (country) => country.displayName,
@@ -697,10 +705,10 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                 onTap: _pickCountry,
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
-                  decoration: _inputDecoration('settings_profile_country'.tr),
+                  decoration: _inputDecoration(_countryRegionLabel),
                   child: Text(
                     _selectedCountry == null
-                        ? 'settings_profile_country_placeholder'.tr
+                        ? _countryRegionPickerTitle
                         : _selectedCountry!.displayName,
                     style: TextStyle(
                       color: _selectedCountry == null

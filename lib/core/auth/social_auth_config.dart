@@ -31,12 +31,16 @@ class SocialAuthConfig {
   }
 
   static bool get isAppleConfiguredForCurrentPlatform {
+    final hasWebFlowConfig =
+        appleWebClientId.isNotEmpty && appleRedirectUriOrNull != null;
+
     if (kIsWeb) {
-      return true;
+      return hasWebFlowConfig;
     }
     // Native iOS/macOS: Sign In with Apple is built-in, no external config needed
     return defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS;
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        (defaultTargetPlatform == TargetPlatform.android && hasWebFlowConfig);
   }
 
   /// Huawei Account Kit is Android-only and never available on web.

@@ -15,6 +15,9 @@ class PrivacyPolicyScreen extends StatefulWidget {
 }
 
 class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
+  static const String _appName = 'صحيفتي - Sahifati';
+  static const String _developerName = 'مؤسسة البعد الأول لإدارة التطبيقات';
+
   late TapGestureRecognizer _emailRecognizer;
 
   @override
@@ -32,7 +35,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   Future<void> _launchEmail() async {
     final Uri emailLaunchUri = Uri(
       scheme: 'mailto',
-      path: 'info@sahifati.com',
+      path: 'info@sahifati.org',
       query: 'subject=Privacy Policy Inquiry',
     );
     try {
@@ -83,6 +86,48 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
               style: AppTypography.of(context)
                   .bodySecondary
                   .copyWith(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'App / التطبيق',
+                    style: AppTypography.of(context)
+                        .bodySecondary
+                        .copyWith(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _appName,
+                    style: AppTypography.of(context)
+                        .bodyDefault
+                        .copyWith(color: AppColors.blackFontColor),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Developer / الجهة المطوّرة',
+                    style: AppTypography.of(context)
+                        .bodySecondary
+                        .copyWith(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _developerName,
+                    style: AppTypography.of(context)
+                        .bodyDefault
+                        .copyWith(color: AppColors.blackFontColor),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 20),
             Text(
@@ -166,7 +211,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                     TextSpan(text: content),
                     const TextSpan(text: "\n"),
                     TextSpan(
-                      text: "info@sahifati.com",
+                      text: "info@sahifati.org",
                       style: AppTypography.of(context).bodyDefault.copyWith(
                             color: Colors.red,
                             decoration: TextDecoration.underline,
