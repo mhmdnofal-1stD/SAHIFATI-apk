@@ -9,11 +9,15 @@ class ResponsiveContentShell extends StatelessWidget {
     this.child,
     this.builder,
     this.maxContentWidth = 1120,
+    this.horizontalGutter,
+    this.pendingSyncBottomPadding = 16,
   }) : assert(child != null || builder != null);
 
   final Widget? child;
   final WidgetBuilder? builder;
   final double maxContentWidth;
+  final double? horizontalGutter;
+  final double pendingSyncBottomPadding;
 
   double _horizontalGutter(double viewportWidth) {
     if (viewportWidth >= 1400) {
@@ -33,7 +37,7 @@ class ResponsiveContentShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, viewportConstraints) {
         final viewportWidth = viewportConstraints.maxWidth;
-        final gutter = _horizontalGutter(viewportWidth);
+        final gutter = horizontalGutter ?? _horizontalGutter(viewportWidth);
         final availableWidth =
             (viewportWidth - (gutter * 2)).clamp(0.0, double.infinity);
         final contentWidth = availableWidth > maxContentWidth
@@ -57,7 +61,7 @@ class ResponsiveContentShell extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const PendingSyncBanner(),
+                  PendingSyncBanner(bottomPadding: pendingSyncBottomPadding),
                   Expanded(
                     child: Builder(
                       builder: (context) {

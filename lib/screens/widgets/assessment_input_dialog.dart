@@ -113,47 +113,100 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            Widget buildEvaluationChip({
-              required Evaluation evaluation,
-              required bool selected,
-              required VoidCallback onTap,
-            }) {
-              final color = controller.getColorForEvaluationModel(evaluation);
-              final isDark = ThemeData.estimateBrightnessForColor(color) ==
-                  Brightness.dark;
-
-              return ChoiceChip(
-                label: Text(
-                  evaluationLabel(evaluation),
-                  textAlign: TextAlign.center,
-                  style: AppTypography.of(context).badgeLabel.copyWith(
-                        color: selected
-                            ? (isDark ? Colors.white : Colors.black)
-                            : Colors.black87,
-                      ),
-                ),
-                selected: selected,
-                selectedColor: color,
-                backgroundColor: Colors.white,
-                side: BorderSide(color: color),
-                onSelected: (_) => onTap(),
-              );
-            }
-
             final canSave = memoChanged || compreChanged || commentChanged;
             final titleStyle = titleUsesQuranVerseStyle
                 ? AppTypography.of(context).quranVerse
                 : AppTypography.of(context).dialogTitle;
 
+            Widget buildAssessmentSection({
+              required String label,
+              required List<Evaluation> evaluations,
+              required bool selectedIsMemo,
+              required int? selectedId,
+              required ValueChanged<int?> onSelected,
+            }) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: AppTypography.of(context).subsectionTitle,
+                    textAlign: TextAlign.right,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: evaluations
+                            .map(
+                              (evaluation) {
+                                final color = controller
+                                    .getColorForEvaluationModel(evaluation);
+                                final isDark =
+                                    ThemeData.estimateBrightnessForColor(
+                                          color,
+                                        ) ==
+                                        Brightness.dark;
+
+                                return Padding(
+                                  padding: const EdgeInsetsDirectional.only(
+                                    start: 8,
+                                  ),
+                                  child: ChoiceChip(
+                                    label: Text(
+                                      evaluationLabel(evaluation),
+                                      textAlign: TextAlign.center,
+                                      style: AppTypography.of(context)
+                                          .badgeLabel
+                                          .copyWith(
+                                            color: selectedId == evaluation.id
+                                                ? (isDark
+                                                    ? Colors.white
+                                                    : Colors.black)
+                                                : Colors.black87,
+                                          ),
+                                    ),
+                                    selected: selectedId == evaluation.id,
+                                    selectedColor: color,
+                                    backgroundColor: Colors.white,
+                                    side: BorderSide(color: color),
+                                    onSelected: (_) {
+                                      onSelected(
+                                        selectedId == evaluation.id
+                                            ? null
+                                            : evaluation.id,
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            )
+                            .toList(growable: false),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
             return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 16,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
               title: Text(
                 effectiveTitle,
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: titleStyle,
               ),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 360,
+                  width: 520,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,
@@ -168,62 +221,32 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                       else ...[
                         if (hasMemoOptions || hasCompreOptions) ...[
                           if (hasMemoOptions) ...[
-                            Text(
-                              'assessment_dimension_memorization'.tr,
-                              style: AppTypography.of(context).subsectionTitle,
-                              textAlign: TextAlign.right,
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.center,
-                              children: memorizationEvaluations
-                                  .map(
-                                    (evaluation) => buildEvaluationChip(
-                                      evaluation: evaluation,
-                                      selected: memoId == evaluation.id,
-                                      onTap: () {
-                                        setDialogState(() {
-                                          memoChanged = true;
-                                          memoId = memoId == evaluation.id
-                                              ? null
-                                              : evaluation.id;
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
+                            buildAssessmentSection(
+                              label: 'assessment_dimension_memorization'.tr,
+                              evaluations: memorizationEvaluations,
+                              selectedIsMemo: true,
+                              selectedId: memoId,
+                              onSelected: (value) {
+                                setDialogState(() {
+                                  memoChanged = true;
+                                  memoId = value;
+                                });
+                              },
                             ),
                           ],
                           const SizedBox(height: 20),
                           if (hasCompreOptions) ...[
-                            Text(
-                              'assessment_dimension_comprehension'.tr,
-                              style: AppTypography.of(context).subsectionTitle,
-                              textAlign: TextAlign.right,
-                            ),
-                            const SizedBox(height: 10),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.center,
-                              children: comprehensionEvaluations
-                                  .map(
-                                    (evaluation) => buildEvaluationChip(
-                                      evaluation: evaluation,
-                                      selected: compreId == evaluation.id,
-                                      onTap: () {
-                                        setDialogState(() {
-                                          compreChanged = true;
-                                          compreId = compreId == evaluation.id
-                                              ? null
-                                              : evaluation.id;
-                                        });
-                                      },
-                                    ),
-                                  )
-                                  .toList(),
+                            buildAssessmentSection(
+                              label: 'assessment_dimension_comprehension'.tr,
+                              evaluations: comprehensionEvaluations,
+                              selectedIsMemo: false,
+                              selectedId: compreId,
+                              onSelected: (value) {
+                                setDialogState(() {
+                                  compreChanged = true;
+                                  compreId = value;
+                                });
+                              },
                             ),
                           ],
                           const SizedBox(height: 16),
@@ -326,16 +349,6 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                           ),
                           const SizedBox(height: 16),
                         ],
-                        if (hasMemoOptions || hasCompreOptions) ...[
-                          Text(
-                            'assessment_dialog_hint'.tr,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.of(context)
-                                .bodySmall
-                                .copyWith(color: AppColors.mutedText),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
                       ],
                     ],
                   ),
@@ -347,42 +360,53 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                     message: 'assessment_dialog_hint'.tr,
                     color: Colors.grey.shade600,
                   ),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text('cancel'.tr),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryPurple,
-                    disabledBackgroundColor:
-                        AppColors.primaryPurple.withValues(alpha: 0.32),
-                    foregroundColor: Colors.white,
-                    disabledForegroundColor: Colors.white70,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text('cancel'.tr),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryPurple,
+                          disabledBackgroundColor:
+                              AppColors.primaryPurple.withValues(alpha: 0.32),
+                          foregroundColor: Colors.white,
+                          disabledForegroundColor: Colors.white70,
+                        ),
+                        onPressed: canSave
+                            ? () {
+                                final normalizedComment =
+                                    commentController.text.trim();
+                                Navigator.of(dialogContext).pop(
+                                  AssessmentSelection(
+                                    memoId: memoId,
+                                    compreId: compreId,
+                                    comment: normalizedComment.isEmpty
+                                        ? null
+                                        : normalizedComment,
+                                    memoChanged: memoChanged,
+                                    compreChanged: compreChanged,
+                                    commentChanged:
+                                        normalizedComment !=
+                                            normalizedInitialComment,
+                                    memoEvaluation: evaluationsProvider
+                                        .findEvaluationById(memoId),
+                                    compreEvaluation: evaluationsProvider
+                                        .findEvaluationById(compreId),
+                                  ),
+                                );
+                              }
+                            : null,
+                        child: Text('save'.tr),
+                      ),
+                    ],
                   ),
-                  onPressed: canSave
-                      ? () {
-                          final normalizedComment =
-                              commentController.text.trim();
-                          Navigator.of(dialogContext).pop(
-                            AssessmentSelection(
-                              memoId: memoId,
-                              compreId: compreId,
-                              comment: normalizedComment.isEmpty
-                                  ? null
-                                  : normalizedComment,
-                              memoChanged: memoChanged,
-                              compreChanged: compreChanged,
-                              commentChanged:
-                                  normalizedComment != normalizedInitialComment,
-                              memoEvaluation: evaluationsProvider
-                                  .findEvaluationById(memoId),
-                              compreEvaluation: evaluationsProvider
-                                  .findEvaluationById(compreId),
-                            ),
-                          );
-                        }
-                      : null,
-                  child: Text('save'.tr),
                 ),
               ],
             );

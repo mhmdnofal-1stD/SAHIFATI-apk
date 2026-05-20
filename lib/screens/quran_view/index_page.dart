@@ -1989,93 +1989,109 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                       textDirection: TextDirection.rtl,
                       child: Row(
                         children: [
-                          Builder(
-                            builder: (context) => _ReaderToolIcon(
-                              icon: Icons.menu_rounded,
-                              tooltip: _tr('quran_reading_menu_tooltip'),
-                              isDarkMode: isDarkMode,
-                              onTap: () {
-                                if ((Get.locale?.languageCode ?? 'ar') ==
-                                    'ar') {
-                                  Scaffold.of(context).openDrawer();
-                                } else {
-                                  Scaffold.of(context).openEndDrawer();
-                                }
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: _ReaderSurahPill(
-                              surahName:
-                                  (_activeSurah ?? widget.surah).displayName(
-                                localeCode: languageProvider.langCode,
-                              ),
-                              isDarkMode: isDarkMode,
-                              tooltip:
-                                  _tr('quran_reading_surah_picker_tooltip'),
-                              onTap: _openSurahPicker,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Builder(
+                                  builder: (context) => _ReaderToolIcon(
+                                    icon: Icons.menu_rounded,
+                                    tooltip: _tr(
+                                      'quran_reading_menu_tooltip',
+                                    ),
+                                    isDarkMode: isDarkMode,
+                                    onTap: () {
+                                      if ((Get.locale?.languageCode ?? 'ar') ==
+                                          'ar') {
+                                        Scaffold.of(context).openDrawer();
+                                      } else {
+                                        Scaffold.of(context).openEndDrawer();
+                                      }
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: _ReaderSurahPill(
+                                    surahName: (_activeSurah ?? widget.surah)
+                                        .displayName(
+                                      localeCode: languageProvider.langCode,
+                                    ),
+                                    isDarkMode: isDarkMode,
+                                    tooltip: _tr(
+                                      'quran_reading_surah_picker_tooltip',
+                                    ),
+                                    onTap: _openSurahPicker,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                QuranFilterTrigger.icon(
+                                  tooltip: _tr(
+                                    'quran_reading_filters_tooltip',
+                                  ),
+                                  isDarkMode: isDarkMode,
+                                  activeCount: _currentReaderFilterSelection()
+                                      .activeDimensionCount,
+                                  onTap: _openDisplayFilter,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          QuranFilterTrigger.icon(
-                            tooltip: _tr('quran_reading_filters_tooltip'),
-                            isDarkMode: isDarkMode,
-                            activeCount: _currentReaderFilterSelection()
-                                .activeDimensionCount,
-                            onTap: _openDisplayFilter,
-                          ),
-                          const Spacer(),
-                          _ReaderToolCluster(
-                            isDarkMode: isDarkMode,
-                            children: [
-                              _ReaderToolIcon(
-                                icon: Icons.color_lens_rounded,
-                                tooltip: _tr(
-                                  'quran_reading_show_memorization_colors',
-                                ),
-                                isDarkMode: isDarkMode,
-                                isActive: _showMemorizationColors,
-                                flat: true,
-                                onTap: () => _updateReadingDisplayPreferences(
-                                  showMemorizationColors:
-                                      !_showMemorizationColors,
-                                ),
-                              ),
-                              _ReaderToolIcon(
-                                icon: Icons.format_underlined_rounded,
-                                tooltip: _tr(
-                                  'quran_reading_show_comprehension_underline',
-                                ),
-                                isDarkMode: isDarkMode,
-                                isActive: _showComprehensionUnderline,
-                                flat: true,
-                                onTap: () => _updateReadingDisplayPreferences(
-                                  showComprehensionUnderline:
-                                      !_showComprehensionUnderline,
-                                ),
-                              ),
-                              _ReaderToolIcon(
-                                icon: Icons.touch_app_rounded,
-                                tooltip: ayahTapTooltip,
-                                isDarkMode: isDarkMode,
-                                isActive: _isAyahSelectionMode,
-                                flat: true,
-                                onTap: _canTapAyah(usersProvider)
-                                    ? _toggleAyahSelectionMode
-                                    : null,
-                              ),
-                              if (_readingNotice != null)
+                          Directionality(
+                            textDirection: TextDirection.ltr,
+                            child: _ReaderToolCluster(
+                              isDarkMode: isDarkMode,
+                              children: [
                                 _ReaderToolIcon(
-                                  icon: Icons.info_outline_rounded,
-                                  tooltip: _readingNotice!,
+                                  icon: Icons.color_lens_rounded,
+                                  tooltip: _tr(
+                                    'quran_reading_show_memorization_colors',
+                                  ),
                                   isDarkMode: isDarkMode,
+                                  isActive: _showMemorizationColors,
                                   flat: true,
-                                  iconSize: 15,
-                                  tapAreaSize: 28,
-                                  onTap: _showReadingNoticeDialog,
+                                  onTap: () =>
+                                      _updateReadingDisplayPreferences(
+                                    showMemorizationColors:
+                                        !_showMemorizationColors,
+                                  ),
                                 ),
-                            ],
+                                _ReaderToolIcon(
+                                  icon: Icons.format_underlined_rounded,
+                                  tooltip: _tr(
+                                    'quran_reading_show_comprehension_underline',
+                                  ),
+                                  isDarkMode: isDarkMode,
+                                  isActive: _showComprehensionUnderline,
+                                  flat: true,
+                                  onTap: () =>
+                                      _updateReadingDisplayPreferences(
+                                    showComprehensionUnderline:
+                                        !_showComprehensionUnderline,
+                                  ),
+                                ),
+                                _ReaderToolIcon(
+                                  icon: Icons.touch_app_rounded,
+                                  tooltip: ayahTapTooltip,
+                                  isDarkMode: isDarkMode,
+                                  isActive: _isAyahSelectionMode,
+                                  flat: true,
+                                  onTap: _canTapAyah(usersProvider)
+                                      ? _toggleAyahSelectionMode
+                                      : null,
+                                ),
+                                if (_readingNotice != null)
+                                  _ReaderToolIcon(
+                                    icon: Icons.info_outline_rounded,
+                                    tooltip: _readingNotice!,
+                                    isDarkMode: isDarkMode,
+                                    flat: true,
+                                    iconSize: 15,
+                                    tapAreaSize: 28,
+                                    onTap: _showReadingNoticeDialog,
+                                  ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -2514,79 +2530,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required _MushafLinePattern pattern,
     required bool isLandscapeReader,
   }) {
-    final tokenCount = line.words.length;
-    if (tokenCount <= 1) {
-      return const _MushafLineFineTune();
-    }
-
-    final tokenLengths = line.words
-        .map(_mushafVisualTokenLength)
-        .toList(growable: false);
-    final totalChars = tokenLengths.fold<int>(0, (sum, value) => sum + value);
-    final longestToken = tokenLengths.reduce(math.max);
-    final shortestToken = tokenLengths.reduce(math.min);
-
-    if (tokenCount <= 6 && totalChars <= 20) {
-      return const _MushafLineFineTune(
-        forceCentered: true,
-        gapScale: 0.74,
-        fontScale: 1.18,
-        lineHeightScale: 1.0,
-        horizontalInset: 24,
-      );
-    }
-
-    if (!pattern.isCentered &&
-        tokenCount >= 5 &&
-        tokenCount <= 6 &&
-        totalChars <= 16) {
-      return const _MushafLineFineTune(
-        forceCentered: true,
-        gapScale: 0.92,
-        fontScale: 1.02,
-      );
-    }
-
-    if (!pattern.isCentered && tokenCount >= 10 && totalChars >= 40) {
-      return const _MushafLineFineTune(
-        gapScale: 0.9,
-        fontScale: 0.96,
-      );
-    }
-
-    if (!pattern.isCentered && tokenCount >= 8 && totalChars >= 34) {
-      return const _MushafLineFineTune(
-        gapScale: 0.94,
-        fontScale: 0.98,
-      );
-    }
-
-    if (!pattern.isCentered && tokenCount >= 7 && totalChars >= 34) {
-      return const _MushafLineFineTune(
-        fontScale: 0.98,
-      );
-    }
-
-    if (!pattern.isCentered && longestToken - shortestToken >= 5 && tokenCount <= 5) {
-      return const _MushafLineFineTune();
-    }
-
-    if (tokenCount >= 7 || totalChars >= 28) {
-      return const _MushafLineFineTune(
-        forceCentered: true,
-        gapScale: 0.78,
-        fontScale: 1.1,
-        lineHeightScale: 1.0,
-        horizontalInset: 10,
-      );
-    }
-
     return const _MushafLineFineTune(
-      forceCentered: true,
-      gapScale: 0.76,
-      fontScale: 1.14,
-      lineHeightScale: 1.0,
-      horizontalInset: 18,
     );
   }
 
@@ -2791,35 +2735,27 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         totalChars <= 12 || (tokenCount <= 3 && averageChars >= 4.5);
     if (isSparseLine) {
       return _MushafLinePattern.centered(
-        tokenSpacing: totalChars <= 8 ? 14 : 10,
+        tokenSpacing: totalChars <= 8 ? 6 : 4,
       );
     }
 
     final isDenseLine = totalChars >= 28 || tokenCount >= 7;
     final isVeryDenseLine = totalChars >= 40 || tokenCount >= 10;
-    final outerFlex = isDenseLine ? 0 : 1;
+    const outerFlex = 0;
     final gapFlexes = <int>[];
     for (var index = 0; index < tokenLengths.length - 1; index += 1) {
       final leftLength = tokenLengths[index];
       final rightLength = tokenLengths[index + 1];
       final combinedLength = leftLength + rightLength;
 
-      var gapFlex = combinedLength <= 5
-          ? 3
-          : combinedLength <= 8
-              ? 2
-              : 1;
-
-      if (leftLength >= 6 || rightLength >= 6) {
-        gapFlex -= 1;
-      }
-      if (isVeryDenseLine) {
-        gapFlex -= 1;
-      }
+      var gapFlex = combinedLength <= 6 && !isDenseLine ? 2 : 1;
       if (line.words[index].isVerseEnd || line.words[index + 1].isVerseEnd) {
         gapFlex = math.max(gapFlex, 2);
       }
-      gapFlexes.add(math.max(1, gapFlex));
+      if (isVeryDenseLine) {
+        gapFlex = 1;
+      }
+      gapFlexes.add(gapFlex);
     }
 
     return _MushafLinePattern.distributed(
@@ -3282,14 +3218,20 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         final gapUnitWidth =
             totalGapUnits > 0 ? remainingGapWidth / totalGapUnits : 0.0;
         final outerGapWidth = gapUnitWidth * outerFlex;
+        final maxGapWidth = isLandscapeReader ? 24.0 : 18.0;
+        final gapWidths = List<double>.generate(
+          gapFlexes.length,
+          (index) => math.min(gapUnitWidth * gapFlexes[index], maxGapWidth),
+          growable: false,
+        );
 
         if (outerGapWidth > 0) {
           distributedChildren.add(SizedBox(width: outerGapWidth));
         }
         for (var index = 0; index < tokens.length; index += 1) {
           distributedChildren.add(tokens[index].child);
-          if (index < gapFlexes.length) {
-            final gapWidth = gapUnitWidth * gapFlexes[index];
+          if (index < gapWidths.length) {
+            final gapWidth = gapWidths[index];
             final leftToken = tokens[index];
             final rightToken = tokens[index + 1];
             if (shouldBridgeUnderline(leftToken, rightToken)) {
@@ -3348,12 +3290,25 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     required bool isLandscapeReader,
   }) {
     final isIntroPage = page == 1 || page == 2;
+    final hasLineAwareLayout = _mushafLayoutsByPage[page] != null;
+    final shouldBalanceVerticalSpace =
+        hasLineAwareLayout && !isIntroPage && !isLandscapeReader;
     final pageFontScale = isLandscapeReader
         ? _mushafLandscapePageFontScale
         : _mushafPageFontScale;
     final pageViewportWidth = isLandscapeReader
         ? math.min(constraints.maxWidth, 760.0)
         : constraints.maxWidth;
+    final ayatWidgets = _buildAyatWidgets(
+      page,
+      pageAyat,
+      languageProvider,
+      evaluationProvider,
+      _hasConnection,
+      isDarkMode,
+      isLandscapeReader,
+      pageFontScale,
+    );
     final pageWidget = _ReaderRenderedPage(
       pageNumber: page,
       isDarkMode: isDarkMode,
@@ -3362,17 +3317,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
           : const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Column(
+        mainAxisSize:
+            shouldBalanceVerticalSpace ? MainAxisSize.max : MainAxisSize.min,
+        mainAxisAlignment: shouldBalanceVerticalSpace
+            ? MainAxisAlignment.spaceBetween
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _buildAyatWidgets(
-          page,
-          pageAyat,
-          languageProvider,
-          evaluationProvider,
-          _hasConnection,
-          isDarkMode,
-          isLandscapeReader,
-          pageFontScale,
-        ),
+        children: ayatWidgets,
       ),
     );
 
@@ -3409,10 +3360,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           height: constraints.maxHeight,
           child: FittedBox(
             fit: BoxFit.contain,
-            alignment: Alignment.topCenter,
+            alignment: Alignment.center,
             child: SizedBox(
               width: pageViewportWidth,
-              height: isIntroPage ? constraints.maxHeight : null,
+              height: shouldBalanceVerticalSpace ? constraints.maxHeight : null,
               child: pageWidget,
             ),
           ),
@@ -3492,7 +3443,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       }
     }
 
-    widgets.add(const SizedBox(height: 4));
+    if (isLandscapeReader) {
+      widgets.add(const SizedBox(height: 4));
+    }
     return widgets;
   }
 
@@ -4055,7 +4008,9 @@ class _ReaderRenderedPage extends StatelessWidget {
     final fillColor =
         isDarkMode ? const Color(0xFF201C12) : const Color(0xFFF7F3E4);
     final widthFactor =
-        pageNumber == 1 ? 1.0 : (isLandscapeReader ? 0.76 : 0.82);
+      pageNumber == 1
+        ? (isLandscapeReader ? 0.70 : 0.76)
+        : (isLandscapeReader ? 0.76 : 0.82);
     final mainFrame = SizedBox(
       width: double.infinity,
       child: Container(
@@ -4091,9 +4046,7 @@ class _ReaderRenderedPage extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Align(
-          alignment: pageNumber == 1
-              ? const Alignment(0, -0.24)
-              : const Alignment(0, -0.04),
+          alignment: Alignment.center,
           child: FractionallySizedBox(
             widthFactor: widthFactor,
             child: Column(
@@ -4166,10 +4119,17 @@ class _ReaderRenderedPage extends StatelessWidget {
         ),
       );
     } else {
+      final shouldFillStandardPage = !isLandscapeReader;
       composedPage = Stack(
+        fit: shouldFillStandardPage ? StackFit.expand : StackFit.loose,
         clipBehavior: Clip.none,
         children: [
-          pagePanel,
+          if (shouldFillStandardPage)
+            Positioned.fill(
+              child: pagePanel,
+            )
+          else
+            pagePanel,
           Positioned(
             top: 2,
             bottom: 2,

@@ -538,7 +538,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x52EDF3D7), Color(0x00EDF3D7)],
+                colors: [Color(0x14EDF3D7), Color(0x00EDF3D7)],
               ),
             ),
           ),
@@ -552,7 +552,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0x332F7B64), Color(0x002F7B64)],
+                colors: [Color(0x0E2F7B64), Color(0x002F7B64)],
               ),
             ),
           ),
@@ -566,7 +566,7 @@ class _AuthBackdrop extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(90),
               gradient: const LinearGradient(
-                colors: [Color(0x16EDF3D7), Color(0x121D6652)],
+                colors: [Color(0x08EDF3D7), Color(0x041D6652)],
               ),
             ),
           ),

@@ -112,20 +112,24 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
-    final pageOneLogoSize = math.min(size.width * 0.33, 172.0);
-    final pageTwoLogoSize = math.min(size.width * 0.20, 108.0);
+    final pageOneLogoSize = math.min(size.width * 0.34, 184.0);
+    final pageTwoLogoSize = math.min(size.width * 0.36, 188.0);
     final logoSize = _contentVisible ? pageTwoLogoSize : pageOneLogoSize;
     final centeredLogoTop = (size.height - logoSize) * 0.47;
-    final topLogoTop = padding.top + math.max(size.height * 0.04, 34.0);
+    final contentHeight = math.min(
+      math.max(size.height * 0.43, 344.0),
+      size.height - (padding.top + 118),
+    );
+    final topRegionHeight = size.height - contentHeight;
+    final topLogoTop = padding.top + math.max(
+      (topRegionHeight - logoSize) * 0.48,
+      24.0,
+    );
     final logoTop = !_logoCentered
         ? size.height + 96
         : _contentVisible
             ? topLogoTop
             : centeredLogoTop;
-    final contentHeight = math.min(
-      math.max(size.height * 0.52, 412.0),
-      size.height - (padding.top + 92),
-    );
     final contentBottom = _contentVisible ? 0.0 : -(contentHeight + 64);
 
     return Scaffold(
@@ -145,8 +149,8 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withAlpha(26),
-                    Colors.black.withAlpha(46),
+                    Colors.black.withAlpha(8),
+                    Colors.black.withAlpha(18),
                   ],
                 ),
               ),
@@ -216,16 +220,7 @@ class _OnboardingContentSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final cardLogoSize = math.min(size.width * 0.22, 122.0);
-    final titleStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
-          color: Colors.black,
-          fontWeight: FontWeight.w800,
-          height: 1.24,
-        );
-    final bodyStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: Colors.black.withAlpha(220),
-          height: 1.62,
-        );
+    final cardLogoSize = math.min(size.width * 0.18, 82.0);
 
     return SizedBox(
       height: height,
@@ -247,7 +242,7 @@ class _OnboardingContentSheet extends StatelessWidget {
             children: [
               Positioned.fill(
                 child: Opacity(
-                  opacity: 0.08,
+                  opacity: 0.015,
                   child: SvgPicture.asset(
                     Assets.onboardingBackgroundSvg,
                     fit: BoxFit.cover,
@@ -259,109 +254,184 @@ class _OnboardingContentSheet extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.fromLTRB(28, 34, 28, 24 + bottomInset),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 18 + bottomInset),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final ultraCompact = constraints.maxHeight < 330;
+                    final compact = constraints.maxHeight < 390;
+                    final titleStyle = Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w800,
+                        fontSize: ultraCompact
+                          ? 22
+                          : compact
+                            ? 24
+                            : 27,
+                          height: 1.18,
+                        );
+                    final bodyStyle = Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(
+                          color: Colors.black.withAlpha(210),
+                        fontSize: ultraCompact
+                          ? 13.8
+                          : compact
+                            ? 14.6
+                            : 15.6,
+                        height: ultraCompact
+                          ? 1.34
+                          : compact
+                            ? 1.42
+                            : 1.52,
+                        );
+                    final resolvedLogoSize = ultraCompact
+                      ? cardLogoSize * 0.72
+                      : compact
+                        ? cardLogoSize * 0.86
+                        : cardLogoSize;
+                    final topGap = ultraCompact
+                      ? 10.0
+                      : compact
+                        ? 16.0
+                        : 20.0;
+                    final bodyGap = ultraCompact
+                      ? 10.0
+                      : compact
+                        ? 16.0
+                        : 20.0;
+                    final actionGap = ultraCompact
+                      ? 8.0
+                      : compact
+                        ? 10.0
+                        : 12.0;
+
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 330),
-                          child: Text(
-                            'هل تعرف كم تحفظ من القرآن الكريم اليوم؟',
-                            textAlign: TextAlign.center,
-                            style: titleStyle,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        SvgPicture.asset(
-                          Assets.logoSvg,
-                          width: cardLogoSize,
-                          height: cardLogoSize,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(height: 28),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 336),
-                          child: Text(
-                            'إن كنت ترغب في حفظ سور أو أجزاء من القرآن الكريم، أو حتى تثبيت حفظك للسور التي تحفظها، فهذا التطبيق لك.',
-                            textAlign: TextAlign.center,
-                            style: bodyStyle,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (errorMessage != null && errorMessage!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              errorMessage!,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppColors.errorColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                        Column(
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 320),
+                              child: Text(
+                                'هل تعرف كم تحفظ من القرآن الكريم اليوم؟',
+                                textAlign: TextAlign.center,
+                                style: titleStyle,
+                              ),
                             ),
-                          ),
-                        FilledButton(
-                          onPressed: isStartingGuest ? null : onGuestPressed,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF666557),
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(60),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                            SizedBox(height: topGap),
+                            SvgPicture.asset(
+                              Assets.logoSvg,
+                              width: resolvedLogoSize,
+                              height: resolvedLogoSize,
+                              fit: BoxFit.contain,
                             ),
-                          ),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: isStartingGuest
-                                ? const SizedBox(
-                                    key: ValueKey('guest-loading'),
-                                    width: 22,
-                                    height: 22,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : Text(
-                                    'ابدأ مسيرتك الآن',
-                                    key: const ValueKey('guest-label'),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                          ),
+                            SizedBox(height: bodyGap),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 330),
+                              child: Text(
+                                'إن كنت ترغب في حفظ سور أو أجزاء من القرآن الكريم، أو حتى تثبيت حفظك للسور التي تحفظها، فهذا التطبيق لك.',
+                                textAlign: TextAlign.center,
+                                style: bodyStyle,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: isStartingGuest ? null : onLoginPressed,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.black,
-                            minimumSize: const Size.fromHeight(52),
-                            textStyle: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w800,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (errorMessage != null && errorMessage!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Text(
+                                  errorMessage!,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: AppColors.errorColor,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                 ),
-                          ),
-                          child: const Text('لدي حساب مسبقًا'),
+                              ),
+                            FilledButton(
+                              onPressed: isStartingGuest ? null : onGuestPressed,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF666557),
+                                foregroundColor: Colors.white,
+                                minimumSize: Size.fromHeight(
+                                  ultraCompact
+                                      ? 50
+                                      : compact
+                                          ? 54
+                                          : 58,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: isStartingGuest
+                                    ? const SizedBox(
+                                        key: ValueKey('guest-loading'),
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        'ابدأ مسيرتك الآن',
+                                        key: const ValueKey('guest-label'),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: ultraCompact
+                                                  ? 16
+                                                  : compact
+                                                      ? 17
+                                                      : 18,
+                                            ),
+                                      ),
+                              ),
+                            ),
+                            SizedBox(height: actionGap),
+                            TextButton(
+                              onPressed: isStartingGuest ? null : onLoginPressed,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.black,
+                                minimumSize: Size.fromHeight(
+                                  ultraCompact
+                                      ? 38
+                                      : compact
+                                          ? 44
+                                          : 48,
+                                ),
+                                textStyle: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                              ),
+                              child: const Text('لدي حساب مسبقًا'),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],

@@ -50,6 +50,12 @@ class _ContentItemCardState extends State<ContentItemCard> {
   final TeacherRecommendationsService _teacherRecommendationsService =
       TeacherRecommendationsService();
 
+  bool get _isArabicUi => (Get.locale?.languageCode ?? 'ar') == 'ar';
+
+  String get _shortRateLabel => _isArabicUi ? 'تقييم' : 'Assess';
+
+  String get _shortReviewLabel => _isArabicUi ? 'مراجعة' : 'Review';
+
   @override
   void initState() {
     super.initState();
@@ -997,22 +1003,22 @@ class _ContentItemCardState extends State<ContentItemCard> {
 
   String _statusLabel() {
     if (widget.isLoadingStatus) {
-      return 'content_item_card_status_refreshing'.tr;
+      return _isArabicUi ? 'تحميل' : 'Loading';
     }
 
     if (widget.isCompleted == true) {
-      return 'content_item_card_status_completed'.tr;
+      return _isArabicUi ? 'منجز' : 'Done';
     }
 
-    return 'content_item_card_status_pending'.tr;
+    return _isArabicUi ? 'بانتظار' : 'Pending';
   }
 
   Color _statusColor() {
     if (widget.isCompleted == true) {
-      return const Color(0xFFEAF7F3);
+      return const Color(0xFFF1FAF6);
     }
 
-    return const Color(0xFFF6F1E8);
+    return const Color(0xFFF9F6F0);
   }
 
   Widget _buildActionButton({
@@ -1023,42 +1029,46 @@ class _ContentItemCardState extends State<ContentItemCard> {
   }) {
     final buttonStyle = outlined
         ? OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            minimumSize: const Size.fromHeight(40),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             side: BorderSide(
-              color: AppColors.buttonColor.withValues(alpha: 0.28),
+              color: AppColors.buttonColor.withValues(alpha: 0.20),
             ),
-            backgroundColor: Colors.white.withValues(alpha: 0.92),
+            backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
           )
         : FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            minimumSize: const Size.fromHeight(40),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             backgroundColor: AppColors.buttonColor,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
             ),
           );
 
     final titleColor = outlined ? AppColors.primaryPurple : Colors.white;
-    final buttonChild = Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: 8,
-      runSpacing: 4,
+    final buttonChild = Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
           icon,
-          size: 18,
+          size: 16,
           color: titleColor,
         ),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: AppTypography.of(context)
-              .buttonPrimary
-              .copyWith(color: titleColor, fontSize: 13.5),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTypography.of(context)
+                .buttonPrimary
+                .copyWith(color: titleColor, fontSize: 12.2),
+          ),
         ),
       ],
     );
@@ -1107,41 +1117,38 @@ class _ContentItemCardState extends State<ContentItemCard> {
       },
       child: Container(
         margin: EdgeInsets.symmetric(
-          vertical: SizeConfig.getProportionalHeight(10),
-          horizontal: SizeConfig.getProportionalWidth(2),
+          vertical: SizeConfig.getProportionalHeight(3),
+          horizontal: 0,
         ),
         padding: EdgeInsets.symmetric(
-          horizontal: SizeConfig.getProportionalWidth(16),
-          vertical: SizeConfig.getProportionalHeight(18),
+          horizontal: SizeConfig.getProportionalWidth(10),
+          vertical: SizeConfig.getProportionalHeight(10),
         ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.lineColor),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x12112038),
-              blurRadius: 18,
-              offset: Offset(0, 8),
+              color: Color(0x08112038),
+              blurRadius: 12,
+              offset: Offset(0, 5),
             ),
           ],
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final useCompactLayout = constraints.maxWidth < 520;
             final statusBadge = Container(
-              width: useCompactLayout ? double.infinity : null,
               padding: const EdgeInsets.symmetric(
                 horizontal: 10,
-                vertical: 6,
+                vertical: 7,
               ),
               decoration: BoxDecoration(
                 color: _statusColor(),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
-                mainAxisSize:
-                    useCompactLayout ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     widget.isCompleted == true
@@ -1151,22 +1158,17 @@ class _ContentItemCardState extends State<ContentItemCard> {
                     color: AppColors.buttonColor,
                   ),
                   const SizedBox(width: 6),
-                  if (useCompactLayout)
-                    Expanded(
-                      child: Text(
-                        _statusLabel(),
-                        style: AppTypography.of(context)
-                            .badgeLabel
-                            .copyWith(color: AppColors.primaryPurple),
-                      ),
-                    )
-                  else
-                    Text(
+                  Flexible(
+                    child: Text(
                       _statusLabel(),
-                      style: AppTypography.of(context)
-                          .badgeLabel
-                          .copyWith(color: AppColors.primaryPurple),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.of(context).badgeLabel.copyWith(
+                            color: AppColors.primaryPurple,
+                            fontSize: 12.2,
+                          ),
                     ),
+                  ),
                 ],
               ),
             );
@@ -1182,98 +1184,84 @@ class _ContentItemCardState extends State<ContentItemCard> {
                   child: completionIcon,
                 ),
                 Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.of(context)
-                        .sectionTitle
-                        .copyWith(color: AppColors.primaryPurple),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.of(context)
+                              .sectionTitle
+                              .copyWith(
+                                color: AppColors.primaryPurple,
+                                fontSize: 18,
+                              ),
+                        ),
+                      ),
+                      if (_isJuzType) ...[
+                        const SizedBox(width: 6),
+                        Tooltip(
+                          message: 'content_item_card_juz_hint'.tr,
+                          child: const Icon(
+                            Icons.info_outline_rounded,
+                            size: 16,
+                            color: AppColors.mutedText,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
             );
 
-            final actions = useCompactLayout
-                ? Column(
-                    children: [
-                      _buildActionButton(
-                        onPressed: canInteract
-                            ? () => _evaluateUnit(context, languageProvider)
-                            : null,
-                        title: 'content_item_card_action_rate_unit_title'.tr,
-                        icon: Icons.auto_awesome,
-                      ),
-                      const SizedBox(height: 10),
-                      _buildActionButton(
-                        onPressed: canInteract
-                            ? () => _showIndividualEvaluation(
-                                context, languageProvider)
-                            : null,
-                        title:
-                            'content_item_card_action_review_verses_title'.tr,
-                        icon: Icons.menu_book_rounded,
-                        outlined: true,
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _buildActionButton(
-                          onPressed: canInteract
-                              ? () => _evaluateUnit(context, languageProvider)
-                              : null,
-                          title: 'content_item_card_action_rate_unit_title'.tr,
-                          icon: Icons.auto_awesome,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _buildActionButton(
-                          onPressed: canInteract
-                              ? () => _showIndividualEvaluation(
-                                  context, languageProvider)
-                              : null,
-                          title:
-                              'content_item_card_action_review_verses_title'.tr,
-                          icon: Icons.menu_book_rounded,
-                          outlined: true,
-                        ),
-                      ),
-                    ],
-                  );
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            final actions = Row(
               children: [
-                if (useCompactLayout) ...[
-                  titleRow,
-                  const SizedBox(height: 10),
-                  statusBadge,
-                ] else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(child: titleRow),
-                      const SizedBox(width: 10),
-                      statusBadge,
-                    ],
+                Expanded(
+                  child: _buildActionButton(
+                    onPressed: canInteract
+                        ? () => _evaluateUnit(context, languageProvider)
+                        : null,
+                    title: _shortRateLabel,
+                    icon: Icons.auto_awesome,
                   ),
-                const SizedBox(height: 12),
-                if (isEvaluating)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  actions,
-                if (_isJuzType) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'content_item_card_juz_hint'.tr,
-                    style: AppTypography.of(context)
-                        .bodySmall
-                        .copyWith(color: AppColors.mutedText),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    onPressed: canInteract
+                        ? () => _showIndividualEvaluation(
+                            context, languageProvider)
+                        : null,
+                    title: _shortReviewLabel,
+                    icon: Icons.menu_book_rounded,
+                    outlined: true,
                   ),
-                ],
+                ),
+              ],
+            );
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(flex: 7, child: titleRow),
+                const SizedBox(width: 8),
+                Flexible(flex: 3, child: statusBadge),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 8,
+                  child: isEvaluating
+                      ? const Align(
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          ),
+                        )
+                      : actions,
+                ),
               ],
             );
           },

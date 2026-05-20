@@ -10,7 +10,6 @@ import '../widgets/no_pop_scope.dart';
 import 'login_screen.dart';
 import 'social_auth_action.dart';
 import 'widgets/auth_screen_shell.dart';
-import 'widgets/auth_privacy_notice.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
 
@@ -225,8 +224,6 @@ class _SignUpScreenState extends State<SignUpScreen> with SocialAuthAction {
               const SizedBox(height: 12),
               _buildInlineErrorBanner(_inlineError!),
             ],
-            const SizedBox(height: 12),
-            const AuthPrivacyNotice(),
             const SizedBox(height: 18),
             SizedBox(
               height: 56,

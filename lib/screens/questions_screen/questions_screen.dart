@@ -28,6 +28,10 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   bool _isTransitioningLevel = false;
   String? _levelLoadError;
 
+  bool get _isArabicUi => (Get.locale?.languageCode ?? 'ar') == 'ar';
+
+  String get _compactFinishLabel => _isArabicUi ? 'إنهاء' : 'Finish';
+
   @override
   void initState() {
     super.initState();
@@ -215,6 +219,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     final levels = _readLevels(schoolProvider);
     final isSchoolReady = levels.isNotEmpty;
     final currentLevel = isSchoolReady ? levels[selectedIndex] : null;
+    final currentLevelContents = currentLevel?.content ?? const <SchoolLevelContent>[];
     final totalLevels = levels.length;
     final currentLevelCompleted = currentLevel == null
         ? 0
@@ -229,12 +234,14 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
     return NoPopScope(
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
+          preferredSize: const Size.fromHeight(52),
           child: Directionality(
             textDirection: TextDirection.ltr,
             child: AppBar(
+              toolbarHeight: 52,
               backgroundColor: Colors.transparent,
               elevation: 0,
+              scrolledUnderElevation: 0,
               centerTitle: true,
               title: Text(
                 'questions_screen_title'.tr,
@@ -273,8 +280,10 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
           right: false,
           bottom: true,
           child: ResponsiveContentShell(
+            horizontalGutter: 8,
+            pendingSyncBottomPadding: 6,
             builder: (context) => Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
               child: !isSchoolReady
                   ? _QuestionsEmptyState(
                       title: schoolProvider.isLoading
@@ -298,86 +307,76 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                     )
                   : Column(
                       children: [
+                        _QuestionsHeader(
+                          isArabicUi: _isArabicUi,
+                          currentLevelNumber: selectedIndex + 1,
+                          totalLevels: totalLevels,
+                          title: currentLevel?.name?[
+                                  Get.locale?.languageCode ?? 'ar'] ??
+                              'questions_screen_level_fallback_title'.tr,
+                          progress: levelProgress,
+                          completedItems: currentLevelCompleted,
+                          totalItems: currentLevelTotal,
+                          completedLevels: overallCompletedLevels,
+                        ),
+                        if (_isBusy)
+                          _QuestionsStatusBanner(
+                            icon: Icons.sync,
+                            title: 'questions_screen_status_loading_title'.tr,
+                            body: 'questions_screen_status_loading_body'.tr,
+                          ),
+                        if (_levelLoadError != null)
+                          _QuestionsStatusBanner(
+                            icon: Icons.error_outline,
+                            color: const Color(0xFFFFF2F0),
+                            borderColor: const Color(0xFFE8B4AE),
+                            title: 'questions_screen_status_error_title'.tr,
+                            body: _levelLoadError!,
+                            actionLabel: 'welcome_chart_retry'.tr,
+                            onAction: _preloadSelectedLevel,
+                          ),
+                        const SizedBox(height: 8),
                         Expanded(
-                          child: ListView(
-                            controller: _scrollController,
-                            children: [
-                              _QuestionsHeader(
-                                eyebrow:
-                                    'questions_screen_level_eyebrow'.trParams({
-                                  'current': '${selectedIndex + 1}',
-                                  'total': '$totalLevels',
-                                }),
-                                title: currentLevel?.name?[
-                                        Get.locale?.languageCode ?? 'ar'] ??
-                                    'questions_screen_level_fallback_title'.tr,
-                                subtitle: 'questions_screen_level_subtitle'.tr,
-                                progress: levelProgress,
-                                completedItems: currentLevelCompleted,
-                                totalItems: currentLevelTotal,
-                                completedLevels: overallCompletedLevels,
-                                totalLevels: totalLevels,
-                              ),
-                              if (_isBusy)
-                                _QuestionsStatusBanner(
-                                  icon: Icons.sync,
-                                  title: 'questions_screen_status_loading_title'
-                                      .tr,
-                                  body:
-                                      'questions_screen_status_loading_body'.tr,
-                                ),
-                              if (_levelLoadError != null)
-                                _QuestionsStatusBanner(
-                                  icon: Icons.error_outline,
-                                  color: const Color(0xFFFFF2F0),
-                                  borderColor: const Color(0xFFE8B4AE),
-                                  title:
-                                      'questions_screen_status_error_title'.tr,
-                                  body: _levelLoadError!,
-                                  actionLabel: 'welcome_chart_retry'.tr,
-                                  onAction: _preloadSelectedLevel,
-                                ),
-                              if (currentLevelTotal == 0)
-                                _QuestionsEmptyState(
-                                  title:
-                                      'questions_screen_empty_level_title'.tr,
+                          child: currentLevelTotal == 0
+                              ? _QuestionsEmptyState(
+                                  title: 'questions_screen_empty_level_title'.tr,
                                   body: 'questions_screen_empty_level_body'.tr,
                                 )
-                              else
-                                ...currentLevel!.content.asMap().entries.map(
-                                      (entry) => ContentItemCard(
-                                        content: entry.value,
-                                        index: entry.key,
-                                        isCompleted: evaluationsProvider
-                                            .getQuestionContentCompletion(
-                                                entry.value),
-                                        isLoadingStatus: _isBusy,
-                                      ),
-                                    ),
-                              const SizedBox(height: 12),
-                              _QuestionsFooter(
-                                isBusy: _isBusy,
-                                isFirstLevel: selectedIndex == 0,
-                                isLastLevel: isLastLevel,
-                                footerHint: 'questions_screen_footer_hint'.tr,
-                                onPrevious: selectedIndex == 0
-                                    ? null
-                                    : () => _changeLevel(selectedIndex - 1),
-                                onNext: isLastLevel
-                                    ? () =>
-                                        _openCompletionSummary(skipped: false)
-                                    : () => _changeLevel(selectedIndex + 1),
-                                onFinishForNow: () =>
-                                    _openCompletionSummary(skipped: true),
-                                previousLabel: 'previous_level'.tr,
-                                nextLabel: isLastLevel
-                                    ? 'questions_screen_summary_label'.tr
-                                    : 'next_level'.tr,
-                                finishLabel:
-                                    'questions_screen_finish_now_label'.tr,
-                              ),
-                            ],
-                          ),
+                              : ListView.separated(
+                                  controller: _scrollController,
+                                  itemCount: currentLevelContents.length,
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 6),
+                                  itemBuilder: (context, index) {
+                                    final content = currentLevelContents[index];
+                                    return ContentItemCard(
+                                      content: content,
+                                      index: index,
+                                      isCompleted: evaluationsProvider
+                                          .getQuestionContentCompletion(content),
+                                      isLoadingStatus: _isBusy,
+                                    );
+                                  },
+                                ),
+                        ),
+                        const SizedBox(height: 10),
+                        _QuestionsFooter(
+                          isBusy: _isBusy,
+                          isFirstLevel: selectedIndex == 0,
+                          isLastLevel: isLastLevel,
+                          footerHint: 'questions_screen_footer_hint'.tr,
+                          onPrevious: selectedIndex == 0
+                              ? null
+                              : () => _changeLevel(selectedIndex - 1),
+                          onNext: isLastLevel
+                              ? () => _openCompletionSummary(skipped: false)
+                              : () => _changeLevel(selectedIndex + 1),
+                          onFinishForNow: () =>
+                              _openCompletionSummary(skipped: true),
+                          previousLabel: 'previous'.tr,
+                          nextLabel: 'next'.tr,
+                          finishLabel: _compactFinishLabel,
                         ),
                       ],
                     ),
@@ -391,101 +390,171 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
 
 class _QuestionsHeader extends StatelessWidget {
   const _QuestionsHeader({
-    required this.eyebrow,
+    required this.isArabicUi,
+    required this.currentLevelNumber,
+    required this.totalLevels,
     required this.title,
-    required this.subtitle,
     required this.progress,
     required this.completedItems,
     required this.totalItems,
     required this.completedLevels,
-    required this.totalLevels,
   });
 
-  final String eyebrow;
+  final bool isArabicUi;
+  final int currentLevelNumber;
+  final int totalLevels;
   final String title;
-  final String subtitle;
   final double progress;
   final int completedItems;
   final int totalItems;
   final int completedLevels;
-  final int totalLevels;
+
+  String _metricUnitsLabel() => isArabicUi ? 'وحدات' : 'Units';
+
+  String _metricLevelsLabel() => isArabicUi ? 'مستويات' : 'Levels';
+
+  String _stateLabel() {
+    if (completedItems > 0 && completedItems >= totalItems && totalItems > 0) {
+      return isArabicUi ? 'منجز' : 'Done';
+    }
+
+    if (completedItems > 0) {
+      return isArabicUi ? 'تقدّم' : 'Progress';
+    }
+
+    return isArabicUi ? 'بداية' : 'Start';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF7F4ED), Color(0xFFE8F0EA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.lineColor),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x10112038),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            eyebrow,
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppColors.buttonColor,
-              fontWeight: FontWeight.w700,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final metricWidth = constraints.maxWidth < 540 ? 72.0 : 82.0;
+        final titleSize = constraints.maxWidth < 540 ? 21.0 : 24.0;
+
+        return Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFCFBF8), Color(0xFFF7FAF8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 30.5,
-              fontWeight: FontWeight.w800,
-              color: AppColors.blackFontColor,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 16.2,
-              height: 1.5,
-              color: Color(0xFF39433D),
-            ),
-          ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0, 1),
-              minHeight: 8,
-              backgroundColor: Colors.white,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.buttonColor),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _QuestionsMetricChip(
-                label: 'questions_screen_metric_completed_units'.tr,
-                value: '$completedItems / $totalItems',
-              ),
-              _QuestionsMetricChip(
-                label: 'questions_screen_metric_completed_levels'.tr,
-                value: '$completedLevels / $totalLevels',
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.lineColor),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x08112038),
+                blurRadius: 14,
+                offset: Offset(0, 6),
               ),
             ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _QuestionsHeaderBadge(
+                    icon: Icons.layers_outlined,
+                    label: '$currentLevelNumber / $totalLevels',
+                  ),
+                  const SizedBox(width: 8),
+                  _QuestionsHeaderBadge(
+                    icon: Icons.auto_awesome_rounded,
+                    label: _stateLabel(),
+                    emphasized: true,
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: metricWidth,
+                    child: _QuestionsMetricChip(
+                      label: _metricUnitsLabel(),
+                      value: '$completedItems/$totalItems',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: metricWidth,
+                    child: _QuestionsMetricChip(
+                      label: _metricLevelsLabel(),
+                      value: '$completedLevels/$totalLevels',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: titleSize,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.blackFontColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0, 1),
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFF1F4F1),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.buttonColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _QuestionsHeaderBadge extends StatelessWidget {
+  const _QuestionsHeaderBadge({
+    required this.icon,
+    required this.label,
+    this.emphasized = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = emphasized
+        ? AppColors.buttonColor.withValues(alpha: 0.10)
+        : Colors.white.withValues(alpha: 0.92);
+    final foregroundColor = emphasized
+        ? AppColors.buttonColor
+        : AppColors.blackFontColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.lineColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: foregroundColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.8,
+              fontWeight: FontWeight.w700,
+              color: foregroundColor,
+            ),
           ),
         ],
       ),
@@ -505,11 +574,10 @@ class _QuestionsMetricChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(minWidth: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.lineColor),
       ),
       child: Column(
@@ -517,16 +585,18 @@ class _QuestionsMetricChip extends StatelessWidget {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 10.2,
               color: Color(0xFF5A645F),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 20,
+              fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -559,11 +629,11 @@ class _QuestionsStatusBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
       ),
       child: Row(
@@ -632,50 +702,89 @@ class _QuestionsFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.lineColor),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x10112038),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x08112038),
+            blurRadius: 12,
+            offset: Offset(0, 5),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              OutlinedButton.icon(
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: OutlinedButton.icon(
                 onPressed: isBusy || isFirstLevel ? null : onPrevious,
-                icon: const Icon(Icons.arrow_back),
-                label: Text(previousLabel),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                label: Text(
+                  previousLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              FilledButton.icon(
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SizedBox(
+              height: 40,
+              child: FilledButton.icon(
                 onPressed: isBusy ? null : onNext,
-                icon: Icon(isLastLevel ? Icons.summarize : Icons.arrow_forward),
+                icon: Icon(
+                  isLastLevel ? Icons.summarize_rounded : Icons.arrow_forward,
+                  size: 18,
+                ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.buttonColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
-                label: Text(nextLabel),
+                label: Text(
+                  nextLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              InfoIconButton(
-                message: footerHint,
-                color: AppColors.mutedText,
+            ),
+          ),
+          const SizedBox(width: 4),
+          SizedBox(
+            height: 38,
+            child: TextButton(
+              onPressed: isBusy ? null : onFinishForNow,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              TextButton(
-                onPressed: isBusy ? null : onFinishForNow,
-                child: Text(finishLabel),
+              child: Text(
+                finishLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ],
+            ),
+          ),
+          const SizedBox(width: 2),
+          InfoIconButton(
+            message: footerHint,
+            color: AppColors.mutedText,
+            size: 17,
           ),
         ],
       ),

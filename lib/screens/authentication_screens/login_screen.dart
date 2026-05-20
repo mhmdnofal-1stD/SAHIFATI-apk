@@ -17,7 +17,6 @@ import 'forget_password_screen.dart';
 import 'sign_up_screen.dart';
 import 'social_auth_action.dart';
 import 'widgets/auth_screen_shell.dart';
-import 'widgets/auth_privacy_notice.dart';
 import 'widgets/custom_auth_footer.dart';
 import 'widgets/custom_auth_textfield.dart';
 
@@ -340,8 +339,6 @@ class _LoginScreenState extends State<LoginScreen> with SocialAuthAction {
               SizedBox(height: errorGap),
               _buildInlineErrorBanner(_inlineError!),
             ],
-            SizedBox(height: errorGap),
-            const AuthPrivacyNotice(),
             SizedBox(height: primaryActionGap),
             Row(
               children: [
