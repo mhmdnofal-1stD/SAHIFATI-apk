@@ -243,6 +243,41 @@ class EvaluationsServices {
     }
   }
 
+  Future<Map<String, dynamic>> getQuranChartPayload(
+    int userId, {
+    String dimension = 'memorization',
+    QuranChartFilters filters = const QuranChartFilters(),
+  }) async {
+    try {
+      final queryParameters = <String, String>{
+        ...filters.toQueryParameters(),
+        'dimension': dimension,
+      };
+      final query = Uri(queryParameters: queryParameters).query;
+      final path = query.isEmpty
+          ? 'user-evaluations/chart/$userId'
+          : 'user-evaluations/chart/$userId?$query';
+      final http.Response res = await _sahifatyApi.get(path);
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body is Map<String, dynamic>) {
+          return body;
+        }
+        if (body is Map) {
+          return Map<String, dynamic>.from(body);
+        }
+      }
+
+      throw Exception('service_evaluations_load_failed'.tr);
+    } catch (ex, stackTrace) {
+      if (kDebugMode) {
+        print(stackTrace);
+      }
+      rethrow;
+    }
+  }
+
   Future<http.Response> evaluateMultipleAyat(Map<String, dynamic> body) async {
     try {
       http.Response response =

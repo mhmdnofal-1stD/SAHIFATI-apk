@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
-import '../../models/user.dart';
 import '../../providers/evaluations_provider.dart';
-import '../../providers/users_provider.dart';
-import '../main_screen/main_screen.dart';
+import '../../services/evaluations_services.dart';
 import '../../services/teacher_supervisions_services.dart';
+import 'supervision_metric_utils.dart';
+import 'supervision_student_overview_screen.dart';
 
 /// Resolves the human-facing identity for a supervision student payload.
 ///
@@ -226,30 +226,19 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
       return;
     }
 
-    final selectedStudent = User(
-      id: studentId,
-      username: (student['username'] as String?)?.trim(),
-      email: (student['email'] as String?)?.trim() ?? '',
-      userRoleId: student['userRoleId'] is num
-          ? (student['userRoleId'] as num).toInt()
-          : (student['roleNum'] is num
-              ? (student['roleNum'] as num).toInt()
-              : null),
-      firstName: student['firstName'] as String?,
-      familyName: student['familyName'] as String?,
-    );
-
-    final usersProvider = context.read<UsersProvider>();
-    final evaluationsProvider = context.read<EvaluationsProvider>();
-    usersProvider.pushSelectedUser(selectedStudent);
-    try {
-      await evaluationsProvider.getQuranChartData(studentId);
-    } catch (_) {}
     if (!mounted) {
       return;
     }
 
-    await Get.toNamed(MainScreen.routeName);
+    await Get.to(
+      () => SupervisionStudentOverviewScreen(
+        studentId: studentId,
+        studentName: resolveSupervisionStudentName(
+          student,
+          fallback: 'profile_unknown_user'.tr,
+        ),
+      ),
+    );
   }
 
   @override
@@ -775,6 +764,7 @@ class _StudentMemorizationStats extends StatefulWidget {
 }
 
 class _StudentMemorizationStatsState extends State<_StudentMemorizationStats> {
+  final EvaluationsServices _evaluationsServices = EvaluationsServices();
   late Future<_StudentMemorizationSnapshot> _future;
 
   @override
@@ -784,10 +774,19 @@ class _StudentMemorizationStatsState extends State<_StudentMemorizationStats> {
   }
 
   Future<_StudentMemorizationSnapshot> _load() async {
-    final payload = await context.read<EvaluationsProvider>().buildOfflineQuranChartPayload(
-      widget.studentId,
-      dimension: 'memorization',
-    );
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    Map<String, dynamic> payload;
+    try {
+      payload = await _evaluationsServices.getQuranChartPayload(
+        widget.studentId,
+        dimension: 'memorization',
+      );
+    } catch (_) {
+      payload = await evaluationsProvider.buildOfflineQuranChartPayload(
+        widget.studentId,
+        dimension: 'memorization',
+      );
+    }
     final totalVerses = (payload['totalVerses'] as num?)?.toInt() ?? 0;
     final rawEvaluations = payload['evaluations'] as List? ?? const [];
 
@@ -798,11 +797,10 @@ class _StudentMemorizationStatsState extends State<_StudentMemorizationStats> {
 
     for (final item in rawEvaluations.whereType<Map>()) {
       final normalized = Map<String, dynamic>.from(item);
-      final code = (normalized['code']?.toString() ?? '').trim().toLowerCase();
-      if (code == 'g') {
+      if (supervisionIsProficientEvaluation(normalized)) {
         proficientCount = (normalized['verseCount'] as num?)?.toInt() ?? 0;
         proficientPercentage = (normalized['percentage'] as num?) ?? 0;
-      } else if (code == 's') {
+      } else if (supervisionIsReviewEvaluation(normalized)) {
         revisionCount = (normalized['verseCount'] as num?)?.toInt() ?? 0;
         revisionPercentage = (normalized['percentage'] as num?) ?? 0;
       }
