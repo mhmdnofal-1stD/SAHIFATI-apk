@@ -8,6 +8,7 @@ import '../../models/card_model.dart';
 import '../../providers/cards_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
+import '../widgets/global_drawer.dart';
 import 'card_detail_screen.dart';
 
 class CardsListScreen extends StatefulWidget {
@@ -61,7 +62,27 @@ class _CardsListScreenState extends State<CardsListScreen> {
           _titleForRole(userRole),
           style: AppTypography.of(context).sectionTitle,
         ),
+        actions: [
+          Builder(
+            builder: (ctx) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                  Scaffold.of(ctx).openDrawer();
+                } else {
+                  Scaffold.of(ctx).openEndDrawer();
+                }
+              },
+            ),
+          ),
+        ],
       ),
+      drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? const GlobalDrawer()
+          : null,
+      endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? null
+          : const GlobalDrawer(),
       body: Column(
         children: [
           // ── Search bar ────────────────────────────────────────────────

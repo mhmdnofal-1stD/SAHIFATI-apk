@@ -17,6 +17,7 @@ import '../../services/users_services.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/file_download.dart';
 import '../widgets/custom_back_button.dart';
+import '../widgets/global_drawer.dart';
 import '../widgets/info_icon_button.dart';
 import 'add_supervisor_screen.dart';
 import 'profile_details_form.dart';
@@ -212,8 +213,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: const Icon(Icons.menu),
+                    onPressed: () {
+                      if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                        Scaffold.of(ctx).openDrawer();
+                      } else {
+                        Scaffold.of(ctx).openEndDrawer();
+                      }
+                    },
+                  ),
+                ),
               ],
       ),
+      drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? const GlobalDrawer()
+          : null,
+      endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? null
+          : const GlobalDrawer(),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _reload,

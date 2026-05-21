@@ -173,23 +173,42 @@ class GlobalDrawer extends StatelessWidget {
                   icon: Icons.question_answer_sharp,
                 ),
               ),
-              ListTile(
-                onTap: () {
-                  Get.to(() => const ProfileScreen());
-                },
-                title: _buildDrawerTitle(
-                  text: 'drawer_profile'.tr,
-                  icon: Icons.account_circle_outlined,
+              // ── حسابي (expandable) ────────────────────────────────────
+              ExpansionTile(
+                leading: const Icon(
+                  Icons.account_circle_outlined,
+                  size: 30,
                 ),
-              ),
-              ListTile(
-                onTap: () {
-                  Get.toNamed('/my-licenses');
-                },
-                title: _buildDrawerTitle(
-                  text: 'drawer_my_licenses'.tr,
-                  icon: Icons.verified_outlined,
+                title: Text(
+                  'drawer_profile'.tr,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(fontSize: 15),
                 ),
+                tilePadding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                childrenPadding: EdgeInsets.zero,
+                shape: const Border(),
+                collapsedShape: const Border(),
+                children: [
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsetsDirectional.only(start: 56, end: 16),
+                    onTap: () => Get.to(() => const ProfileScreen()),
+                    title: _buildDrawerTitle(
+                      text: 'profile_screen_title'.tr,
+                      icon: Icons.person_outline_rounded,
+                    ),
+                  ),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsetsDirectional.only(start: 56, end: 16),
+                    onTap: () => Get.toNamed('/my-licenses'),
+                    title: _buildDrawerTitle(
+                      text: 'drawer_my_licenses'.tr,
+                      icon: Icons.verified_outlined,
+                    ),
+                  ),
+                ],
               ),
               Consumer<UsersProvider>(
                 builder: (context, usersProvider, _) {
@@ -240,7 +259,7 @@ class GlobalDrawer extends StatelessWidget {
                 },
                 title: _buildDrawerTitle(
                   text: 'switch_user'.tr,
-                  icon: Icons.people,
+                  icon: Icons.swap_horiz_rounded,
                 ),
               ),
               ListTile(

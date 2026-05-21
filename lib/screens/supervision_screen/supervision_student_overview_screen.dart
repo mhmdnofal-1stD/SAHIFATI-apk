@@ -11,6 +11,7 @@ import '../../models/ayat.dart';
 import '../../models/evaluation.dart';
 import '../../models/user_evaluation.dart';
 import '../../services/evaluations_services.dart';
+import '../widgets/global_drawer.dart';
 import '../widgets/surah_verse_chart.dart';
 import 'supervision_metric_utils.dart';
 
@@ -237,7 +238,48 @@ class _SupervisionStudentOverviewScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F4EC),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(52),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: AppBar(
+            backgroundColor: const Color(0xFFF8F4EC),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            automaticallyImplyLeading: false,
+            leading: IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                size: 26,
+                color: Color(0xFF161616),
+              ),
+            ),
+            actions: [
+              Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu, color: Color(0xFF161616)),
+                  onPressed: () {
+                    if ((Get.locale?.languageCode ?? 'ar') == 'ar') {
+                      Scaffold.of(ctx).openDrawer();
+                    } else {
+                      Scaffold.of(ctx).openEndDrawer();
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? const GlobalDrawer()
+          : null,
+      endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+          ? null
+          : const GlobalDrawer(),
       body: SafeArea(
+        top: false,
         child: FutureBuilder<_StudentOverviewData>(
           future: _future,
           builder: (context, snapshot) {
@@ -255,70 +297,57 @@ class _SupervisionStudentOverviewScreenState
             }
 
             final data = snapshot.data!;
-            return RefreshIndicator(
-              onRefresh: _reload,
-              color: AppColors.primaryPurple,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 28),
-                children: [
-                  Row(
-                    textDirection: TextDirection.ltr,
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          size: 30,
-                          color: Color(0xFF161616),
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE8E1D5)),
-                        ),
-                        child: const Icon(
-                          Icons.person_outline_rounded,
-                          color: Color(0xFFFF7A76),
-                        ),
-                      ),
-                    ],
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Sticky compact summary header ─────────────────────
+                Material(
+                  color: const Color(0xFFF8F4EC),
+                  elevation: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: data.segments.isEmpty
+                        ? _OverviewEmptyState(studentName: widget.studentName)
+                        : _CompactSummaryHeader(
+                            studentName: widget.studentName,
+                            segments: data.segments,
+                            highlight: data.highlight,
+                          ),
                   ),
-                  const SizedBox(height: 14),
-                  if (data.segments.isEmpty)
-                    _OverviewEmptyState(studentName: widget.studentName)
-                  else
-                    _SummaryCard(
-                      studentName: widget.studentName,
-                      segments: data.segments,
-                      highlight: data.highlight,
-                    ),
-                  const SizedBox(height: 26),
-                  Text(
-                    'السور التي يتم تقييمها',
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.right,
-                    style: AppTypography.of(context).subsectionTitle.copyWith(
-                          color: const Color(0xFF7A7A7A),
-                          fontSize: 19,
+                ),
+                // ── Scrollable surah list ─────────────────────────────
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _reload,
+                    color: AppColors.primaryPurple,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                      children: [
+                        Text(
+                          'السور التي يتم تقييمها',
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                          style:
+                              AppTypography.of(context).subsectionTitle.copyWith(
+                                    color: const Color(0xFF7A7A7A),
+                                    fontSize: 17,
+                                  ),
                         ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (data.surahCards.isEmpty)
-                    const _SurahListEmptyState()
-                  else
-                    ...data.surahCards.map(
-                      (surah) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _SurahProgressCard(data: surah),
-                      ),
+                        const SizedBox(height: 12),
+                        if (data.surahCards.isEmpty)
+                          const _SurahListEmptyState()
+                        else
+                          ...data.surahCards.map(
+                            (surah) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _SurahProgressCard(data: surah),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -327,71 +356,17 @@ class _SupervisionStudentOverviewScreenState
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
+// ─────────────────────────────────────────────────────────────────────────────
+// Compact sticky summary header (half height of original)
+// ─────────────────────────────────────────────────────────────────────────────
+class _CompactSummaryHeader extends StatelessWidget {
+  const _CompactSummaryHeader({
     required this.studentName,
     required this.segments,
     required this.highlight,
   });
 
   final String studentName;
-  final List<_OverviewSegment> segments;
-  final _OverviewSegment? highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12213A52),
-            blurRadius: 26,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final stacked = constraints.maxWidth < 360;
-          final donut = _DonutSummary(
-            segments: segments,
-            highlight: highlight,
-          );
-          final details = _SummaryDetails(
-            studentName: studentName,
-            segments: segments,
-          );
-
-          if (stacked) {
-            return Column(
-              children: [
-                donut,
-                const SizedBox(height: 18),
-                details,
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              donut,
-              const SizedBox(width: 18),
-              Expanded(child: details),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _DonutSummary extends StatelessWidget {
-  const _DonutSummary({required this.segments, required this.highlight});
-
   final List<_OverviewSegment> segments;
   final _OverviewSegment? highlight;
 
@@ -408,23 +383,23 @@ class _DonutSummary extends StatelessWidget {
           isReview: false,
         );
 
-    return SizedBox(
-      width: 152,
-      height: 152,
+    final donut = SizedBox(
+      width: 88,
+      height: 88,
       child: Stack(
         alignment: Alignment.center,
         children: [
           PieChart(
             PieChartData(
               sectionsSpace: 2,
-              centerSpaceRadius: 44,
+              centerSpaceRadius: 26,
               startDegreeOffset: 90,
               sections: segments
                   .map(
-                    (segment) => PieChartSectionData(
-                      color: segment.color,
-                      value: math.max(segment.percent, 0.01),
-                      radius: 20,
+                    (s) => PieChartSectionData(
+                      color: s.color,
+                      value: math.max(s.percent, 0.01),
+                      radius: 14,
                       title: '',
                     ),
                   )
@@ -437,21 +412,71 @@ class _DonutSummary extends StatelessWidget {
               Text(
                 '${supervisionFormatPercent(effectiveHighlight.percent)}%',
                 textDirection: TextDirection.ltr,
-                style: AppTypography.of(context).pageHeading.copyWith(
-                      color: const Color(0xFF151515),
-                      fontSize: 24,
-                    ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF151515),
+                ),
               ),
-              const SizedBox(height: 4),
               Text(
                 effectiveHighlight.label,
                 textDirection: TextDirection.rtl,
-                style: AppTypography.of(context).bodyDefault.copyWith(
-                      color: const Color(0xFF202020),
-                      fontSize: 13,
-                    ),
+                style: const TextStyle(
+                  fontSize: 9,
+                  color: Color(0xFF555555),
+                ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0E213A52),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        textDirection: TextDirection.rtl,
+        children: [
+          donut,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  studentName,
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.of(context).pageHeading.copyWith(
+                        color: const Color(0xFF151515),
+                        fontSize: 16,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: segments
+                      .map((seg) => _CompactPill(segment: seg))
+                      .toList(growable: false),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -459,81 +484,34 @@ class _DonutSummary extends StatelessWidget {
   }
 }
 
-class _SummaryDetails extends StatelessWidget {
-  const _SummaryDetails({required this.studentName, required this.segments});
-
-  final String studentName;
-  final List<_OverviewSegment> segments;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          studentName,
-          textDirection: TextDirection.rtl,
-          textAlign: TextAlign.right,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTypography.of(context).pageHeading.copyWith(
-                color: const Color(0xFF151515),
-                fontSize: 26,
-              ),
-        ),
-        const SizedBox(height: 18),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: segments.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            mainAxisExtent: 46,
-          ),
-          itemBuilder: (context, index) {
-            return _MetricPill(segment: segments[index]);
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({required this.segment});
+class _CompactPill extends StatelessWidget {
+  const _CompactPill({required this.segment});
 
   final _OverviewSegment segment;
 
-  /// Pick a legible text color based on the background luminance.
-  static Color _textColor(Color bg) {
-    return bg.computeLuminance() > 0.45
-        ? const Color(0xFF1E1E1E)
-        : Colors.white;
-  }
+  static Color _textColor(Color bg) =>
+      bg.computeLuminance() > 0.45
+          ? const Color(0xFF1A1A1A)
+          : Colors.white;
 
   @override
   Widget build(BuildContext context) {
     final textCol = _textColor(segment.color);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: segment.color,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 2),
+        borderRadius: BorderRadius.circular(30),
       ),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Text(
-        '${segment.label} (%${supervisionFormatPercent(segment.percent)})',
+        '${segment.label} ${supervisionFormatPercent(segment.percent)}%',
         textDirection: TextDirection.rtl,
-        textAlign: TextAlign.center,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppTypography.of(context).buttonSecondary.copyWith(
-              color: textCol,
-              fontSize: 12.5,
-            ),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: textCol,
+          height: 1.3,
+        ),
       ),
     );
   }
