@@ -520,33 +520,6 @@ class _MainScreenState extends State<MainScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      centeredSection(
-                        summaryMode
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Align(
-                                    alignment: AlignmentDirectional.centerStart,
-                                    child: eyebrow(
-                                      (widget.comesFirst
-                                              ? 'sahifa_screen_header_badge_first'
-                                              : 'sahifa_screen_header_badge_returning')
-                                          .tr,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  infoCard(
-                                    title: 'main_screen_gateway_badge'.tr,
-                                    body: 'sahifa_screen_header_body'.tr,
-                                  ),
-                                ],
-                              )
-                            : infoCard(
-                                title: 'main_screen_gateway_badge'.tr,
-                                body: activeViewLabel(),
-                              ),
-                      ),
-                      resumeCard(summaryStyle: summaryMode),
                       if (summaryMode && activeChartEntries.isNotEmpty)
                         centeredSection(
                           infoCard(

@@ -1212,7 +1212,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
           ),
         if (widget.available.subjectHierarchy.isNotEmpty)
           _hierarchicalSubjectSection()
-        else
+        else if (widget.available.subjects.isNotEmpty)
           _dimensionSection(
             title: _tr('quran_reading_filter_dim_subject'),
             chips: subjectEntries
@@ -1223,21 +1223,24 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                     ))
                 .toList(),
           ),
-        _schoolDimensionSection(),
-        _dimensionSection(
-          title: _tr('quran_reading_filter_dim_memorization'),
-          chips: _evaluationChips(
-            widget.available.memorizationEvaluations,
-            _draft.memoEvaluationIds,
+        if (widget.available.schoolGroups.isNotEmpty)
+          _schoolDimensionSection(),
+        if (widget.available.memorizationEvaluations.isNotEmpty)
+          _dimensionSection(
+            title: _tr('quran_reading_filter_dim_memorization'),
+            chips: _evaluationChips(
+              widget.available.memorizationEvaluations,
+              _draft.memoEvaluationIds,
+            ),
           ),
-        ),
-        _dimensionSection(
-          title: _tr('quran_reading_filter_dim_comprehension'),
-          chips: _evaluationChips(
-            widget.available.comprehensionEvaluations,
-            _draft.compreEvaluationIds,
+        if (widget.available.comprehensionEvaluations.isNotEmpty)
+          _dimensionSection(
+            title: _tr('quran_reading_filter_dim_comprehension'),
+            chips: _evaluationChips(
+              widget.available.comprehensionEvaluations,
+              _draft.compreEvaluationIds,
+            ),
           ),
-        ),
         if (_draft.activeDimensionCount > 0)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
@@ -122,33 +121,6 @@ class BarChartWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildDebugSourceBadge(BuildContext context) {
-    final source = evaluationsProvider.chartDataSource;
-    if (!kDebugMode || source == null || source.trim().isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final label = source.trim().toUpperCase();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8EEF6),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFBCD0E5)),
-      ),
-      child: Text(
-        'source: $label',
-        textDirection: TextDirection.ltr,
-        style: AppTypography.of(context).chartTooltip.copyWith(
-              color: const Color(0xFF284A6B),
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-              height: 1,
-            ),
-      ),
-    );
-  }
-
   Widget _buildStateCard(BuildContext context, String message) {
     return Container(
       width: double.infinity,
@@ -162,14 +134,6 @@ class BarChartWidget extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: _buildDebugSourceBadge(context),
-          ),
-          if (kDebugMode &&
-              evaluationsProvider.chartDataSource != null &&
-              evaluationsProvider.chartDataSource!.trim().isNotEmpty)
-            const SizedBox(height: 10),
           Text(
             message,
             textAlign: TextAlign.center,
@@ -227,14 +191,6 @@ class BarChartWidget extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: _buildDebugSourceBadge(context),
-              ),
-              if (kDebugMode &&
-                  evaluationsProvider.chartDataSource != null &&
-                  evaluationsProvider.chartDataSource!.trim().isNotEmpty)
-                SizedBox(height: isDesktop ? 14 : 10),
               for (final evaluation in visibleEntries) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,

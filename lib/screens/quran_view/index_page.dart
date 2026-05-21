@@ -41,6 +41,7 @@ import '../widgets/pending_sync_banner.dart';
 import '../widgets/quran_filter_runtime.dart';
 import '../widgets/teacher_recommendation_badge.dart';
 import '../widgets/unified_quran_filter_sheet.dart';
+import '../supervision_screen/supervision_metric_utils.dart';
 import '../../widgets/app_progress_overlay.dart';
 
 enum _ReadingNavigationMode { page, hizbQuarter }
@@ -1119,6 +1120,23 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
+    // Block recommendations for ayahs with a proficient (متمكن) evaluation.
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    final memoEvaluation = ayah.userEvaluation?.memoEvaluation ??
+        evaluationsProvider.findEvaluationById(ayah.userEvaluation?.memoId);
+    if (memoEvaluation != null &&
+        supervisionIsProficientEvaluation(<String, dynamic>{
+          'code': memoEvaluation.code,
+          'name': memoEvaluation.name,
+        })) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يمكن إرسال توصية لآية متمكنة.')),
+        );
+      }
+      return;
+    }
+
     _removeMenu();
 
     final confirmed = await _showRecommendationConfirmationDialog(
@@ -1992,24 +2010,34 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                           Expanded(
                             child: Row(
                               children: [
-                                Builder(
-                                  builder: (context) => _ReaderToolIcon(
-                                    icon: Icons.menu_rounded,
-                                    tooltip: _tr(
-                                      'quran_reading_menu_tooltip',
-                                    ),
+                                if (isSupervisorViewingStudent) ...[
+                                  _ReaderToolIcon(
+                                    icon: Icons.arrow_back_rounded,
+                                    tooltip: 'العودة',
                                     isDarkMode: isDarkMode,
-                                    onTap: () {
-                                      if ((Get.locale?.languageCode ?? 'ar') ==
-                                          'ar') {
-                                        Scaffold.of(context).openDrawer();
-                                      } else {
-                                        Scaffold.of(context).openEndDrawer();
-                                      }
-                                    },
+                                    onTap: () => Get.back(),
                                   ),
-                                ),
-                                const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
+                                ] else ...[
+                                  Builder(
+                                    builder: (context) => _ReaderToolIcon(
+                                      icon: Icons.menu_rounded,
+                                      tooltip: _tr(
+                                        'quran_reading_menu_tooltip',
+                                      ),
+                                      isDarkMode: isDarkMode,
+                                      onTap: () {
+                                        if ((Get.locale?.languageCode ?? 'ar') ==
+                                            'ar') {
+                                          Scaffold.of(context).openDrawer();
+                                        } else {
+                                          Scaffold.of(context).openEndDrawer();
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
                                 Flexible(
                                   child: _ReaderSurahPill(
                                     surahName: (_activeSurah ?? widget.surah)

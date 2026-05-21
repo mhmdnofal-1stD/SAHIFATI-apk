@@ -3,16 +3,26 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+import 'package:quran/quran.dart' as quran;
 
 import '../../controllers/ayat_controller.dart';
+import '../../controllers/filter_types.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/ayat.dart';
 import '../../models/evaluation.dart';
+import '../../models/surah.dart';
+import '../../models/user.dart';
 import '../../models/user_evaluation.dart';
+import '../../providers/evaluations_provider.dart';
+import '../../providers/users_provider.dart';
 import '../../services/evaluations_services.dart';
+import '../quran_view/index_page.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/surah_verse_chart.dart';
+import '../widgets/quran_filter_runtime.dart';
+import '../widgets/unified_quran_filter_sheet.dart';
 import 'supervision_metric_utils.dart';
 
 class SupervisionStudentOverviewScreen extends StatefulWidget {
@@ -34,13 +44,143 @@ class _SupervisionStudentOverviewScreenState
     extends State<SupervisionStudentOverviewScreen> {
   final EvaluationsServices _evaluationsServices = EvaluationsServices();
   final AyatController _ayatController = AyatController();
+  final QuranFilterAvailabilityBuilder _filterAvailabilityBuilder =
+      const QuranFilterAvailabilityBuilder();
   late Future<_StudentOverviewData> _future;
+  UnifiedFilterSelection _surahFilter = UnifiedFilterSelection.empty();
 
   @override
   void initState() {
     super.initState();
     _future = _load();
   }
+
+  Future<void> _showFilterSheet() async {
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+    
+    // Load evaluations if not already loaded
+    if (evaluationsProvider.evaluations.isEmpty) {
+      try {
+        await evaluationsProvider.getAllEvaluations();
+      } catch (_) {}
+    }
+    
+    // Build available filter data from evaluations
+    final availableData = await _filterAvailabilityBuilder.buildForDisplay(
+      memorizationEvaluations: evaluationsProvider.memorizationEvaluations,
+      comprehensionEvaluations: evaluationsProvider.comprehensionEvaluations,
+      onProgress: (_, __) {},
+    );
+    
+    if (!mounted) return;
+    
+    final result = await showUnifiedQuranFilterSheet(
+      context,
+      initial: _surahFilter,
+      available: availableData,
+    );
+    if (result != null && mounted) {
+      setState(() => _surahFilter = result);
+    }
+  }
+
+  void _openStudentJournal(BuildContext context) {
+    final usersProvider = context.read<UsersProvider>();
+    usersProvider.pushSelectedUser(
+      User(id: widget.studentId, username: widget.studentName),
+    );
+    Get.toNamed(
+      IndexPage.routeName,
+      parameters: IndexPage.routeParameters(
+        surah: const Surah(id: 1, nameAr: 'الفاتحة', ayahCount: 7),
+        filterTypeId: FilterTypes.thirds,
+      ),
+    )?.then((_) {
+      if (mounted) usersProvider.popSelectedUser();
+    });
+  }
+
+  bool _surahMatchesFilter(_SurahProgressCardData surahCard) {
+    if (_surahFilter.isEmpty) return true;
+    
+    // Check thirds
+    if (_surahFilter.thirds.isNotEmpty) {
+      if (!_surahFilter.thirds.contains(_surahThird(surahCard.surahId))) {
+        return false;
+      }
+    }
+    
+    // Check revelation types
+    if (_surahFilter.ayahTypes.isNotEmpty) {
+      final revType =
+          _madaniSurahs.contains(surahCard.surahId) ? 'madani' : 'makki';
+      if (!_surahFilter.ayahTypes.contains(revType)) return false;
+    }
+    
+    // Note: Memorization and comprehension evaluation filters are applied
+    // at the verse level in _computeFilteredSegments(), not at the surah level,
+    // since individual verses may have different evaluations.
+    
+    return true;
+  }
+
+  /// Recomputes segments from a filtered subset of surah cards so the
+  /// donut chart always reflects the currently visible surahs.
+  List<_OverviewSegment> _computeFilteredSegments(
+    _StudentOverviewData data,
+    List<_SurahProgressCardData> filteredCards,
+  ) {
+    if (_surahFilter.isEmpty) return data.segments;
+
+    final charByLabel = <String, int>{};
+    var totalChars = 0;
+    for (final card in filteredCards) {
+      for (final entry in card.verseEntries) {
+        if (entry.evaluationLabel == 'غير مصنف') continue;
+        final c = entry.letterCount > 0 ? entry.letterCount : 1;
+        charByLabel[entry.evaluationLabel] =
+            (charByLabel[entry.evaluationLabel] ?? 0) + c;
+        totalChars += c;
+      }
+    }
+    if (totalChars == 0) return [];
+
+    final result = <_OverviewSegment>[];
+    for (final seg in data.segments) {
+      final count = charByLabel[seg.label] ?? 0;
+      if (count == 0) continue;
+      result.add(_OverviewSegment(
+        label: seg.label,
+        percent: (count * 100.0) / totalChars,
+        verseCount: count,
+        color: seg.color,
+        priority: seg.priority,
+        isProficient: seg.isProficient,
+        isReview: seg.isReview,
+      ));
+    }
+    return result
+      ..sort((a, b) {
+        final p = a.priority.compareTo(b.priority);
+        return p != 0 ? p : b.percent.compareTo(a.percent);
+      });
+  }
+
+  static int _surahThird(int surahId) {
+    try {
+      final page = quran.getPageNumber(surahId, 1);
+      if (page <= 201) return 1;
+      if (page <= 402) return 2;
+      return 3;
+    } catch (_) {
+      return 1;
+    }
+  }
+
+  static const Set<int> _madaniSurahs = {
+    2, 3, 4, 5, 8, 9, 13, 22, 24, 33, 47, 48, 49, 55, 57, 58, 59, 60, 61,
+    62, 63, 64, 65, 66, 76, 98, 99, 110,
+  };
 
   Future<void> _reload() async {
     setState(() {
@@ -255,6 +395,15 @@ class _SupervisionStudentOverviewScreenState
                 color: Color(0xFF161616),
               ),
             ),
+            title: Text(
+              widget.studentName,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF151515),
+              ),
+            ),
+            centerTitle: true,
             actions: [
               Builder(
                 builder: (ctx) => IconButton(
@@ -297,6 +446,22 @@ class _SupervisionStudentOverviewScreenState
             }
 
             final data = snapshot.data!;
+            final filteredSurahCards =
+                data.surahCards.where(_surahMatchesFilter).toList();
+            final filteredSegments =
+                _computeFilteredSegments(data, filteredSurahCards);
+            final filteredHighlight = filteredSegments.firstWhere(
+              (s) => s.isProficient,
+              orElse: () =>
+                  filteredSegments.isNotEmpty ? filteredSegments.first : data.segments.firstWhere(
+                    (s) => s.isProficient,
+                    orElse: () => data.segments.isNotEmpty ? data.segments.first : const _OverviewSegment(
+                      label: 'متمكن', percent: 0, verseCount: 0,
+                      color: Color(0xFF4FD99A), priority: 0,
+                      isProficient: true, isReview: false,
+                    ),
+                  ),
+            );
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -306,13 +471,13 @@ class _SupervisionStudentOverviewScreenState
                   elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: data.segments.isEmpty
-                        ? _OverviewEmptyState(studentName: widget.studentName)
-                        : _CompactSummaryHeader(
-                            studentName: widget.studentName,
-                            segments: data.segments,
-                            highlight: data.highlight,
-                          ),
+                    child: _CompactSummaryHeader(
+                      segments: filteredSegments,
+                      highlight: filteredHighlight,
+                      hasActiveFilter: !_surahFilter.isEmpty,
+                      onFilterTap: () => _showFilterSheet(),
+                      onJournalTap: () => _openStudentJournal(context),
+                    ),
                   ),
                 ),
                 // ── Scrollable surah list ─────────────────────────────
@@ -334,10 +499,10 @@ class _SupervisionStudentOverviewScreenState
                                   ),
                         ),
                         const SizedBox(height: 12),
-                        if (data.surahCards.isEmpty)
+                        if (filteredSurahCards.isEmpty)
                           const _SurahListEmptyState()
                         else
-                          ...data.surahCards.map(
+                          ...filteredSurahCards.map(
                             (surah) => Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: _SurahProgressCard(data: surah),
@@ -357,18 +522,22 @@ class _SupervisionStudentOverviewScreenState
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Compact sticky summary header (half height of original)
+// Compact sticky summary header
 // ─────────────────────────────────────────────────────────────────────────────
 class _CompactSummaryHeader extends StatelessWidget {
   const _CompactSummaryHeader({
-    required this.studentName,
     required this.segments,
     required this.highlight,
+    required this.hasActiveFilter,
+    required this.onFilterTap,
+    required this.onJournalTap,
   });
 
-  final String studentName;
   final List<_OverviewSegment> segments;
   final _OverviewSegment? highlight;
+  final bool hasActiveFilter;
+  final VoidCallback onFilterTap;
+  final VoidCallback onJournalTap;
 
   @override
   Widget build(BuildContext context) {
@@ -384,26 +553,35 @@ class _CompactSummaryHeader extends StatelessWidget {
         );
 
     final donut = SizedBox(
-      width: 88,
-      height: 88,
+      width: 68,
+      height: 68,
       child: Stack(
         alignment: Alignment.center,
         children: [
           PieChart(
             PieChartData(
               sectionsSpace: 2,
-              centerSpaceRadius: 26,
+              centerSpaceRadius: 20,
               startDegreeOffset: 90,
-              sections: segments
-                  .map(
-                    (s) => PieChartSectionData(
-                      color: s.color,
-                      value: math.max(s.percent, 0.01),
-                      radius: 14,
-                      title: '',
-                    ),
-                  )
-                  .toList(growable: false),
+              sections: segments.isEmpty
+                  ? [
+                      PieChartSectionData(
+                        color: const Color(0xFFE5E5E5),
+                        value: 1,
+                        radius: 14,
+                        title: '',
+                      ),
+                    ]
+                  : segments
+                      .map(
+                        (s) => PieChartSectionData(
+                          color: s.color,
+                          value: math.max(s.percent, 0.01),
+                          radius: 14,
+                          title: '',
+                        ),
+                      )
+                      .toList(growable: false),
             ),
           ),
           Column(
@@ -433,7 +611,7 @@ class _CompactSummaryHeader extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -449,24 +627,15 @@ class _CompactSummaryHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         textDirection: TextDirection.rtl,
         children: [
+          // ── Donut chart ──────────────────────────────────────────────
           donut,
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
+          // ── Pills + action buttons ───────────────────────────────────
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  studentName,
-                  textDirection: TextDirection.rtl,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.of(context).pageHeading.copyWith(
-                        color: const Color(0xFF151515),
-                        fontSize: 16,
-                      ),
-                ),
-                const SizedBox(height: 8),
                 Wrap(
                   alignment: WrapAlignment.end,
                   spacing: 6,
@@ -474,6 +643,86 @@ class _CompactSummaryHeader extends StatelessWidget {
                   children: segments
                       .map((seg) => _CompactPill(segment: seg))
                       .toList(growable: false),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  textDirection: TextDirection.rtl,
+                  children: [
+                    // Filter button
+                    InkWell(
+                      onTap: onFilterTap,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: hasActiveFilter
+                              ? AppColors.primaryPurple.withOpacity(0.1)
+                              : const Color(0xFFF5F2EE),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 14,
+                              color: hasActiveFilter
+                                  ? AppColors.primaryPurple
+                                  : const Color(0xFF555555),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              hasActiveFilter ? 'تصفية (نشط)' : 'تصفية',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: hasActiveFilter
+                                    ? AppColors.primaryPurple
+                                    : const Color(0xFF555555),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    // صحيفة الطالب button
+                    InkWell(
+                      onTap: onJournalTap,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryPurple,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.menu_book_rounded,
+                                size: 14, color: Colors.white),
+                            SizedBox(width: 5),
+                            Text(
+                              'صحيفة الطالب',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -672,58 +921,13 @@ class _OverviewErrorState extends StatelessWidget {
   }
 }
 
-class _OverviewEmptyState extends StatelessWidget {
-  const _OverviewEmptyState({required this.studentName});
-
-  final String studentName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: const Color(0xFFE6E0D6)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            studentName,
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.center,
-            style: AppTypography.of(context).pageHeading.copyWith(
-                  color: const Color(0xFF151515),
-                  fontSize: 24,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'لا توجد بيانات تقييم محفوظة لهذا الطالب حتى الآن.',
-            textDirection: TextDirection.rtl,
-            textAlign: TextAlign.center,
-            style: AppTypography.of(context).bodySecondary.copyWith(
-                  color: const Color(0xFF6B7280),
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SurahListEmptyState extends StatelessWidget {
   const _SurahListEmptyState();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE6E0D6)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Text(
         'لم يتم تقييم أي سورة لهذا الطالب بعد.',
         textDirection: TextDirection.rtl,

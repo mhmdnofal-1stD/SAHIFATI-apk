@@ -10,7 +10,6 @@ import '../../core/typography/app_typography.dart';
 import '../../providers/general_provider.dart';
 import '../../providers/users_provider.dart';
 import '../widgets/custom_back_button.dart';
-import 'manage_children_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_of_service_screen.dart';
 
@@ -146,34 +145,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               const Divider(),
-              Consumer<UsersProvider>(
-                builder: (context, usersProvider, _) {
-                  final user = usersProvider.activeAccountUser;
-                  if (user != null && !user.isChildAccount) {
-                    return Column(
-                      children: [
-                        ListTile(
-                          leading: const Icon(
-                            Icons.family_restroom_rounded,
-                            color: AppColors.primaryPurple,
-                          ),
-                          title: Text(
-                            'child_manage_settings_entry'.tr,
-                            style: AppTypography.of(context).listTileTitle,
-                          ),
-                          trailing:
-                              const Icon(Icons.arrow_forward_ios, size: 16),
-                          onTap: () {
-                            Get.to(() => const ManageChildrenScreen());
-                          },
-                        ),
-                        const Divider(),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
               ListTile(
                 leading: const Icon(Icons.delete_forever, color: Colors.red),
                 title: Text(

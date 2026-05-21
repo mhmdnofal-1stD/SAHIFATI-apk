@@ -8,6 +8,7 @@ import '../../providers/school_provider.dart';
 import '../../providers/users_provider.dart';
 import '../cards_screen/cards_list_screen.dart';
 import '../questions_screen/questions_screen.dart';
+import '../settings_screen/manage_children_screen.dart';
 import '../settings_screen/settings_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
@@ -207,6 +208,23 @@ class GlobalDrawer extends StatelessWidget {
                       text: 'drawer_my_licenses'.tr,
                       icon: Icons.verified_outlined,
                     ),
+                  ),
+                  Consumer<UsersProvider>(
+                    builder: (context, usersProvider, _) {
+                      final user = usersProvider.activeAccountUser;
+                      if (user == null || user.isChildAccount) {
+                        return const SizedBox.shrink();
+                      }
+                      return ListTile(
+                        contentPadding:
+                            const EdgeInsetsDirectional.only(start: 56, end: 16),
+                        onTap: () => Get.to(() => const ManageChildrenScreen()),
+                        title: _buildDrawerTitle(
+                          text: 'child_manage_settings_entry'.tr,
+                          icon: Icons.family_restroom_rounded,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
