@@ -985,6 +985,11 @@ class UsersProvider with ChangeNotifier {
 
   bool get hasKnownLicenseState => normalizedLicenseStatus != null;
 
+  // License expiry fields — populated by ensureLicenseStateLoaded
+  DateTime? licenseExpiresAt;
+  int? licenseDaysRemaining;
+  String? licenseSource;
+
   bool get canProceedWithoutFreshLicenseCheck {
     return selectedUser != null && (!hasKnownLicenseState || hasActiveLicense);
   }
@@ -1004,6 +1009,16 @@ class UsersProvider with ChangeNotifier {
     try {
       final licenseState = await _usersService.getLicenseState();
       selectedUser?.licenseStatus = licenseState['licenseStatus'] as String?;
+      // Extract expiry info from the enriched response
+      final expiresAtRaw = licenseState['expiresAt'];
+      if (expiresAtRaw is String) {
+        licenseExpiresAt = DateTime.tryParse(expiresAtRaw)?.toLocal();
+      } else {
+        licenseExpiresAt = null;
+      }
+      final daysRaw = licenseState['daysRemaining'];
+      licenseDaysRemaining = daysRaw is int ? daysRaw : (daysRaw is num ? daysRaw.toInt() : null);
+      licenseSource = licenseState['source'] as String?;
       if (selectedUser != null) {
         await _setActiveUserSnapshot(selectedUser!);
       }

@@ -56,6 +56,7 @@ class OfflineAssessmentStore {
     static const String _teacherRecommendationsKeyPrefix =
       'offline.teacher_recommendations.';
   static const String _schoolsKey = 'offline.schools_catalog';
+  static const String _publicSchoolsKey = 'offline.public_schools';
   static const String _subjectsHierarchyKey = 'offline.subjects_hierarchy';
   static const String _cardsKeyPrefix = 'offline.cards.';
   static const String _cardKeyPrefix = 'offline.card.';
@@ -75,6 +76,16 @@ class OfflineAssessmentStore {
   Future<String?> getCachedQuickQuestionsSchoolJson() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_quickQuestionsSchoolKey);
+  }
+
+  Future<void> cachePublicSchoolsJson(String rawJson) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_publicSchoolsKey, rawJson);
+  }
+
+  Future<String?> getCachedPublicSchoolsJson() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_publicSchoolsKey);
   }
 
   Future<void> cacheEvaluationsJson(String rawJson, {String? type}) async {

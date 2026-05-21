@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:sahifaty/core/reading/reading_session.dart';
-import 'package:sahifaty/screens/main_screen/main_screen.dart';
 import 'package:sahifaty/screens/quran_view/index_page.dart';
+import 'package:sahifaty/screens/user_overview_screen/user_overview_screen.dart';
 
 typedef LoginRouteReplacer = void Function(
   String routeName, {
@@ -28,6 +28,7 @@ void _replaceWithReadingSession(ReadingSession session) {
 
 Future<void> navigateAfterSuccessfulLogin({
   required int userId,
+  // isFirstLogin is kept for API compatibility but no longer changes routing
   required bool isFirstLogin,
   required bool hasActiveLicense,
   required Future<void> Function(int userId) loadChartData,
@@ -44,21 +45,13 @@ Future<void> navigateAfterSuccessfulLogin({
     return;
   }
 
-  if (!isFirstLogin) {
-    final pendingReadingSession =
-        await sessionStore.consumePendingAutoResumeForUser(userId);
-    if (pendingReadingSession != null) {
-      resume(pendingReadingSession);
-      return;
-    }
-
-    await loadChartData(userId);
-    replace(
-      MainScreen.routeName,
-      parameters: const {'comesFirst': 'false'},
-    );
+  final pendingReadingSession =
+      await sessionStore.consumePendingAutoResumeForUser(userId);
+  if (pendingReadingSession != null) {
+    resume(pendingReadingSession);
     return;
   }
 
-  replace('/welcome');
+  await loadChartData(userId);
+  replace(UserOverviewScreen.routeName);
 }

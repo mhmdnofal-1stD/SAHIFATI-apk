@@ -565,6 +565,44 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
                         ),
                       ),
                       const SizedBox(height: 20),
+                      // Expired license banner
+                      if (!usersProvider.hasActiveLicense &&
+                          usersProvider.licenseExpiresAt != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.red.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cancel_outlined,
+                                color: Colors.red.shade700,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'license_hub_expired_banner'.tr,
+                                  textDirection: TextDirection.rtl,
+                                  style: AppTypography.of(context)
+                                      .bodyDefault
+                                      .copyWith(
+                                        color: Colors.red.shade700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       if (_purchaseNotice != null) ...[
                         _buildPurchaseNotice(),
                         const SizedBox(height: 12),

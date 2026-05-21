@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/models/school.dart';
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/school_level_content.dart';
 import '../../providers/evaluations_provider.dart';
@@ -23,6 +24,7 @@ class QuestionsScreen extends StatefulWidget {
 }
 
 class _QuestionsScreenState extends State<QuestionsScreen> {
+  int selectedSchoolIndex = 0;
   int selectedIndex = 0;
   final ScrollController _scrollController = ScrollController();
   bool _isTransitioningLevel = false;
@@ -75,10 +77,33 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
 
   List<SchoolLevel> _readLevels(SchoolProvider schoolProvider) {
     try {
-      return schoolProvider.quickQuestionsSchool.levels;
+      final schools = schoolProvider.schools;
+      if (schools.isEmpty) return const [];
+      if (selectedSchoolIndex >= schools.length) return const [];
+      return schools[selectedSchoolIndex].levels;
     } catch (_) {
       return const [];
     }
+  }
+
+  Future<void> _changeSchool(int nextSchoolIndex) async {
+    if (_isBusy) return;
+    final schoolProvider = context.read<SchoolProvider>();
+    final schools = schoolProvider.schools;
+    if (nextSchoolIndex < 0 || nextSchoolIndex >= schools.length) return;
+    setState(() {
+      selectedSchoolIndex = nextSchoolIndex;
+      selectedIndex = 0;
+      _levelLoadError = null;
+    });
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
+    await _preloadSelectedLevel();
   }
 
   String _cleanError(Object error) {
@@ -216,6 +241,7 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   Widget build(BuildContext context) {
     final schoolProvider = context.watch<SchoolProvider>();
     final evaluationsProvider = context.watch<EvaluationsProvider>();
+    final allSchools = schoolProvider.schools;
     final levels = _readLevels(schoolProvider);
     final isSchoolReady = levels.isNotEmpty;
     final currentLevel = isSchoolReady ? levels[selectedIndex] : null;
@@ -307,6 +333,13 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
                     )
                   : Column(
                       children: [
+                        if (allSchools.length > 1)
+                          _SchoolTabsRow(
+                            schools: allSchools,
+                            selectedIndex: selectedSchoolIndex,
+                            onTap: _changeSchool,
+                            isArabicUi: _isArabicUi,
+                          ),
                         _QuestionsHeader(
                           isArabicUi: _isArabicUi,
                           currentLevelNumber: selectedIndex + 1,
@@ -853,6 +886,65 @@ class _QuestionsEmptyState extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SchoolTabsRow extends StatelessWidget {
+  const _SchoolTabsRow({
+    required this.schools,
+    required this.selectedIndex,
+    required this.onTap,
+    required this.isArabicUi,
+  });
+
+  final List<School> schools;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final bool isArabicUi;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        itemCount: schools.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final isSelected = i == selectedIndex;
+          final school = schools[i];
+          final label = (school.schoolName[isArabicUi ? 'ar' : 'en'] ??
+              school.schoolName['ar'] ??
+              school.schoolName['en'] ??
+              '') as String;
+          return GestureDetector(
+            onTap: () => onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.buttonColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.buttonColor
+                      : AppColors.buttonColor.withAlpha(80),
+                ),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  color: isSelected ? Colors.white : AppColors.buttonColor,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

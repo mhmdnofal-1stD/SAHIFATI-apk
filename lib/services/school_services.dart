@@ -48,6 +48,46 @@ class SchoolServices {
     return _fetchAllSchools();
   }
 
+  /// Returns all schools that are visible to users (isVisible !== false at both
+  /// school level and level level). Falls back to cache if network fails.
+  Future<List<School>> getPublicSchools({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cached = await _loadCachedPublicSchools();
+      if (cached.isNotEmpty) {
+        unawaited(_refreshPublicSchoolsInBackground());
+        return cached;
+      }
+    }
+    return _fetchPublicSchools();
+  }
+
+  Future<List<School>> _fetchPublicSchools() async {
+    try {
+      final http.Response res = await _sahifatyApi.get('schools/public');
+      if (res.statusCode != 200) {
+        throw Exception('service_school_load_failed'.tr);
+      }
+      await _offlineStore.cachePublicSchoolsJson(res.body);
+      return _parseSchools(res.body);
+    } catch (ex) {
+      final cached = await _loadCachedPublicSchools();
+      if (cached.isNotEmpty) return cached;
+      rethrow;
+    }
+  }
+
+  Future<void> _refreshPublicSchoolsInBackground() async {
+    try {
+      await _fetchPublicSchools();
+    } catch (_) {}
+  }
+
+  Future<List<School>> _loadCachedPublicSchools() async {
+    final cachedJson = await _offlineStore.getCachedPublicSchoolsJson();
+    if (cachedJson == null || cachedJson.isEmpty) return const [];
+    return _parseSchools(cachedJson);
+  }
+
   Future<List<School>> _fetchAllSchools() async {
     try {
       final http.Response res = await _sahifatyApi.get('schools');

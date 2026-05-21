@@ -38,6 +38,7 @@ import 'screens/cards_screen/cards_list_screen.dart';
 import 'screens/main_screen/main_screen.dart';
 import 'screens/quran_view/index_page.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
+import 'screens/user_overview_screen/user_overview_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
 import 'screens/supervision_screen/incoming_requests_screen.dart';
 import 'screens/settings_screen/my_licenses_screen.dart';
@@ -261,6 +262,12 @@ class MyApp extends StatelessWidget {
           name: '/welcome',
           page: () => const AuthenticatedRouteGate(
             child: WelcomeScreen(),
+          ),
+        ),
+        GetPage(
+          name: UserOverviewScreen.routeName,
+          page: () => const AuthenticatedRouteGate(
+            child: UserOverviewScreen(),
           ),
         ),
         GetPage(

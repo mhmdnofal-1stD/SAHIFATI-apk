@@ -394,6 +394,91 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
     }
   }
 
+  Widget _buildLicenseExpiryCard(BuildContext context, UsersProvider usersProvider) {
+    final expiresAt = usersProvider.licenseExpiresAt!;
+    final days = usersProvider.licenseDaysRemaining ?? 0;
+    final isExpiringSoon = days <= 30;
+    final isExpired = days <= 0;
+    final accentColor = isExpired
+        ? Colors.red.shade700
+        : isExpiringSoon
+            ? Colors.orange.shade700
+            : AppColors.successColor;
+    final bgColor = isExpired
+        ? Colors.red.shade50
+        : isExpiringSoon
+            ? Colors.orange.shade50
+            : const Color(0xFFF0FFF4);
+
+    // Format date as dd/MM/yyyy
+    final formattedDate =
+        '${expiresAt.day.toString().padLeft(2, '0')}/${expiresAt.month.toString().padLeft(2, '0')}/${expiresAt.year}';
+
+    String subtitle;
+    if (isExpired) {
+      subtitle = 'license_hub_expired_banner'.tr;
+    } else if (days == 1) {
+      subtitle = 'license_hub_days_remaining_one'.tr;
+    } else if (isExpiringSoon) {
+      subtitle = 'license_hub_expiry_warning'.trParams({'days': days.toString()});
+    } else {
+      subtitle = 'license_hub_days_remaining'.trParams({'days': days.toString()});
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accentColor.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isExpired
+                ? Icons.cancel_outlined
+                : isExpiringSoon
+                    ? Icons.warning_amber_rounded
+                    : Icons.verified_outlined,
+            color: accentColor,
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'license_hub_expiry_label'.tr,
+                  textDirection: _textDirection,
+                  style: AppTypography.of(context)
+                      .bodySmall
+                      .copyWith(color: AppColors.hintTextColor, fontSize: 11),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formattedDate,
+                  textDirection: TextDirection.ltr,
+                  style: AppTypography.of(context)
+                      .bodySmall
+                      .copyWith(color: accentColor, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  textDirection: _textDirection,
+                  style: AppTypography.of(context)
+                      .bodySmall
+                      .copyWith(color: accentColor, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSummaryTile({
     required String label,
     required String value,
@@ -729,6 +814,12 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
                           .copyWith(color: AppColors.blackFontColor),
                     ),
                   ),
+                ],
+                // Show license expiry info when active
+                if (licenseStatus == 'active' &&
+                    usersProvider.licenseExpiresAt != null) ...[
+                  const SizedBox(height: 12),
+                  _buildLicenseExpiryCard(context, usersProvider),
                 ],
                 if (usersProvider.promoWorkspaceError != null) ...[
                   const SizedBox(height: 12),
