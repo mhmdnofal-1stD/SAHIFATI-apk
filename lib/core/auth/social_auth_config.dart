@@ -47,7 +47,7 @@ class SocialAuthConfig {
   static bool get isHuaweiConfiguredForCurrentPlatform {
     if (kIsWeb) return false;
     if (defaultTargetPlatform != TargetPlatform.android) return false;
-    return true;
+    return huaweiAppId.isNotEmpty;
   }
 
   static String? get googleClientIdOrNull =>

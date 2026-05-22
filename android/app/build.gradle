@@ -12,7 +12,7 @@ keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 android {
     namespace "org.sahifati.app"
-    compileSdk flutter.compileSdkVersion
+    compileSdk 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -27,7 +27,7 @@ android {
     defaultConfig {
         applicationId "org.sahifati.app"
         minSdkVersion flutter.minSdkVersion
-        targetSdkVersion flutter.targetSdkVersion
+        targetSdkVersion 36
         versionCode flutter.versionCode
         versionName flutter.versionName
         resConfigs "ar", "en"
