@@ -25,6 +25,9 @@ import '../widgets/ayah_preview_block.dart';
 import '../widgets/assessment_input_dialog.dart';
 import '../widgets/custom_text.dart';
 import '../widgets/teacher_recommendation_badge.dart';
+import '../widgets/surah_verse_chart.dart';
+import '../widgets/verse_picker_sheet.dart';
+import '../supervision_screen/supervision_metric_utils.dart';
 
 class ContentItemCard extends StatefulWidget {
   final SchoolLevelContent content;
@@ -432,6 +435,98 @@ class _ContentItemCardState extends State<ContentItemCard> {
       setState(() {
         isEvaluating = false;
       });
+    }
+  }
+
+  Future<void> _openVersePickerEvaluation(
+      BuildContext context, LanguageProvider languageProvider) async {
+    if (widget.content.type == 'juz' && widget.content.juz != null) {
+      _showJuzBreakdown(context, widget.content.juz!, languageProvider);
+      return;
+    }
+
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
+    setState(() => isEvaluating = true);
+    List<Ayat> ayahs;
+    try {
+      ayahs = await _fetchAyahs(withEvaluations: true);
+    } finally {
+      if (mounted) setState(() => isEvaluating = false);
+    }
+
+    if (!context.mounted) return;
+
+    if (ayahs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('no_verses_found_to_evaluate'.tr)),
+      );
+      return;
+    }
+
+    // Build VerseChartEntry list from fetched ayahs
+    final entries = ayahs.where((a) => a.id != null).map((a) {
+      final memoEvaluation = a.userEvaluation?.memoEvaluation ??
+          evaluationsProvider.findEvaluationById(a.userEvaluation?.memoId);
+      final evalMap = memoEvaluation?.toMap();
+      return VerseChartEntry(
+        ayahId: a.id!,
+        ayahNumber: a.ayahNo ?? 0,
+        letterCount: a.letterCount ?? 0,
+        score: evalMap != null ? supervisionEvaluationScore(evalMap) : 0.0,
+        color: evalMap != null
+            ? supervisionResolveEvaluationColor(evalMap)
+            : const Color(0xFFCBCED4),
+        evaluationLabel: evalMap != null
+            ? (memoEvaluation!.name['ar'] ??
+                memoEvaluation.name.values.firstOrNull ??
+                'غير مصنف')
+            : 'غير مصنف',
+        text: a.text ?? '',
+      );
+    }).toList();
+
+    if (!context.mounted) return;
+
+    final title = _contentHeadline();
+    final selectedIds = await showVersePickerSheet(
+      context: context,
+      sheetTitle: title,
+      verseEntries: entries,
+    );
+
+    if (selectedIds == null || selectedIds.isEmpty || !context.mounted) return;
+
+    final selectedAyahs = ayahs
+        .where((a) => a.id != null && selectedIds.contains(a.id))
+        .toList();
+    if (selectedAyahs.isEmpty) return;
+
+    final selection = await _openAssessmentDialog(
+      context,
+      languageProvider,
+      title: 'تقييم ${selectedAyahs.length} آية من $title',
+    );
+
+    if (selection == null || !context.mounted) return;
+
+    setState(() => isEvaluating = true);
+    try {
+      await _applyBulkAssessment(
+        ayahs: selectedAyahs,
+        evaluationsProvider: evaluationsProvider,
+        selection: selection,
+        unitLabel: unitName,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'error_during_evaluation'.trParams({'error': e.toString()}))),
+      );
+    } finally {
+      if (mounted) setState(() => isEvaluating = false);
     }
   }
 
@@ -1231,37 +1326,39 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 Expanded(
                   child: _buildActionButton(
                     onPressed: canInteract
-                        ? () => _showIndividualEvaluation(
+                        ? () => _openVersePickerEvaluation(
                             context, languageProvider)
                         : null,
                     title: _shortReviewLabel,
-                    icon: Icons.menu_book_rounded,
+                    icon: Icons.touch_app_rounded,
                     outlined: true,
                   ),
                 ),
               ],
             );
 
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: 7, child: titleRow),
-                const SizedBox(width: 8),
-                Flexible(flex: 3, child: statusBadge),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 8,
-                  child: isEvaluating
-                      ? const Align(
-                          alignment: Alignment.center,
-                          child: SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
-                          ),
-                        )
-                      : actions,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(flex: 7, child: titleRow),
+                    const SizedBox(width: 8),
+                    Flexible(flex: 3, child: statusBadge),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                isEvaluating
+                    ? const Align(
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      )
+                    : actions,
               ],
             );
           },

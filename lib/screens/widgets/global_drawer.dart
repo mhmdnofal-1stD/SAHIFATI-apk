@@ -13,6 +13,7 @@ import '../settings_screen/settings_screen.dart';
 import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
 import '../supervision_screen/incoming_requests_screen.dart';
+import '../user_overview_screen/user_overview_screen.dart';
 import '../welcome_screen/welcome_screen.dart';
 import '../main_screen/main_screen.dart';
 import '../../services/teacher_supervisions_services.dart';
@@ -137,7 +138,7 @@ class GlobalDrawer extends StatelessWidget {
             children: [
               ListTile(
                 onTap: () {
-                  Get.offAllNamed(WelcomeScreen.routeName);
+                  Get.offAllNamed(UserOverviewScreen.routeName);
                 },
                 title: _buildDrawerTitle(
                   text: 'drawer_home'.tr,

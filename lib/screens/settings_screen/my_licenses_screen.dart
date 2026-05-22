@@ -394,6 +394,32 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
     }
   }
 
+  Widget _buildNoExpiryNotice(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FFF4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.successColor.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.verified_outlined, color: AppColors.successColor, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'license_hub_no_expiry_note'.tr,
+              textDirection: _textDirection,
+              style: AppTypography.of(context)
+                  .bodySmall
+                  .copyWith(color: AppColors.blackFontColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLicenseExpiryCard(BuildContext context, UsersProvider usersProvider) {
     final expiresAt = usersProvider.licenseExpiresAt!;
     final days = usersProvider.licenseDaysRemaining ?? 0;
@@ -816,10 +842,11 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
                   ),
                 ],
                 // Show license expiry info when active
-                if (licenseStatus == 'active' &&
-                    usersProvider.licenseExpiresAt != null) ...[
+                if (licenseStatus == 'active') ...[
                   const SizedBox(height: 12),
-                  _buildLicenseExpiryCard(context, usersProvider),
+                  usersProvider.licenseExpiresAt != null
+                      ? _buildLicenseExpiryCard(context, usersProvider)
+                      : _buildNoExpiryNotice(context),
                 ],
                 if (usersProvider.promoWorkspaceError != null) ...[
                   const SizedBox(height: 12),

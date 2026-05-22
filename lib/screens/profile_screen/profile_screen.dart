@@ -253,6 +253,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _ProfileIdentityHeader(
                       username: user?.username ?? user?.email ?? '',
                       email: user?.email ?? '',
+                      licenseStatus: usersProvider.selectedUser?.licenseStatus,
+                      licenseGrantedAt: usersProvider.licenseGrantedAt,
                     ),
                     const SizedBox(height: 18),
                     if (!isViewingStudent) ...[
@@ -308,10 +310,14 @@ class _ProfileIdentityHeader extends StatelessWidget {
   const _ProfileIdentityHeader({
     required this.username,
     required this.email,
+    this.licenseStatus,
+    this.licenseGrantedAt,
   });
 
   final String username;
   final String email;
+  final String? licenseStatus;
+  final DateTime? licenseGrantedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +372,29 @@ class _ProfileIdentityHeader extends StatelessWidget {
                       .bodySecondary
                       .copyWith(color: Colors.white.withValues(alpha: 0.78)),
                 ),
+                if (licenseStatus == 'active') ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.verified_rounded,
+                        color: Colors.white.withValues(alpha: 0.88),
+                        size: 13,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        licenseGrantedAt != null
+                            ? '${'license_granted_at_label'.tr}: ${licenseGrantedAt!.day.toString().padLeft(2, '0')}/${licenseGrantedAt!.month.toString().padLeft(2, '0')}/${licenseGrantedAt!.year}'
+                            : 'license_hub_status_active'.tr,
+                        textDirection: TextDirection.rtl,
+                        style: AppTypography.of(context).bodySmall.copyWith(
+                              color: Colors.white.withValues(alpha: 0.78),
+                              fontSize: 11,
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

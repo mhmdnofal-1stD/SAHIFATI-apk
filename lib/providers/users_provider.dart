@@ -987,6 +987,7 @@ class UsersProvider with ChangeNotifier {
 
   // License expiry fields — populated by ensureLicenseStateLoaded
   DateTime? licenseExpiresAt;
+  DateTime? licenseGrantedAt;
   int? licenseDaysRemaining;
   String? licenseSource;
 
@@ -999,7 +1000,9 @@ class UsersProvider with ChangeNotifier {
       return;
     }
 
-    if (!forceRefresh && selectedUser?.licenseStatus != null) {
+    if (!forceRefresh &&
+        selectedUser?.licenseStatus != null &&
+        (selectedUser?.licenseStatus != 'active' || licenseExpiresAt != null)) {
       return;
     }
 
@@ -1019,6 +1022,12 @@ class UsersProvider with ChangeNotifier {
       final daysRaw = licenseState['daysRemaining'];
       licenseDaysRemaining = daysRaw is int ? daysRaw : (daysRaw is num ? daysRaw.toInt() : null);
       licenseSource = licenseState['source'] as String?;
+      final grantedAtRaw = licenseState['grantedAt'];
+      if (grantedAtRaw is String) {
+        licenseGrantedAt = DateTime.tryParse(grantedAtRaw)?.toLocal();
+      } else {
+        licenseGrantedAt = null;
+      }
       if (selectedUser != null) {
         await _setActiveUserSnapshot(selectedUser!);
       }

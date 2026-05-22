@@ -463,12 +463,11 @@ class _QuestionsHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final metricWidth = constraints.maxWidth < 540 ? 72.0 : 82.0;
-        final titleSize = constraints.maxWidth < 540 ? 21.0 : 24.0;
 
         return Container(
           width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFFFCFBF8), Color(0xFFF7FAF8)],
@@ -494,7 +493,7 @@ class _QuestionsHeader extends StatelessWidget {
                     icon: Icons.layers_outlined,
                     label: '$currentLevelNumber / $totalLevels',
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   _QuestionsHeaderBadge(
                     icon: Icons.auto_awesome_rounded,
                     label: _stateLabel(),
@@ -508,7 +507,7 @@ class _QuestionsHeader extends StatelessWidget {
                       value: '$completedItems/$totalItems',
                     ),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   SizedBox(
                     width: metricWidth,
                     child: _QuestionsMetricChip(
@@ -518,18 +517,7 @@ class _QuestionsHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.blackFontColor,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 5),
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
