@@ -14,7 +14,6 @@ import '../authentication_screens/select_user_screen.dart';
 import '../profile_screen/profile_screen.dart';
 import '../supervision_screen/incoming_requests_screen.dart';
 import '../user_overview_screen/user_overview_screen.dart';
-import '../welcome_screen/welcome_screen.dart';
 import '../main_screen/main_screen.dart';
 import '../../services/teacher_supervisions_services.dart';
 import 'custom_text.dart';

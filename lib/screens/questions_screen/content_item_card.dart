@@ -471,7 +471,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
       final evalMap = memoEvaluation?.toMap();
       return VerseChartEntry(
         ayahId: a.id!,
-        ayahNumber: a.ayahNo ?? 0,
+        ayahNumber: a.ayahNo,
         letterCount: a.letterCount ?? 0,
         score: evalMap != null ? supervisionEvaluationScore(evalMap) : 0.0,
         color: evalMap != null
@@ -482,7 +482,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
                 memoEvaluation.name.values.firstOrNull ??
                 'غير مصنف')
             : 'غير مصنف',
-        text: a.text ?? '',
+        text: a.text,
       );
     }).toList();
 
@@ -527,182 +527,6 @@ class _ContentItemCardState extends State<ContentItemCard> {
       );
     } finally {
       if (mounted) setState(() => isEvaluating = false);
-    }
-  }
-
-  Future<void> _showIndividualEvaluation(
-      BuildContext context, LanguageProvider languageProvider) async {
-    if (widget.content.type == 'juz' && widget.content.juz != null) {
-      _showJuzBreakdown(context, widget.content.juz!, languageProvider);
-      return;
-    }
-
-    final evaluationsProvider = context.read<EvaluationsProvider>();
-
-    try {
-      final ayahs = await _fetchAyahs(withEvaluations: true);
-
-      if (!context.mounted) return;
-
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) => DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.5,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) => StatefulBuilder(
-              builder: (BuildContext context, StateSetter setModalState) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: CustomText(
-                    text: 'verses_evaluation'.tr,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    withBackground: false,
-                  ),
-                ),
-                Expanded(
-                  child: ayahs.isEmpty
-                      ? Center(child: Text("no_verses_to_display".tr))
-                      : ListView.builder(
-                          controller: scrollController,
-                          itemCount: ayahs.length,
-                          itemBuilder: (context, index) {
-                            final ayah = ayahs[index];
-                            final cardColor =
-                                _cardColorForEvaluation(ayah.userEvaluation);
-                            final cardForegroundColor =
-                                _cardForegroundColor(cardColor);
-
-                            return Card(
-                              color: cardColor,
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  AyahPreviewBlock(
-                                    ayah: ayah,
-                                    languageCode: languageProvider.langCode,
-                                    translationStyle: AppTypography.of(context)
-                                        .bodySecondary
-                                        .copyWith(
-                                        color: cardForegroundColor,
-                                        ),
-                                    arabicStyle: AppTypography.of(context)
-                                        .quranVerse
-                                        .copyWith(
-                                        color: cardForegroundColor,
-                                          fontSize: 18,
-                                          fontFamily: AppFonts.versesFont,
-                                          decoration:
-                                              _isUnderlined(ayah.userEvaluation)
-                                                  ? TextDecoration.underline
-                                                  : TextDecoration.none,
-                                          decorationColor:
-                                          cardForegroundColor,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          TeacherRecommendationBadge(
-                                            recommendations:
-                                                ayah.teacherRecommendations,
-                                            compact: true,
-                                            onDelete: (recommendation) =>
-                                                _deleteRecommendation(
-                                              ayah,
-                                              recommendation,
-                                            ),
-                                          ),
-                                          if (ayah.teacherRecommendations
-                                              .isNotEmpty)
-                                            const SizedBox(width: 8),
-                                          CustomText(
-                                            text:
-                                                '${'ayah_label'.tr} ${ayah.ayahNo}',
-                                            withBackground: false,
-                                            fontSize: 18,
-                                            color: AppColors.whiteFontColor,
-                                          ),
-                                        ],
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () async {
-                                          final selection =
-                                              await _openAssessmentDialog(
-                                            context,
-                                            languageProvider,
-                                            ayah: ayah,
-                                            currentEvaluation:
-                                                ayah.userEvaluation,
-                                            titleWidget:
-                                                buildAyahAssessmentDialogTitle(
-                                              context: context,
-                                              ayah: ayah,
-                                              languageCode:
-                                                  languageProvider.langCode,
-                                            ),
-                                          );
-
-                                          if (selection == null) {
-                                            return;
-                                          }
-
-                                          if (!context.mounted) {
-                                            return;
-                                          }
-
-                                          await _applySingleAssessment(
-                                            context: context,
-                                            ayah: ayah,
-                                            visibleAyahs: ayahs,
-                                            evaluationsProvider:
-                                                evaluationsProvider,
-                                            selection: selection,
-                                            setModalState: setModalState,
-                                          );
-                                        },
-                                        child: CustomText(
-                                          text: 'evaluate'.tr,
-                                          withBackground: false,
-                                          color: AppColors.blackFontColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          }),
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('error_loading_verses'.trParams({'error': e.toString()}))),
-      );
     }
   }
 

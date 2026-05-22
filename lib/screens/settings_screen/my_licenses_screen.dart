@@ -400,11 +400,11 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
       decoration: BoxDecoration(
         color: const Color(0xFFF0FFF4),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.successColor.withOpacity(0.4)),
+        border: Border.all(color: AppColors.successColor.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
-          Icon(Icons.verified_outlined, color: AppColors.successColor, size: 22),
+          const Icon(Icons.verified_outlined, color: AppColors.successColor, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -456,7 +456,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withOpacity(0.4)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [

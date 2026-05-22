@@ -198,11 +198,13 @@ void main() {
       endAyah: 3,
     );
 
-    schoolProvider.quickQuestionsSchool = _buildSchool(
-      levels: [
-        _buildLevel(englishName: 'Opening level', content: [content]),
-      ],
-    );
+    schoolProvider.schools = [
+      _buildSchool(
+        levels: [
+          _buildLevel(englishName: 'Opening level', content: [content]),
+        ],
+      ),
+    ];
 
     evaluationsProvider.syncQuestionContentAyahs(
       content,
@@ -260,11 +262,13 @@ void main() {
       endAyah: 7,
     );
 
-    schoolProvider.quickQuestionsSchool = _buildSchool(
-      levels: [
-        _buildLevel(englishName: 'Opening level', content: [content]),
-      ],
-    );
+    schoolProvider.schools = [
+      _buildSchool(
+        levels: [
+          _buildLevel(englishName: 'Opening level', content: [content]),
+        ],
+      ),
+    ];
 
     await _pumpFlow(
       tester,

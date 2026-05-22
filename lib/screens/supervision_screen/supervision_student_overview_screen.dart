@@ -659,7 +659,7 @@ class _CompactSummaryHeader extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: hasActiveFilter
-                              ? AppColors.primaryPurple.withOpacity(0.1)
+                              ? AppColors.primaryPurple.withValues(alpha: 0.1)
                               : const Color(0xFFF5F2EE),
                           borderRadius: BorderRadius.circular(10),
                         ),

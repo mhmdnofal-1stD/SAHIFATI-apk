@@ -295,24 +295,6 @@ class _MainScreenState extends State<MainScreen> {
                 ? evaluationsProvider.totalCount - categorizedVerseCount
                 : 0;
 
-        String filterTypeLabel(int? filterTypeId) {
-          switch (filterTypeId) {
-            case FilterTypes.parts:
-              return 'parts_icons'.tr;
-            case FilterTypes.hizbs:
-              return 'hizbs_icons'.tr;
-            case FilterTypes.subjects:
-              return 'subjects'.tr;
-            case FilterTypes.thirds:
-            default:
-              return 'thirds_icons'.tr;
-          }
-        }
-
-        String activeViewLabel() {
-          return filterTypeLabel(generalProvider.mainScreenView);
-        }
-
         Widget centeredSection(Widget child, {double maxWidth = 920}) {
           return Center(
             child: ConstrainedBox(
@@ -364,53 +346,6 @@ class _MainScreenState extends State<MainScreen> {
                 ],
               ],
             ),
-          );
-        }
-
-        Widget eyebrow(String text) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF3EA),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFD3DECF)),
-            ),
-            child: Text(
-              text,
-              style: AppTypography.of(context).badgeCount,
-            ),
-          );
-        }
-
-        Widget resumeCard({required bool summaryStyle}) {
-          if (selectedUserId == null) {
-            return const SizedBox.shrink();
-          }
-
-          return FutureBuilder<ReadingSession?>(
-            future: ReadingSessionStore().loadForUser(selectedUserId),
-            builder: (context, snapshot) {
-              final session = snapshot.data;
-              if (session == null) {
-                return const SizedBox.shrink();
-              }
-
-              final titleKey = summaryStyle
-                  ? 'sahifa_screen_resume_title'
-                  : 'main_screen_resume_title';
-              final bodyKey = summaryStyle
-                  ? 'sahifa_screen_resume_body'
-                  : 'main_screen_resume_body';
-              return centeredSection(
-                infoCard(
-                  title: titleKey.tr,
-                  body: bodyKey.trParams({
-                    'surah': session.surah.nameAr,
-                    'path': filterTypeLabel(session.filterTypeId),
-                  }),
-                ),
-              );
-            },
           );
         }
 
