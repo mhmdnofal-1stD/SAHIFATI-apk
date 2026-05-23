@@ -5,4 +5,3 @@
     <!-- Foreground: use the standard ic_launcher (Sahifati logo) -->
     <foreground android:drawable="@mipmap/ic_launcher"/>
 </adaptive-icon>
-</adaptive-icon>
