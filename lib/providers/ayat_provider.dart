@@ -79,6 +79,28 @@ class AyatProvider with ChangeNotifier {
     }
   }
 
+  Future<List<Ayat>> getAyatBySurah(int surahId) async {
+    setLoading();
+    try {
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatBySurahId(
+        surahId,
+        languageCode: locale.languageCode,
+      );
+      return _applyAyatResponse(res);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading Surah Ayat: $e');
+      }
+      surahAyat = [];
+      surahAyatTotalPages = 1;
+      surahAyatTotalCount = 0;
+      return const [];
+    } finally {
+      resetLoading();
+    }
+  }
+
   Future<List<Ayat>> getAyatByHizbQuarter(int hizbQuarter) async {
     setLoading();
     try {
@@ -91,6 +113,29 @@ class AyatProvider with ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error loading Hizb Quarter Ayat: $e');
+      }
+      surahAyat = [];
+      surahAyatTotalPages = 1;
+      surahAyatTotalCount = 0;
+      return const [];
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<List<Ayat>> getAyatByRange(int startId, int endId) async {
+    setLoading();
+    try {
+      final locale = await LocalizationService.getCurrentLocale();
+      final res = await _ayatServices.getAyatByRange(
+        startId,
+        endId,
+        languageCode: locale.languageCode,
+      );
+      return _applyAyatResponse(res);
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading Range Ayat: $e');
       }
       surahAyat = [];
       surahAyatTotalPages = 1;

@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'core/auth/authenticated_route_gate.dart';
+import 'core/auth/guest_aware_route_gate.dart';
 import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
@@ -39,6 +40,7 @@ import 'screens/cards_screen/cards_list_screen.dart';
 import 'screens/main_screen/main_screen.dart';
 import 'screens/quran_view/index_page.dart';
 import 'screens/welcome_screen/welcome_screen.dart';
+import 'screens/quick_assessment_screens/index.dart';
 import 'screens/user_overview_screen/user_overview_screen.dart';
 import 'screens/profile_screen/profile_screen.dart';
 import 'screens/supervision_screen/incoming_requests_screen.dart';
@@ -266,6 +268,21 @@ class MyApp extends StatelessWidget {
           ),
         ),
         GetPage(
+          name: '/quick-assessment',
+          page: () => const GuestAwareRouteGate(
+            requiresAuth: false,
+            requiresLicense: false,
+            allowGuest: true,
+            guestRestrictions: GuestRestrictions(
+              canSaveProgress: false,
+              canOpenAssessmentDialog: false,
+              canUseAdvancedFilters: false,
+              canEnterSelectionMode: false,
+            ),
+            child: QuickAssessmentScreen(),
+          ),
+        ),
+        GetPage(
           name: UserOverviewScreen.routeName,
           page: () => const AuthenticatedRouteGate(
             child: UserOverviewScreen(),
@@ -316,7 +333,16 @@ class MyApp extends StatelessWidget {
         ),
         GetPage(
           name: CardsListScreen.routeName,
-          page: () => const AuthenticatedRouteGate(
+          page: () => const GuestAwareRouteGate(
+            requiresAuth: false,
+            requiresLicense: false,
+            allowGuest: true,
+            guestRestrictions: GuestRestrictions(
+              canSaveProgress: false,
+              canOpenAssessmentDialog: false,
+              canUseAdvancedFilters: false,
+              canEnterSelectionMode: false,
+            ),
             child: CardsListScreen(),
           ),
         ),
@@ -326,7 +352,16 @@ class MyApp extends StatelessWidget {
             final idStr = Get.parameters['id'] ?? '';
             final id = int.tryParse(idStr);
             if (id == null) return const InitialScreen();
-            return AuthenticatedRouteGate(
+            return GuestAwareRouteGate(
+              requiresAuth: false,
+              requiresLicense: false,
+              allowGuest: true,
+              guestRestrictions: const GuestRestrictions(
+                canSaveProgress: false,
+                canOpenAssessmentDialog: false,
+                canUseAdvancedFilters: false,
+                canEnterSelectionMode: false,
+              ),
               child: CardDetailScreen(cardId: id),
             );
           },
@@ -348,7 +383,21 @@ class MyApp extends StatelessWidget {
               return readingPage;
             }
 
-            return AuthenticatedRouteGate(child: readingPage);
+            // Guest mode: Allow browsing Quran without authentication.
+            // Registered users: Save progress and viewing evaluations.
+            // Licensed users: Full access including assessment dialog.
+            return GuestAwareRouteGate(
+              requiresAuth: false,
+              requiresLicense: false,
+              allowGuest: true,
+              guestRestrictions: const GuestRestrictions(
+                canSaveProgress: false,
+                canOpenAssessmentDialog: false,
+                canUseAdvancedFilters: false,
+                canEnterSelectionMode: false,
+              ),
+              child: readingPage,
+            );
           },
         ),
         GetPage(

@@ -20,7 +20,7 @@ class ApiConfig {
       _preferLocalApiOnWeb &&
       (host == 'localhost' || host == '127.0.0.1')
     ) {
-      return 'http://127.0.0.1:3077/api';
+      return 'http://127.0.0.1:3067/api';
     }
 
     return _compileTimeBaseUrl;

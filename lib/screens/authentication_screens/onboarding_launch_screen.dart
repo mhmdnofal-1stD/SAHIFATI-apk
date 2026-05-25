@@ -4,12 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/constants/assets.dart';
 import '../../core/constants/colors.dart';
-import '../../providers/school_provider.dart';
-import '../questions_screen/questions_screen.dart';
 
 class OnboardingLaunchScreen extends StatefulWidget {
   static const String routeName = '/launch';
@@ -67,7 +64,39 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
       return;
     }
 
-    final schoolProvider = context.read<SchoolProvider>();
+    setState(() {
+      _isStartingGuest = true;
+      _errorMessage = null;
+    });
+
+    try {
+      if (!mounted) {
+        return;
+      }
+
+      Get.toNamed('/quick-assessment');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final message = error.toString().replaceFirst('Exception: ', '').trim();
+      setState(() {
+        _errorMessage = message.isEmpty ? _guestFallbackError : message;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isStartingGuest = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _browseQuranAsGuest() async {
+    if (_isStartingGuest) {
+      return;
+    }
 
     setState(() {
       _isStartingGuest = true;
@@ -75,13 +104,15 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
     });
 
     try {
-      await schoolProvider.getQuickQuestionsSchool();
-
       if (!mounted) {
         return;
       }
 
-      Get.to(const QuestionsScreen());
+      // Navigate to Quran reading starting from Al-Fatiha (surah 1)
+      Get.offAllNamed('/read', parameters: {
+        'surahId': '1',
+        'filterTypeId': '1',
+      });
     } catch (error) {
       if (!mounted) {
         return;
@@ -207,6 +238,7 @@ class _OnboardingContentSheet extends StatelessWidget {
     required this.errorMessage,
     required this.isStartingGuest,
     required this.onGuestPressed,
+    required this.onBrowseQuranPressed,
     required this.onLoginPressed,
   });
 
@@ -214,6 +246,7 @@ class _OnboardingContentSheet extends StatelessWidget {
   final String? errorMessage;
   final bool isStartingGuest;
   final VoidCallback onGuestPressed;
+  final VoidCallback onBrowseQuranPressed;
   final VoidCallback onLoginPressed;
 
   @override
@@ -404,6 +437,42 @@ class _OnboardingContentSheet extends StatelessWidget {
                                                       : 18,
                                             ),
                                       ),
+                              ),
+                            ),
+                            SizedBox(height: actionGap),
+                            OutlinedButton.icon(
+                              onPressed: isStartingGuest ? null : onBrowseQuranPressed,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF1D6652),
+                                side: const BorderSide(
+                                  color: Color(0xFF1D6652),
+                                  width: 1.5,
+                                ),
+                                minimumSize: Size.fromHeight(
+                                  ultraCompact
+                                      ? 46
+                                      : compact
+                                          ? 50
+                                          : 54,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: const Icon(Icons.menu_book_rounded, size: 20),
+                              label: Text(
+                                'تصفح القرآن كضيف',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: ultraCompact
+                                          ? 15
+                                          : compact
+                                              ? 16
+                                              : 17,
+                                    ),
                               ),
                             ),
                             SizedBox(height: actionGap),

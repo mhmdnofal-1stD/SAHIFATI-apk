@@ -1481,8 +1481,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<void> _persistReadingSession({bool shouldAutoResume = true}) async {
-    final selectedUser = context.read<UsersProvider>().selectedUser;
-    if (selectedUser == null) {
+    final usersProvider = context.read<UsersProvider>();
+    final selectedUser = usersProvider.selectedUser;
+    
+    // Guest mode: Do not persist reading session (Apple policy - no data collection)
+    if (usersProvider.isGuestMode || selectedUser == null) {
       return;
     }
 
@@ -1707,10 +1710,19 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   Future<void> _loadAyat(
       int userId, EvaluationsProvider evaluationsProvider) async {
     await _refreshConnectivity();
-    var canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+    
+    // Check if user is in guest mode or registered without license
+    final usersProvider = context.read<UsersProvider>();
+    final isGuest = usersProvider.isGuestMode;
+    final isRegisteredWithoutLicense = usersProvider.isRegisteredWithoutLicense;
+    
+    // Assessment dialog is only available for licensed users
+    var canOpenAssessment = !isGuest && 
+                           !isRegisteredWithoutLicense && 
+                           evaluationsProvider.evaluations.isNotEmpty;
     String? readingNotice;
 
-    if (evaluationsProvider.evaluations.isEmpty) {
+    if (evaluationsProvider.evaluations.isEmpty && !isGuest) {
       try {
         await evaluationsProvider.getAllEvaluations();
       } catch (_) {
@@ -1723,8 +1735,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       }
     }
 
-    canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
-    if (!_hasConnection) {
+    // Guest mode: Cannot open assessment dialog
+    if (isGuest) {
+      canOpenAssessment = false;
+      readingNotice = 'يمكنك تصفح القرآن كضيف. سجل الدخول للوصول لميزات التقييم والحفظ.';
+    } else if (isRegisteredWithoutLicense) {
+      canOpenAssessment = false;
+      readingNotice = 'قم بتفعيل الرخصة للوصول لميزات التقييم المتقدمة.';
+    } else {
+      canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+    }
+    
+    if (!_hasConnection && !isGuest) {
       readingNotice = canOpenAssessment
           ? _tr('quran_reading_connection_notice')
           : _tr('quran_reading_assessment_unavailable_notice');

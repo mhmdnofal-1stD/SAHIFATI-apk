@@ -995,6 +995,18 @@ class UsersProvider with ChangeNotifier {
     return selectedUser != null && (!hasKnownLicenseState || hasActiveLicense);
   }
 
+  /// Returns true if the current session is in guest mode (no authenticated user).
+  /// Guest mode allows limited access to content without registration.
+  bool get isGuestMode => selectedUser == null;
+
+  /// Returns true if user is authenticated but does not have an active license.
+  /// These users have more access than guests but fewer features than licensed users.
+  bool get isRegisteredWithoutLicense =>
+      selectedUser != null && !hasActiveLicense;
+
+  /// Returns true if user is authenticated and has an active license.
+  bool get isLicensedUser => selectedUser != null && hasActiveLicense;
+
   Future<void> ensureLicenseStateLoaded({bool forceRefresh = false}) async {
     if (selectedUser == null) {
       return;
