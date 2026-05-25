@@ -221,7 +221,7 @@ class ResultsScreen extends StatelessWidget {
 
   Future<void> _handleGoToMain(BuildContext context) async {
     if (isGuestMode) {
-      // Show dialog to prompt login
+      // Show dialog to prompt login or continue as guest
       final shouldLogin = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -232,7 +232,7 @@ class ResultsScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('لاحقاً'),
+              child: const Text('الإكمال كضيف'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
@@ -252,10 +252,15 @@ class ResultsScreen extends StatelessWidget {
             await _saveAssessments(context);
           }
         }
+        // After login, go to main
+        Get.offAllNamed('/main');
+      } else {
+        // Continue as guest - go to Quran reading
+        Get.offAllNamed('/read', parameters: {
+          'surahId': '1',
+          'filterTypeId': '1',
+        });
       }
-      
-      // Navigate to main regardless
-      Get.offAllNamed('/');
     } else {
       // Already logged in, just go to main
       Get.offAllNamed('/main');

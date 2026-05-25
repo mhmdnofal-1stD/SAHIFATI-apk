@@ -238,7 +238,6 @@ class _OnboardingContentSheet extends StatelessWidget {
     required this.errorMessage,
     required this.isStartingGuest,
     required this.onGuestPressed,
-    required this.onBrowseQuranPressed,
     required this.onLoginPressed,
   });
 
@@ -246,7 +245,6 @@ class _OnboardingContentSheet extends StatelessWidget {
   final String? errorMessage;
   final bool isStartingGuest;
   final VoidCallback onGuestPressed;
-  final VoidCallback onBrowseQuranPressed;
   final VoidCallback onLoginPressed;
 
   @override
@@ -437,42 +435,6 @@ class _OnboardingContentSheet extends StatelessWidget {
                                                       : 18,
                                             ),
                                       ),
-                              ),
-                            ),
-                            SizedBox(height: actionGap),
-                            OutlinedButton.icon(
-                              onPressed: isStartingGuest ? null : onBrowseQuranPressed,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF1D6652),
-                                side: const BorderSide(
-                                  color: Color(0xFF1D6652),
-                                  width: 1.5,
-                                ),
-                                minimumSize: Size.fromHeight(
-                                  ultraCompact
-                                      ? 46
-                                      : compact
-                                          ? 50
-                                          : 54,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              icon: const Icon(Icons.menu_book_rounded, size: 20),
-                              label: Text(
-                                'تصفح القرآن كضيف',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: ultraCompact
-                                          ? 15
-                                          : compact
-                                              ? 16
-                                              : 17,
-                                    ),
                               ),
                             ),
                             SizedBox(height: actionGap),
