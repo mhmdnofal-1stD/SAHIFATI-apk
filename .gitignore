@@ -36,6 +36,9 @@ migrate_working_dir/
 .pub/
 /build/
 /.tmp-native-locations/
+.local-static-*/
+.copilot-tmp/
+tmp/
 
 # Symbolication related
 app.*.symbols
