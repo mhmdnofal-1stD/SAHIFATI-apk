@@ -2202,11 +2202,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 ),
               ),
                 drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                  ? GlobalDrawer(guestMode: isGuestMode)
+                  ? const GlobalDrawer()
                   : null,
-                  endDrawer: (Get.locale?.languageCode ?? 'ar') != 'ar'
-                    ? GlobalDrawer(guestMode: isGuestMode)
-                    : null,
+                endDrawer: (Get.locale?.languageCode ?? 'ar') != 'ar'
+                  ? const GlobalDrawer()
+                  : null,
               body: SafeArea(
                 top: false,
                 child: Padding(
@@ -2467,6 +2467,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     LanguageProvider languageProvider,
     EvaluationsProvider evaluationProvider,
     bool isDarkMode,
+    double fontSize,
   ) {
     final userEvaluation = ayah.userEvaluation ??
         evaluationProvider.getUserEvaluationForAyah(ayah.id);
@@ -2519,7 +2520,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         languageProvider,
       ),
       verseTextStyle: TextStyle(
-        fontSize: 21,
+        fontSize: fontSize,
         height: 1.8,
         color: verseColor,
         backgroundColor: selectedBackgroundColor,
@@ -3175,6 +3176,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   languageProvider,
                   evaluationProvider,
                   isDarkMode,
+                  effectiveFontSize,
                 );
           final baseWordStyle =
               (presentation?.verseTextStyle ?? defaultStyle).copyWith(
@@ -3769,6 +3771,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 languageProvider,
                 evaluationProvider,
                 isDarkMode,
+                _mushafWordFontSize,
               );
 
               return TextSpan(
