@@ -356,6 +356,44 @@ class UsersServices with ChangeNotifier {
     }
   }
 
+  Future<String> getHuaweiWebAuthorizationUrl({
+    required String state,
+    required String nonce,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseURL/auth/social/huawei/start').replace(
+        queryParameters: {
+          'state': state,
+          'nonce': nonce,
+        },
+      );
+      final response = await http.get(uri, headers: _authHeaders).timeout(_timeout);
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode != 200) {
+        throw _normalizeErrorResponse(
+          response.statusCode,
+          responseData,
+          'social_huawei_sign_in_failed'.tr,
+        );
+      }
+
+      final authorizationUrl =
+          (responseData['authorizationUrl'] as String?)?.trim();
+      if (authorizationUrl == null || authorizationUrl.isEmpty) {
+        throw {
+          'errorCode': 'SOCIAL_AUTH_INVALID_RESPONSE',
+          'provider': 'huawei',
+          'message': 'social_auth_invalid_response'.tr,
+        };
+      }
+
+      return authorizationUrl;
+    } catch (ex) {
+      rethrow;
+    }
+  }
+
   Future<void> logout() async {
     try {
       final refreshToken = await SecureSessionStorage.readRefreshToken();

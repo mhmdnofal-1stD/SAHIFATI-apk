@@ -129,6 +129,24 @@ class AyatServices {
       rethrow;
     }
   }
+
+  Future<Map<String, dynamic>> getAyatByRange(
+    int startId,
+    int endId, {
+    String? languageCode,
+  }) async {
+    try {
+      return _getAyat({
+        'startId': startId.toString(),
+        'endId': endId.toString(),
+        'limit': '1000',
+        if (languageCode != null && languageCode.isNotEmpty)
+          'language': languageCode,
+      }, type: 'range', key: '$startId-$endId');
+    } catch (ex) {
+      rethrow;
+    }
+  }
 }
 
 

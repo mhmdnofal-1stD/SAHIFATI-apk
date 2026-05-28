@@ -18,7 +18,9 @@ class Ayat {
   int? wordCount;
   int? letterCount;
   double? weight;
+  bool showAyahText;
   String? ayahType;
+  String? evaluationType;
   List<SchoolLevel>? schoolLevels;
   List<String>? subjects;
   Surah surah;
@@ -38,7 +40,9 @@ class Ayat {
     this.wordCount,
     this.letterCount,
     this.weight,
+    this.showAyahText = true,
     this.ayahType,
+    this.evaluationType,
     this.schoolLevels,
     this.subjects,
     required this.surah,
@@ -70,7 +74,9 @@ class Ayat {
       wordCount: json['wordCount'],
       letterCount: json['letterCount'],
       weight: json['weight'],
+      showAyahText: json['showAyahText'] ?? true,
       ayahType: json['ayahType'],
+      evaluationType: json['evaluationType']?.toString(),
       schoolLevels: json['schoolLevels'] != null
           ? (json['schoolLevels'] as List)
               .map((e) => SchoolLevel.fromJson(e))
@@ -107,7 +113,9 @@ class Ayat {
       'wordCount': wordCount,
       'letterCount': letterCount,
       'weight': weight,
+      'showAyahText': showAyahText,
       'ayahType': ayahType,
+      'evaluationType': evaluationType,
       'subjects': subjects,
     };
   }

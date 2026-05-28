@@ -33,25 +33,36 @@ param(
     [switch]$AnalyzeOnly
 )
 
-# Configuration
-$apiBaseUrl = "https://sahifati.org/api"
-$googleWebClientId = "821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com"
-$googleServerClientId = "821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com"
-$appleWebClientId = "org.sahifati.app.signin"
-$appleRedirectUri = "https://sahifati.org/api/auth/social/apple/callback"
-$facebookAppId = "824178674089653"
-$huaweiAppId = "116918405"
+$sharedBuildConfigPath = "tool/build_config.json"
+$sharedDefineGeneratorPath = "tool/generate_flutter_defines.dart"
+$pubspecPath = "pubspec.yaml"
 
-$defineParams = @(
-    "API_BASE_URL=$apiBaseUrl",
-    "GOOGLE_WEB_CLIENT_ID=$googleWebClientId",
-    "GOOGLE_SERVER_CLIENT_ID=$googleServerClientId",
-    "APPLE_WEB_CLIENT_ID=$appleWebClientId",
-    "APPLE_REDIRECT_URI=$appleRedirectUri",
-    "FACEBOOK_AUTH_ENABLED=true",
-    "FACEBOOK_APP_ID=$facebookAppId",
-    "HUAWEI_APP_ID=$huaweiAppId"
-)
+if (-not (Test-Path $sharedBuildConfigPath)) {
+    throw "Missing shared build config at $sharedBuildConfigPath"
+}
+
+function Get-FlutterDefineArgs {
+    param([string]$Profile = 'release')
+
+    $output = & dart 'run' $sharedDefineGeneratorPath "--profile=$Profile" "--config=$sharedBuildConfigPath" "--pubspec=$pubspecPath"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to generate Flutter defines for profile '$Profile'"
+    }
+
+    $defines = @(
+        $output |
+            Where-Object { $_ -and $_.Trim().StartsWith('--dart-define=') } |
+            ForEach-Object { $_.Trim() }
+    )
+
+    if ($defines.Count -eq 0) {
+        throw "No Flutter defines were produced for profile '$Profile'"
+    }
+
+    return $defines
+}
+
+$defineArgs = Get-FlutterDefineArgs -Profile 'release'
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Sahifati Flutter AAB Release Builder" -ForegroundColor Cyan
@@ -70,8 +81,9 @@ if (Test-Path $pubspecPath) {
 
 Write-Host ""
 Write-Host "Build Configuration:" -ForegroundColor Cyan
-$defineParams | ForEach-Object {
-    $key, $value = $_.Split('=', 2)
+$defineArgs | ForEach-Object {
+    $entry = $_ -replace '^--dart-define=', ''
+    $key, $value = $entry.Split('=', 2)
     if ($key -in @("GOOGLE_WEB_CLIENT_ID", "GOOGLE_SERVER_CLIENT_ID", "APPLE_WEB_CLIENT_ID")) {
         $displayValue = $value.Substring(0, 20) + "..."
     } elseif ($key -eq "API_BASE_URL") {
@@ -111,18 +123,15 @@ if ($LASTEXITCODE -ne 0) {
 
 # Build AAB
 Write-Host ""
-Write-Host "Building AAB (this may take 5–10 minutes)..." -ForegroundColor Yellow
+Write-Host "Building AAB (this may take 5-10 minutes)..." -ForegroundColor Yellow
 Write-Host ""
 
 $buildArgs = @(
-    "build", "aab",
+    "build", "appbundle",
     "--release"
 )
 
-# Add dart-define parameters
-foreach ($param in $defineParams) {
-    $buildArgs += "--dart-define=$param"
-}
+$buildArgs += $defineArgs
 
 & flutter @buildArgs
 $buildExitCode = $LASTEXITCODE
@@ -130,7 +139,7 @@ $buildExitCode = $LASTEXITCODE
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 if ($buildExitCode -eq 0) {
-    Write-Host "✅ AAB Build Successful!" -ForegroundColor Green
+    Write-Host "AAB Build Successful!" -ForegroundColor Green
     
     $aabPath = "build/app/outputs/bundle/release/app-release.aab"
     if (Test-Path $aabPath) {
@@ -144,12 +153,12 @@ if ($buildExitCode -eq 0) {
         Write-Host "3. Test on device before release"
     }
 } else {
-    Write-Host "❌ AAB Build Failed (exit code: $buildExitCode)" -ForegroundColor Red
+    Write-Host "AAB Build Failed (exit code: $buildExitCode)" -ForegroundColor Red
     Write-Host ""
     Write-Host "Troubleshooting:" -ForegroundColor Yellow
-    Write-Host "• Check Flutter/Android SDK installation"
-    Write-Host "• Ensure all pubspec dependencies are up-to-date"
-    Write-Host "• Try: flutter pub upgrade && flutter clean"
+    Write-Host "- Check Flutter/Android SDK installation"
+    Write-Host "- Ensure all pubspec dependencies are up-to-date"
+    Write-Host "- Try running flutter pub upgrade, then flutter clean"
 }
 Write-Host "========================================" -ForegroundColor Cyan
 

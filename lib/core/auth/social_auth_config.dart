@@ -9,10 +9,18 @@ class SocialAuthConfig {
       String.fromEnvironment('APPLE_WEB_CLIENT_ID');
   static const String appleRedirectUri =
       String.fromEnvironment('APPLE_REDIRECT_URI');
+  static const bool facebookAuthEnabled = bool.fromEnvironment(
+    'FACEBOOK_AUTH_ENABLED',
+    defaultValue: true,
+  );
   static const String facebookAppId = String.fromEnvironment('FACEBOOK_APP_ID');
   static const String facebookApiVersion =
       String.fromEnvironment('FACEBOOK_API_VERSION', defaultValue: 'v22.0');
   static const String huaweiAppId = String.fromEnvironment('HUAWEI_APP_ID');
+    static const String huaweiWebClientId =
+      String.fromEnvironment('HUAWEI_WEB_CLIENT_ID');
+    static const String huaweiWebRedirectUri =
+      String.fromEnvironment('HUAWEI_WEB_REDIRECT_URI');
 
   static bool get isGoogleConfiguredForCurrentPlatform {
     if (kIsWeb) {
@@ -23,8 +31,12 @@ class SocialAuthConfig {
   }
 
   static bool get isFacebookConfiguredForCurrentPlatform {
+    if (!facebookAuthEnabled) {
+      return false;
+    }
+
     if (kIsWeb) {
-      return true;
+      return facebookAppId.isNotEmpty;
     }
 
     return facebookAppId.isNotEmpty;
@@ -43,9 +55,11 @@ class SocialAuthConfig {
         (defaultTargetPlatform == TargetPlatform.android && hasWebFlowConfig);
   }
 
-  /// Huawei Account Kit is Android-only and never available on web.
   static bool get isHuaweiConfiguredForCurrentPlatform {
-    if (kIsWeb) return false;
+    if (kIsWeb) {
+      return huaweiWebClientId.isNotEmpty && huaweiWebRedirectUriOrNull != null;
+    }
+
     if (defaultTargetPlatform != TargetPlatform.android) return false;
     return huaweiAppId.isNotEmpty;
   }
@@ -65,6 +79,14 @@ class SocialAuthConfig {
     }
 
     return Uri.tryParse(appleRedirectUri);
+  }
+
+  static Uri? get huaweiWebRedirectUriOrNull {
+    if (huaweiWebRedirectUri.isEmpty) {
+      return null;
+    }
+
+    return Uri.tryParse(huaweiWebRedirectUri);
   }
 
   static Uri? get appleRedirectUriForCurrentPlatform {

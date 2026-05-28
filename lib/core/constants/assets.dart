@@ -11,6 +11,7 @@ class Assets {
   static String logoLightSvg = "$rootImages/logo-light.svg";
   static String onboardingBackgroundSvg =
       "$rootImages/onboarding_background.svg";
+  static String softPatternBackgroundSvg = "$rootImages/back_02_02.svg";
   static String organization1STDLogo = "$rootImages/1st_D_logo.svg";
 
 

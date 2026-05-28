@@ -116,7 +116,12 @@ Future<void> _openLanguagePicker(
 }
 
 class GlobalDrawer extends StatelessWidget {
-  const GlobalDrawer({super.key});
+  const GlobalDrawer({
+    super.key,
+    this.guestMode = false,
+  });
+
+  final bool guestMode;
 
   @override
   Widget build(BuildContext context) {

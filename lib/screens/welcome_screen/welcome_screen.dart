@@ -195,6 +195,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     }
   }
 
+  Future<void> _startQuickAssessment() async {
+    final usersProvider = context.read<UsersProvider>();
+    if (usersProvider.selectedUser == null) {
+      setState(() {
+        _kickoffErrorMessage = 'welcome_kickoff_error_missing_user'.tr;
+      });
+      return;
+    }
+
+    try {
+      await usersProvider.markOnboardingCompleted();
+
+      if (!mounted) {
+        return;
+      }
+
+      Get.toNamed('/quick-assessment');
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      final message = error.toString().replaceFirst('Exception: ', '').trim();
+      setState(() {
+        _kickoffErrorMessage = message.isEmpty
+            ? 'welcome_kickoff_generic_error'.tr
+            : message;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final usersProvider = context.watch<UsersProvider>();
@@ -276,6 +307,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                                   errorMessage: _kickoffErrorMessage,
                                   onPrimaryPressed: _startAssessment,
                                   onSecondaryPressed: _openReadingBrowserNow,
+                                  onQuickAssessmentPressed: _startQuickAssessment,
                                 ),
                               ),
                               SizedBox(
@@ -419,6 +451,7 @@ class _WelcomeStoryCard extends StatelessWidget {
     required this.errorMessage,
     required this.onPrimaryPressed,
     required this.onSecondaryPressed,
+    required this.onQuickAssessmentPressed,
   });
 
   final bool compactViewport;
@@ -427,6 +460,7 @@ class _WelcomeStoryCard extends StatelessWidget {
   final String? errorMessage;
   final Future<void> Function() onPrimaryPressed;
   final Future<void> Function() onSecondaryPressed;
+  final Future<void> Function() onQuickAssessmentPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -596,6 +630,34 @@ class _WelcomeStoryCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          // Quick Assessment Button
+          SizedBox(
+            width: double.infinity,
+            height: compactViewport ? 48 : 52,
+            child: OutlinedButton.icon(
+              onPressed: busy ? null : onQuickAssessmentPressed,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.lineColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              icon: const Icon(
+                Icons.quiz_outlined,
+                color: AppColors.primaryPurple,
+              ),
+              label: Text(
+                'تقييم سريع',
+                textDirection: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+                style: AppTypography.of(context)
+                    .buttonSecondary
+                    .copyWith(color: AppColors.primaryPurple),
+              ),
+            ),
           ),
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:quran/quran.dart' as quran;
@@ -33,6 +34,7 @@ import '../../core/utils/surah_localization.dart';
 import '../../models/surah.dart';
 import '../../providers/general_provider.dart';
 import '../../services/mushaf_layout_service.dart';
+import '../authentication_screens/login_screen.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/ayah_assessment_title.dart';
 import '../widgets/assessment_input_dialog.dart';
@@ -518,7 +520,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<void> _ensureVisiblePageDataLoaded(
-    int userId,
+    int? userId,
     EvaluationsProvider evaluationsProvider, {
     Iterable<int>? pages,
   }) async {
@@ -541,7 +543,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           .map((ayah) => ayah.id)
           .whereType<int>()
           .toList();
-      if (ayatIds.isNotEmpty) {
+      if (userId != null && ayatIds.isNotEmpty) {
         await evaluationsProvider.mergeUserEvaluationsForAyatIds(
             userId, ayatIds);
       }
@@ -558,7 +560,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final recommendationPages = targetPages
         .where((page) => !_hydratedRecommendationPages.contains(page))
         .toList();
-    if (_hasConnection && recommendationPages.isNotEmpty) {
+    if (userId != null && _hasConnection && recommendationPages.isNotEmpty) {
       final recommendationAyat =
           recommendationPages.expand(_ayatForPage).toList();
       final loadedRecommendations =
@@ -578,10 +580,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<void> _ensureFilterEvaluationCoverage(
-    int userId,
+    int? userId,
     EvaluationsProvider evaluationsProvider,
   ) async {
-    if (_hasLoadedAllEvaluationCoverage ||
+    if (userId == null ||
+        _hasLoadedAllEvaluationCoverage ||
         (_filterMemoEvaluationIds.isEmpty &&
             _filterCompreEvaluationIds.isEmpty)) {
       return;
@@ -623,7 +626,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<bool> _rebuildNavigablePages({
-    required int userId,
+    required int? userId,
     required EvaluationsProvider evaluationsProvider,
     bool jumpToFirstMatch = false,
   }) async {
@@ -1007,6 +1010,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<User?> _ensureViewerUserLoaded() async {
+    final usersProvider = context.read<UsersProvider>();
+    if (usersProvider.isGuestMode) {
+      return null;
+    }
+
     if (_viewerUser != null) {
       return _viewerUser;
     }
@@ -1086,6 +1094,32 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  Future<void> _showGuestRegistrationPrompt() async {
+    final shouldLogin = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الدخول'),
+        content: const Text(
+          'هذه الميزة متاحة بعد تسجيل الدخول. هل تريد الذهاب إلى صفحة التسجيل الآن؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('الإكمال كضيف'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('تسجيل الدخول'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogin == true && mounted) {
+      await Get.offAll(() => const LoginScreen(firstScreen: false));
+    }
   }
 
   void _applyTeacherRecommendationsToAyahs(
@@ -1294,6 +1328,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final targetUserId = _evaluationTargetUserId(usersProvider);
 
     if (!_canOpenAssessment) {
+      if (usersProvider.isGuestMode) {
+        await _showGuestRegistrationPrompt();
+        return;
+      }
+
       if (!mounted) {
         return;
       }
@@ -1386,6 +1425,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     if (!_canOpenAssessment) {
+      if (usersProvider.isGuestMode) {
+        await _showGuestRegistrationPrompt();
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1481,8 +1525,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
   }
 
   Future<void> _persistReadingSession({bool shouldAutoResume = true}) async {
-    final selectedUser = context.read<UsersProvider>().selectedUser;
-    if (selectedUser == null) {
+    final usersProvider = context.read<UsersProvider>();
+    final selectedUser = usersProvider.selectedUser;
+    
+    // Guest mode: Do not persist reading session (Apple policy - no data collection)
+    if (usersProvider.isGuestMode || selectedUser == null) {
       return;
     }
 
@@ -1612,6 +1659,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evaluationsProvider = context.read<EvaluationsProvider>();
     final selectedUser = context.read<UsersProvider>().selectedUser;
     if (selectedUser == null) {
+      await _showGuestRegistrationPrompt();
       return;
     }
     if (evaluationsProvider.evaluations.isEmpty) {
@@ -1704,13 +1752,22 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  Future<void> _loadAyat(
-      int userId, EvaluationsProvider evaluationsProvider) async {
+    Future<void> _loadAyat(
+      int? userId, EvaluationsProvider evaluationsProvider) async {
+    final usersProvider = context.read<UsersProvider>();
     await _refreshConnectivity();
-    var canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+
+    // Check if user is in guest mode or registered without license
+    final isGuest = usersProvider.isGuestMode;
+    final isRegisteredWithoutLicense = usersProvider.isRegisteredWithoutLicense;
+    
+    // Assessment dialog is only available for licensed users
+    var canOpenAssessment = !isGuest && 
+                           !isRegisteredWithoutLicense && 
+                           evaluationsProvider.evaluations.isNotEmpty;
     String? readingNotice;
 
-    if (evaluationsProvider.evaluations.isEmpty) {
+    if (evaluationsProvider.evaluations.isEmpty && !isGuest) {
       try {
         await evaluationsProvider.getAllEvaluations();
       } catch (_) {
@@ -1723,8 +1780,18 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       }
     }
 
-    canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
-    if (!_hasConnection) {
+    // Guest mode: Cannot open assessment dialog
+    if (isGuest) {
+      canOpenAssessment = false;
+      readingNotice = 'يمكنك تصفح القرآن كضيف. سجل الدخول للوصول لميزات التقييم والحفظ.';
+    } else if (isRegisteredWithoutLicense) {
+      canOpenAssessment = false;
+      readingNotice = 'قم بتفعيل الرخصة للوصول لميزات التقييم المتقدمة.';
+    } else {
+      canOpenAssessment = evaluationsProvider.evaluations.isNotEmpty;
+    }
+    
+    if (!_hasConnection && !isGuest) {
       readingNotice = canOpenAssessment
           ? _tr('quran_reading_connection_notice')
           : _tr('quran_reading_assessment_unavailable_notice');
@@ -1906,11 +1973,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       () async {
         await _ensureViewerUserLoaded();
         await _loadReadingDisplayPreferences(usersProvider);
-        if (!mounted || usersProvider.selectedUser == null) {
+        if (!mounted) {
           return;
         }
 
-        await _loadAyat(usersProvider.selectedUser!.id, evaluationsProvider);
+        await _loadAyat(usersProvider.selectedUser?.id, evaluationsProvider);
       }();
     });
   }
@@ -1920,6 +1987,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final usersProvider = Provider.of<UsersProvider>(context);
+    final isGuestMode = usersProvider.isGuestMode;
     final isSupervisorViewingStudent =
         _isSupervisorViewingStudent(usersProvider);
     final ayahTapTooltip = _isAyahSelectionMode
@@ -2078,11 +2146,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                   isDarkMode: isDarkMode,
                                   isActive: _showMemorizationColors,
                                   flat: true,
-                                  onTap: () =>
-                                      _updateReadingDisplayPreferences(
-                                    showMemorizationColors:
-                                        !_showMemorizationColors,
-                                  ),
+                                  onTap: isGuestMode
+                                      ? _showGuestRegistrationPrompt
+                                      : () =>
+                                          _updateReadingDisplayPreferences(
+                                        showMemorizationColors:
+                                            !_showMemorizationColors,
+                                      ),
                                 ),
                                 _ReaderToolIcon(
                                   icon: Icons.format_underlined_rounded,
@@ -2092,11 +2162,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                   isDarkMode: isDarkMode,
                                   isActive: _showComprehensionUnderline,
                                   flat: true,
-                                  onTap: () =>
-                                      _updateReadingDisplayPreferences(
-                                    showComprehensionUnderline:
-                                        !_showComprehensionUnderline,
-                                  ),
+                                  onTap: isGuestMode
+                                      ? _showGuestRegistrationPrompt
+                                      : () =>
+                                          _updateReadingDisplayPreferences(
+                                        showComprehensionUnderline:
+                                            !_showComprehensionUnderline,
+                                      ),
                                 ),
                                 _ReaderToolIcon(
                                   icon: Icons.touch_app_rounded,
@@ -2106,7 +2178,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                                   flat: true,
                                   onTap: _canTapAyah(usersProvider)
                                       ? _toggleAyahSelectionMode
-                                      : null,
+                                      : isGuestMode
+                                          ? _showGuestRegistrationPrompt
+                                          : null,
                                 ),
                                 if (_readingNotice != null)
                                   _ReaderToolIcon(
@@ -2127,12 +2201,12 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   ),
                 ),
               ),
-              drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                  ? const GlobalDrawer()
+                drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
+                  ? GlobalDrawer(guestMode: isGuestMode)
                   : null,
-              endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                  ? null
-                  : const GlobalDrawer(),
+                  endDrawer: (Get.locale?.languageCode ?? 'ar') != 'ar'
+                    ? GlobalDrawer(guestMode: isGuestMode)
+                    : null,
               body: SafeArea(
                 top: false,
                 child: Padding(
@@ -2393,6 +2467,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     LanguageProvider languageProvider,
     EvaluationsProvider evaluationProvider,
     bool isDarkMode,
+    double fontSize,
   ) {
     final userEvaluation = ayah.userEvaluation ??
         evaluationProvider.getUserEvaluationForAyah(ayah.id);
@@ -2445,7 +2520,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
         languageProvider,
       ),
       verseTextStyle: TextStyle(
-        fontSize: 21,
+        fontSize: fontSize,
         height: 1.8,
         color: verseColor,
         backgroundColor: selectedBackgroundColor,
@@ -2481,49 +2556,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
   }
 
-  Color _mushafHeaderFillColor(bool isDarkMode) {
-    return isDarkMode ? const Color(0xFF2A2414) : const Color(0xFFF4E8C8);
-  }
-
   Color _mushafHeaderTextColor(bool isDarkMode) {
     return isDarkMode ? const Color(0xFFE8C97E) : const Color(0xFF5C3A00);
-  }
-
-  Widget _buildMushafHeaderOrnament(Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
-        const SizedBox(width: 4),
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 1),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
-      ],
-    );
-  }
-
-  Widget _buildMushafHeaderRail(Color color, {required bool alignStart}) {
-    return Row(
-      textDirection: TextDirection.rtl,
-      children: [
-        if (!alignStart) _buildMushafHeaderOrnament(color),
-        Expanded(
-          child: Container(
-            height: 1.2,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: color.withValues(alpha: 0.42),
-          ),
-        ),
-        if (alignStart) _buildMushafHeaderOrnament(color),
-      ],
-    );
   }
 
   String _toArabicIndicDigits(int value) {
@@ -2635,7 +2669,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     bool isDarkMode,
     bool isLandscapeReader,
   ) {
-    final frameColor = _mushafFrameColor(isDarkMode);
+    final textColor = _mushafHeaderTextColor(isDarkMode);
     final lineHeight = _resolveMushafLineHeight(
           isLandscapeReader: isLandscapeReader,
           fineTune: const _MushafLineFineTune(lineHeightScale: 1.0),
@@ -2647,77 +2681,50 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       height: lineHeight,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: _mushafHeaderFillColor(isDarkMode),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: frameColor, width: 1.4),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(2),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: frameColor.withValues(alpha: 0.45),
-                  width: 0.9,
-                ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Decorative frame background
+            Positioned.fill(
+              child: SvgPicture.asset(
+                'assets/images/surah_header_frame.svg',
+                fit: BoxFit.fill,
+                colorFilter: isDarkMode
+                    ? ColorFilter.mode(
+                        const Color(0xFF8B6914).withValues(alpha: 0.7),
+                        BlendMode.srcIn,
+                      )
+                    : null,
               ),
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Row(
-                        textDirection: TextDirection.rtl,
-                        children: [
-                          Expanded(
-                            child: _buildMushafHeaderRail(
-                              frameColor,
-                              alignStart: true,
-                            ),
-                          ),
-                          SizedBox(width: isLandscapeReader ? 190 : 150),
-                          Expanded(
-                            child: _buildMushafHeaderRail(
-                              frameColor,
-                              alignStart: false,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Container(
-                        color: _mushafHeaderFillColor(isDarkMode),
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Transform.translate(
-                          offset: const Offset(0, -0.6),
-                          child: Text(
-                            'سورة ${localizedSurahNameById(surahId, localeCode: 'ar')}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                              fontSize: isLandscapeReader ? 21 : 19,
-                              height: 1,
-                              fontWeight: FontWeight.w700,
-                              color: _mushafHeaderTextColor(isDarkMode),
-                              fontFamily: AppFonts.primaryFont,
-                              fontFamilyFallback: const <String>[
-                                AppFonts.versesFont,
-                              ],
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
-                      ),
+            ),
+            // Surah name text
+            Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isLandscapeReader ? 34 : 24,
+                  vertical: isLandscapeReader ? 5 : 4,
+                ),
+                child: Text(
+                  'سُورَةُ ${localizedSurahNameById(surahId, localeCode: 'ar')}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: isLandscapeReader ? 24 : 22,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: textColor,
+                    fontFamily: AppFonts.primaryFont,
+                    fontFamilyFallback: const <String>[
+                      AppFonts.versesFont,
                     ],
+                    letterSpacing: 2,
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -3021,6 +3028,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                   languageProvider,
                   evaluationProvider,
                   isDarkMode,
+                  effectiveFontSize,
                 );
           final baseWordStyle =
               (presentation?.verseTextStyle ?? defaultStyle).copyWith(
@@ -3615,6 +3623,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 languageProvider,
                 evaluationProvider,
                 isDarkMode,
+                _mushafWordFontSize,
               );
 
               return TextSpan(

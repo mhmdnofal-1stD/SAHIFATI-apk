@@ -4,12 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/constants/assets.dart';
 import '../../core/constants/colors.dart';
-import '../../providers/school_provider.dart';
-import '../questions_screen/questions_screen.dart';
 
 class OnboardingLaunchScreen extends StatefulWidget {
   static const String routeName = '/launch';
@@ -67,21 +64,17 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
       return;
     }
 
-    final schoolProvider = context.read<SchoolProvider>();
-
     setState(() {
       _isStartingGuest = true;
       _errorMessage = null;
     });
 
     try {
-      await schoolProvider.getQuickQuestionsSchool();
-
       if (!mounted) {
         return;
       }
 
-      Get.to(const QuestionsScreen());
+      Get.toNamed('/quick-assessment');
     } catch (error) {
       if (!mounted) {
         return;

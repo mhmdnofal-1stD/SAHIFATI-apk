@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -9,6 +10,8 @@ import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../controllers/users_controller.dart';
+import '../core/auth/huawei_web_auth_flow.dart';
+import '../core/auth/huawei_web_oauth.dart';
 import '../core/auth/social_auth_config.dart';
 import '../core/constants/colors.dart';
 import '../models/user_notification_item.dart';
@@ -995,6 +998,18 @@ class UsersProvider with ChangeNotifier {
     return selectedUser != null && (!hasKnownLicenseState || hasActiveLicense);
   }
 
+  /// Returns true if the current session is in guest mode (no authenticated user).
+  /// Guest mode allows limited access to content without registration.
+  bool get isGuestMode => selectedUser == null;
+
+  /// Returns true if user is authenticated but does not have an active license.
+  /// These users have more access than guests but fewer features than licensed users.
+  bool get isRegisteredWithoutLicense =>
+      selectedUser != null && !hasActiveLicense;
+
+  /// Returns true if user is authenticated and has an active license.
+  bool get isLicensedUser => selectedUser != null && hasActiveLicense;
+
   Future<void> ensureLicenseStateLoaded({bool forceRefresh = false}) async {
     if (selectedUser == null) {
       return;
@@ -1482,6 +1497,17 @@ class UsersProvider with ChangeNotifier {
   }
 
   Future<AuthData> signInWithHuawei() async {
+    if (kIsWeb) {
+      await beginHuaweiWebSignIn();
+      return Future<AuthData>.error(
+        _buildSocialAuthError(
+          'SOCIAL_LOGIN_CANCELLED',
+          'social_cancelled'.tr,
+          provider: 'huawei',
+        ),
+      );
+    }
+
     setLoading();
     try {
       if (!SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform) {
@@ -1512,6 +1538,23 @@ class UsersProvider with ChangeNotifier {
         );
       }
 
+      return await signInWithHuaweiIdToken(token, manageLoading: false);
+    } catch (ex) {
+      rethrow;
+    } finally {
+      resetLoading();
+    }
+  }
+
+  Future<AuthData> signInWithHuaweiIdToken(
+    String token, {
+    bool manageLoading = true,
+  }) async {
+    if (manageLoading) {
+      setLoading();
+    }
+
+    try {
       final result = await _usersService.loginWithHuawei(token);
       if (result is! AuthData) {
         throw result;
@@ -1521,7 +1564,124 @@ class UsersProvider with ChangeNotifier {
     } catch (ex) {
       rethrow;
     } finally {
+      if (manageLoading) {
+        resetLoading();
+      }
+    }
+  }
+
+  Future<void> beginHuaweiWebSignIn() async {
+    if (!kIsWeb) {
+      throw _buildSocialAuthError(
+        'SOCIAL_PROVIDER_UNSUPPORTED',
+        'social_provider_temporarily_unavailable'.trParams({
+          'provider': _providerLabel('huawei'),
+        }),
+        provider: 'huawei',
+      );
+    }
+
+    setLoading();
+    try {
+      if (!SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform) {
+        throw _buildSocialAuthError(
+          'SOCIAL_CONFIG_MISSING',
+          'social_huawei_requires_app_id'.tr,
+          provider: 'huawei',
+        );
+      }
+
+      final state = _buildOAuthStateToken();
+      final nonce = _buildOAuthStateToken();
+      await persistPendingHuaweiWebAuthRequest(state: state, nonce: nonce);
+      final authorizationUrl = await _usersService.getHuaweiWebAuthorizationUrl(
+        state: state,
+        nonce: nonce,
+      );
+      redirectToHuaweiWebAuthorizationUrl(authorizationUrl);
+    } catch (ex) {
+      clearPendingHuaweiWebAuthRequest();
+      rethrow;
+    } finally {
       resetLoading();
+    }
+  }
+
+  Future<bool> tryCompleteHuaweiWebSignIn(Uri uri) async {
+    if (!kIsWeb) {
+      return false;
+    }
+
+    final intent = resolveHuaweiWebAuthRoute(uri);
+    if (intent.kind == HuaweiWebAuthRouteKind.none) {
+      return false;
+    }
+
+    final expectedState = readPendingHuaweiWebState();
+    final expectedNonce = readPendingHuaweiWebNonce();
+    clearPendingHuaweiWebAuthRequest();
+    clearHuaweiWebCallbackUrl();
+
+    if (expectedState == null ||
+        expectedState.isEmpty ||
+        intent.state != expectedState) {
+      throw _buildSocialAuthError(
+        'SOCIAL_AUTH_INVALID_RESPONSE',
+        'social_auth_invalid_response'.tr,
+        provider: 'huawei',
+      );
+    }
+
+    if (intent.hasError) {
+      throw _buildSocialAuthError(
+        intent.errorCode!,
+        intent.errorMessage?.trim().isNotEmpty == true
+            ? intent.errorMessage!.trim()
+            : 'social_huawei_sign_in_failed'.tr,
+        provider: 'huawei',
+      );
+    }
+
+    final token = intent.token?.trim() ?? '';
+    if (token.isEmpty || !_doesJwtNonceMatch(token, expectedNonce)) {
+      throw _buildSocialAuthError(
+        'SOCIAL_AUTH_INVALID_RESPONSE',
+        'social_auth_invalid_response'.tr,
+        provider: 'huawei',
+      );
+    }
+
+    await signInWithHuaweiIdToken(token, manageLoading: false);
+    return true;
+  }
+
+  String _buildOAuthStateToken() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(24, (_) => random.nextInt(256));
+    return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  bool _doesJwtNonceMatch(String token, String? expectedNonce) {
+    if (expectedNonce == null || expectedNonce.isEmpty) {
+      return false;
+    }
+
+    final segments = token.split('.');
+    if (segments.length < 2) {
+      return false;
+    }
+
+    try {
+      final payload = json.decode(
+        utf8.decode(base64Url.decode(base64Url.normalize(segments[1]))),
+      );
+      if (payload is! Map<String, dynamic>) {
+        return false;
+      }
+
+      return payload['nonce'] == expectedNonce;
+    } catch (_) {
+      return false;
     }
   }
 
