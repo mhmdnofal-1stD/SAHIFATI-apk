@@ -121,6 +121,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
 - تأكد من أن SHA1 الصحيح مسجل داخل Google Cloud Console OAuth client المرتبط بـ `GOOGLE_SERVER_CLIENT_ID`.
 - لإضافة/تعديل Google client IDs: افتح Google Cloud Console → Credentials → OAuth 2.0 Client IDs.
 - تحديث القيم في CI (`codemagic.yaml`) أو pass `--dart-define` عند البناء.
+- ملاحظة اعتمادية على الويب: منذ 2026-05-28 صار `web/flutter_bootstrap.js` مخصصا بدون تسجيل service worker، لأن بعض المتصفحات كانت تستمر في تحميل bundle قديم وتُظهر أخطاء social auth من نوع "غير مهيأ" رغم أن قيم Google/Facebook/Apple الصحيحة كانت موجودة في الإصدار الحي. وجود القيم في build لم يعد وحده دليلا كافيا؛ يجب التحقق من أن الصفحة الحمّلت الإصدار الجديد فعلا.
 
 صيانة:
 - عند تدوير مفاتيح OAuth (Client secret) حدِّث الخلفية وأي مكان يُستخدم فيه السر فوراً.
@@ -181,6 +182,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
 - روابط مهمة:
   - سياسة الخصوصية: `https://sahifati.org/privacy.html`
   - رابط الدعم/اتصال المراجع: `info@sahifati.org` (أو البريد الذي تحددونه)
+
+## 6.1 ملاحظة توثيقية مهمة عن موثوقية الحالة
+
+- هذه الوثيقة توثق القيم ومسارات الدمج داخل المشروع، لكنها لا تعتبر وحدها إثباتا نهائيا على أن Google أو Facebook أو Apple في وضع Live وصالحين إنتاجيا.
+- النجاح الفعلي على الويب يتطلب ثلاثة شروط معا:
+  1. build يحمل القيم الصحيحة.
+  2. المتصفح يحمّل الإصدار الأحدث فعلا لا bundle قديما من الكاش.
+  3. إعدادات المزود الخارجية نفسها مكتملة وصالحة على الدومين والإصدار الجاري اختباره.
+- لذلك أي ادعاء بأن التسجيل "يعمل" يجب أن يسنده اختبار حي بعد النشر، لا الاكتفاء بمطابقة القيم داخل الملفات.
 
 ---
 

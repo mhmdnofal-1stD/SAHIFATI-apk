@@ -2,11 +2,6 @@
 param(
   [ValidateSet('apk', 'aab')]
   [string]$Artifact = 'apk',
-  [string]$GoogleServerClientId = '821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com',
-  [string]$FacebookAppId = '824178674089653',
-  [string]$AppleWebClientId = 'org.sahifati.app.signin',
-  [string]$AppleRedirectUri = 'https://sahifati.org/api/auth/social/apple/callback',
-  [string]$HuaweiAppId = '116918405',
   [bool]$SplitPerAbi = $true,
   [string]$ApkTargetPlatform = 'android-arm64',
   [bool]$Obfuscate = $true
@@ -20,6 +15,48 @@ $androidDir = Join-Path $projectRoot 'android'
 $keyPropertiesPath = Join-Path $androidDir 'key.properties'
 $appBuildGradlePath = Join-Path $androidDir 'app\build.gradle'
 $agconnectServicesPath = Join-Path $androidDir 'app\agconnect-services.json'
+$sharedBuildConfigPath = Join-Path $projectRoot 'tool\build_config.json'
+$sharedDefineGeneratorPath = Join-Path $projectRoot 'tool\generate_flutter_defines.dart'
+$pubspecPath = Join-Path $projectRoot 'pubspec.yaml'
+
+if (-not (Test-Path $sharedBuildConfigPath)) {
+  throw "Missing shared build config at $sharedBuildConfigPath"
+}
+
+function Get-FlutterDefineArgs {
+  param([string]$Profile = 'release')
+
+  $output = & dart 'run' $sharedDefineGeneratorPath "--profile=$Profile" "--config=$sharedBuildConfigPath" "--pubspec=$pubspecPath"
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to generate Flutter defines for profile '$Profile'"
+  }
+
+  $defines = @(
+    $output |
+      Where-Object { $_ -and $_.Trim().StartsWith('--dart-define=') } |
+      ForEach-Object { $_.Trim() }
+  )
+
+  if ($defines.Count -eq 0) {
+    throw "No Flutter defines were produced for profile '$Profile'"
+  }
+
+  return $defines
+}
+
+$releaseDefineArgs = Get-FlutterDefineArgs -Profile 'release'
+$releaseDefineMap = @{}
+foreach ($entry in $releaseDefineArgs) {
+  $normalized = $entry -replace '^--dart-define=', ''
+  $key, $value = $normalized.Split('=', 2)
+  $releaseDefineMap[$key] = $value
+}
+
+$googleServerClientId = $releaseDefineMap['GOOGLE_SERVER_CLIENT_ID']
+$facebookAppId = $releaseDefineMap['FACEBOOK_APP_ID']
+$appleWebClientId = $releaseDefineMap['APPLE_WEB_CLIENT_ID']
+$appleRedirectUri = $releaseDefineMap['APPLE_REDIRECT_URI']
+$huaweiAppId = $releaseDefineMap['HUAWEI_APP_ID']
 
 if (-not (Test-Path $keyPropertiesPath)) {
   throw "Missing Android signing config at $keyPropertiesPath"
@@ -98,16 +135,9 @@ $buildArgs = @(
   'build',
   $(if ($Artifact -eq 'aab') { 'appbundle' } else { 'apk' }),
   '--release',
-  '--tree-shake-icons',
-  "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GoogleServerClientId",
-  "--dart-define=FACEBOOK_APP_ID=$FacebookAppId",
-  "--dart-define=APPLE_WEB_CLIENT_ID=$AppleWebClientId",
-  "--dart-define=APPLE_REDIRECT_URI=$AppleRedirectUri"
+  '--tree-shake-icons'
 )
-
-if (-not [string]::IsNullOrWhiteSpace($HuaweiAppId)) {
-  $buildArgs += "--dart-define=HUAWEI_APP_ID=$HuaweiAppId"
-}
+$buildArgs += $releaseDefineArgs
 
 if ($Artifact -eq 'apk' -and -not [string]::IsNullOrWhiteSpace($ApkTargetPlatform)) {
   $buildArgs += '--target-platform'

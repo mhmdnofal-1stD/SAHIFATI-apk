@@ -2202,11 +2202,11 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
                 ),
               ),
                 drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-                  ? const GlobalDrawer()
+                  ? GlobalDrawer(guestMode: isGuestMode)
                   : null,
-                endDrawer: (Get.locale?.languageCode ?? 'ar') != 'ar'
-                  ? const GlobalDrawer()
-                  : null,
+                  endDrawer: (Get.locale?.languageCode ?? 'ar') != 'ar'
+                    ? GlobalDrawer(guestMode: isGuestMode)
+                    : null,
               body: SafeArea(
                 top: false,
                 child: Padding(
@@ -2556,49 +2556,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     return isDarkMode ? const Color(0xFF8B6914) : const Color(0xFFB7852A);
   }
 
-  Color _mushafHeaderFillColor(bool isDarkMode) {
-    return isDarkMode ? const Color(0xFF2A2414) : const Color(0xFFF4E8C8);
-  }
-
   Color _mushafHeaderTextColor(bool isDarkMode) {
     return isDarkMode ? const Color(0xFFE8C97E) : const Color(0xFF5C3A00);
-  }
-
-  Widget _buildMushafHeaderOrnament(Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
-        const SizedBox(width: 4),
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 1),
-          ),
-        ),
-        const SizedBox(width: 4),
-        Container(width: 14, height: 1.2, color: color.withValues(alpha: 0.72)),
-      ],
-    );
-  }
-
-  Widget _buildMushafHeaderRail(Color color, {required bool alignStart}) {
-    return Row(
-      textDirection: TextDirection.rtl,
-      children: [
-        if (!alignStart) _buildMushafHeaderOrnament(color),
-        Expanded(
-          child: Container(
-            height: 1.2,
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            color: color.withValues(alpha: 0.42),
-          ),
-        ),
-        if (alignStart) _buildMushafHeaderOrnament(color),
-      ],
-    );
   }
 
   String _toArabicIndicDigits(int value) {
@@ -2768,113 +2727,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMushafHeaderSideOrnament(
-    Color color, {
-    required bool isDarkMode,
-    required bool mirror,
-  }) {
-    final ornament = SizedBox(
-      width: 84,
-      child: Row(
-        textDirection: TextDirection.ltr,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 1),
-            ),
-            child: Center(
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.9)),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 13,
-                height: 13,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.85)),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha: 0.75)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  height: 1,
-                  color: color.withValues(alpha: 0.45),
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    width: 16,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(
-                          color: color.withValues(alpha: 0.55),
-                          width: 1,
-                        ),
-                        bottom: BorderSide(
-                          color: color.withValues(alpha: 0.55),
-                          width: 1,
-                        ),
-                      ),
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  height: 1,
-                  color: color.withValues(alpha: 0.45),
-                ),
-              ],
-            ),
-          ),
-          if (!isDarkMode)
-            const SizedBox(width: 0),
-        ],
-      ),
-    );
-
-    if (!mirror) {
-      return ornament;
-    }
-
-    return Transform(
-      alignment: Alignment.center,
-      transform: Matrix4.identity()..scale(-1.0, 1.0),
-      child: ornament,
     );
   }
 

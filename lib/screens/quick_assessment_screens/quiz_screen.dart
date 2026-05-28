@@ -17,7 +17,7 @@ class QuizScreen extends StatefulWidget {
   final List<Evaluation>? evaluations;
 
   const QuizScreen({
-    Key? key,
+    super.key,
     required this.ayah,
     required this.currentIndex,
     required this.totalAyahs,
@@ -26,7 +26,7 @@ class QuizScreen extends StatefulWidget {
     required this.onBack,
     this.customTitle,
     this.evaluations,
-  }) : super(key: key);
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -52,18 +52,11 @@ class _QuizScreenState extends State<QuizScreen> {
     3: 'صعب',
   };
 
-  static const Map<int, IconData> ratingIcons = {
-    0: Icons.arrow_upward, // Up
-    1: Icons.arrow_downward, // Down
-    2: Icons.arrow_forward, // Right
-    3: Icons.arrow_back, // Left
-  };
-
-  static const IconData _approveIcon = Icons.thumb_up_alt_rounded;
-  static const IconData _declineIcon = Icons.remove_circle_outline_rounded;
-  static const IconData _easyIcon = Icons.wb_sunny_rounded;
-  static const IconData _hardIcon = Icons.emoji_events_rounded;
-  static const IconData _saveIcon = Icons.star_rounded;
+  static const IconData _approveIcon = Icons.keyboard_double_arrow_right_rounded;
+  static const IconData _declineIcon = Icons.keyboard_double_arrow_left_rounded;
+  static const IconData _easyIcon = Icons.keyboard_double_arrow_up_rounded;
+  static const IconData _hardIcon = Icons.keyboard_double_arrow_down_rounded;
+  static const IconData _saveIcon = Icons.keyboard_double_arrow_up_rounded;
   static const IconData _undoIcon = Icons.keyboard_double_arrow_down_rounded;
 
   bool get _isBinaryMode => widget.evaluations != null && widget.evaluations!.length == 2;
@@ -127,10 +120,10 @@ class _QuizScreenState extends State<QuizScreen> {
     required VoidCallback onTap,
     Axis axis = Axis.horizontal,
   }) {
-    final baseColor = color.withOpacity(isHighlighted ? 0.18 : 0.08);
-    final borderColor = color.withOpacity(isHighlighted ? 0.55 : 0.22);
-    final iconColor = color.withOpacity(isHighlighted ? 1.0 : 0.72);
-    final textColor = color.withOpacity(isHighlighted ? 0.95 : 0.8);
+    final baseColor = color.withValues(alpha: isHighlighted ? 0.18 : 0.08);
+    final borderColor = color.withValues(alpha: isHighlighted ? 0.55 : 0.22);
+    final iconColor = color.withValues(alpha: isHighlighted ? 1.0 : 0.72);
+    final textColor = color.withValues(alpha: isHighlighted ? 0.95 : 0.8);
 
     final content = axis == Axis.horizontal
         ? Row(
@@ -185,7 +178,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 boxShadow: isHighlighted
                     ? [
                         BoxShadow(
-                          color: color.withOpacity(0.18),
+                          color: color.withValues(alpha: 0.18),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
@@ -202,28 +195,25 @@ class _QuizScreenState extends State<QuizScreen> {
 
   Widget _buildEdgeIndicators() {
     if (_isBinaryMode) {
-      return IgnorePointer(
-        ignoringSemantics: false,
-        child: Stack(
-          children: [
-            _buildDirectionalCue(
-              alignment: Alignment.centerRight,
-              label: _getRatingLabel(0),
-              icon: _approveIcon,
-              color: _getRatingColor(0),
-              isHighlighted: _highlightedRating == 0,
-              onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(0)),
-            ),
-            _buildDirectionalCue(
-              alignment: Alignment.centerLeft,
-              label: _getRatingLabel(1),
-              icon: _declineIcon,
-              color: _getRatingColor(1),
-              isHighlighted: _highlightedRating == 1,
-              onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(1)),
-            ),
-          ],
-        ),
+      return Stack(
+        children: [
+          _buildDirectionalCue(
+            alignment: Alignment.centerRight,
+            label: _getRatingLabel(0),
+            icon: _approveIcon,
+            color: _getRatingColor(0),
+            isHighlighted: _highlightedRating == 0,
+            onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(0)),
+          ),
+          _buildDirectionalCue(
+            alignment: Alignment.centerLeft,
+            label: _getRatingLabel(1),
+            icon: _declineIcon,
+            color: _getRatingColor(1),
+            isHighlighted: _highlightedRating == 1,
+            onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(1)),
+          ),
+        ],
       );
     }
 
@@ -272,7 +262,7 @@ class _QuizScreenState extends State<QuizScreen> {
       _cardPosition += details.delta;
       _cardRotation = _cardPosition.dx / 1000;
 
-      final threshold = 50.0;
+      const threshold = 50.0;
       if (_isBinaryMode) {
         if (_cardPosition.dx < -threshold) {
           _highlightedRating = 1;
@@ -298,7 +288,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _onPanEnd(DragEndDetails details) {
-    final threshold = 100.0;
+    const threshold = 100.0;
     int? selectedRating;
 
     if (_isBinaryMode) {
@@ -327,7 +317,6 @@ class _QuizScreenState extends State<QuizScreen> {
       widget.onRatingSelected(_resolveSelectedEvaluationId(selectedRating));
     }
 
-    // Reset position
     setState(() {
       _cardPosition = Offset.zero;
       _cardRotation = 0.0;
@@ -440,16 +429,16 @@ class _QuizScreenState extends State<QuizScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
+                            boxShadow: const [
                               BoxShadow(
-                                color: const Color(0x1A17352A),
+                                color: Color(0x1A17352A),
                                 blurRadius: 28,
-                                offset: const Offset(0, 14),
+                                offset: Offset(0, 14),
                               ),
                               BoxShadow(
-                                color: const Color(0x12264A3F),
+                                color: Color(0x12264A3F),
                                 blurRadius: 10,
-                                offset: const Offset(0, 3),
+                                offset: Offset(0, 3),
                               ),
                             ],
                           ),
@@ -482,7 +471,7 @@ class _QuizScreenState extends State<QuizScreen> {
                                     );
 
                                     return Center(
-                                      child: Container(
+                                      child: SizedBox(
                                         width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
                                         height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
                                         child: Text(
@@ -545,51 +534,56 @@ class _QuizScreenState extends State<QuizScreen> {
               ],
             ),
           ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: widget.onSkip,
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        side: const BorderSide(color: AppColors.lineColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        foregroundColor: AppColors.primaryPurple,
-                        backgroundColor: Colors.white,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onSkip,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      side: const BorderSide(color: AppColors.lineColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Text(
-                        'تخطي',
-                        style: AppTypography.of(context).buttonPrimary.copyWith(
-                              color: AppColors.primaryPurple,
-                            ),
-                      ),
+                      foregroundColor: AppColors.primaryPurple,
+                      backgroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.skip_next_rounded),
+                    label: Text(
+                      'تخطي',
+                      style: AppTypography.of(context).buttonPrimary.copyWith(
+                            color: AppColors.primaryPurple,
+                          ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 56,
-                    height: 52,
-                    child: OutlinedButton(
-                      onPressed: widget.currentIndex == 0 ? null : widget.onBack,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.lineColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        foregroundColor: AppColors.primaryPurple,
-                        backgroundColor: Colors.white,
-                        padding: EdgeInsets.zero,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.currentIndex == 0 ? null : widget.onBack,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      side: const BorderSide(color: AppColors.lineColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const Icon(Icons.arrow_forward_rounded),
+                      foregroundColor: AppColors.primaryPurple,
+                      backgroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: Text(
+                      'العودة',
+                      style: AppTypography.of(context).buttonPrimary.copyWith(
+                            color: AppColors.primaryPurple,
+                          ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );

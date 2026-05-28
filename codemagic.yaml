@@ -29,15 +29,13 @@ workflows:
 
       - name: Build iOS IPA
         script: |
-          flutter build ipa --release \
-            --dart-define=API_BASE_URL=https://sahifati.org/api \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com \
-            --dart-define=GOOGLE_SERVER_CLIENT_ID=821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com \
-            --dart-define=APPLE_WEB_CLIENT_ID=org.sahifati.app.signin \
-            --dart-define=APPLE_REDIRECT_URI=https://sahifati.org/api/auth/social/apple/callback \
-            --dart-define=FACEBOOK_AUTH_ENABLED=true \
-            --dart-define=FACEBOOK_APP_ID=824178674089653 \
-            --dart-define=HUAWEI_APP_ID=116918405
+          BUILD_ARGS=(--release)
+          while IFS= read -r line; do
+            if [ -n "$line" ]; then
+              BUILD_ARGS+=("$line")
+            fi
+          done < <(dart run tool/generate_flutter_defines.dart --profile=release --config=tool/build_config.json --pubspec=pubspec.yaml)
+          flutter build ipa "${BUILD_ARGS[@]}"
 
     artifacts:
       - build/ios/ipa/*.ipa

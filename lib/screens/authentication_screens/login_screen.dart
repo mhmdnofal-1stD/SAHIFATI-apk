@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:sahifaty/core/constants/app_version.dart';
 import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
@@ -414,8 +415,6 @@ class _LoginScreenState extends State<LoginScreen> with SocialAuthAction {
 class _OwnerBrandingCard extends StatelessWidget {
   const _OwnerBrandingCard();
 
-  static const String _flutterBetaVersionLabel = 'Beta 00.00.07';
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -426,7 +425,7 @@ class _OwnerBrandingCard extends StatelessWidget {
         children: [
           Center(
             child: Text(
-              _flutterBetaVersionLabel,
+              'v$appVersion',
               textDirection: TextDirection.ltr,
               style: AppTypography.of(context).bodySmall.copyWith(
                     fontWeight: FontWeight.w700,

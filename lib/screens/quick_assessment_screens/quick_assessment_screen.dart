@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 import 'package:sahifaty/models/ayat.dart';
 import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/models/quick_assessment_config.dart';
 import 'package:sahifaty/models/surah.dart';
-import 'package:sahifaty/providers/ayat_provider.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 import 'package:sahifaty/core/utils/surah_localization.dart';
@@ -15,7 +13,7 @@ import 'quiz_screen.dart';
 import 'results_screen.dart';
 
 class QuickAssessmentScreen extends StatefulWidget {
-  const QuickAssessmentScreen({Key? key}) : super(key: key);
+  const QuickAssessmentScreen({super.key});
 
   @override
   State<QuickAssessmentScreen> createState() => _QuickAssessmentScreenState();

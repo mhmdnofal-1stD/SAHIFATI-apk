@@ -17,6 +17,7 @@
 - Facebook على الويب: مؤكد من ناحية الكود والبناء بعد إزالة الحظر السابق على الويب بتاريخ 2026-05-12.
 - Apple على الويب: المسار البرمجي موجود، لكن لا يمكن تأكيد التشغيل الفعلي قبل النشر بدون قيم حقيقية لـ `APPLE_WEB_CLIENT_ID` و `APPLE_REDIRECT_URI`.
 - Huawei على الويب: غير مدعوم في الكود الحالي عمدا، ولا يجب اعتباره مزود Web قبل النشر.
+- تحديث 2026-05-28: لم يعد الاعتماد على وجود القيم داخل bundle وحده كافيا للحكم بأن مزودي الويب يعملون. تم اعتماد `web/flutter_bootstrap.js` مخصص بدون service worker registration حتى لا تستمر المتصفحات في تحميل bundle قديم يسبب أخطاء social auth مضللة بعد النشر.
 
 ### توضيح Huawei للمستخدم والمنتج
 
@@ -28,9 +29,9 @@
 
 | المزوّد | الويب | أندرويد | iOS | الخلفية | مفاتيح النشر | الحالة الحالية | الملاحظات الرئيسية |
 |---|---|---|---|---|---|---|---|
-| Google | نعم | نعم | نعم | نعم | `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_SERVER_CLIENT_ID` | جاهز | مسار العمل الأساسي قائم |
-| Facebook | نعم بعد تعديل 2026-05-12 | نعم | نعم | نعم | `FACEBOOK_AUTH_ENABLED`, `FACEBOOK_APP_ID`, وخلفيا `FACEBOOK_APP_SECRET` | جاهز كوديا، بانتظار موافقة Meta والنشر | يحتاج إعادة build/deploy لكي يظهر التفعيل على الويب في الإنتاج |
-| Apple | نعم | لا موثق حاليا | لا موثق حاليا | نعم | `APPLE_WEB_CLIENT_ID`, `APPLE_REDIRECT_URI`, وخلفيا `APPLE_CLIENT_ID` | جاهز جزئيا | يعتمد على بيانات Apple Developer غير المكتملة |
+| Google | نعم | نعم | نعم | نعم | `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_SERVER_CLIENT_ID` | جاهز كوديا ويحتاج تحقق حي | البناء والواجهة موجودان، لكن الحكم النهائي يجب أن يكون من اختبار حي بعد النشر |
+| Facebook | نعم بعد تعديل 2026-05-12 | نعم | نعم | نعم | `FACEBOOK_AUTH_ENABLED`, `FACEBOOK_APP_ID`, وخلفيا `FACEBOOK_APP_SECRET` | جاهز كوديا ويحتاج تحقق حي | يحتاج أيضا جاهزية Meta app ووجود السر الصحيح على الخادم |
+| Apple | نعم | لا موثق حاليا | لا موثق حاليا | نعم | `APPLE_WEB_CLIENT_ID`, `APPLE_REDIRECT_URI`, وخلفيا `APPLE_CLIENT_ID` | جاهز جزئيا ويحتاج تحقق حي | يعتمد على بيانات Apple Developer واختبار حي بعد النشر |
 | Huawei | لا | نعم | لا | نعم | `android/app/agconnect-services.json` مع `HUAWEI_APP_ID` اختياريًا | جاهز كوديا | يعتمد تشغيليًا على AG Connect/HMS native config، وليس على dart-define وحده |
 
 ## حالة Facebook Login

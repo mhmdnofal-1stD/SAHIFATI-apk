@@ -5,8 +5,8 @@ import 'package:sahifaty/models/ayat.dart';
 import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
-import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
+import 'package:sahifaty/providers/users_provider.dart';
 
 class ResultsScreen extends StatelessWidget {
   final int totalAyahs;
@@ -21,8 +21,8 @@ class ResultsScreen extends StatelessWidget {
     required this.ayahs,
     this.isGuestMode = false,
     this.evaluations,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   static const Map<int, Color> _fallbackColors = {
     0: Color(0xFF1D6652),
@@ -70,37 +70,6 @@ class ResultsScreen extends StatelessWidget {
       } catch (_) {}
     }
     return _fallbackColors[index] ?? Colors.grey;
-  }
-
-  Map<String, dynamic> _calculateStats(List<Evaluation> activeEvaluations) {
-    final weights = <int, double>{
-      for (final evaluation in activeEvaluations) if (evaluation.id != null) evaluation.id!: 0,
-    };
-    final counts = <int, int>{
-      for (final evaluation in activeEvaluations) if (evaluation.id != null) evaluation.id!: 0,
-    };
-    double assessedWeight = 0;
-
-    for (final entry in assessments.entries) {
-      final ayahId = entry.key;
-      final evaluationId = entry.value;
-      
-      // Find the ayah to get its weight
-      final ayah = ayahs.firstWhere((a) => a.id == ayahId, orElse: () => ayahs.first);
-      final weight = ayah.weight ?? 0;
-      assessedWeight += weight;
-
-      if (weights.containsKey(evaluationId)) {
-        weights[evaluationId] = (weights[evaluationId] ?? 0) + weight;
-        counts[evaluationId] = (counts[evaluationId] ?? 0) + 1;
-      }
-    }
-
-    return {
-      'weights': weights,
-      'counts': counts,
-      'assessedWeight': assessedWeight,
-    };
   }
 
   Map<String, dynamic> _calculateTypeStats({
@@ -436,12 +405,12 @@ class _HeroTrackCard extends StatelessWidget {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
-            section.accentColor.withOpacity(0.16),
+            section.accentColor.withValues(alpha: 0.16),
             Colors.white,
           ],
         ),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: section.accentColor.withOpacity(0.18)),
+        border: Border.all(color: section.accentColor.withValues(alpha: 0.18)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -491,7 +460,7 @@ class _SectionJourneyCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE4EBE1)),
         boxShadow: [
           BoxShadow(
-            color: section.accentColor.withOpacity(0.09),
+            color: section.accentColor.withValues(alpha: 0.09),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -506,7 +475,7 @@ class _SectionJourneyCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: section.accentColor.withOpacity(0.12),
+                  color: section.accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(section.leadingIcon, color: section.accentColor, size: 20),
@@ -559,7 +528,7 @@ class _ResultProgressRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: entry.color.withOpacity(0.08),
+        color: entry.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(

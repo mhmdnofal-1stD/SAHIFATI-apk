@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "defines": {
+    "API_BASE_URL": "https://sahifati.org/api",
+    "GOOGLE_WEB_CLIENT_ID": "821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com",
+    "GOOGLE_SERVER_CLIENT_ID": "821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com",
+    "APPLE_WEB_CLIENT_ID": "org.sahifati.app.signin",
+    "APPLE_REDIRECT_URI": "https://sahifati.org/api/auth/social/apple/callback",
+    "FACEBOOK_AUTH_ENABLED": "true",
+    "FACEBOOK_APP_ID": "824178674089653",
+    "HUAWEI_APP_ID": "116918405",
+    "HUAWEI_WEB_CLIENT_ID": "116918405",
+    "HUAWEI_WEB_REDIRECT_URI": "https://sahifati.org/api/auth/social/huawei/callback"
+  },
+  "profiles": {
+    "release": [
+      "APP_VERSION",
+      "API_BASE_URL",
+      "GOOGLE_WEB_CLIENT_ID",
+      "GOOGLE_SERVER_CLIENT_ID",
+      "APPLE_WEB_CLIENT_ID",
+      "APPLE_REDIRECT_URI",
+      "FACEBOOK_AUTH_ENABLED",
+      "FACEBOOK_APP_ID",
+      "HUAWEI_APP_ID",
+      "HUAWEI_WEB_CLIENT_ID",
+      "HUAWEI_WEB_REDIRECT_URI"
+    ],
+    "web-dev": [
+      "GOOGLE_WEB_CLIENT_ID",
+      "FACEBOOK_APP_ID",
+      "APPLE_WEB_CLIENT_ID",
+      "APPLE_REDIRECT_URI",
+      "HUAWEI_WEB_CLIENT_ID",
+      "HUAWEI_WEB_REDIRECT_URI"
+    ]
+  }
+}

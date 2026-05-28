@@ -93,44 +93,6 @@ class _OnboardingLaunchScreenState extends State<OnboardingLaunchScreen> {
     }
   }
 
-  Future<void> _browseQuranAsGuest() async {
-    if (_isStartingGuest) {
-      return;
-    }
-
-    setState(() {
-      _isStartingGuest = true;
-      _errorMessage = null;
-    });
-
-    try {
-      if (!mounted) {
-        return;
-      }
-
-      // Navigate to Quran reading starting from Al-Fatiha (surah 1)
-      Get.offAllNamed('/read', parameters: {
-        'surahId': '1',
-        'filterTypeId': '1',
-      });
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      final message = error.toString().replaceFirst('Exception: ', '').trim();
-      setState(() {
-        _errorMessage = message.isEmpty ? _guestFallbackError : message;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isStartingGuest = false;
-        });
-      }
-    }
-  }
-
   void _openLogin() {
     if (_isStartingGuest) {
       return;

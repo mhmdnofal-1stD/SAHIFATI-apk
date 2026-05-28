@@ -14,6 +14,7 @@ import 'core/auth/verification_flow.dart';
 import 'controllers/filter_types.dart';
 import 'core/constants/colors.dart';
 import 'core/constants/fonts.dart';
+import 'core/constants/app_version.dart';
 import 'core/typography/app_typography.dart';
 import 'core/typography/typography_config.dart';
 import 'providers/ayat_provider.dart';
@@ -487,8 +488,6 @@ void _seedLocalReadingPreviewUser() {
 // App version
 // ---------------------------------------------------------------------------
 
-const String _kAppVersion = '1.0.8';
-
 // Startup progress stage
 // ---------------------------------------------------------------------------
 
@@ -657,6 +656,19 @@ class _InitialScreenState extends State<InitialScreen> {
         return;
       }
 
+      _reportStage('جاري استكمال تسجيل هواوي...', 0.30);
+      final handledHuaweiWebAuth =
+          await usersProvider.tryCompleteHuaweiWebSignIn(Uri.base);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (handledHuaweiWebAuth && usersProvider.selectedUser == null) {
+        await _routeToUnauthenticatedEntry();
+        return;
+      }
+
       _reportStage('جاري التحقق من الهوية...', 0.35);
       final bool isLoggedIn = await usersProvider.tryAutoLogin();
 
@@ -800,7 +812,7 @@ class _StartupLoadingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               const Text(
-                'v$_kAppVersion',
+                'v$appVersion',
                 style: TextStyle(
                   color: mutedColor,
                   fontSize: 12,

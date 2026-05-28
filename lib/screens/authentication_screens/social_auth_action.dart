@@ -9,6 +9,7 @@ import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'widgets/auth_social_section.dart';
 import 'widgets/google_web_auth_button.dart';
+import 'widgets/huawei_web_auth_button.dart';
 
 /// Mixin for [State] classes that host social authentication controls.
 ///
@@ -92,7 +93,13 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
         }
         if (p == 'facebook') return 'social_facebook_requires_app_id'.tr;
         if (p == 'apple') return 'social_apple_requires_web_config'.tr;
-        if (p == 'huawei') return 'social_huawei_requires_app_id'.tr;
+        if (p == 'huawei') {
+          return kIsWeb
+              ? 'social_provider_temporarily_unavailable'.trParams({
+                  'provider': _providerDisplayLabel('huawei'),
+                })
+              : 'social_huawei_requires_app_id'.tr;
+        }
       }
 
       if (code == 'SOCIAL_PROVIDER_UNSUPPORTED') {
@@ -225,6 +232,20 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
   }
 
   Widget _buildHuaweiControl(UsersProvider up, EvaluationsProvider ep) {
+    if (kIsWeb) {
+      return HuaweiWebAuthButton(
+        isBusy: up.isLoading,
+        onStart: up.beginHuaweiWebSignIn,
+        onError: (error) {
+          if (!mounted) return;
+          setState(() {
+            socialStatusMessage = resolveSocialErrorMessage(error, up);
+            socialStatusIsError = true;
+          });
+        },
+      );
+    }
+
     return AuthCompactSocialButton(
       semanticLabel: 'social_provider_huawei'.tr,
       onPressed: up.isLoading
