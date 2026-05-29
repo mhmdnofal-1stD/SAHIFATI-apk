@@ -333,6 +333,8 @@ class UnifiedQuranFilterBody extends StatefulWidget {
 class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
   late UnifiedFilterSelection _draft;
   final Set<int> _expandedThirds = <int>{};
+  final Set<String> _expandedSubjectNodes = <String>{};
+  final Set<String> _expandedSchoolGroups = <String>{};
 
   @override
   void initState() {
@@ -352,7 +354,8 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
   String _trParams(String key, Map<String, String> params) =>
       key.trParams(params);
 
-  String _labelWithCount(String label, int count) => '$label ($count)';
+    String _labelWithCount(String label, int count) =>
+      count > 0 ? '$label ($count)' : label;
 
   void _toggleString(Set<String> set, String value) {
     setState(() {
@@ -477,62 +480,18 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
     );
   }
 
-  Widget _thirdChip(int third) {
-    final selected = _draft.thirds.contains(third);
-    final theme = Theme.of(context);
-    return FilterChip(
-      label: Text(
-        _thirdLabel(third),
-        style: TextStyle(
-          fontSize: 13,
-          color: selected ? Colors.white : theme.colorScheme.onSurface,
-        ),
-      ),
-      selected: selected,
-      selectedColor: theme.colorScheme.primary,
-      checkmarkColor: Colors.white,
-      color: WidgetStatePropertyAll<Color?>(
-        theme.scaffoldBackgroundColor,
-      ),
-      side: BorderSide(
-        color: selected
-            ? theme.colorScheme.primary
-            : theme.dividerColor,
-      ),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-      labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      onSelected: (_) {
-        final t = third;
-        setState(() {
-          if (_draft.thirds.contains(t)) {
-            _draft = _draft.copyWith(
-              thirds: Set.from(_draft.thirds)..remove(t),
-            );
-            final removed = _ScopeData.juzsInThird(t);
-            _draft = _draft.copyWith(
-              juzs: Set.from(_draft.juzs)..removeAll(removed),
-            );
-          } else {
-            _draft = _draft.copyWith(
-              thirds: Set.from(_draft.thirds)..add(t),
-            );
-          }
-        });
-      },
-    );
-  }
-
   Widget _thirdSectionCard(int third) {
     final isExpanded = _expandedThirds.contains(third);
     final isSelected = _draft.thirds.contains(third);
     final theme = Theme.of(context);
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
+        color: isSelected
+            ? theme.colorScheme.primary.withValues(alpha: 0.08)
+            : theme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isSelected
               ? theme.colorScheme.primary.withValues(alpha: 0.5)
@@ -542,37 +501,99 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Row(
-              children: [
-                IconButton(
-                  visualDensity:
-                      const VisualDensity(horizontal: -4, vertical: -4),
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    isExpanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      if (isExpanded) {
-                        _expandedThirds.remove(third);
-                      } else {
-                        _expandedThirds.add(third);
-                      }
-                    });
-                  },
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                final t = third;
+                setState(() {
+                  if (_draft.thirds.contains(t)) {
+                    _draft = _draft.copyWith(
+                      thirds: Set.from(_draft.thirds)..remove(t),
+                    );
+                    final removed = _ScopeData.juzsInThird(t);
+                    _draft = _draft.copyWith(
+                      juzs: Set.from(_draft.juzs)..removeAll(removed),
+                    );
+                  } else {
+                    _draft = _draft.copyWith(
+                      thirds: Set.from(_draft.thirds)..add(t),
+                    );
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              isSelected
+                                  ? Icons.check_rounded
+                                  : Icons.auto_awesome_mosaic_rounded,
+                              size: 16,
+                              color: isSelected
+                                  ? Colors.white
+                                  : theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _thirdLabel(third),
+                              style: AppTypography.of(context)
+                                  .listTileTitle
+                                  .copyWith(
+                                    color: isSelected
+                                        ? theme.colorScheme.primary
+                                        : null,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity:
+                          const VisualDensity(horizontal: -4, vertical: -4),
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          if (isExpanded) {
+                            _expandedThirds.remove(third);
+                          } else {
+                            _expandedThirds.add(third);
+                          }
+                        });
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Expanded(child: _thirdChip(third)),
-              ],
+              ),
             ),
           ),
           if (isExpanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: Wrap(
@@ -631,6 +652,106 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
               children: chips,
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _expandableFilterCard({
+    required String title,
+    required bool isExpanded,
+    required VoidCallback onToggleExpand,
+    Widget? body,
+    bool isSelected = false,
+    VoidCallback? onSelect,
+    double indent = 0,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsetsDirectional.only(start: indent),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? theme.colorScheme.primary.withValues(alpha: 0.08)
+            : theme.colorScheme.primary.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isSelected
+              ? theme.colorScheme.primary.withValues(alpha: 0.45)
+              : theme.dividerColor.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: onSelect,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    if (onSelect != null) ...[
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          isSelected
+                              ? Icons.check_rounded
+                              : Icons.label_outline_rounded,
+                          size: 16,
+                          color: isSelected
+                              ? Colors.white
+                              : theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: AppTypography.of(context).listTileTitle.copyWith(
+                              color: isSelected
+                                  ? theme.colorScheme.primary
+                                  : null,
+                            ),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity:
+                          const VisualDensity(horizontal: -4, vertical: -4),
+                      padding: EdgeInsets.zero,
+                      onPressed: onToggleExpand,
+                      icon: Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (isExpanded && body != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: body,
+            ),
+        ],
+      ),
       ),
     );
   }
@@ -716,19 +837,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
 
   Widget _schoolDimensionSection() {
     final visibleGroups = widget.available.schoolGroups
-        .map(
-          (group) => UnifiedFilterSchoolGroup(
-            label: group.label,
-            levels: group.levels
-                .where((level) => level.availableAyahCount > 0)
-                .toList(),
-            availableAyahCount: group.availableAyahCount,
-          ),
-        )
-        .where(
-          (group) =>
-              group.availableAyahCount > 0 && group.levels.isNotEmpty,
-        )
+        .where((group) => group.levels.isNotEmpty)
         .toList();
 
     if (visibleGroups.isEmpty) {
@@ -738,7 +847,6 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
       );
     }
 
-    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -752,61 +860,49 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                   AppTypography.of(context).sectionTitle.copyWith(fontSize: 15),
             ),
           ),
-          Theme(
-            data: theme.copyWith(dividerColor: Colors.transparent),
-            child: Column(
-              children: [
-                for (final group in visibleGroups)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: theme.dividerColor.withValues(alpha: 0.4),
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ExpansionTile(
-                      initiallyExpanded: group.levels.any(
+          Column(
+            children: [
+              for (final group in visibleGroups)
+                _expandableFilterCard(
+                  title: _labelWithCount(
+                    group.label,
+                    group.availableAyahCount,
+                  ),
+                  isExpanded:
+                      _expandedSchoolGroups.contains(group.label) ||
+                      group.levels.any(
                         (level) => _draft.schoolLevelIds.contains(level.key),
                       ),
-                      tilePadding: const EdgeInsetsDirectional.only(
-                        start: 12,
-                        end: 8,
-                      ),
-                      childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                      title: Text(
-                        _labelWithCount(
-                          group.label,
-                          group.availableAyahCount,
-                        ),
-                        style: AppTypography.of(context).listTileTitle,
-                      ),
-                      children: [
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: group.levels
-                                .map(
-                                  (level) => _filterChipString(
-                                    _labelWithCount(
-                                      level.label,
-                                      level.availableAyahCount,
-                                    ),
-                                    level.key,
-                                    _draft.schoolLevelIds,
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                      ],
+                  onToggleExpand: () {
+                    setState(() {
+                      if (_expandedSchoolGroups.contains(group.label)) {
+                        _expandedSchoolGroups.remove(group.label);
+                      } else {
+                        _expandedSchoolGroups.add(group.label);
+                      }
+                    });
+                  },
+                  body: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: group.levels
+                          .map(
+                            (level) => _filterChipString(
+                              _labelWithCount(
+                                level.label,
+                                level.availableAyahCount,
+                              ),
+                              level.key,
+                              _draft.schoolLevelIds,
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ],
       ),
@@ -1005,7 +1101,19 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
         });
     }
 
-    Widget buildNode(SubjectHierarchyItem node, {required int depth}) {
+    final rootNodes = childrenOf(null);
+
+    bool hasSelectedDescendant(SubjectHierarchyItem node) {
+      for (final child in childrenOf(node.key)) {
+        final childKey = child.key.trim();
+        if (_draft.subjectKeys.contains(childKey) || hasSelectedDescendant(child)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    Widget buildSubjectNode(SubjectHierarchyItem node, {double indent = 0}) {
       final nodeKey = node.key.trim();
       final label = node.displayName(locale).trim().isEmpty
           ? nodeKey
@@ -1015,17 +1123,14 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
         widget.available.subjectAyahCounts[nodeKey] ?? 0,
       );
       final children = childrenOf(nodeKey);
-      final hasDirectContent = availableKeys.contains(nodeKey);
-      final selected = _draft.subjectKeys.contains(nodeKey);
-      final hasSelectedDescendant = children.any(
-        (child) =>
-            _draft.subjectKeys.contains(child.key.trim()) ||
-            _nodeHasSelectedDescendant(child, childrenOf),
-      );
+      final isSelected = _draft.subjectKeys.contains(nodeKey);
+      final isExpanded = _expandedSubjectNodes.contains(nodeKey) ||
+          isSelected ||
+          hasSelectedDescendant(node);
 
       if (children.isEmpty) {
         return Padding(
-          padding: EdgeInsetsDirectional.only(start: depth * 14.0, bottom: 6),
+          padding: EdgeInsetsDirectional.only(start: indent, bottom: 8),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
             child: _filterChipString(
@@ -1037,59 +1142,30 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
         );
       }
 
-      return Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: theme.dividerColor.withValues(alpha: 0.4),
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Theme(
-          data: theme.copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            dense: true,
-            initiallyExpanded: selected || hasSelectedDescendant,
-            tilePadding: EdgeInsetsDirectional.only(
-              start: 10 + (depth * 10.0),
-              end: 6,
-            ),
-            childrenPadding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-            title: Row(
-              children: [
-                if (hasDirectContent)
-                  Expanded(
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: _filterChipString(
-                        labelWithCount,
-                        nodeKey,
-                        _draft.subjectKeys,
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: _filterChipString(
-                        labelWithCount,
-                        nodeKey,
-                        _draft.subjectKeys,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            children: [
-              for (final child in children) buildNode(child, depth: depth + 1),
-            ],
-          ),
+      return _expandableFilterCard(
+        title: labelWithCount,
+        isExpanded: isExpanded,
+        isSelected: isSelected,
+        indent: indent,
+        onSelect: () => _toggleString(_draft.subjectKeys, nodeKey),
+        onToggleExpand: () {
+          setState(() {
+            if (_expandedSubjectNodes.contains(nodeKey)) {
+              _expandedSubjectNodes.remove(nodeKey);
+            } else {
+              _expandedSubjectNodes.add(nodeKey);
+            }
+          });
+        },
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final child in children)
+              buildSubjectNode(child, indent: indent + 12),
+          ],
         ),
       );
     }
-
-    final rootNodes = childrenOf(null);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -1123,7 +1199,7 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                           : constraints.maxWidth >= 520
                               ? 2
                               : 1;
-                      const spacing = 6.0;
+                      const spacing = 8.0;
                       final totalSpacing = spacing * (columns - 1);
                       final itemWidth =
                           ((constraints.maxWidth - totalSpacing) / columns)
@@ -1133,10 +1209,10 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
                         spacing: spacing,
                         runSpacing: spacing,
                         children: [
-                          for (final node in rootNodes)
+                          for (final root in rootNodes)
                             SizedBox(
                               width: itemWidth,
-                              child: buildNode(node, depth: 0),
+                              child: buildSubjectNode(root),
                             ),
                         ],
                       );
@@ -1146,19 +1222,6 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
         ],
       ),
     );
-  }
-
-  bool _nodeHasSelectedDescendant(
-    SubjectHierarchyItem node,
-    List<SubjectHierarchyItem> Function(String? parentKey) childrenOf,
-  ) {
-    for (final child in childrenOf(node.key)) {
-      if (_draft.subjectKeys.contains(child.key.trim()) ||
-          _nodeHasSelectedDescendant(child, childrenOf)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   Widget _buildContentColumn(
@@ -1199,6 +1262,22 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
             widget.actionBarPosition == UnifiedFilterActionBarPosition.top)
           _buildActionBar(),
         _scopeTreeSection(),
+        if (widget.available.memorizationEvaluations.isNotEmpty)
+          _dimensionSection(
+            title: _tr('quran_reading_filter_dim_memorization'),
+            chips: _evaluationChips(
+              widget.available.memorizationEvaluations,
+              _draft.memoEvaluationIds,
+            ),
+          ),
+        if (widget.available.comprehensionEvaluations.isNotEmpty)
+          _dimensionSection(
+            title: _tr('quran_reading_filter_dim_comprehension'),
+            chips: _evaluationChips(
+              widget.available.comprehensionEvaluations,
+              _draft.compreEvaluationIds,
+            ),
+          ),
         if (widget.available.showRevelation)
           _dimensionSection(
             title: _tr('quran_reading_filter_dim_revelation'),
@@ -1225,22 +1304,6 @@ class _UnifiedQuranFilterBodyState extends State<UnifiedQuranFilterBody> {
           ),
         if (widget.available.schoolGroups.isNotEmpty)
           _schoolDimensionSection(),
-        if (widget.available.memorizationEvaluations.isNotEmpty)
-          _dimensionSection(
-            title: _tr('quran_reading_filter_dim_memorization'),
-            chips: _evaluationChips(
-              widget.available.memorizationEvaluations,
-              _draft.memoEvaluationIds,
-            ),
-          ),
-        if (widget.available.comprehensionEvaluations.isNotEmpty)
-          _dimensionSection(
-            title: _tr('quran_reading_filter_dim_comprehension'),
-            chips: _evaluationChips(
-              widget.available.comprehensionEvaluations,
-              _draft.compreEvaluationIds,
-            ),
-          ),
         if (_draft.activeDimensionCount > 0)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
