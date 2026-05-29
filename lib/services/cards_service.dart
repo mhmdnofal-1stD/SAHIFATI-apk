@@ -60,7 +60,7 @@ class CardsService {
       if (cached != null && cached.isNotEmpty) {
         return _parseCardsResult(cached, page);
       }
-      throw Exception('no_cached_cards_available');
+      return (cards: const <CardModel>[], total: 0, page: page, pages: 1);
     }
 
     final params = <String, String>{

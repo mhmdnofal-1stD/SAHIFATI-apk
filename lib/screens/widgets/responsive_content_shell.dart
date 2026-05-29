@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/utils/size_config.dart';
 import 'pending_sync_banner.dart';
+import 'soft_pattern_background.dart';
 
 class ResponsiveContentShell extends StatelessWidget {
   const ResponsiveContentShell({
@@ -49,7 +50,8 @@ class ResponsiveContentShell extends StatelessWidget {
             ? viewportConstraints.maxHeight
             : MediaQuery.sizeOf(context).height;
 
-        return SizedBox(
+        return SoftPatternBackground(
+          child: SizedBox(
           width: double.infinity,
           height: boundedHeight,
           child: Padding(
@@ -80,6 +82,7 @@ class ResponsiveContentShell extends StatelessWidget {
               ),
             ),
           ),
+        ),
         );
       },
     );

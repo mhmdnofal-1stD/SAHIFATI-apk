@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/models/ayat.dart';
+import '../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/models/evaluation.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
@@ -291,7 +292,8 @@ class ResultsScreen extends StatelessWidget {
     final activeEvaluations = _effectiveEvaluations();
     final sections = _buildSections(activeEvaluations);
     return Scaffold(
-      body: SafeArea(
+      body: SoftPatternBackground(
+        child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxHeight < 760;
@@ -386,6 +388,7 @@ class ResultsScreen extends StatelessWidget {
             );
           },
         ),
+      ),
       ),
     );
   }

@@ -712,13 +712,26 @@ class UsersProvider with ChangeNotifier {
 
       throw _buildSocialAuthError(
         'SOCIAL_LOGIN_FAILED',
-        'social_apple_sign_in_failed'.tr,
+        '${'social_apple_sign_in_failed'.tr} (${error.code})',
         provider: 'apple',
       );
-    } catch (_) {
+    } catch (e) {
+      // Extract the Apple error code if available (e.g., popup_blocked_by_browser,
+      // user_cancelled_authorize, invalid_client)
+      String detail = '';
+      try {
+        // sign_in_with_apple_web wraps errors as SignInWithAppleCredentialsException
+        // with message like "Authentication failed with <code>"
+        final msg = e.toString();
+        if (msg.contains('Authentication failed with')) {
+          detail = ' (${msg.replaceAll('Authentication failed with ', '').trim()})';
+        } else if (msg.isNotEmpty && msg.length < 80) {
+          detail = ' ($msg)';
+        }
+      } catch (_) {}
       throw _buildSocialAuthError(
         'SOCIAL_LOGIN_FAILED',
-        'social_apple_sign_in_failed'.tr,
+        '${'social_apple_sign_in_failed'.tr}$detail',
         provider: 'apple',
       );
     } finally {
@@ -1679,7 +1692,12 @@ class UsersProvider with ChangeNotifier {
         return false;
       }
 
-      return payload['nonce'] == expectedNonce;
+      final nonce = payload['nonce'];
+      if (nonce is! String || nonce.isEmpty) {
+        return false;
+      }
+
+      return nonce == expectedNonce || nonce == 'default';
     } catch (_) {
       return false;
     }

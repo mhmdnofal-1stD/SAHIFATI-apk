@@ -189,30 +189,10 @@ class _SupervisionStudentOverviewScreenState
     await _future;
   }
 
-  Future<List<UserEvaluation>> _loadAllUserEvaluations() async {
-    const limit = 1000;
-    var page = 1;
-    var totalPages = 1;
-    final collected = <UserEvaluation>[];
-
-    while (page <= totalPages) {
-      final response = await _evaluationsServices.getUserEvaluationsPage(
-        widget.studentId,
-        limit: limit,
-        page: page,
-      );
-      collected.addAll(response.data);
-      totalPages = response.totalPages > 0 ? response.totalPages : 1;
-      page += 1;
-    }
-
-    return collected;
-  }
-
   Future<_StudentOverviewData> _load() async {
     final results = await Future.wait<Object>([
       _evaluationsServices.getAllEvaluations(type: 'memorization'),
-      _loadAllUserEvaluations(),
+      _evaluationsServices.getResolvedUserEvaluations(widget.studentId),
       _ayatController.loadAllAyat(),
     ]);
 

@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/assets.dart';
+
+import '../../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/providers/language_provider.dart';
@@ -222,6 +224,7 @@ class AuthScreenShell extends StatelessWidget {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
+          const SoftPatternBackground(child: SizedBox.expand()),
           const _AuthBackdrop(),
           SafeArea(
             child: GestureDetector(

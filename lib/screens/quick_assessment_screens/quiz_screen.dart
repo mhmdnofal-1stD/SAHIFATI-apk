@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+
+import '../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
@@ -54,8 +56,8 @@ class _QuizScreenState extends State<QuizScreen> {
 
   static const IconData _approveIcon = Icons.keyboard_double_arrow_right_rounded;
   static const IconData _declineIcon = Icons.keyboard_double_arrow_left_rounded;
-  static const IconData _easyIcon = Icons.keyboard_double_arrow_up_rounded;
-  static const IconData _hardIcon = Icons.keyboard_double_arrow_down_rounded;
+  static const IconData _easyIcon = Icons.keyboard_double_arrow_right_rounded;
+  static const IconData _hardIcon = Icons.keyboard_double_arrow_left_rounded;
   static const IconData _saveIcon = Icons.keyboard_double_arrow_up_rounded;
   static const IconData _undoIcon = Icons.keyboard_double_arrow_down_rounded;
 
@@ -118,49 +120,33 @@ class _QuizScreenState extends State<QuizScreen> {
     required Color color,
     required bool isHighlighted,
     required VoidCallback onTap,
-    Axis axis = Axis.horizontal,
   }) {
     final baseColor = color.withValues(alpha: isHighlighted ? 0.18 : 0.08);
     final borderColor = color.withValues(alpha: isHighlighted ? 0.55 : 0.22);
     final iconColor = color.withValues(alpha: isHighlighted ? 1.0 : 0.72);
     final textColor = color.withValues(alpha: isHighlighted ? 0.95 : 0.8);
 
-    final content = axis == Axis.horizontal
-        ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: iconColor, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          )
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: iconColor, size: 24),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          );
+    // All direction cues use Column (icon on top, label below) to save horizontal space
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: iconColor, size: 26),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
 
     return Align(
       alignment: alignment,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -168,9 +154,7 @@ class _QuizScreenState extends State<QuizScreen> {
             borderRadius: BorderRadius.circular(18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: axis == Axis.horizontal
-                  ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10)
-                  : const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: baseColor,
                 borderRadius: BorderRadius.circular(18),
@@ -226,7 +210,6 @@ class _QuizScreenState extends State<QuizScreen> {
           color: _getRatingColor(0),
           isHighlighted: _highlightedRating == 0,
           onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(0)),
-          axis: Axis.vertical,
         ),
         _buildDirectionalCue(
           alignment: Alignment.bottomCenter,
@@ -235,7 +218,6 @@ class _QuizScreenState extends State<QuizScreen> {
           color: _getRatingColor(1),
           isHighlighted: _highlightedRating == 1,
           onTap: () => widget.onRatingSelected(_resolveSelectedEvaluationId(1)),
-          axis: Axis.vertical,
         ),
         _buildDirectionalCue(
           alignment: Alignment.centerRight,
@@ -382,7 +364,8 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
         centerTitle: true,
       ),
-      body: Column(
+      body: SoftPatternBackground(
+        child: Column(
         children: [
           // Progress indicator
           Padding(
@@ -410,7 +393,7 @@ class _QuizScreenState extends State<QuizScreen> {
             flex: 3,
             child: Stack(
               children: [
-                _buildEdgeIndicators(),
+
                 Center(
                   child: GestureDetector(
                     onPanUpdate: _onPanUpdate,
@@ -516,6 +499,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                 ),
+                _buildEdgeIndicators(),
                 if (usesFallbackLabels)
                   Align(
                     alignment: Alignment.bottomCenter,
@@ -550,7 +534,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       foregroundColor: AppColors.primaryPurple,
                       backgroundColor: Colors.white,
                     ),
-                    icon: const Icon(Icons.skip_next_rounded),
+                    icon: const Icon(Icons.skip_previous_rounded),
                     label: Text(
                       'تخطي',
                       style: AppTypography.of(context).buttonPrimary.copyWith(
@@ -585,6 +569,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

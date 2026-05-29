@@ -203,7 +203,7 @@ class _ContentItemCardState extends State<ContentItemCard> {
   ) async {
     try {
       final response = await _teacherRecommendationsService
-          .deleteRecommendation(recommendation.id);
+          .deleteRecommendation(recommendation);
       if (response.statusCode != 200 && response.statusCode != 204) {
         return false;
       }

@@ -80,9 +80,21 @@ class CardsProvider with ChangeNotifier {
 
   Future<void> loadCard(int id) async {
     isDetailLoading = true;
+    hasError = false;
+    errorMessage = '';
+    final cachedFromList = cards.cast<CardModel?>().firstWhere(
+      (card) => card?.id == id,
+      orElse: () => null,
+    );
+    if (cachedFromList != null) {
+      selectedCard = cachedFromList;
+    }
     notifyListeners();
     try {
       selectedCard = await _service.getCard(id);
+    } catch (e) {
+      hasError = selectedCard == null;
+      errorMessage = e.toString();
     } finally {
       isDetailLoading = false;
       notifyListeners();

@@ -11,9 +11,9 @@ class SoftPatternBackground extends StatelessWidget {
   const SoftPatternBackground({
     super.key,
     required this.child,
-    this.patternOpacity = 0.58,
-    this.topOverlayAlpha = 8,
-    this.bottomOverlayAlpha = 14,
+    this.patternOpacity = 0.75,
+    this.topOverlayAlpha = 5,
+    this.bottomOverlayAlpha = 10,
   });
 
   @override

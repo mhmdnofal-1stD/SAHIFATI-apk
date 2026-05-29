@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import '../widgets/soft_pattern_background.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -233,7 +235,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
           ? null
           : const GlobalDrawer(),
-      body: SafeArea(
+      body: SoftPatternBackground(
+        child: SafeArea(
         child: RefreshIndicator(
           onRefresh: _reload,
           child: SingleChildScrollView(
@@ -301,6 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

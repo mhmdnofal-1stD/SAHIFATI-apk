@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/soft_pattern_background.dart';
+
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/evaluations_provider.dart';
@@ -55,15 +57,20 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
   }
 
   Future<_RequestsBundle> _load() async {
-    final results = await Future.wait([
-      _service.listIncomingRequests(),
-      _service.getLimits(),
-      _service.listLinks(),
-    ]);
+    final requests = await _service.listIncomingRequests().catchError(
+      (_) => <Map<String, dynamic>>[],
+    );
+    final limits = await _service.getLimits().catchError(
+      (_) => <String, dynamic>{},
+    );
+    final links = await _service.listLinks().catchError(
+      (_) => <Map<String, dynamic>>[],
+    );
+
     return _RequestsBundle(
-      requests: results[0] as List<Map<String, dynamic>>,
-      limits: results[1] as Map<String, dynamic>,
-      links: results[2] as List<Map<String, dynamic>>,
+      requests: requests,
+      limits: limits,
+      links: links,
     );
   }
 
@@ -257,7 +264,8 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
               .copyWith(color: AppColors.primaryPurple),
         ),
       ),
-      body: SafeArea(
+      body: SoftPatternBackground(
+        child: SafeArea(
         child: FutureBuilder<_RequestsBundle>(
           future: _bundleFuture,
           builder: (context, snapshot) {
@@ -367,6 +375,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }

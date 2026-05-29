@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/soft_pattern_background.dart';
+
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/card_model.dart';
@@ -83,7 +85,8 @@ class _CardsListScreenState extends State<CardsListScreen> {
       endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
           ? null
           : const GlobalDrawer(),
-      body: Column(
+      body: SoftPatternBackground(
+        child: Column(
         children: [
           // ── Search bar ────────────────────────────────────────────────
           Padding(
@@ -205,6 +208,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

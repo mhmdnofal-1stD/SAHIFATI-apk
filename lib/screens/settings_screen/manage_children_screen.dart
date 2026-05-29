@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/soft_pattern_background.dart';
+
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../providers/users_provider.dart';
@@ -445,7 +447,8 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      body: _isLoading
+      body: SoftPatternBackground(
+        child: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primaryPurple,
@@ -503,6 +506,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                       itemBuilder: (context, index) =>
                           _buildChildCard(_children[index]),
                     ),
+      ),
     );
   }
 }

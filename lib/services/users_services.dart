@@ -29,6 +29,46 @@ class UsersServices with ChangeNotifier {
     return 'default';
   }
 
+  bool _isOfflineException(Object error) => error is FetchDataException;
+
+  Map<String, dynamic> _mergeProfilePayload(
+    Map<String, dynamic>? currentProfile,
+    Map<String, dynamic> patch,
+  ) {
+    final merged = <String, dynamic>{
+      ...?currentProfile,
+      ...patch,
+    };
+    merged.removeWhere((key, value) => value == null);
+    return merged;
+  }
+
+  Future<void> syncPendingProfileUpdate() async {
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    final pending = await _offlineStore.getPendingProfileUpdate(
+      scopeKey: scopeKey,
+    );
+    if (pending == null || pending.body.isEmpty) {
+      return;
+    }
+
+    final response = await SahifatyApi().put(url: 'users/me', body: pending.body);
+    final responseData = json.decode(response.body);
+    if (response.statusCode == 200) {
+      await _offlineStore.cacheCurrentUserProfileJson(
+        scopeKey: scopeKey,
+        rawJson: response.body,
+      );
+      await _offlineStore.clearPendingProfileUpdate(scopeKey: scopeKey);
+      return;
+    }
+
+    throw _extractErrorMessage(
+      responseData,
+      'service_users_update_profile_failed'.tr,
+    );
+  }
+
   Map<String, dynamic>? _decodeCachedMap(String? rawJson) {
     if (rawJson == null || rawJson.isEmpty) {
       return null;
@@ -455,6 +495,10 @@ class UsersServices with ChangeNotifier {
   Future<Map<String, dynamic>> getCurrentUserProfile() async {
     final scopeKey = await _resolveActiveCacheScopeKey();
     try {
+      try {
+        await syncPendingProfileUpdate();
+      } catch (_) {}
+
       final response = await SahifatyApi().get('users/me');
       final responseData = json.decode(response.body);
 
@@ -808,49 +852,55 @@ class UsersServices with ChangeNotifier {
     bool? showMemorizationColors,
     bool? showComprehensionUnderline,
   }) async {
-    try {
-      final body = <String, dynamic>{};
-      if (username != null) {
-        body['username'] = username;
-      }
-      if (gender != null) {
-        body['gender'] = gender;
-      }
-      if (birthYear != null) {
-        body['birthYear'] = birthYear;
-      }
-      if (countryCode != null) {
-        body['countryCode'] = countryCode;
-      }
-      if (country != null) {
-        body['country'] = country;
-      }
-      if (city != null) {
-        body['city'] = city;
-      }
-      if (mobile != null) {
-        body['mobile'] = mobile;
-      }
-      if (educationLevel != null) {
-        body['educationLevel'] = educationLevel;
-      }
-      if (workType != null) {
-        body['workType'] = workType;
-      }
-      if (specializationType != null) {
-        body['specializationType'] = specializationType;
-      }
-      if (showMemorizationColors != null) {
-        body['showMemorizationColors'] = showMemorizationColors;
-      }
-      if (showComprehensionUnderline != null) {
-        body['showComprehensionUnderline'] = showComprehensionUnderline;
-      }
+    final scopeKey = await _resolveActiveCacheScopeKey();
+    final body = <String, dynamic>{};
+    if (username != null) {
+      body['username'] = username;
+    }
+    if (gender != null) {
+      body['gender'] = gender;
+    }
+    if (birthYear != null) {
+      body['birthYear'] = birthYear;
+    }
+    if (countryCode != null) {
+      body['countryCode'] = countryCode;
+    }
+    if (country != null) {
+      body['country'] = country;
+    }
+    if (city != null) {
+      body['city'] = city;
+    }
+    if (mobile != null) {
+      body['mobile'] = mobile;
+    }
+    if (educationLevel != null) {
+      body['educationLevel'] = educationLevel;
+    }
+    if (workType != null) {
+      body['workType'] = workType;
+    }
+    if (specializationType != null) {
+      body['specializationType'] = specializationType;
+    }
+    if (showMemorizationColors != null) {
+      body['showMemorizationColors'] = showMemorizationColors;
+    }
+    if (showComprehensionUnderline != null) {
+      body['showComprehensionUnderline'] = showComprehensionUnderline;
+    }
 
+    try {
       final response = await SahifatyApi().put(url: 'users/me', body: body);
       final responseData = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        await _offlineStore.cacheCurrentUserProfileJson(
+          scopeKey: scopeKey,
+          rawJson: response.body,
+        );
+        await _offlineStore.clearPendingProfileUpdate(scopeKey: scopeKey);
         return Map<String, dynamic>.from(responseData as Map);
       }
 
@@ -859,6 +909,26 @@ class UsersServices with ChangeNotifier {
         'service_users_update_profile_failed'.tr,
       );
     } catch (ex) {
+      if (_isOfflineException(ex)) {
+        final mergedProfile = _mergeProfilePayload(
+          await getCachedCurrentUserProfile(),
+          body,
+        );
+        await _offlineStore.setPendingProfileUpdate(
+          scopeKey: scopeKey,
+          item: PendingProfileUpdateItem(
+            body: body,
+            createdAtMs: DateTime.now().millisecondsSinceEpoch,
+            accountKey: await SecureSessionStorage.readActiveAccountKey(),
+          ),
+        );
+        await _offlineStore.cacheCurrentUserProfileJson(
+          scopeKey: scopeKey,
+          rawJson: jsonEncode(mergedProfile),
+        );
+        return mergedProfile;
+      }
+
       rethrow;
     }
   }

@@ -40,11 +40,175 @@ class PendingEvaluationSyncItem {
   }
 }
 
+class PendingProfileSyncItem {
+  const PendingProfileSyncItem({
+    required this.id,
+    required this.body,
+    required this.createdAtMs,
+    this.accountKey,
+  });
+
+  final String id;
+  final Map<String, dynamic> body;
+  final int createdAtMs;
+  final String? accountKey;
+
+  factory PendingProfileSyncItem.fromJson(Map<String, dynamic> json) {
+    return PendingProfileSyncItem(
+      id: json['id']?.toString() ?? '',
+      body: Map<String, dynamic>.from(json['body'] as Map? ?? const {}),
+      createdAtMs: (json['createdAtMs'] as num?)?.toInt() ?? 0,
+      accountKey: json['accountKey']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'body': body,
+      'createdAtMs': createdAtMs,
+      'accountKey': accountKey,
+    };
+  }
+}
+
+class PendingTeacherRecommendationSyncItem {
+  const PendingTeacherRecommendationSyncItem({
+    required this.id,
+    required this.action,
+    required this.studentId,
+    required this.ayahId,
+    required this.createdAtMs,
+    this.recommendationId,
+    this.accountKey,
+  });
+
+  final String id;
+  final String action;
+  final int studentId;
+  final int ayahId;
+  final int createdAtMs;
+  final int? recommendationId;
+  final String? accountKey;
+
+  factory PendingTeacherRecommendationSyncItem.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PendingTeacherRecommendationSyncItem(
+      id: json['id']?.toString() ?? '',
+      action: json['action']?.toString() ?? '',
+      studentId: (json['studentId'] as num?)?.toInt() ?? 0,
+      ayahId: (json['ayahId'] as num?)?.toInt() ?? 0,
+      createdAtMs: (json['createdAtMs'] as num?)?.toInt() ?? 0,
+      recommendationId: (json['recommendationId'] as num?)?.toInt(),
+      accountKey: json['accountKey']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'action': action,
+      'studentId': studentId,
+      'ayahId': ayahId,
+      'createdAtMs': createdAtMs,
+      'recommendationId': recommendationId,
+      'accountKey': accountKey,
+    };
+  }
+}
+
+class PendingProfileUpdateItem {
+  const PendingProfileUpdateItem({
+    required this.body,
+    required this.createdAtMs,
+    this.accountKey,
+  });
+
+  final Map<String, dynamic> body;
+  final int createdAtMs;
+  final String? accountKey;
+
+  factory PendingProfileUpdateItem.fromJson(Map<String, dynamic> json) {
+    return PendingProfileUpdateItem(
+      body: Map<String, dynamic>.from(json['body'] as Map? ?? const {}),
+      createdAtMs: (json['createdAtMs'] as num?)?.toInt() ?? 0,
+      accountKey: json['accountKey']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'body': body,
+      'createdAtMs': createdAtMs,
+      'accountKey': accountKey,
+    };
+  }
+}
+
+class PendingTeacherRecommendationWriteItem {
+  const PendingTeacherRecommendationWriteItem({
+    required this.id,
+    required this.operation,
+    required this.studentId,
+    required this.ayahId,
+    required this.createdAtMs,
+    this.recommendationId,
+    this.tempRecommendationId,
+    this.accountKey,
+  });
+
+  final String id;
+  final String operation;
+  final int studentId;
+  final int ayahId;
+  final int createdAtMs;
+  final int? recommendationId;
+  final int? tempRecommendationId;
+  final String? accountKey;
+
+  factory PendingTeacherRecommendationWriteItem.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PendingTeacherRecommendationWriteItem(
+      id: json['id']?.toString() ?? '',
+      operation: json['operation']?.toString() ?? '',
+      studentId: (json['studentId'] as num?)?.toInt() ?? 0,
+      ayahId: (json['ayahId'] as num?)?.toInt() ?? 0,
+      createdAtMs: (json['createdAtMs'] as num?)?.toInt() ?? 0,
+      recommendationId: (json['recommendationId'] as num?)?.toInt(),
+      tempRecommendationId: (json['tempRecommendationId'] as num?)?.toInt(),
+      accountKey: json['accountKey']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'operation': operation,
+      'studentId': studentId,
+      'ayahId': ayahId,
+      'createdAtMs': createdAtMs,
+      'recommendationId': recommendationId,
+      'tempRecommendationId': tempRecommendationId,
+      'accountKey': accountKey,
+    }..removeWhere((key, value) => value == null);
+  }
+}
+
 class OfflineAssessmentStore {
   static const String _quickQuestionsSchoolKey =
       'offline.quick_questions_school';
   static const String _pendingEvaluationSyncKey =
       'offline.pending_evaluation_sync';
+    static const String _pendingProfileSyncKey =
+      'offline.pending_profile_sync';
+    static const String _pendingTeacherRecommendationSyncKey =
+      'offline.pending_teacher_recommendation_sync';
+    static const String _pendingProfileUpdateKeyPrefix =
+      'offline.pending_profile_update.';
+    static const String _pendingTeacherRecommendationWritesKeyPrefix =
+      'offline.pending_teacher_recommendation_writes.';
   static const String _evaluationsKeyPrefix = 'offline.evaluations.';
   static const String _userEvaluationsKeyPrefix =
     'offline.user_evaluations.';
@@ -394,6 +558,175 @@ class OfflineAssessmentStore {
     );
   }
 
+  Future<List<PendingProfileSyncItem>> getPendingProfileSyncItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString(_pendingProfileSyncKey);
+    if (rawJson == null || rawJson.isEmpty) {
+      return const [];
+    }
+
+    final decoded = jsonDecode(rawJson);
+    if (decoded is! List) {
+      return const [];
+    }
+
+    return decoded
+        .whereType<Map>()
+        .map(
+          (item) => PendingProfileSyncItem.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> enqueuePendingProfileUpdate({
+    required Map<String, dynamic> body,
+  }) async {
+    final currentItems = await getPendingProfileSyncItems();
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    final nextItems = [
+      ...currentItems.where((item) => item.accountKey != activeAccountKey),
+      PendingProfileSyncItem(
+        id: '${DateTime.now().microsecondsSinceEpoch}-profile',
+        body: body,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        accountKey: activeAccountKey,
+      ),
+    ];
+    await replacePendingProfileSyncItems(nextItems);
+  }
+
+  Future<void> replacePendingProfileSyncItems(
+    List<PendingProfileSyncItem> items,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _pendingProfileSyncKey,
+      jsonEncode(items.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  Future<List<PendingTeacherRecommendationSyncItem>>
+      getPendingTeacherRecommendationSyncItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString(_pendingTeacherRecommendationSyncKey);
+    if (rawJson == null || rawJson.isEmpty) {
+      return const [];
+    }
+
+    final decoded = jsonDecode(rawJson);
+    if (decoded is! List) {
+      return const [];
+    }
+
+    return decoded
+        .whereType<Map>()
+        .map(
+          (item) => PendingTeacherRecommendationSyncItem.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> enqueuePendingTeacherRecommendation(
+    PendingTeacherRecommendationSyncItem item,
+  ) async {
+    final currentItems = await getPendingTeacherRecommendationSyncItems();
+    await replacePendingTeacherRecommendationSyncItems([
+      ...currentItems,
+      item,
+    ]);
+  }
+
+  Future<void> replacePendingTeacherRecommendationSyncItems(
+    List<PendingTeacherRecommendationSyncItem> items,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _pendingTeacherRecommendationSyncKey,
+      jsonEncode(items.map((item) => item.toJson()).toList()),
+    );
+  }
+
+  Future<PendingProfileUpdateItem?> getPendingProfileUpdate({
+    required String scopeKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString(
+      _scopedKey(_pendingProfileUpdateKeyPrefix, scopeKey),
+    );
+    if (rawJson == null || rawJson.isEmpty) {
+      return null;
+    }
+
+    final decoded = jsonDecode(rawJson);
+    if (decoded is! Map) {
+      return null;
+    }
+
+    return PendingProfileUpdateItem.fromJson(
+      Map<String, dynamic>.from(decoded),
+    );
+  }
+
+  Future<void> setPendingProfileUpdate({
+    required String scopeKey,
+    required PendingProfileUpdateItem item,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _scopedKey(_pendingProfileUpdateKeyPrefix, scopeKey),
+      jsonEncode(item.toJson()),
+    );
+  }
+
+  Future<void> clearPendingProfileUpdate({
+    required String scopeKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_scopedKey(_pendingProfileUpdateKeyPrefix, scopeKey));
+  }
+
+  Future<List<PendingTeacherRecommendationWriteItem>>
+      getPendingTeacherRecommendationWriteItems({
+    required String scopeKey,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawJson = prefs.getString(
+      _scopedKey(_pendingTeacherRecommendationWritesKeyPrefix, scopeKey),
+    );
+    if (rawJson == null || rawJson.isEmpty) {
+      return const [];
+    }
+
+    final decoded = jsonDecode(rawJson);
+    if (decoded is! List) {
+      return const [];
+    }
+
+    return decoded
+        .whereType<Map>()
+        .map(
+          (item) => PendingTeacherRecommendationWriteItem.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> replacePendingTeacherRecommendationWriteItems({
+    required String scopeKey,
+    required List<PendingTeacherRecommendationWriteItem> items,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _scopedKey(_pendingTeacherRecommendationWritesKeyPrefix, scopeKey),
+      jsonEncode(items.map((item) => item.toJson()).toList()),
+    );
+  }
+
   String _evaluationsKey(String? type) {
     final normalizedType =
         type == null || type.isEmpty ? 'all' : type.trim().toLowerCase();
@@ -445,6 +778,19 @@ class OfflineAssessmentStore {
 
     final prefs = await SharedPreferences.getInstance();
 
+    final pendingProfileItems = await getPendingProfileSyncItems();
+    await replacePendingProfileSyncItems(
+      pendingProfileItems.where((item) => item.accountKey != trimmed).toList(),
+    );
+
+    final pendingRecommendationItems =
+        await getPendingTeacherRecommendationSyncItems();
+    await replacePendingTeacherRecommendationSyncItems(
+      pendingRecommendationItems
+          .where((item) => item.accountKey != trimmed)
+          .toList(),
+    );
+
     // Remove every key whose scoped segment starts with this accountKey.
     final scopedPrefixes = [
       _userEvaluationsKeyPrefix + trimmed,
@@ -456,6 +802,8 @@ class OfflineAssessmentStore {
       _supervisionLimitsKeyPrefix + trimmed,
       _notificationsKeyPrefix + trimmed,
       _teacherRecommendationsKeyPrefix + trimmed,
+      _pendingProfileUpdateKeyPrefix + trimmed,
+      _pendingTeacherRecommendationWritesKeyPrefix + trimmed,
       _cardsKeyPrefix + trimmed,
     ];
     final toRemove = prefs

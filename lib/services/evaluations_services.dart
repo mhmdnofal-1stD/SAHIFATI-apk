@@ -8,6 +8,7 @@ import 'package:sahifaty/models/user_evaluation.dart';
 import 'package:sahifaty/services/sahifaty_api.dart';
 
 import 'offline_assessment_store.dart';
+import 'secure_session_storage.dart';
 
 class QuranChartFilters {
   const QuranChartFilters({
@@ -146,6 +147,87 @@ class PaginatedUserEvaluationsResponse {
 class EvaluationsServices {
   final SahifatyApi _sahifatyApi = SahifatyApi();
   final OfflineAssessmentStore _offlineStore = OfflineAssessmentStore();
+
+  Future<String> _resolveUserEvaluationScopeKey(int userId) async {
+    final activeAccountKey = await SecureSessionStorage.readActiveAccountKey();
+    if (activeAccountKey != null && activeAccountKey.trim().isNotEmpty) {
+      return '${activeAccountKey.trim()}.user_$userId';
+    }
+
+    return 'user_$userId';
+  }
+
+  Future<void> _cacheResolvedUserEvaluations(
+    int userId,
+    List<UserEvaluation> items,
+  ) async {
+    final scopeKey = await _resolveUserEvaluationScopeKey(userId);
+    await _offlineStore.cacheUserEvaluationsJson(
+      scopeKey: scopeKey,
+      rawJson: jsonEncode(
+        items.map((item) => item.toCacheJson()).toList(growable: false),
+      ),
+    );
+  }
+
+  Future<List<UserEvaluation>> _readCachedResolvedUserEvaluations(
+    int userId,
+  ) async {
+    final scopeKey = await _resolveUserEvaluationScopeKey(userId);
+    final rawJson = await _offlineStore.getCachedUserEvaluationsJson(
+      scopeKey: scopeKey,
+    );
+    if (rawJson == null || rawJson.isEmpty) {
+      return const <UserEvaluation>[];
+    }
+
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is! List) {
+        return const <UserEvaluation>[];
+      }
+
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) => UserEvaluation.fromCacheJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(growable: false);
+    } catch (_) {
+      return const <UserEvaluation>[];
+    }
+  }
+
+  Future<List<UserEvaluation>> getResolvedUserEvaluations(int userId) async {
+    try {
+      const limit = 1000;
+      var page = 1;
+      var totalPages = 1;
+      final collected = <UserEvaluation>[];
+
+      while (page <= totalPages) {
+        final response = await getUserEvaluationsPage(
+          userId,
+          limit: limit,
+          page: page,
+        );
+        collected.addAll(response.data);
+        totalPages = response.totalPages > 0 ? response.totalPages : 1;
+        page += 1;
+      }
+
+      await _cacheResolvedUserEvaluations(userId, collected);
+      return collected;
+    } catch (_) {
+      final cached = await _readCachedResolvedUserEvaluations(userId);
+      if (cached.isNotEmpty) {
+        return cached;
+      }
+      rethrow;
+    }
+  }
 
   Future<List<Evaluation>> getAllEvaluations({String? type}) async {
     try {

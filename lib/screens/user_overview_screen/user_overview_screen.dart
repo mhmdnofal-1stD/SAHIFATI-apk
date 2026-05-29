@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import '../widgets/soft_pattern_background.dart';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -225,35 +227,17 @@ class _UserOverviewScreenState extends State<UserOverviewScreen> {
     await _future;
   }
 
-  Future<List<UserEvaluation>> _loadAllUserEvaluations(int userId) async {
-    const limit = 1000;
-    var page = 1;
-    var totalPages = 1;
-    final collected = <UserEvaluation>[];
-
-    while (page <= totalPages) {
-      final response = await _evaluationsServices.getUserEvaluationsPage(
-        userId,
-        limit: limit,
-        page: page,
-      );
-      collected.addAll(response.data);
-      totalPages = response.totalPages > 0 ? response.totalPages : 1;
-      page += 1;
-    }
-
-    return collected;
-  }
-
   Future<_UserOverviewData> _load() async {
     final userId = _currentUserId();
     if (userId == null) {
       throw Exception('المستخدم غير مسجل الدخول');
     }
 
+    final evaluationsProvider = context.read<EvaluationsProvider>();
+
     final results = await Future.wait<Object>([
       _evaluationsServices.getAllEvaluations(type: 'memorization'),
-      _loadAllUserEvaluations(userId),
+      evaluationsProvider.loadResolvedUserEvaluations(userId),
       _ayatController.loadAllAyat(),
     ]);
 
@@ -521,7 +505,8 @@ class _UserOverviewScreenState extends State<UserOverviewScreen> {
       endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
           ? null
           : const GlobalDrawer(),
-      body: SafeArea(
+      body: SoftPatternBackground(
+        child: SafeArea(
         top: false,
         child: FutureBuilder<_UserOverviewData>(
           future: _future,
@@ -624,6 +609,7 @@ class _UserOverviewScreenState extends State<UserOverviewScreen> {
             );
           },
         ),
+      ),
       ),
     );
   }

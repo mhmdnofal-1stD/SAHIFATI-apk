@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../widgets/soft_pattern_background.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -745,7 +746,8 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
               .copyWith(color: AppColors.blackFontColor),
         ),
       ),
-      body: FutureBuilder<void>(
+      body: SoftPatternBackground(
+        child: FutureBuilder<void>(
         future: _loadFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done &&
@@ -915,6 +917,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
             ),
           );
         },
+      ),
       ),
     );
   }
