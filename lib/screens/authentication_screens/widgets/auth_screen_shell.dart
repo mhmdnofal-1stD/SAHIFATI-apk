@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:sahifaty/core/constants/app_version.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 
 import '../../widgets/soft_pattern_background.dart';
@@ -384,6 +385,15 @@ class _BrandHeader extends StatelessWidget {
                       fontSize: 28,
                       color: AppColors.blackFontColor,
                       height: 1.0,
+                    ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'v$appVersion',
+                style: AppTypography.of(context).bodySmall.copyWith(
+                      color: AppColors.mutedText,
+                      fontSize: 11,
+                      height: 1.3,
                     ),
               ),
               if (hasBrandSubtitle) ...[
