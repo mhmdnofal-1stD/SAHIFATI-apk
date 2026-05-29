@@ -733,10 +733,10 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
     final licenseStatus =
         usersProvider.activeAccountUser?.licenseStatus ?? 'pending';
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const CustomBackButton(),
         title: Text(
@@ -746,8 +746,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
               .copyWith(color: AppColors.blackFontColor),
         ),
       ),
-      body: SoftPatternBackground(
-        child: FutureBuilder<void>(
+      body: FutureBuilder<void>(
         future: _loadFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done &&
@@ -918,8 +917,7 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
           );
         },
       ),
-      ),
-    );
+    ));
   }
 
   Widget _buildCreateCodeSection(

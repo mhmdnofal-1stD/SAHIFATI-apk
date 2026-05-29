@@ -416,14 +416,14 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: AppBar(
-            backgroundColor: AppColors.backgroundColor,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             leading: CustomBackButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -447,8 +447,7 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      body: SoftPatternBackground(
-        child: _isLoading
+      body: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
                 color: AppColors.primaryPurple,
@@ -506,7 +505,6 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                       itemBuilder: (context, index) =>
                           _buildChildCard(_children[index]),
                     ),
-      ),
-    );
+    ));
   }
 }

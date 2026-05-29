@@ -174,10 +174,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final size = MediaQuery.sizeOf(context);
     final isCompact = size.shortestSide < 600;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F4ED),
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F4ED),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: CustomBackButton(
@@ -235,8 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
           ? null
           : const GlobalDrawer(),
-      body: SoftPatternBackground(
-        child: SafeArea(
+      body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _reload,
           child: SingleChildScrollView(
@@ -305,8 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      ),
-    );
+    ));
   }
 }
 
@@ -707,7 +705,7 @@ class _SupervisorIntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFFFBFAF7),
         borderRadius: BorderRadius.circular(22),
@@ -733,22 +731,6 @@ class _SupervisorIntroCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'profile_supervisor_intro_title'.tr,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
-                      .listTileTitle
-                      .copyWith(color: AppColors.primaryPurple),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'profile_supervisor_intro_body'.tr,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.of(context)
-                      .bodySecondary
-                      .copyWith(color: const Color(0xFF4B5563)),
-                ),
-                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(

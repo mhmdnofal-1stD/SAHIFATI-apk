@@ -19,6 +19,7 @@ import '../../providers/evaluations_provider.dart';
 import '../../providers/users_provider.dart';
 import '../../services/evaluations_services.dart';
 import '../quran_view/index_page.dart';
+import '../widgets/soft_pattern_background.dart';
 import '../widgets/global_drawer.dart';
 import '../widgets/surah_verse_chart.dart';
 import '../widgets/quran_filter_runtime.dart';
@@ -48,6 +49,7 @@ class _SupervisionStudentOverviewScreenState
       const QuranFilterAvailabilityBuilder();
   late Future<_StudentOverviewData> _future;
   UnifiedFilterSelection _surahFilter = UnifiedFilterSelection.empty();
+  bool _globalExpand = false;
 
   @override
   void initState() {
@@ -356,14 +358,14 @@ class _SupervisionStudentOverviewScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F4EC),
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(52),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: AppBar(
-            backgroundColor: const Color(0xFFF8F4EC),
+            backgroundColor: Colors.transparent,
             elevation: 0,
             scrolledUnderElevation: 0,
             automaticallyImplyLeading: false,
@@ -408,7 +410,6 @@ class _SupervisionStudentOverviewScreenState
           ? null
           : const GlobalDrawer(),
       body: SafeArea(
-        top: false,
         child: FutureBuilder<_StudentOverviewData>(
           future: _future,
           builder: (context, snapshot) {
@@ -447,7 +448,7 @@ class _SupervisionStudentOverviewScreenState
               children: [
                 // ── Sticky compact summary header ─────────────────────
                 Material(
-                  color: const Color(0xFFF8F4EC),
+                  color: Colors.transparent,
                   elevation: 0,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -455,8 +456,12 @@ class _SupervisionStudentOverviewScreenState
                       segments: filteredSegments,
                       highlight: filteredHighlight,
                       hasActiveFilter: !_surahFilter.isEmpty,
+                      hasCards: filteredSurahCards.isNotEmpty,
                       onFilterTap: () => _showFilterSheet(),
                       onJournalTap: () => _openStudentJournal(context),
+                      onExpandAll: () => setState(() => _globalExpand = true),
+                      onCollapseAll: () => setState(() => _globalExpand = false),
+                      studentName: widget.studentName,
                     ),
                   ),
                 ),
@@ -468,24 +473,16 @@ class _SupervisionStudentOverviewScreenState
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
                       children: [
-                        Text(
-                          'السور التي يتم تقييمها',
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.right,
-                          style:
-                              AppTypography.of(context).subsectionTitle.copyWith(
-                                    color: const Color(0xFF7A7A7A),
-                                    fontSize: 17,
-                                  ),
-                        ),
-                        const SizedBox(height: 12),
                         if (filteredSurahCards.isEmpty)
                           const _SurahListEmptyState()
                         else
                           ...filteredSurahCards.map(
                             (surah) => Padding(
                               padding: const EdgeInsets.only(bottom: 16),
-                              child: _SurahProgressCard(data: surah),
+                              child: _SurahProgressCard(
+                                data: surah,
+                                externalExpand: _globalExpand,
+                              ),
                             ),
                           ),
                       ],
@@ -497,7 +494,7 @@ class _SupervisionStudentOverviewScreenState
           },
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -509,15 +506,23 @@ class _CompactSummaryHeader extends StatelessWidget {
     required this.segments,
     required this.highlight,
     required this.hasActiveFilter,
+    required this.hasCards,
     required this.onFilterTap,
     required this.onJournalTap,
+    required this.onExpandAll,
+    required this.onCollapseAll,
+    required this.studentName,
   });
 
   final List<_OverviewSegment> segments;
   final _OverviewSegment? highlight;
   final bool hasActiveFilter;
+  final bool hasCards;
   final VoidCallback onFilterTap;
   final VoidCallback onJournalTap;
+  final VoidCallback onExpandAll;
+  final VoidCallback onCollapseAll;
+  final String studentName;
 
   @override
   Widget build(BuildContext context) {
@@ -533,22 +538,22 @@ class _CompactSummaryHeader extends StatelessWidget {
         );
 
     final donut = SizedBox(
-      width: 68,
-      height: 68,
+      width: 80,
+      height: 80,
       child: Stack(
         alignment: Alignment.center,
         children: [
           PieChart(
             PieChartData(
               sectionsSpace: 2,
-              centerSpaceRadius: 20,
+              centerSpaceRadius: 24,
               startDegreeOffset: 90,
               sections: segments.isEmpty
                   ? [
                       PieChartSectionData(
                         color: const Color(0xFFE5E5E5),
                         value: 1,
-                        radius: 14,
+                        radius: 16,
                         title: '',
                       ),
                     ]
@@ -557,7 +562,7 @@ class _CompactSummaryHeader extends StatelessWidget {
                         (s) => PieChartSectionData(
                           color: s.color,
                           value: math.max(s.percent, 0.01),
-                          radius: 14,
+                          radius: 16,
                           title: '',
                         ),
                       )
@@ -571,7 +576,7 @@ class _CompactSummaryHeader extends StatelessWidget {
                 '${supervisionFormatPercent(effectiveHighlight.percent)}%',
                 textDirection: TextDirection.ltr,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF151515),
                 ),
@@ -591,7 +596,7 @@ class _CompactSummaryHeader extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
@@ -607,107 +612,139 @@ class _CompactSummaryHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         textDirection: TextDirection.rtl,
         children: [
-          // ── Donut chart ──────────────────────────────────────────────
           donut,
-          const SizedBox(width: 10),
-          // ── Pills + action buttons ───────────────────────────────────
-          Expanded(
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 100,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Wrap(
-                  alignment: WrapAlignment.end,
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: segments
-                      .map((seg) => _CompactPill(segment: seg))
-                      .toList(growable: false),
-                ),
-                const SizedBox(height: 6),
+                ...segments
+                    .map(
+                      (seg) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _CompactPill(segment: seg),
+                      ),
+                    )
+                    .toList(growable: false),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Row(
                   textDirection: TextDirection.rtl,
                   children: [
-                    // Filter button
-                    InkWell(
-                      onTap: onFilterTap,
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: hasActiveFilter
-                              ? AppColors.primaryPurple.withValues(alpha: 0.1)
-                              : const Color(0xFFF5F2EE),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.tune_rounded,
-                              size: 14,
-                              color: hasActiveFilter
-                                  ? AppColors.primaryPurple
-                                  : const Color(0xFF555555),
+                    Expanded(
+                      child: InkWell(
+                        onTap: onJournalTap,
+                        borderRadius: BorderRadius.zero,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF15523F),
+                            borderRadius: BorderRadius.zero,
+                          ),
+                          child: Text(
+                            'صحيفة $studentName',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              hasActiveFilter ? 'تصفية (نشط)' : 'تصفية',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: hasActiveFilter
-                                    ? AppColors.primaryPurple
-                                    : const Color(0xFF555555),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    // صحيفة الطالب button
-                    InkWell(
-                      onTap: onJournalTap,
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryPurple,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.menu_book_rounded,
-                                size: 14, color: Colors.white),
-                            SizedBox(width: 5),
-                            Text(
-                              'صحيفة الطالب',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    const SizedBox(width: 8),
+                    _HeaderChip(
+                      icon: Icons.tune_rounded,
+                      label: hasActiveFilter ? 'تصفية (نشط)' : 'تصفية',
+                      active: hasActiveFilter,
+                      onTap: onFilterTap,
                     ),
                   ],
                 ),
+                if (hasCards) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    textDirection: TextDirection.rtl,
+                    children: [
+                      Expanded(
+                        child: _HeaderChip(
+                          icon: Icons.unfold_more_rounded,
+                          label: 'فتح الكل',
+                          onTap: onExpandAll,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _HeaderChip(
+                          icon: Icons.unfold_less_rounded,
+                          label: 'طي الكل',
+                          onTap: onCollapseAll,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HeaderChip extends StatelessWidget {
+  const _HeaderChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active
+        ? AppColors.primaryPurple.withValues(alpha: 0.1)
+        : const Color(0xFFF5F2EE);
+    final fg = active ? AppColors.primaryPurple : const Color(0xFF555555);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: fg),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              textDirection: TextDirection.rtl,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: fg,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -747,9 +784,10 @@ class _CompactPill extends StatelessWidget {
 }
 
 class _SurahProgressCard extends StatefulWidget {
-  const _SurahProgressCard({required this.data});
+  const _SurahProgressCard({required this.data, this.externalExpand});
 
   final _SurahProgressCardData data;
+  final bool? externalExpand;
 
   @override
   State<_SurahProgressCard> createState() => _SurahProgressCardState();
@@ -757,6 +795,17 @@ class _SurahProgressCard extends StatefulWidget {
 
 class _SurahProgressCardState extends State<_SurahProgressCard> {
   bool _expanded = false;
+  bool? _lastExternalExpand;
+
+  @override
+  void didUpdateWidget(_SurahProgressCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ext = widget.externalExpand;
+    if (ext != null && ext != _lastExternalExpand) {
+      _expanded = ext;
+      _lastExternalExpand = ext;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

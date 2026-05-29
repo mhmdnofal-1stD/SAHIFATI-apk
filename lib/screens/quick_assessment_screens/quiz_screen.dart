@@ -353,10 +353,10 @@ class _QuizScreenState extends State<QuizScreen> {
         ? widget.customTitle!.trim()
         : widget.ayah.surah.nameAr;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           levelTitle,
@@ -364,8 +364,7 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
         centerTitle: true,
       ),
-      body: SoftPatternBackground(
-        child: Column(
+      body: Column(
         children: [
           // Progress indicator
           Padding(
@@ -447,33 +446,32 @@ class _QuizScreenState extends State<QuizScreen> {
                                       );
                                     }
 
-                                    final verseFontSize = _resolveVerseFontSize(
-                                      text: widget.ayah.text,
-                                      maxWidth: constraints.maxWidth > 0 ? constraints.maxWidth : 300,
-                                      maxHeight: constraints.maxHeight > 0 ? constraints.maxHeight : 250,
-                                    );
+                                    const double verseFontSize = 28.0;
 
-                                    return Center(
-                                      child: SizedBox(
-                                        width: constraints.maxWidth > 0 ? constraints.maxWidth : double.infinity,
-                                        height: constraints.maxHeight > 0 ? constraints.maxHeight : double.infinity,
-                                        child: Text(
-                                          widget.ayah.text,
-                                          textAlign: TextAlign.center,
-                                          textDirection: TextDirection.rtl,
-                                          softWrap: true,
-                                          maxLines: null,
-                                          textHeightBehavior: const TextHeightBehavior(
-                                            applyHeightToFirstAscent: true,
-                                            applyHeightToLastDescent: false,
-                                          ),
-                                          style: TextStyle(
-                                            fontFamily: AppFonts.versesFont,
-                                            fontSize: verseFontSize,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.2,
-                                            letterSpacing: 0,
-                                            color: AppColors.primaryPurple,
+                                    return SingleChildScrollView(
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          minHeight: constraints.maxHeight > 0 ? constraints.maxHeight : 0,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            widget.ayah.text,
+                                            textAlign: TextAlign.center,
+                                            textDirection: TextDirection.rtl,
+                                            softWrap: true,
+                                            maxLines: null,
+                                            textHeightBehavior: const TextHeightBehavior(
+                                              applyHeightToFirstAscent: true,
+                                              applyHeightToLastDescent: false,
+                                            ),
+                                            style: const TextStyle(
+                                              fontFamily: AppFonts.versesFont,
+                                              fontSize: verseFontSize,
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.2,
+                                              letterSpacing: 0,
+                                              color: AppColors.primaryPurple,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -570,7 +568,6 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ],
       ),
-      ),
-    );
+    ));
   }
 }

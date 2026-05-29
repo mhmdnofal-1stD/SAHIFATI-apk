@@ -604,129 +604,52 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
       elevation: 0.5,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _profileFormKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'settings_profile_section_title'.tr,
-                style: AppTypography.of(context).sectionTitle,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final useTwoColumns = constraints.maxWidth >= 420;
+            final fieldWidth = useTwoColumns
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
+
+            Widget gridItem(Widget child, {bool fullWidth = false}) {
+              return SizedBox(
+                width: fullWidth ? constraints.maxWidth : fieldWidth,
+                child: child,
+              );
+            }
+
+            final usernameField = TextFormField(
+              controller: _usernameController,
+              decoration: _inputDecoration('اسم المستخدم'),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'اسم المستخدم مطلوب';
+                }
+                return null;
+              },
+            );
+
+            final emailField = InputDecorator(
+              decoration: _inputDecoration('settings_profile_email'.tr).copyWith(
+                helperText: 'settings_profile_email_read_only'.tr,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'settings_profile_section_subtitle'.tr,
+              child: Text(
+                usersProvider.selectedUser?.email ?? '',
                 style: AppTypography.of(context)
-                    .bodySecondary
-                    .copyWith(color: Colors.black54),
+                    .bodyDefault
+                    .copyWith(color: Colors.black87),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _usernameController,
-                decoration: _inputDecoration('اسم المستخدم'),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'اسم المستخدم مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              InputDecorator(
-                decoration:
-                    _inputDecoration('settings_profile_email'.tr).copyWith(
-                  helperText: 'settings_profile_email_read_only'.tr,
-                ),
-                child: Text(
-                  usersProvider.selectedUser?.email ?? '',
-                  style: AppTypography.of(context)
-                      .bodyDefault
-                      .copyWith(color: Colors.black87),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _mobileController,
-                decoration: _inputDecoration('settings_profile_mobile'.tr),
-                keyboardType: TextInputType.phone,
-                validator: _validateMobile,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'settings_profile_gender'.tr,
-                style: AppTypography.of(context).inputLabel,
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: _genderOptions
-                    .map(
-                      (option) => ButtonSegment<String>(
-                        value: option['value']!,
-                        label: Text(_optionLabel(option)),
-                      ),
-                    )
-                    .toList(),
-                selected: _selectedGender != null
-                    ? {_selectedGender!}
-                    : const <String>{},
-                emptySelectionAllowed: true,
-                onSelectionChanged: (set) {
-                  setState(() {
-                    _selectedGender = set.isEmpty ? null : set.first;
-                  });
-                },
-                style: SegmentedButton.styleFrom(
-                  selectedBackgroundColor:
-                      Theme.of(context).colorScheme.primary,
-                  selectedForegroundColor: Colors.white,
-                  foregroundColor: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _pickBirthYear,
-                borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
-                  decoration:
-                      _inputDecoration('settings_profile_birth_year'.tr),
-                  child: Text(
-                    _selectedBirthYear?.toString() ??
-                        'settings_profile_birth_year_placeholder'.tr,
-                    style: TextStyle(
-                      color: _selectedBirthYear == null
-                          ? Colors.black54
-                          : Colors.black87,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: _pickCountry,
-                borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
-                  decoration: _inputDecoration(_countryRegionLabel),
-                  child: Text(
-                    _selectedCountry == null
-                        ? _countryRegionPickerTitle
-                        : _selectedCountry!.displayName,
-                    style: TextStyle(
-                      color: _selectedCountry == null
-                          ? Colors.black54
-                          : Colors.black87,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              InputDecorator(
-                decoration: _inputDecoration(
-                  'settings_profile_country_code'.tr,
-                ),
+            );
+
+            final countryField = InkWell(
+              onTap: _pickCountry,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: _inputDecoration(_countryRegionLabel),
                 child: Text(
                   _selectedCountry == null
-                      ? 'settings_profile_country_code_auto'.tr
-                      : '+${_selectedCountry!.phoneCode}',
+                      ? _countryRegionPickerTitle
+                      : _selectedCountry!.displayName,
                   style: TextStyle(
                     color: _selectedCountry == null
                         ? Colors.black54
@@ -734,94 +657,206 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              InkWell(
-                onTap: _selectedCountry == null ? null : _pickCity,
-                borderRadius: BorderRadius.circular(12),
-                child: InputDecorator(
-                  decoration:
-                      _inputDecoration('settings_profile_city'.tr).copyWith(
-                  ),
-                  child: Text(
-                    _selectedCity == null ||
+            );
+
+            final cityField = InkWell(
+              onTap: _selectedCountry == null ? null : _pickCity,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: _inputDecoration('settings_profile_city'.tr),
+                child: Text(
+                  _selectedCity == null ||
+                          _selectedCity!.effectiveDisplayName.trim().isEmpty
+                      ? 'settings_profile_city_placeholder'.tr
+                      : _selectedCity!.effectiveDisplayName,
+                  style: TextStyle(
+                    color: _selectedCity == null ||
                             _selectedCity!.effectiveDisplayName.trim().isEmpty
-                        ? 'settings_profile_city_placeholder'.tr
-                        : _selectedCity!.effectiveDisplayName,
-                    style: TextStyle(
-                      color: _selectedCity == null ||
-                              _selectedCity!
-                                  .effectiveDisplayName.trim().isEmpty
-                          ? Colors.black54
-                          : Colors.black87,
-                    ),
+                        ? Colors.black54
+                        : Colors.black87,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                key: ValueKey(
-                    'education-${_selectedEducationLevel ?? 'empty'}'),
-                initialValue: _selectedEducationLevel,
-                decoration: _inputDecoration('settings_profile_education'.tr),
-                items: _educationLevelOptions.map((option) {
-                  return DropdownMenuItem<String>(
-                    value: option['value'],
-                    child: Text(_optionLabel(option)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedEducationLevel = value;
-                  });
-                },
+            );
+
+            final countryCodeField = InputDecorator(
+              decoration: _inputDecoration('settings_profile_country_code'.tr),
+              child: Text(
+                _selectedCountry == null
+                    ? 'settings_profile_country_code_auto'.tr
+                    : '+${_selectedCountry!.phoneCode}',
+                style: TextStyle(
+                  color: _selectedCountry == null ? Colors.black54 : Colors.black87,
+                ),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                key: ValueKey('work-${_selectedWorkType ?? 'empty'}'),
-                initialValue: _selectedWorkType,
-                decoration: _inputDecoration('settings_profile_work_type'.tr),
-                items: _workTypeOptions.map((option) {
-                  return DropdownMenuItem<String>(
-                    value: option['value'],
-                    child: Text(_optionLabel(option)),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedWorkType = value;
-                  });
-                },
+            );
+
+            final mobileField = TextFormField(
+              controller: _mobileController,
+              decoration: _inputDecoration('settings_profile_mobile'.tr),
+              keyboardType: TextInputType.phone,
+              validator: _validateMobile,
+            );
+
+            final birthYearField = InkWell(
+              onTap: _pickBirthYear,
+              borderRadius: BorderRadius.circular(12),
+              child: InputDecorator(
+                decoration: _inputDecoration('settings_profile_birth_year'.tr),
+                child: Text(
+                  _selectedBirthYear?.toString() ??
+                      'settings_profile_birth_year_placeholder'.tr,
+                  style: TextStyle(
+                    color: _selectedBirthYear == null
+                        ? Colors.black54
+                        : Colors.black87,
+                  ),
+                ),
               ),
-              if (_isReadOnlyStudentProfile)
+            );
+
+            final genderField = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'عرض بروفايل الطالب فقط في سياق الإشراف. التعديل متاح من حساب المستخدم نفسه.',
-                    textDirection: TextDirection.rtl,
+                    'settings_profile_gender'.tr,
+                    style: AppTypography.of(context).inputLabel,
+                  ),
+                ),
+                SegmentedButton<String>(
+                  segments: _genderOptions
+                      .map(
+                        (option) => ButtonSegment<String>(
+                          value: option['value']!,
+                          label: Text(_optionLabel(option)),
+                        ),
+                      )
+                      .toList(),
+                  selected: _selectedGender != null
+                      ? {_selectedGender!}
+                      : const <String>{},
+                  emptySelectionAllowed: true,
+                  onSelectionChanged: (set) {
+                    setState(() {
+                      _selectedGender = set.isEmpty ? null : set.first;
+                    });
+                  },
+                  style: SegmentedButton.styleFrom(
+                    selectedBackgroundColor:
+                        Theme.of(context).colorScheme.primary,
+                    selectedForegroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            );
+
+            final educationField = DropdownButtonFormField<String>(
+              key: ValueKey('education-${_selectedEducationLevel ?? 'empty'}'),
+              initialValue: _selectedEducationLevel,
+              decoration: _inputDecoration('settings_profile_education'.tr),
+              items: _educationLevelOptions.map((option) {
+                return DropdownMenuItem<String>(
+                  value: option['value'],
+                  child: Text(_optionLabel(option)),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedEducationLevel = value;
+                });
+              },
+            );
+
+            final workField = DropdownButtonFormField<String>(
+              key: ValueKey('work-${_selectedWorkType ?? 'empty'}'),
+              initialValue: _selectedWorkType,
+              decoration: _inputDecoration('settings_profile_work_type'.tr),
+              items: _workTypeOptions.map((option) {
+                return DropdownMenuItem<String>(
+                  value: option['value'],
+                  child: Text(_optionLabel(option)),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedWorkType = value;
+                });
+              },
+            );
+
+            return Form(
+              key: _profileFormKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'settings_profile_section_title'.tr,
+                    style: AppTypography.of(context).sectionTitle,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'settings_profile_section_subtitle'.tr,
                     style: AppTypography.of(context)
                         .bodySecondary
                         .copyWith(color: Colors.black54),
                   ),
-                ),
-              const SizedBox(height: 16),
-              if (!_isReadOnlyStudentProfile)
-                FilledButton(
-                  onPressed:
-                      usersProvider.isProfileLoading ? null : _saveProfile,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryPurple,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      gridItem(usernameField),
+                      gridItem(emailField),
+                      gridItem(countryField),
+                      gridItem(cityField),
+                      gridItem(countryCodeField),
+                      gridItem(mobileField),
+                      gridItem(birthYearField),
+                      gridItem(genderField),
+                      gridItem(educationField),
+                      gridItem(workField),
+                      if (_isReadOnlyStudentProfile)
+                        gridItem(
+                          Text(
+                            'عرض بروفايل الطالب فقط في سياق الإشراف. التعديل متاح من حساب المستخدم نفسه.',
+                            textDirection: TextDirection.rtl,
+                            style: AppTypography.of(context)
+                                .bodySecondary
+                                .copyWith(color: Colors.black54),
+                          ),
+                          fullWidth: true,
+                        ),
+                      if (!_isReadOnlyStudentProfile)
+                        gridItem(
+                          FilledButton(
+                            onPressed: usersProvider.isProfileLoading
+                                ? null
+                                : _saveProfile,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primaryPurple,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: usersProvider.isProfileLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text('settings_profile_save_button'.tr),
+                          ),
+                          fullWidth: true,
+                        ),
+                    ],
                   ),
-                  child: usersProvider.isProfileLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text('settings_profile_save_button'.tr),
-                ),
-            ],
-          ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

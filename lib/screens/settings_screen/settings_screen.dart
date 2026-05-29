@@ -76,14 +76,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: AppBar(
-            backgroundColor: AppColors.backgroundColor,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             leading: const CustomBackButton(),
             title: Text(
@@ -96,8 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      body: SoftPatternBackground(
-        child: SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(25.0),
           child: Column(
@@ -257,7 +256,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
-      ),
-    );
+    ));
   }
 }

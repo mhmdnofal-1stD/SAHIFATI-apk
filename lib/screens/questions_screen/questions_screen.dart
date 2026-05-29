@@ -259,6 +259,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
 
     return NoPopScope(
       child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBodyBehindAppBar: true,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: Directionality(

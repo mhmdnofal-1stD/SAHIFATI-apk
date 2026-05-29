@@ -291,9 +291,9 @@ class ResultsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeEvaluations = _effectiveEvaluations();
     final sections = _buildSections(activeEvaluations);
-    return Scaffold(
-      body: SoftPatternBackground(
-        child: SafeArea(
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxHeight < 760;
@@ -389,8 +389,7 @@ class ResultsScreen extends StatelessWidget {
           },
         ),
       ),
-      ),
-    );
+    ));
   }
 }
 

@@ -250,10 +250,10 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F4ED),
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F4ED),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primaryPurple),
         centerTitle: true,
@@ -264,8 +264,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
               .copyWith(color: AppColors.primaryPurple),
         ),
       ),
-      body: SoftPatternBackground(
-        child: SafeArea(
+      body: SafeArea(
         child: FutureBuilder<_RequestsBundle>(
           future: _bundleFuture,
           builder: (context, snapshot) {
@@ -376,8 +375,7 @@ class _IncomingRequestsScreenState extends State<IncomingRequestsScreen> {
           },
         ),
       ),
-      ),
-    );
+    ));
   }
 }
 

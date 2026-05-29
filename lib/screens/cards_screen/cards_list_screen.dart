@@ -54,10 +54,10 @@ class _CardsListScreenState extends State<CardsListScreen> {
     final userRole =
         context.watch<UsersProvider>().activeAccountUser?.userRoleId ?? 0;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+    return SoftPatternBackground(child: Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.panelColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const CustomBackButton(),
         title: Text(
@@ -85,8 +85,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
       endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
           ? null
           : const GlobalDrawer(),
-      body: SoftPatternBackground(
-        child: Column(
+      body: Column(
         children: [
           // ── Search bar ────────────────────────────────────────────────
           Padding(
@@ -209,8 +208,7 @@ class _CardsListScreenState extends State<CardsListScreen> {
           ),
         ],
       ),
-      ),
-    );
+    ));
   }
 
   String _titleForRole(int role) {

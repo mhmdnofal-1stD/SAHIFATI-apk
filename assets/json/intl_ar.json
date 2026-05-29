@@ -350,7 +350,7 @@
   "main_screen_hizb_error_title": "تعذر تجهيز مسار الأحزاب",
   "main_screen_hizb_loading_body": "نحمّل السور داخل كل حزب قبل فتح هذا المسار حتى لا تصل إلى بطاقة لا تملك مدخلًا صالحًا للقراءة.",
   "main_screen_hizb_loading_title": "جارٍ تجهيز الأحزاب",
-  "main_screen_resume_action": "استئناف القراءة",
+  "main_screen_resume_action": "صحيفتي",
   "main_screen_resume_body": "آخر سياق محفوظ كان في سورة @surah عبر مسار @path. يمكنك العودة مباشرة إلى نفس موضع القراءة بدل البدء من جديد.",
   "main_screen_resume_title": "العودة إلى آخر قراءة",
   "main_screen_pick_surah": "اختر سورة",
