@@ -2489,4 +2489,15 @@ class UsersProvider with ChangeNotifier {
       throw data['message'] ?? 'child_delete_error';
     }
   }
+
+  Future<void> renameChildAccount(String childId, String username) async {
+    final response = await SahifatyApi().patch(
+      url: 'auth/child/$childId/rename',
+      body: <String, dynamic>{'username': username},
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final data = json.decode(response.body);
+      throw data['message'] ?? 'child_rename_error';
+    }
+  }
 }

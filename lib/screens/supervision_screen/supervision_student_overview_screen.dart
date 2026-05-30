@@ -627,7 +627,7 @@ class _CompactSummaryHeader extends StatelessWidget {
                         child: _CompactPill(segment: seg),
                       ),
                     )
-                    .toList(growable: false),
+                    ,
               ],
             ),
           ),
@@ -796,6 +796,16 @@ class _SurahProgressCard extends StatefulWidget {
 class _SurahProgressCardState extends State<_SurahProgressCard> {
   bool _expanded = false;
   bool? _lastExternalExpand;
+
+  @override
+  void initState() {
+    super.initState();
+    final ext = widget.externalExpand;
+    if (ext != null) {
+      _expanded = ext;
+      _lastExternalExpand = ext;
+    }
+  }
 
   @override
   void didUpdateWidget(_SurahProgressCard oldWidget) {

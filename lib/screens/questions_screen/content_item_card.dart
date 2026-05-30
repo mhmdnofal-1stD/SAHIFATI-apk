@@ -1135,44 +1135,13 @@ class _ContentItemCardState extends State<ContentItemCard> {
               ],
             );
 
-            final actions = Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    onPressed: canInteract
-                        ? () => _evaluateUnit(context, languageProvider)
-                        : null,
-                    title: _shortRateLabel,
-                    icon: Icons.auto_awesome,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionButton(
-                    onPressed: canInteract
-                        ? () => _openVersePickerEvaluation(
-                            context, languageProvider)
-                        : null,
-                    title: _shortReviewLabel,
-                    icon: Icons.touch_app_rounded,
-                    outlined: true,
-                  ),
-                ),
-              ],
-            );
-
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(flex: 7, child: titleRow),
-                    const SizedBox(width: 8),
-                    Flexible(flex: 3, child: statusBadge),
-                  ],
-                ),
+                // Title row — full width, no cramping
+                titleRow,
                 const SizedBox(height: 8),
+                // Status badge + action buttons on one row
                 isEvaluating
                     ? const Align(
                         alignment: Alignment.center,
@@ -1182,7 +1151,38 @@ class _ContentItemCardState extends State<ContentItemCard> {
                           child: CircularProgressIndicator(strokeWidth: 2.2),
                         ),
                       )
-                    : actions,
+                    : Row(
+                        children: [
+                          // Primary action — evaluate whole unit (wider, filled)
+                          Expanded(
+                            flex: 5,
+                            child: _buildActionButton(
+                              onPressed: canInteract
+                                  ? () => _evaluateUnit(context, languageProvider)
+                                  : null,
+                              title: _shortRateLabel,
+                              icon: Icons.auto_awesome,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Secondary action — verse picker review (narrower, outlined)
+                          Expanded(
+                            flex: 4,
+                            child: _buildActionButton(
+                              onPressed: canInteract
+                                  ? () => _openVersePickerEvaluation(
+                                      context, languageProvider)
+                                  : null,
+                              title: _shortReviewLabel,
+                              icon: Icons.touch_app_rounded,
+                              outlined: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Status badge — trailing info
+                          statusBadge,
+                        ],
+                      ),
               ],
             );
           },

@@ -150,6 +150,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
               TextFormField(
                 controller: _nameController,
                 textDirection: TextDirection.rtl,
+                maxLength: 50,
                 decoration: InputDecoration(
                   labelText: 'child_name_label'.tr,
                   prefixIcon: const Icon(Icons.person_outline,
@@ -166,9 +167,10 @@ class _AddChildScreenState extends State<AddChildScreen> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'child_name_required'.tr;
-                  }
+                  final v = value?.trim() ?? '';
+                  if (v.isEmpty) return 'child_name_required'.tr;
+                  if (v.length < 2) return 'child_name_too_short'.tr;
+                  if (v.length > 50) return 'child_name_too_long'.tr;
                   return null;
                 },
               ),

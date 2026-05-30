@@ -606,7 +606,7 @@ class _ProfileDetailsFormState extends State<ProfileDetailsForm> {
         padding: const EdgeInsets.all(16),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final useTwoColumns = constraints.maxWidth >= 420;
+            final useTwoColumns = constraints.maxWidth >= 300;
             final fieldWidth = useTwoColumns
                 ? (constraints.maxWidth - 12) / 2
                 : constraints.maxWidth;

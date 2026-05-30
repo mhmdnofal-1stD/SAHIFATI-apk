@@ -306,45 +306,6 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  double _resolveVerseFontSize({
-    required String text,
-    required double maxWidth,
-    required double maxHeight,
-  }) {
-    final widths = math.max(100.0, maxWidth - 16);
-    final heights = math.max(100.0, maxHeight - 16);
-
-    // Binary search for optimal font size
-    double low = 14.0;
-    double high = 36.0;
-    double result = 18.0;
-
-    while ((high - low).abs() > 0.2) {
-      final mid = (low + high) / 2;
-      final style = TextStyle(
-        fontFamily: AppFonts.versesFont,
-        fontSize: mid,
-        fontWeight: FontWeight.w500,
-        height: 1.2,
-        letterSpacing: 0,
-        color: AppColors.primaryPurple,
-      );
-      final painter = TextPainter(
-        text: TextSpan(text: text, style: style),
-        textDirection: TextDirection.rtl,
-      )..layout(maxWidth: widths);
-
-      if (painter.height <= heights) {
-        result = mid;
-        low = mid;
-      } else {
-        high = mid;
-      }
-    }
-
-    return result;
-  }
-
   @override
   Widget build(BuildContext context) {
     final usesFallbackLabels =
@@ -516,7 +477,9 @@ class _QuizScreenState extends State<QuizScreen> {
               ],
             ),
           ),
-          Padding(
+          SafeArea(
+            top: false,
+            child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
             child: Row(
               children: [
@@ -565,6 +528,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 ),
               ],
             ),
+          ),
           ),
         ],
       ),

@@ -20,6 +20,9 @@ class SoftPatternBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
+        const Positioned.fill(
+          child: ColoredBox(color: Colors.white),
+        ),
         Positioned.fill(
           child: IgnorePointer(
             child: Opacity(

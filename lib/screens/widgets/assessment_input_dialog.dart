@@ -135,24 +135,23 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: evaluations
-                            .map(
-                              (evaluation) {
-                                final color = controller
-                                    .getColorForEvaluationModel(evaluation);
-                                final isDark =
-                                    ThemeData.estimateBrightnessForColor(
-                                          color,
-                                        ) ==
-                                        Brightness.dark;
+                    child: Row(
+                      children: evaluations
+                          .map(
+                            (evaluation) {
+                              final color = controller
+                                  .getColorForEvaluationModel(evaluation);
+                              final isDark =
+                                  ThemeData.estimateBrightnessForColor(
+                                        color,
+                                      ) ==
+                                      Brightness.dark;
+                              final isSelected = selectedId == evaluation.id;
 
-                                return Padding(
+                              return Expanded(
+                                child: Padding(
                                   padding: const EdgeInsetsDirectional.only(
-                                    start: 8,
+                                    start: 4,
                                   ),
                                   child: ChoiceChip(
                                     label: Text(
@@ -161,14 +160,15 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                       style: AppTypography.of(context)
                                           .badgeLabel
                                           .copyWith(
-                                            color: selectedId == evaluation.id
+                                            color: isSelected
                                                 ? (isDark
                                                     ? Colors.white
                                                     : Colors.black)
                                                 : Colors.black87,
                                           ),
                                     ),
-                                    selected: selectedId == evaluation.id,
+                                    labelPadding: EdgeInsets.zero,
+                                    selected: isSelected,
                                     selectedColor: color,
                                     backgroundColor: Colors.white,
                                     side: BorderSide(color: color),
@@ -180,11 +180,11 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
                                       );
                                     },
                                   ),
-                                );
-                              },
-                            )
-                            .toList(growable: false),
-                      ),
+                                ),
+                              );
+                            },
+                          )
+                          .toList(growable: false),
                     ),
                   ),
                 ],

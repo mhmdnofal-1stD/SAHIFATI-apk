@@ -409,6 +409,18 @@ class EvaluationsProvider with ChangeNotifier {
     }
   }
 
+  /// Ensures ALL user evaluations are loaded using the paginated endpoint
+  /// (1000 per page, typically 1-2 API calls total). Safe to call multiple
+  /// times — the hydration step is a no-op once already done.
+  Future<void> ensureAllUserEvaluationsLoaded(int userId) async {
+    _prepareUserScope(userId);
+    final scopeKey = await _resolveChartCacheScopeKey(userId);
+    await _ensureUserEvaluationCacheHydrated(
+      userId: userId,
+      scopeKey: scopeKey,
+    );
+  }
+
   Future<void> mergeUserEvaluationsForAyatIds(
     int userId,
     List<int> ayatIds, {

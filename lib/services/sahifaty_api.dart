@@ -133,6 +133,11 @@ class SahifatyApi {
               .put(uri, headers: headers, body: json.encode(body))
               .timeout(_timeout);
           break;
+        case 'PATCH':
+          response = await http
+              .patch(uri, headers: headers, body: json.encode(body))
+              .timeout(_timeout);
+          break;
         case 'DELETE':
           response = await http.delete(uri, headers: headers).timeout(_timeout);
           break;
@@ -201,6 +206,9 @@ class SahifatyApi {
 
   Future<dynamic> put({required String url, required dynamic body}) =>
       _request(url, method: 'PUT', body: body);
+
+  Future<dynamic> patch({required String url, required dynamic body}) =>
+      _request(url, method: 'PATCH', body: body);
 
   Future<dynamic> delete(String url) => _request(url, method: 'DELETE');
 

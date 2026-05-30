@@ -207,6 +207,69 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
     }
   }
 
+  Future<void> _renameChild(Map<String, dynamic> child) async {
+    final childId = child['userId']?.toString() ?? child['id']?.toString();
+    if (childId == null) return;
+
+    final currentName = _childUsername(child);
+    final controller = TextEditingController(text: currentName);
+    final newName = await showDialog<String?>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('child_rename_title'.tr),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 50,
+            decoration: InputDecoration(
+              labelText: 'child_name_label'.tr,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(null),
+              child: Text('cancel'.tr),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(controller.text.trim()),
+              child: Text('confirm'.tr),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+
+    if (newName == null || newName.isEmpty || !mounted) return;
+
+    try {
+      final usersProvider =
+          Provider.of<UsersProvider>(context, listen: false);
+      await usersProvider.renameChildAccount(childId, newName);
+      await _loadChildren();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('child_rename_success'.tr),
+            backgroundColor: AppColors.successColor,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteChild(Map<String, dynamic> child) async {
     final childId = child['userId']?.toString() ?? child['id']?.toString();
     final childName = _childUsername(child);
@@ -356,6 +419,9 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                   case 'switch':
                     _switchToChild(child);
                     break;
+                  case 'rename':
+                    _renameChild(child);
+                    break;
                   case 'pin':
                     _setPinForChild(child);
                     break;
@@ -373,6 +439,17 @@ class _ManageChildrenScreenState extends State<ManageChildrenScreen> {
                           color: AppColors.primaryPurple, size: 18),
                       const SizedBox(width: 10),
                       Text('child_action_switch'.tr),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'rename',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_rounded,
+                          color: AppColors.primaryPurple, size: 18),
+                      const SizedBox(width: 10),
+                      Text('child_action_rename'.tr),
                     ],
                   ),
                 ),

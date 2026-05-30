@@ -784,7 +784,7 @@ class _UserSummaryHeader extends StatelessWidget {
 
           // 2️⃣ القسم الأوسط: عمود الأزرار الملونة
           SizedBox(
-            width: 100,
+            width: 82,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -945,6 +945,16 @@ class _UserSurahProgressCard extends StatefulWidget {
 class _UserSurahProgressCardState extends State<_UserSurahProgressCard> {
   bool _expanded = false;
   bool? _lastExternalExpand;
+
+  @override
+  void initState() {
+    super.initState();
+    final ext = widget.externalExpand;
+    if (ext != null) {
+      _expanded = ext;
+      _lastExternalExpand = ext;
+    }
+  }
 
   @override
   void didUpdateWidget(_UserSurahProgressCard oldWidget) {

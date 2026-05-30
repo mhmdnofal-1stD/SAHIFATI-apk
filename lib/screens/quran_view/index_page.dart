@@ -590,8 +590,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       return;
     }
 
-    final ayatIds = _allAyat.map((ayah) => ayah.id).whereType<int>().toList();
-    await evaluationsProvider.mergeUserEvaluationsForAyatIds(userId, ayatIds);
+    // Use the paginated "load-all" path (1000 evaluations per page, 1-2 API
+    // calls) instead of batching by individual ayah IDs (~25 sequential calls
+    // of 250 ayahs each). The hydration step is a no-op on repeat calls.
+    await evaluationsProvider.ensureAllUserEvaluationsLoaded(userId);
     for (final ayah in _allAyat) {
       ayah.userEvaluation =
           evaluationsProvider.getUserEvaluationForAyah(ayah.id);
@@ -1720,11 +1722,17 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       });
       await _refreshReaderAllowedSchoolScope();
 
-      final rebuilt = await _rebuildNavigablePages(
-        userId: selectedUser.id,
-        evaluationsProvider: evaluationsProvider,
-        jumpToFirstMatch: _hasAnyActiveReaderFilter,
-      );
+      AppProgressOverlay.show('filter_loading_data'.tr, progress: 0.0);
+      bool rebuilt;
+      try {
+        rebuilt = await _rebuildNavigablePages(
+          userId: selectedUser.id,
+          evaluationsProvider: evaluationsProvider,
+          jumpToFirstMatch: _hasAnyActiveReaderFilter,
+        );
+      } finally {
+        AppProgressOverlay.hide();
+      }
       if (!rebuilt) {
         return;
       }
