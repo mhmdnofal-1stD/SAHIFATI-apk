@@ -11,6 +11,10 @@ class SahifatyApi {
   final String _baseURL = '${ApiConfig.baseUrl}/';
   final Duration _timeout = const Duration(seconds: 30);
 
+  static void _logWeb401(String message) {
+    debugPrint('[web401] $message');
+  }
+
   // Coalesces concurrent 401 refresh attempts: all callers share the same
   // in-flight future so the refresh token is only used once.
   static Future<bool>? _pendingRefresh;
@@ -31,8 +35,12 @@ class SahifatyApi {
   /// errors — callers must NOT expire the session in this case because the
   /// failure is transient and the stored tokens may still be valid.
   static Future<bool> _doRefresh() async {
+    _logWeb401('refresh-start');
     final refreshToken = await SecureSessionStorage.readRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) return false;
+    if (refreshToken == null || refreshToken.isEmpty) {
+      _logWeb401('refresh-missing-token');
+      return false;
+    }
 
     final uri = Uri.parse('${ApiConfig.baseUrl}/auth/refresh');
     http.Response response;
@@ -47,6 +55,8 @@ class SahifatyApi {
     } on TimeoutException {
       throw FetchDataException('service_api_no_internet'.tr);
     }
+
+    _logWeb401('refresh-response status=${response.statusCode}');
 
     if (response.statusCode == 401 || response.statusCode == 403) {
       // Server definitively rejected the refresh token.
@@ -75,6 +85,7 @@ class SahifatyApi {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken ?? refreshToken,
     );
+    _logWeb401('refresh-success');
     return true;
   }
 
@@ -114,6 +125,9 @@ class SahifatyApi {
     bool isRetry = false,
   }) async {
     try {
+      _logWeb401(
+        'request method=$method url=$url auth=$auth isRetry=$isRetry route=${Get.currentRoute}',
+      );
       final headers = await _getHeaders(auth: auth);
       http.Response response;
 
@@ -152,6 +166,9 @@ class SahifatyApi {
       // Intercept 401: attempt a silent token refresh, then retry once.
       // Not triggered for unauthenticated requests or the retry itself.
       if (response.statusCode == 401 && auth && !isRetry) {
+        _logWeb401(
+          '401-before-refresh method=$method url=$url auth=$auth isRetry=$isRetry route=${Get.currentRoute}',
+        );
         bool refreshed;
         try {
           refreshed = await _tryRefreshTokens();
@@ -161,6 +178,9 @@ class SahifatyApi {
           // retry prompt instead of forcing the user back to the login screen.
           throw FetchDataException('service_api_no_internet'.tr);
         }
+        _logWeb401(
+          '401-refresh-result url=$url refreshed=$refreshed route=${Get.currentRoute}',
+        );
         if (refreshed) {
           return _request(
             url,
@@ -172,6 +192,9 @@ class SahifatyApi {
         }
         // Refresh token definitively rejected by the server: expire the
         // active session fully and redirect to re-authentication.
+        _logWeb401(
+          'redirect-select-user url=$url route=${Get.currentRoute}',
+        );
         await SecureSessionStorage.expireActiveSession();
         Get.offAllNamed('/select-user');
         throw Exception('service_api_unauthorized'.tr);

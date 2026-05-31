@@ -158,20 +158,23 @@ class GlobalDrawer extends StatelessWidget {
                   icon: Icons.auto_stories_outlined,
                 ),
               ),
-              Consumer<UsersProvider>(
-                builder: (context, usersProvider, _) {
-                  return _SupervisionDashboardTile(
-                    hasDelegatedUser: usersProvider.hasPushedSelectedUser,
-                  );
-                },
-              ),
+              if (!guestMode)
+                Consumer<UsersProvider>(
+                  builder: (context, usersProvider, _) {
+                    return _SupervisionDashboardTile(
+                      hasDelegatedUser: usersProvider.hasPushedSelectedUser,
+                    );
+                  },
+                ),
               ListTile(
                 onTap: () async {
                   final evaluationsProvider =
                       context.read<EvaluationsProvider>();
                   final schoolProvider = context.read<SchoolProvider>();
                   await schoolProvider.getQuickQuestionsSchool();
-                  await evaluationsProvider.getAllEvaluations();
+                  if (!guestMode) {
+                    await evaluationsProvider.getAllEvaluations();
+                  }
                   Get.to(const QuestionsScreen());
                 },
                 title: _buildDrawerTitle(

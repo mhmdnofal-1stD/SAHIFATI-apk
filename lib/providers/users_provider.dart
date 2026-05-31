@@ -878,6 +878,14 @@ class UsersProvider with ChangeNotifier {
       return;
     }
 
+    if (selectedUser == null) {
+      showMemorizationColors = true;
+      showComprehensionUnderline = true;
+      _readingDisplayPreferencesLoaded = true;
+      notifyListeners();
+      return;
+    }
+
     try {
       final profile = await _usersService.getCurrentUserProfile();
       _applyReadingDisplayPreferencesFromProfile(profile);
@@ -2069,12 +2077,15 @@ class UsersProvider with ChangeNotifier {
 
   Future<bool> tryAutoLogin() async {
     try {
+      debugPrint('[web401] autologin-start');
       final prefs = await SharedPreferences.getInstance();
       await _migrateLegacySessionIfNeeded(prefs);
 
       final sessions = await _readStoredAccountSessions(prefs);
+      debugPrint('[web401] autologin-sessions count=${sessions.length}');
       if (sessions.isEmpty) {
         await prefs.remove(_manualLogoutKey);
+        debugPrint('[web401] autologin-false reason=no-sessions');
         return false;
       }
 
@@ -2083,6 +2094,7 @@ class UsersProvider with ChangeNotifier {
       final manualLogout = prefs.getBool(_manualLogoutKey) == true;
       if (manualLogout &&
           (activeAccountKey == null || activeAccountKey.isEmpty)) {
+        debugPrint('[web401] autologin-false reason=manual-logout');
         return false;
       }
 
@@ -2090,10 +2102,14 @@ class UsersProvider with ChangeNotifier {
         activeAccountKey = sessions.keys.first;
         await SecureSessionStorage.setActiveAccountKey(activeAccountKey);
       }
+      debugPrint('[web401] autologin-active-account key=$activeAccountKey');
 
       final sessionRecord = sessions[activeAccountKey];
       if (sessionRecord is! Map<String, dynamic>) {
         await _removeStoredSessionByAccountKey(activeAccountKey);
+        debugPrint(
+          '[web401] autologin-false reason=invalid-session-record key=$activeAccountKey',
+        );
         return false;
       }
 
@@ -2101,12 +2117,18 @@ class UsersProvider with ChangeNotifier {
         activeAccountKey,
       );
       if (accessToken == null || accessToken.isEmpty) {
+        debugPrint(
+          '[web401] autologin-no-valid-access-token key=$activeAccountKey',
+        );
         return false;
       }
 
       final rawUserData = sessionRecord['user'];
       if (rawUserData is! Map) {
         await _removeStoredSessionByAccountKey(activeAccountKey, notify: true);
+        debugPrint(
+          '[web401] autologin-false reason=invalid-user-payload key=$activeAccountKey',
+        );
         return false;
       }
 
@@ -2124,16 +2146,19 @@ class UsersProvider with ChangeNotifier {
       await _bootstrapPushNotificationsForCurrentUser();
       unawaited(_initialDataSyncService.runIfNeeded(selectedUser!.id));
       notifyListeners();
+      debugPrint('[web401] autologin-success userId=${selectedUser?.id}');
       return true;
     } on FetchDataException {
       // Transient network / connectivity error — the stored tokens are still
       // valid.  Return false without touching the session so the user can
       // retry on next app launch or reconnect without being signed out.
+      debugPrint('[web401] autologin-false reason=transient-fetch-error');
       return false;
     } catch (_) {
       // Only reached for genuine data-corruption errors (e.g. malformed
       // stored JSON that User.fromJson cannot parse).  Safe to clear.
       await clearPersistedSession();
+      debugPrint('[web401] autologin-false reason=unexpected-exception');
       return false;
     }
   }

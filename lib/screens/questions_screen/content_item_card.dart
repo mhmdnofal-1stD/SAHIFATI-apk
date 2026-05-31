@@ -29,6 +29,9 @@ import '../widgets/surah_verse_chart.dart';
 import '../widgets/verse_picker_sheet.dart';
 import '../supervision_screen/supervision_metric_utils.dart';
 
+const String _guestAssessmentPrompt =
+  'يمكنك متابعة الاستعراض كضيف، لكن التقييم والحفظ يتطلبان تسجيل الدخول.';
+
 class ContentItemCard extends StatefulWidget {
   final SchoolLevelContent content;
   final int index;
@@ -253,6 +256,16 @@ class _ContentItemCardState extends State<ContentItemCard> {
     String? title,
     Widget? titleWidget,
   }) async {
+    final usersProvider = context.read<UsersProvider>();
+    if (usersProvider.selectedUser == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(_guestAssessmentPrompt)),
+        );
+      }
+      return null;
+    }
+
     final evaluationsProvider = context.read<EvaluationsProvider>();
 
     if (evaluationsProvider.evaluations.isEmpty) {

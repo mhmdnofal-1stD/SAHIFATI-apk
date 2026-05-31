@@ -241,6 +241,8 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
   Widget build(BuildContext context) {
     final schoolProvider = context.watch<SchoolProvider>();
     final evaluationsProvider = context.watch<EvaluationsProvider>();
+    final usersProvider = context.watch<UsersProvider>();
+    final isGuestMode = usersProvider.selectedUser == null;
     final allSchools = schoolProvider.schools;
     final levels = _readLevels(schoolProvider);
     final isSchoolReady = levels.isNotEmpty;
@@ -296,11 +298,11 @@ class _QuestionsScreenState extends State<QuestionsScreen> {
           ),
         ),
         drawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
-            ? const GlobalDrawer()
+          ? GlobalDrawer(guestMode: isGuestMode)
             : null,
         endDrawer: (Get.locale?.languageCode ?? 'ar') == 'ar'
             ? null
-            : const GlobalDrawer(),
+          : GlobalDrawer(guestMode: isGuestMode),
         body: SafeArea(
           top: false,
           left: false,
