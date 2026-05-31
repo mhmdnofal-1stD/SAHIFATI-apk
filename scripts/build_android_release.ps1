@@ -4,7 +4,8 @@ param(
   [string]$Artifact = 'apk',
   [bool]$SplitPerAbi = $true,
   [string]$ApkTargetPlatform = 'android-arm64',
-  [bool]$Obfuscate = $true
+  [bool]$Obfuscate = $true,
+  [int]$BuildNumber
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,7 +84,14 @@ if (-not $storeFileValue -or -not $keyAlias -or -not $storePassword -or -not $ke
   throw 'Android key.properties is missing one or more required signing entries.'
 }
 
-$resolvedStorePath = Resolve-Path (Join-Path $androidDir $storeFileValue)
+$storeFilePath = if ([System.IO.Path]::IsPathRooted($storeFileValue)) {
+  $storeFileValue
+}
+else {
+  Join-Path $androidDir $storeFileValue
+}
+
+$resolvedStorePath = Resolve-Path $storeFilePath
 
 $applicationIdMatch = Select-String -Path $appBuildGradlePath -Pattern 'applicationId\s+"([^"]+)"' | Select-Object -First 1
 if (-not $applicationIdMatch) {
@@ -131,6 +139,19 @@ if ($Artifact -eq 'aab' -and $SplitPerAbi) {
 $artifactLabel = if ($Artifact -eq 'aab') { 'AAB' } else { 'APK' }
 Write-Host "[2/2] Building release $artifactLabel"
 
+$outputPath = if ($Artifact -eq 'aab') {
+  Join-Path $projectRoot 'build\app\outputs\bundle\release\app-release.aab'
+}
+elseif ($SplitPerAbi -and $ApkTargetPlatform -eq 'android-arm64') {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'
+}
+elseif (-not $SplitPerAbi) {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-release.apk'
+}
+else {
+  Join-Path $projectRoot 'build\app\outputs\flutter-apk'
+}
+
 $buildArgs = @(
   'build',
   $(if ($Artifact -eq 'aab') { 'appbundle' } else { 'apk' }),
@@ -138,6 +159,16 @@ $buildArgs = @(
   '--tree-shake-icons'
 )
 $buildArgs += $releaseDefineArgs
+
+if ($BuildNumber -gt 0) {
+  $buildArgs += '--build-number'
+  $buildArgs += $BuildNumber.ToString()
+}
+
+if ($Artifact -eq 'aab') {
+  $buildArgs += '--target-platform'
+  $buildArgs += 'android-arm,android-arm64'
+}
 
 if ($Artifact -eq 'apk' -and -not [string]::IsNullOrWhiteSpace($ApkTargetPlatform)) {
   $buildArgs += '--target-platform'
@@ -155,26 +186,32 @@ if ($Obfuscate) {
 
 Push-Location $projectRoot
 try {
+  $buildStartedAt = Get-Date
   & flutter @buildArgs
   if ($LASTEXITCODE -ne 0) {
-    throw "flutter build $Artifact failed with exit code $LASTEXITCODE"
+    if ($Artifact -eq 'aab') {
+      Write-Warning "flutter build appbundle returned exit code $LASTEXITCODE. Retrying final Android bundling via Gradle."
+      Push-Location $androidDir
+      try {
+        & .\gradlew.bat ':app:bundleRelease' '--console=plain'
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $outputPath) -and (Get-Item $outputPath).LastWriteTime -ge $buildStartedAt) {
+          Write-Host 'Gradle fallback completed successfully.'
+        }
+        else {
+          throw "Gradle fallback failed with exit code $LASTEXITCODE"
+        }
+      }
+      finally {
+        Pop-Location
+      }
+    }
+    else {
+      throw "flutter build $Artifact failed with exit code $LASTEXITCODE"
+    }
   }
 }
 finally {
   Pop-Location
-}
-
-$outputPath = if ($Artifact -eq 'aab') {
-  Join-Path $projectRoot 'build\app\outputs\bundle\release\app-release.aab'
-}
-elseif ($SplitPerAbi -and $ApkTargetPlatform -eq 'android-arm64') {
-  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'
-}
-elseif (-not $SplitPerAbi) {
-  Join-Path $projectRoot 'build\app\outputs\flutter-apk\app-release.apk'
-}
-else {
-  Join-Path $projectRoot 'build\app\outputs\flutter-apk'
 }
 
 Write-Host ''

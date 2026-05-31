@@ -30,7 +30,8 @@ This script is environment-agnostic and works on Windows, macOS, and Linux.
 param(
     [string]$OutputDir = "./build/app/outputs/bundle/release/",
     [switch]$SkipClean,
-    [switch]$AnalyzeOnly
+    [switch]$AnalyzeOnly,
+    [int]$BuildNumber
 )
 
 $sharedBuildConfigPath = "tool/build_config.json"
@@ -128,20 +129,46 @@ Write-Host ""
 
 $buildArgs = @(
     "build", "appbundle",
-    "--release"
+    "--release",
+    "--target-platform", "android-arm,android-arm64"
 )
 
 $buildArgs += $defineArgs
 
+if ($BuildNumber -gt 0) {
+    $buildArgs += "--build-number"
+    $buildArgs += $BuildNumber.ToString()
+}
+
+$aabPath = "build/app/outputs/bundle/release/app-release.aab"
+$buildStartedAt = Get-Date
+
 & flutter @buildArgs
 $buildExitCode = $LASTEXITCODE
+
+if ($buildExitCode -ne 0) {
+    Write-Warning "flutter build appbundle returned exit code $buildExitCode. Retrying final Android bundling via Gradle."
+    Push-Location "android"
+    try {
+        & .\gradlew.bat ':app:bundleRelease' '--console=plain'
+        if ($LASTEXITCODE -eq 0 -and (Test-Path (Join-Path '..' $aabPath)) -and (Get-Item (Join-Path '..' $aabPath)).LastWriteTime -ge $buildStartedAt) {
+            $buildExitCode = 0
+            Write-Host "Gradle fallback completed successfully." -ForegroundColor Green
+        }
+        else {
+            $buildExitCode = if ($LASTEXITCODE -ne 0) { $LASTEXITCODE } else { 1 }
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 if ($buildExitCode -eq 0) {
     Write-Host "AAB Build Successful!" -ForegroundColor Green
-    
-    $aabPath = "build/app/outputs/bundle/release/app-release.aab"
+
     if (Test-Path $aabPath) {
         $size = (Get-Item $aabPath).Length
         $sizeGB = [math]::Round($size / 1MB, 2)

@@ -6,6 +6,15 @@ plugins {
 
 apply plugin: 'com.huawei.agconnect'
 
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'androidx.camera' &&
+            details.requested.name in ['camera-core', 'camera-camera2', 'camera-lifecycle']) {
+            details.useVersion '1.6.1'
+        }
+    }
+}
+
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
@@ -49,6 +58,7 @@ android {
             shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             ndk {
+                abiFilters 'armeabi-v7a', 'arm64-v8a'
                 debugSymbolLevel 'NONE'
             }
         }
@@ -58,6 +68,8 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+        exclude 'lib/x86_64/*.so'
+        exclude '**/x86_64/*.so'
         exclude 'lib/**/*.so.dbg'
         exclude 'lib/**/*.so.sym'
     }
@@ -65,17 +77,4 @@ android {
 
 flutter {
     source "../.."
-}
-
-// Completely disable native library stripping in bundleRelease
-tasks.whenTaskAdded { task ->
-    if (task.name.contains('stripNativeLibraries') || 
-        task.name == 'stripReleaseNativeLibraries') {
-        task.enabled = false
-    }
-}
-
-afterEvaluate {
-    // Disable bundleRelease symbol stripping via gradle properties
-    gradle.ext.stripDebugSymbols = false
 }
