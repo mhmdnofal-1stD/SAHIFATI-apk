@@ -7,17 +7,29 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  test('Huawei stays enabled on Android without a dart-define app id', () {
+  test('Huawei stays disabled on Android without a dart-define app id', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
 
     expect(SocialAuthConfig.huaweiAppId, isEmpty);
-    expect(SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform, isTrue);
+    expect(SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform, isFalse);
   });
 
   test('Huawei stays disabled on non-Android platforms', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
     expect(SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform, isFalse);
+  });
+
+  test('Google stays disabled on native iOS builds', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    expect(SocialAuthConfig.isGoogleConfiguredForCurrentPlatform, isFalse);
+  });
+
+  test('Apple stays disabled on native iOS builds without a web relay', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    expect(SocialAuthConfig.isAppleConfiguredForCurrentPlatform, isFalse);
   });
 
   test('Apple Android redirect uri adds the android platform marker', () {

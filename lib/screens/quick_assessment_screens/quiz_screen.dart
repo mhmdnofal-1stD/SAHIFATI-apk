@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 import '../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/core/constants/colors.dart';

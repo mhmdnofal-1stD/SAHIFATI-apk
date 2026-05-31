@@ -27,6 +27,10 @@ class SocialAuthConfig {
       return googleWebClientId.isNotEmpty;
     }
 
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+
     return googleServerClientId.isNotEmpty;
   }
 
@@ -49,10 +53,8 @@ class SocialAuthConfig {
     if (kIsWeb) {
       return hasWebFlowConfig;
     }
-    // Native iOS/macOS: Sign In with Apple is built-in, no external config needed
-    return defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        (defaultTargetPlatform == TargetPlatform.android && hasWebFlowConfig);
+
+    return defaultTargetPlatform == TargetPlatform.android && hasWebFlowConfig;
   }
 
   static bool get isHuaweiConfiguredForCurrentPlatform {

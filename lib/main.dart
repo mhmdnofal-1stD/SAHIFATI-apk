@@ -670,11 +670,7 @@ class _InitialScreenState extends State<InitialScreen> {
       }
 
       _reportStage('جاري التحقق من الهوية...', 0.35);
-      debugPrint('[web401] startup-tryAutoLogin begin uri=${Uri.base}');
       final bool isLoggedIn = await usersProvider.tryAutoLogin();
-      debugPrint(
-        '[web401] startup-tryAutoLogin result isLoggedIn=$isLoggedIn selectedUser=${usersProvider.selectedUser?.id}',
-      );
 
       if (!mounted) {
         return;

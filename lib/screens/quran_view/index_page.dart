@@ -1763,9 +1763,6 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Future<void> _loadAyat(
       int? userId, EvaluationsProvider evaluationsProvider) async {
     final usersProvider = context.read<UsersProvider>();
-    debugPrint(
-      '[web401] read-load-start route=${Get.currentRoute} isGuest=${usersProvider.isGuestMode} userId=$userId selectedUser=${usersProvider.selectedUser?.id}',
-    );
     await _refreshConnectivity();
 
     // Check if user is in guest mode or registered without license

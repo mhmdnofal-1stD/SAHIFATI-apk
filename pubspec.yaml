@@ -1,6 +1,6 @@
 name: sahifaty
 
-version: 1.0.15+23
+version: 1.0.16+24
 
 environment:
   sdk: ^3.5.4

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -11,7 +12,6 @@ import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
 import 'package:sahifaty/screens/widgets/info_icon_button.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class LicenseActivationScreen extends StatefulWidget {
   const LicenseActivationScreen({super.key});
@@ -31,6 +31,12 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
   Color _purchaseNoticeAccent = const Color(0xFF2A638B);
   IconData _purchaseNoticeIcon = Icons.info_outline_rounded;
   bool _awaitingPurchaseReturn = false;
+
+  bool get _isArabic => Get.locale?.languageCode.toLowerCase() == 'ar';
+  TextDirection get _textDirection =>
+      _isArabic ? TextDirection.rtl : TextDirection.ltr;
+  bool get _hidePurchaseBundlesForApple =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
@@ -229,59 +235,15 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
   }
 
   Future<void> _startPurchaseCheckout() async {
-    final usersProvider = context.read<UsersProvider>();
-
     setState(() {
       _inlineError = null;
-      _purchaseNotice = null;
     });
 
-    try {
-      final purchase = await usersProvider.createPurchaseIntent(
-        quantity: _selectedPurchaseQuantity,
-      );
-
-      final checkoutUrl = (purchase['checkoutUrl'] ?? '').toString().trim();
-      if (checkoutUrl.isEmpty) {
-        throw Exception('service_users_purchase_intent_failed'.tr);
-      }
-
-      final checkoutUri = Uri.tryParse(checkoutUrl);
-      if (checkoutUri == null) {
-        throw Exception('service_users_purchase_intent_failed'.tr);
-      }
-
-      final launched = await launchUrl(
-        checkoutUri,
-        mode: LaunchMode.externalApplication,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      if (!launched) {
-        setState(() {
-          _inlineError = 'license_activation_purchase_open_failed'.tr;
-        });
-        return;
-      }
-
-      _awaitingPurchaseReturn = true;
-      _showPurchaseNotice(
-        'license_activation_purchase_launched'.tr,
-        accent: const Color(0xFF2A638B),
-        icon: Icons.open_in_new_rounded,
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _inlineError = usersProvider.extractErrorMessage(error);
-      });
-    }
+    _showPurchaseNotice(
+      'license_activation_purchase_under_preparation'.tr,
+      accent: const Color(0xFF8A5A12),
+      icon: Icons.hourglass_top_rounded,
+    );
   }
 
   Future<void> _refreshLicenseAfterPurchase({
@@ -370,6 +332,38 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildApplePurchaseLinkCard({
+    required Color accent,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: accent.withValues(alpha: 0.14)),
+          ),
+          child: Text(
+            'license_activation_purchase_apple_notice'.tr,
+            textDirection: _textDirection,
+            style: AppTypography.of(context).bodySecondary.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: accent,
+                  height: 1.6,
+                ),
+          ),
+        ),
+        if (_purchaseNotice != null) ...[
+          const SizedBox(height: 12),
+          _buildPurchaseNotice(),
+        ],
+      ],
     );
   }
 
@@ -685,134 +679,163 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
                         title: 'license_activation_purchase_title'.tr,
                         body: 'license_activation_purchase_body'.tr,
                         accent: const Color(0xFF5B3DA1),
-                        enabled: !usersProvider.isLicenseLoading,
-                        onTap: _startPurchaseCheckout,
-                        footer: usersProvider.isLicenseLoading
-                            ? 'license_activation_purchase_loading'.tr
-                            : 'license_activation_purchase_action'.tr,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF5F0FF),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Text(
-                                      'license_activation_purchase_deferred_notice'
-                                          .tr,
-                                      textDirection: TextDirection.rtl,
-                                      style: AppTypography.of(context)
-                                          .bodySecondary
-                                          .copyWith(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF5B3DA1),
-                                            height: 1.6,
+                        enabled: _hidePurchaseBundlesForApple
+                            ? true
+                            : !usersProvider.isLicenseLoading,
+                        onTap: _hidePurchaseBundlesForApple
+                          ? null
+                            : _startPurchaseCheckout,
+                        showAction: !_hidePurchaseBundlesForApple,
+                        footer: _hidePurchaseBundlesForApple
+                            ? null
+                            : usersProvider.isLicenseLoading
+                                ? 'license_activation_purchase_loading'.tr
+                                : 'license_activation_purchase_action'.tr,
+                        child: _hidePurchaseBundlesForApple
+                            ? _buildApplePurchaseLinkCard(
+                                accent: const Color(0xFF5B3DA1),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                            vertical: 12,
                                           ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'license_activation_purchase_pricing_label'.tr,
-                              textDirection: TextDirection.rtl,
-                              style:
-                                  AppTypography.of(context).inputLabel.copyWith(
-                                        color: AppColors.blackFontColor,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF5F0FF),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                          ),
+                                          child: Text(
+                                            'license_activation_purchase_deferred_notice'
+                                                .tr,
+                                            textDirection: TextDirection.rtl,
+                                            style: AppTypography.of(context)
+                                                .bodySecondary
+                                                .copyWith(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      const Color(0xFF5B3DA1),
+                                                  height: 1.6,
+                                                ),
+                                          ),
+                                        ),
                                       ),
-                            ),
-                            const SizedBox(height: 10),
-                            _buildPurchaseTierRow(
-                              title: 'license_activation_bundle_20_title'.tr,
-                              price: 'license_activation_bundle_20_price'.tr,
-                              accent: const Color(0xFF5B3DA1),
-                            ),
-                            const SizedBox(height: 6),
-                            _buildPurchaseTierRow(
-                              title: 'license_activation_bundle_100_title'.tr,
-                              price: 'license_activation_bundle_100_price'.tr,
-                              accent: const Color(0xFF1E7A6B),
-                            ),
-                            const SizedBox(height: 6),
-                            _buildPurchaseTierRow(
-                              title: 'license_activation_bundle_1000_title'.tr,
-                              price: 'license_activation_bundle_1000_price'.tr,
-                              accent: const Color(0xFFB26A12),
-                            ),
-                            const SizedBox(height: 6),
-                            _buildPurchaseTierRow(
-                              title: 'license_activation_bundle_10000_title'.tr,
-                              price: 'license_activation_bundle_10000_price'.tr,
-                              accent: const Color(0xFFB53C52),
-                            ),
-                            const SizedBox(height: 12),
-                            DropdownButtonFormField<int>(
-                              initialValue: _selectedPurchaseQuantity,
-                              decoration: InputDecoration(
-                                labelText:
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
                                     'license_activation_purchase_pricing_label'
                                         .tr,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                              items: const [20, 100, 1000, 10000]
-                                  .map(
-                                    (quantity) => DropdownMenuItem<int>(
-                                      value: quantity,
-                                      child: Text(quantity.toString()),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: usersProvider.isLicenseLoading
-                                  ? null
-                                  : (value) {
-                                      if (value == null) {
-                                        return;
-                                      }
-
-                                      setState(() {
-                                        _selectedPurchaseQuantity = value;
-                                      });
-                                    },
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 46,
-                                    child: OutlinedButton(
-                                      onPressed: usersProvider.isLicenseLoading
-                                          ? null
-                                          : _refreshLicenseAfterPurchase,
-                                      child: Text(
-                                        'license_activation_purchase_refresh'
+                                    textDirection: TextDirection.rtl,
+                                    style: AppTypography.of(context)
+                                        .inputLabel
+                                        .copyWith(
+                                          color: AppColors.blackFontColor,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildPurchaseTierRow(
+                                    title:
+                                        'license_activation_bundle_20_title'.tr,
+                                    price:
+                                        'license_activation_bundle_20_price'.tr,
+                                    accent: const Color(0xFF5B3DA1),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _buildPurchaseTierRow(
+                                    title:
+                                        'license_activation_bundle_100_title'.tr,
+                                    price:
+                                        'license_activation_bundle_100_price'
                                             .tr,
+                                    accent: const Color(0xFF1E7A6B),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _buildPurchaseTierRow(
+                                    title: 'license_activation_bundle_1000_title'
+                                        .tr,
+                                    price: 'license_activation_bundle_1000_price'
+                                        .tr,
+                                    accent: const Color(0xFFB26A12),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _buildPurchaseTierRow(
+                                    title:
+                                        'license_activation_bundle_10000_title'
+                                            .tr,
+                                    price:
+                                        'license_activation_bundle_10000_price'
+                                            .tr,
+                                    accent: const Color(0xFFB53C52),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  DropdownButtonFormField<int>(
+                                    initialValue: _selectedPurchaseQuantity,
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          'license_activation_purchase_pricing_label'
+                                              .tr,
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(14),
                                       ),
                                     ),
+                                    items: const [20, 100, 1000, 10000]
+                                        .map(
+                                          (quantity) => DropdownMenuItem<int>(
+                                            value: quantity,
+                                            child:
+                                                Text(quantity.toString()),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: usersProvider.isLicenseLoading
+                                        ? null
+                                        : (value) {
+                                            if (value == null) {
+                                              return;
+                                            }
+
+                                            setState(() {
+                                              _selectedPurchaseQuantity = value;
+                                            });
+                                          },
                                   ),
-                                ),
-                                InfoIconButton(
-                                  message:
-                                      'license_activation_purchase_footer_note'
-                                          .tr,
-                                  color: AppColors.mutedText,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: 46,
+                                          child: OutlinedButton(
+                                            onPressed:
+                                                usersProvider.isLicenseLoading
+                                                    ? null
+                                                    : _refreshLicenseAfterPurchase,
+                                            child: Text(
+                                              'license_activation_purchase_refresh'
+                                                  .tr,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      InfoIconButton(
+                                        message:
+                                            'license_activation_purchase_footer_note'
+                                                .tr,
+                                        color: AppColors.mutedText,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                       ),
                       const SizedBox(height: 18),
                       TextButton(

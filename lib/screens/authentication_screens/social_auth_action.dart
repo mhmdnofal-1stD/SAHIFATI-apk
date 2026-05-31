@@ -277,7 +277,8 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
     bool showEmailMethod = false,
   }) {
     final controls = <Widget>[
-      _buildGoogleControl(up, ep, isSignupContext: isSignupContext),
+      if (SocialAuthConfig.isGoogleConfiguredForCurrentPlatform)
+        _buildGoogleControl(up, ep, isSignupContext: isSignupContext),
       if (SocialAuthConfig.isAppleConfiguredForCurrentPlatform)
         _buildAppleControl(up, ep),
       if (SocialAuthConfig.isFacebookConfiguredForCurrentPlatform)
@@ -285,6 +286,10 @@ mixin SocialAuthAction<T extends StatefulWidget> on State<T> {
       if (SocialAuthConfig.isHuaweiConfiguredForCurrentPlatform)
         _buildHuaweiControl(up, ep),
     ];
+
+    if (controls.isEmpty && !showEmailMethod) {
+      return const SizedBox.shrink();
+    }
 
     return AuthSocialSection(
       controls: controls,
