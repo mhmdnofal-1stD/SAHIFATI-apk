@@ -45,9 +45,12 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled true
-            shrinkResources true
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            ndk {
+                debugSymbolLevel 'NONE'
+            }
         }
     }
 
@@ -55,9 +58,24 @@ android {
         jniLibs {
             useLegacyPackaging = false
         }
+        exclude 'lib/**/*.so.dbg'
+        exclude 'lib/**/*.so.sym'
     }
 }
 
 flutter {
     source "../.."
+}
+
+// Completely disable native library stripping in bundleRelease
+tasks.whenTaskAdded { task ->
+    if (task.name.contains('stripNativeLibraries') || 
+        task.name == 'stripReleaseNativeLibraries') {
+        task.enabled = false
+    }
+}
+
+afterEvaluate {
+    // Disable bundleRelease symbol stripping via gradle properties
+    gradle.ext.stripDebugSymbols = false
 }
