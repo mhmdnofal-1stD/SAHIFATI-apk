@@ -60,7 +60,7 @@ $appleRedirectUri = $releaseDefineMap['APPLE_REDIRECT_URI']
 $huaweiAppId = $releaseDefineMap['HUAWEI_APP_ID']
 
 if (-not (Test-Path $keyPropertiesPath)) {
-  throw "Missing Android signing config at $keyPropertiesPath"
+  Write-Host "Android key.properties not found; falling back to SAHIFATI_KEYSTORE_* environment variables if present."
 }
 
 if ([string]::IsNullOrWhiteSpace($GoogleServerClientId)) {
@@ -68,20 +68,40 @@ if ([string]::IsNullOrWhiteSpace($GoogleServerClientId)) {
 }
 
 $keyProperties = @{}
-Get-Content $keyPropertiesPath | ForEach-Object {
-  if ($_ -match '=') {
-    $parts = $_ -split '=', 2
-    $keyProperties[$parts[0].Trim()] = $parts[1].Trim()
+if (Test-Path $keyPropertiesPath) {
+  Get-Content $keyPropertiesPath | ForEach-Object {
+    if ($_ -match '=') {
+      $parts = $_ -split '=', 2
+      $keyProperties[$parts[0].Trim()] = $parts[1].Trim()
+    }
   }
 }
 
-$storeFileValue = $keyProperties['storeFile']
-$keyAlias = $keyProperties['keyAlias']
-$storePassword = $keyProperties['storePassword']
-$keyPassword = $keyProperties['keyPassword']
+function Resolve-SigningSetting {
+  param(
+    [string]$PropertyName,
+    [string]$EnvName
+  )
+
+  $envValue = [Environment]::GetEnvironmentVariable($EnvName)
+  if (-not [string]::IsNullOrWhiteSpace($envValue)) {
+    return $envValue.Trim()
+  }
+
+  if ($keyProperties.ContainsKey($PropertyName) -and -not [string]::IsNullOrWhiteSpace($keyProperties[$PropertyName])) {
+    return $keyProperties[$PropertyName]
+  }
+
+  return $null
+}
+
+$storeFileValue = Resolve-SigningSetting 'storeFile' 'SAHIFATI_KEYSTORE_FILE'
+$keyAlias = Resolve-SigningSetting 'keyAlias' 'SAHIFATI_KEY_ALIAS'
+$storePassword = Resolve-SigningSetting 'storePassword' 'SAHIFATI_KEYSTORE_PASSWORD'
+$keyPassword = Resolve-SigningSetting 'keyPassword' 'SAHIFATI_KEY_PASSWORD'
 
 if (-not $storeFileValue -or -not $keyAlias -or -not $storePassword -or -not $keyPassword) {
-  throw 'Android key.properties is missing one or more required signing entries.'
+  throw 'Android signing config is missing one or more required entries. Provide them in android/key.properties or SAHIFATI_KEYSTORE_* environment variables.'
 }
 
 $storeFilePath = if ([System.IO.Path]::IsPathRooted($storeFileValue)) {

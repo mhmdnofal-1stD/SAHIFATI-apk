@@ -54,25 +54,46 @@ import 'widgets/privacy_consent_gate.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the LocalizationService before running the app
-  await LocalizationService().init();
-  Locale initialLocale = await LocalizationService.getCurrentLocale();
+  Locale initialLocale = LocalizationService.locale;
+  TypographyConfig initialTypography = TypographyConfig.defaults;
+
+  // Keep the app launchable even if a platform plugin or cached payload fails
+  // during startup on a release build.
+  try {
+    await LocalizationService().init();
+    initialLocale = await LocalizationService.getCurrentLocale();
+  } catch (error, stackTrace) {
+    debugPrint(
+      'Startup localization initialization failed: $error\n$stackTrace',
+    );
+  }
 
   // Load cached/seed typography config so the first paint already uses the
   // admin-tunable styles. Remote refresh runs after the app is up.
-  final TypographyConfig initialTypography =
-      await TypographyConfigService.loadCachedOrSeed();
+  try {
+    initialTypography = await TypographyConfigService.loadCachedOrSeed();
+  } catch (error, stackTrace) {
+    debugPrint(
+      'Startup typography initialization failed: $error\n$stackTrace',
+    );
+  }
   final TypographyConfigController typographyController =
       TypographyConfigController(initialTypography);
 
-  await SystemChrome.setPreferredOrientations(
-    kIsWeb
-        ? DeviceOrientation.values
-        : [
-            DeviceOrientation.portraitUp,
-            DeviceOrientation.portraitDown,
-          ],
-  );
+  try {
+    await SystemChrome.setPreferredOrientations(
+      kIsWeb
+          ? DeviceOrientation.values
+          : [
+              DeviceOrientation.portraitUp,
+              DeviceOrientation.portraitDown,
+            ],
+    );
+  } catch (error, stackTrace) {
+    debugPrint(
+      'Startup orientation initialization failed: $error\n$stackTrace',
+    );
+  }
 
   runApp(
     MultiProvider(

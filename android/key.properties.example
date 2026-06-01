@@ -1,0 +1,6 @@
+# Copy this file to android/key.properties for local signing only,
+# or provide the same values through SAHIFATI_KEYSTORE_* environment variables.
+storePassword=<keystore-password>
+keyPassword=<key-password>
+keyAlias=upload
+storeFile=C:/path/to/UP.Key.jks

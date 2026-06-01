@@ -59,8 +59,8 @@
 - `frontend_users/ui/android/key.properties`:
   - `storeFile=../../../Public-data-/UP.Key.jks`
   - `keyAlias=upload`
-  - `storePassword=P@ssw0rd`
-  - `keyPassword=P@ssw0rd`
+  - `storePassword=<keystore-password-from-secure-store>`
+  - `keyPassword=<keystore-password-from-secure-store>`
 - keystore الفعلي المستخدم: `Public-data-/UP.Key.jks` (يوجد أيضاً: `android/sahifati_key.jks`, `android/sahifati_upload_reset_2026.jks`)
 - بصمات التوقيع التي تم طباعتها أثناء بناء AAB (2026-05-20):
   - SHA1: `6F:DA:D4:C7:24:28:5A:F5:E3:A7:94:8B:00:4C:E3:81:D6:87:71:50`
@@ -241,8 +241,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
 - `android/key.properties` (حاليًا محفوظ في repo — ينصح بنقله إلى CI secrets):
   - `storeFile=../../../Public-data-/UP.Key.jks` (path to keystore file)
   - `keyAlias=upload`
-  - `storePassword=P@ssw0rd`
-  - `keyPassword=P@ssw0rd`
+  - `storePassword=<keystore-password-from-secure-store>`
+  - `keyPassword=<keystore-password-from-secure-store>`
 
 - Facebook (من `android/app/src/main/res/values/strings.xml`):
   - `FACEBOOK_APP_ID` = `824178674089653`
