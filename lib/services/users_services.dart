@@ -1096,4 +1096,34 @@ class UsersServices with ChangeNotifier {
       rethrow;
     }
   }
+
+  Future<http.Response> setLocalPassword({
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      final token = await SecureSessionStorage.readAccessToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('Access token not found');
+      }
+
+      final response = await http
+          .post(
+            Uri.parse('$_baseURL/auth/set-local-password'),
+            headers: {
+              ..._authHeaders,
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode({
+              'password': password,
+              'confirmPassword': confirmPassword,
+            }),
+          )
+          .timeout(_timeout);
+
+      return response;
+    } catch (ex) {
+      rethrow;
+    }
+  }
 }

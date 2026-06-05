@@ -2508,4 +2508,56 @@ class UsersProvider with ChangeNotifier {
       throw data['message'] ?? 'child_rename_error';
     }
   }
+
+  Future<bool> setLocalPassword({
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      if (password != confirmPassword) {
+        throw AppException('كلمات المرور غير متطابقة');
+      }
+
+      if (password.isEmpty) {
+        throw AppException('كلمة المرور مطلوبة');
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        throw AppException('يجب أن تكون كلمة المرور 8 أحرف على الأقل');
+      }
+
+      if (!RegExp(r'[A-Z]').hasMatch(password)) {
+        throw AppException('يجب أن تحتوي على حرف كبير');
+      }
+
+      if (!RegExp(r'[a-z]').hasMatch(password)) {
+        throw AppException('يجب أن تحتوي على حرف صغير');
+      }
+
+      if (!RegExp(r'[0-9]').hasMatch(password)) {
+        throw AppException('يجب أن تحتوي على رقم');
+      }
+
+      if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+        throw AppException('يجب أن تحتوي على رمز خاص');
+      }
+
+      final response = await _usersService.setLocalPassword(
+        password: password,
+        confirmPassword: confirmPassword,
+      );
+
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        final data = json.decode(response.body);
+        throw AppException(data['message'] ?? 'set_password_error');
+      }
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('خطأ: ${e.toString()}');
+    }
+  }
 }
