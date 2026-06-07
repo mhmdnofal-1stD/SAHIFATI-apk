@@ -20,14 +20,19 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Build Flutter Web (Diagnostic Mode)
+      - name: Clean and Get Packages
         run: |
+          flutter clean
           flutter pub get
-          # أضفنا خيار --verbose لطباعة تفاصيل السطر المسبب لفشل بناء الـ Web بدقة
-          flutter build web --release --verbose
+
+      - name: Build Flutter Web (Safe Mode)
+        run: |
+          # استخدام الـ canvaskit كـ renderer يحل مشاكل تعارض الخطوط والمكتبات في الويب
+          flutter build web --release --web-renderer canvaskit
 
       - name: Execute Deploy via SSH
         run: |
+          # تأكد من إضافة الـ Secrets في هذا المستودع لكي يعمل هذا الجزء بنجاح
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
