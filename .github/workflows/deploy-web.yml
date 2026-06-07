@@ -1,0 +1,72 @@
+name: Deploy Flutter Web to Server
+
+on:
+  push:
+    branches:
+      - MajedWithNofal
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Flutter Web
+        run: |
+          flutter pub get
+          flutter build web --release
+
+      - name: Execute Deploy via SSH
+        run: |
+          # 1. إعداد مفتاح الـ SSH داخل الـ Runner بشكل آمن
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          
+          # 2. نقل ملفات الـ Web المبنية فقط إلى مجلد السيرفر لمنع استهلاك موارد المعالج
+          echo "==== جاري نقل ملفات الـ Web الجاهزة إلى السيرفر... ===="
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" --delete ./build/web/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":~/sahifati_web_dist
+
+          # 3. الاتصال بالسيرفر لتشغيل الحاوية الخفيفة بنظام المعمارية المتوافق تلقائياً
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22 "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" << 'EOF'
+            
+            # أ) إنشاء ملف إعدادات Nginx بسيط ومباشر داخل السيرفر لخدمة ملفات الـ Web
+            cat << 'INNER_EOF' > ~/nginx_web.conf
+            server {
+                listen 80;
+                server_name localhost;
+                location / {
+                    root /usr/share/nginx/html;
+                    index index.html index.htm;
+                    try_files $uri $uri/ /index.html;
+                }
+            }
+            INNER_EOF
+
+            # ب) إيقاف وحذف حاوية الـ Web القديمة (إن وجدت)
+            podman stop sahifati_web_container || true
+            podman rm sahifati_web_container || true
+            
+            # ج) تشغيل حاوية Nginx خفيفة جداً ومباشرة مبنية على معمارية سيرفرك تلقائياً
+            echo "==== جاري تشغيل حاوية الـ Flutter Web... ===="
+            podman run -d \
+              --name sahifati_web_container \
+              -v ~/sahifati_web_dist:/usr/share/nginx/html:ro \
+              -v ~/nginx_web.conf:/etc/nginx/conf.d/default.conf:ro \
+              -p 8081:80 \
+              nginx:alpine
+
+            # د) التأكد من استقرار الحاوية الجديدة
+            echo "========================================="
+            podman ps -a --filter name=sahifati_web_container
+            echo "========================================="
+          EOF
