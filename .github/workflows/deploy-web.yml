@@ -20,14 +20,16 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Clean and Get Packages
+      - name: Clean and Update Dependencies
         run: |
           flutter clean
           flutter pub get
+          # ترقية حزمة القرآن الكريم تلقائياً داخل الـ Runner لإصلاح الملفات الناقصة في الويب
+          flutter pub upgrade quran
 
       - name: Build Flutter Web (Standard Mode)
         run: |
-          # العودة للأمر الافتراضي البسيط والآمن لتفادي أخطاء صياغة المعاملات
+          # بناء الويب بالطريقة الافتراضية المستقرة والتنافسية
           flutter build web --release
 
       - name: Execute Deploy via SSH
