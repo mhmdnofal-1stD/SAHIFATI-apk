@@ -33,45 +33,23 @@ jobs:
         run: |
           flutter build web --release
 
-      - name: Create Nginx Config Locally
-        run: |
-          cat << 'EOF' > nginx_web.conf
-          server {
-              listen 80;
-              server_name localhost;
-              location / {
-                  root /usr/share/nginx/html;
-                  index index.html index.htm;
-                  try_files $uri $uri/ /index.html;
-              }
-          }
-          EOF
-
       - name: Execute Deploy via SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           
-          echo "==== جاري نقل ملفات الـ Web وإعدادات Nginx إلى السيرفر... ===="
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" --delete ./build/web/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":~/sahifati_web_dist
-          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" ./nginx_web.conf "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":~/nginx_web.conf
+          # نقل ملفات الـ Web المبنية مباشرة إلى المجلد الفعلي المكتشف بالسيرفر لتبديل النسخة القديمة
+          echo "==== جاري نقل ملفات الـ Web إلى المجلد الحقيقي المستهدف... ===="
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" --delete ./build/web/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":/home/mnofal/sahifaty/sahifaty-users-web/
 
+          # الاتصال بالسيرفر لتنشيط البوابة ومسح كاش الذاكرة فوراً
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22 "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" << 'EOF'
+            echo "==== جاري إعادة تنشيط البوابة لمسح الكاش وتطبيق التعديل الجديد... ===="
+            podman restart sahifaty_gateway
             
-            podman stop sahifati_web_container || true
-            podman rm sahifati_web_container || true
-            
-            # قمنا بإعادة توجيه المنفذ ليعمل على المنفذ المطلوب والمفتوح مسبقاً في ملف sahifaty.org الرئيسي
-            echo "==== جاري تشغيل حاوية الـ Flutter Web المتوافقة مع إعدادات السيرفر... ===="
-            podman run -d \
-              --name sahifati_web_container \
-              -v ~/sahifati_web_dist:/usr/share/nginx/html:ro \
-              -v ~/nginx_web.conf:/etc/nginx/conf.d/default.conf:ro \
-              -p 8080:80 \
-              nginx:alpine
-
             echo "========================================="
-            podman ps -a --filter name=sahifati_web_container
+            echo "تأكيد فحص التحديث داخل المجلد الحقيقي:"
+            grep -n "profile_qr_card_title" /home/mnofal/sahifaty/sahifaty-users-web/assets/assets/json/intl_ar.json
             echo "========================================="
           EOF
