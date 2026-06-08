@@ -29,9 +29,10 @@ jobs:
           sed -i 's/flutter_lints: 4.0.0/flutter_lints: 6.0.0/g' pubspec.yaml
           flutter pub get
 
-      - name: Build Flutter Web (Standard Mode)
+      - name: Build Flutter Web (Correct Base Href)
         run: |
-          flutter build web --release
+          # إضافة معامل --base-href لربط مسارات الفلاتر تلقائياً بمسار السيرفر الفرعي /app/ ومنع خطأ 404
+          flutter build web --release --base-href "/app/"
 
       - name: Execute Deploy via SSH
         run: |
@@ -39,17 +40,15 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           
-          # نقل ملفات الـ Web المبنية مباشرة إلى المجلد الفعلي المكتشف بالسيرفر لتبديل النسخة القديمة
           echo "==== جاري نقل ملفات الـ Web إلى المجلد الحقيقي المستهدف... ===="
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" --delete ./build/web/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":/home/mnofal/sahifaty/sahifaty-users-web/
 
-          # الاتصال بالسيرفر لتنشيط البوابة ومسح كاش الذاكرة فوراً
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22 "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" << 'EOF'
-            echo "==== جاري إعادة تنشيط البوابة لمسح الكاش وتطبيق التعديل الجديد... ===="
+            echo "==== جاري إعادة تنشيط البوابة لمسح الكاش وتطبيق التعديل المتوافق... ===="
             podman restart sahifaty_gateway
             
             echo "========================================="
-            echo "تأكيد فحص التحديث داخل المجلد الحقيقي:"
-            grep -n "profile_qr_card_title" /home/mnofal/sahifaty/sahifaty-users-web/assets/assets/json/intl_ar.json
+            echo "تأكيد فحص زوال خطأ الـ Base Href داخلياً:"
+            head -n 15 /home/mnofal/sahifaty/sahifaty-users-web/index.html
             echo "========================================="
           EOF
