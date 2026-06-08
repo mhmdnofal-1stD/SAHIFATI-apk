@@ -35,7 +35,6 @@ jobs:
 
       - name: Create Nginx Config Locally
         run: |
-          # إنشاء ملف الإعدادات هنا على الـ Runner لمنع مشاكل الـ INNER_EOF داخل الـ SSH
           cat << 'EOF' > nginx_web.conf
           server {
               listen 80;
@@ -60,25 +59,19 @@ jobs:
 
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22 "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" << 'EOF'
             
-            # إيقاف وحذف الحاوية القديمة إن وجدت
             podman stop sahifati_web_container || true
             podman rm sahifati_web_container || true
             
-            # تشغيل حاوية Nginx متوافقة مع معمارية ARM64 الخاصة بسيرفرك تلقائياً
-            echo "==== جاري تشغيل حاوية الـ Flutter Web المستقرة... ===="
+            # قمنا بإعادة توجيه المنفذ ليعمل على المنفذ المطلوب والمفتوح مسبقاً في ملف sahifaty.org الرئيسي
+            echo "==== جاري تشغيل حاوية الـ Flutter Web المتوافقة مع إعدادات السيرفر... ===="
             podman run -d \
               --name sahifati_web_container \
               -v ~/sahifati_web_dist:/usr/share/nginx/html:ro \
               -v ~/nginx_web.conf:/etc/nginx/conf.d/default.conf:ro \
-              -p 8082:80 \
+              -p 8080:80 \
               nginx:alpine
 
             echo "========================================="
-            echo "حالة حاوية الويب الحالية داخلياً:"
             podman ps -a --filter name=sahifati_web_container
-            
-            echo "فحص استجابة الحاوية محلياً داخل السيرفر:"
-            sleep 2
-            curl -I http://127.0.0.1:8082 || echo "فشل الاتصال الداخلي"
             echo "========================================="
           EOF
