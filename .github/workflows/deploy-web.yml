@@ -20,20 +20,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Clean and Update Dependencies
+      - name: Force Fix Quran Package and Fetch Dependencies
         run: |
           flutter clean
+          # استبدال رقم الإصدار القديم بالحديث مباشرة داخل ملف الـ pubspec لتجاوز قفل الملفات
+          sed -i 's/quran: ^1.3.1/quran: ^1.4.1/g' pubspec.yaml
+          sed -i 's/quran: 1.3.1/quran: 1.4.1/g' pubspec.yaml
           flutter pub get
-          # ترقية حزمة القرآن الكريم تلقائياً داخل الـ Runner لإصلاح الملفات الناقصة في الويب
-          flutter pub upgrade quran
 
       - name: Build Flutter Web (Standard Mode)
         run: |
-          # بناء الويب بالطريقة الافتراضية المستقرة والتنافسية
           flutter build web --release
 
       - name: Execute Deploy via SSH
         run: |
+          # هنا سيتم اختبار الـ Secrets التي أضفتها والاتصال بالسيرفر
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
