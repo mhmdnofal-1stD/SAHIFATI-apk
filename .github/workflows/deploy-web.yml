@@ -33,34 +33,39 @@ jobs:
         run: |
           flutter build web --release
 
+      - name: Create Nginx Config Locally
+        run: |
+          # إنشاء ملف الإعدادات هنا على الـ Runner لمنع مشاكل الـ INNER_EOF داخل الـ SSH
+          cat << 'EOF' > nginx_web.conf
+          server {
+              listen 80;
+              server_name localhost;
+              location / {
+                  root /usr/share/nginx/html;
+                  index index.html index.htm;
+                  try_files $uri $uri/ /index.html;
+              }
+          }
+          EOF
+
       - name: Execute Deploy via SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           
-          echo "==== جاري نقل ملفات الـ Web الجاهزة إلى السيرفر... ===="
+          echo "==== جاري نقل ملفات الـ Web وإعدادات Nginx إلى السيرفر... ===="
           rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" --delete ./build/web/ "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":~/sahifati_web_dist
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22" ./nginx_web.conf "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}":~/nginx_web.conf
 
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -p 22 "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" << 'EOF'
             
-            cat << 'INNER_EOF' > ~/nginx_web.conf
-            server {
-                listen 80;
-                server_name localhost;
-                location / {
-                    root /usr/share/nginx/html;
-                    index index.html index.htm;
-                    try_files $uri $uri/ /index.html;
-                }
-            }
-            INNER_EOF
-
+            # إيقاف وحذف الحاوية القديمة إن وجدت
             podman stop sahifati_web_container || true
             podman rm sahifati_web_container || true
             
-            # تغيير المنفذ إلى 8082 تجنباً لأي حجز مسبق في السيرفر
-            echo "==== جاري تشغيل حاوية الـ Flutter Web... ===="
+            # تشغيل حاوية Nginx متوافقة مع معمارية ARM64 الخاصة بسيرفرك تلقائياً
+            echo "==== جاري تشغيل حاوية الـ Flutter Web المستقرة... ===="
             podman run -d \
               --name sahifati_web_container \
               -v ~/sahifati_web_dist:/usr/share/nginx/html:ro \
