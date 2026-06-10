@@ -36,9 +36,23 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            
+            <!-- 1. الفلتر المسؤول عن جعل الأيقونة تفتح التطبيق عند الضغط عليها -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- ✨ 2. تفعيل الروابط العميقة (App Links) لاعتراض رابط إعادة التعيين حياً داخل الـ APK -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                
+                <!-- التقاط نطاق ومسار الرابط المبعوث بالبريد الإلكتروني -->
+                <data android:scheme="https" 
+                      android:host="sahifati.org" 
+                      android:pathPrefix="/app/reset-password" />
             </intent-filter>
         </activity>
         <!-- Override Huawei BridgeActivity to remove screenOrientation restriction
