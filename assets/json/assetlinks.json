@@ -1,17 +1,1 @@
-# 1. القفز لمجلد الهبوط وتحديث مخرجات الحماية
-cd /srv/landing 2>/dev/null || cd ~/sahifati_backend_source
-mkdir -p .well-known
 
-# 2. حقن بصمة SHA-256 والمعرّف الفعلي للتطبيق داخل ملف assetlinks
-cat << 'EOF' > .well-known/assetlinks.json
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "io.flutter.plugins.firebasecoreexample",
-      "sha256_cert_fingerprints": ["BB:92:2A:6E:F9:0F:B6:28:0B:6D:34:7C:4D:80:99:8B:64:A3:1C:CA:09:8C:8E:AC:A3:CF:DC:B0:5B:43:B7:30"]
-    }
-  }
-]
-EOF
