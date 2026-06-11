@@ -572,7 +572,7 @@ class _SelectUserScreenState extends State<SelectUserScreen>
         title: 'auth_account_selector_title'.tr,
         subtitle: 'auth_account_selector_subtitle'.tr,
         isSignup: false,
-        maxWidth: 560,
+        maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 560),
         onSelectSignup: _isLoading ? null : _openSignup,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

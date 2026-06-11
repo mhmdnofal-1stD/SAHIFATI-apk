@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/app_version.dart';
 import 'package:sahifaty/core/constants/assets.dart';
-
+import 'package:sahifaty/core/utils/size_config.dart';
 import '../../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
@@ -257,7 +257,14 @@ class AuthScreenShell extends StatelessWidget {
                       ),
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          constraints: BoxConstraints(
+                            maxWidth: maxWidth > 300
+                                ? maxWidth
+                                : SizeConfig.getResponsiveDialogWidth(
+                                    mobilePercent: 0.95,
+                                    tabletMaxWidth: 440,
+                                  ),
+                          ),
                           child: Container(
                             decoration: BoxDecoration(
                               color: AppColors.panelColor,

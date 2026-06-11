@@ -8,6 +8,7 @@ import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/core/utils/localized_value.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/services/evaluations_services.dart';
 import 'package:sahifaty/services/subjects_lookup_service.dart';
 import 'package:sahifaty/services/school_services.dart';
@@ -642,7 +643,7 @@ class _FilterCardTrigger extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 920),
+      constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveSheetWidth(desktopMaxWidth: 920)),
       width: double.infinity,
       margin: margin,
       decoration: BoxDecoration(

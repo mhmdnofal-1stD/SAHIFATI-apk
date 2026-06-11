@@ -7,6 +7,7 @@ import 'package:sahifaty/controllers/evaluations_controller.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/utils/localized_value.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
 import 'package:sahifaty/models/chart_evaluation_data.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
@@ -288,7 +289,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   ),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1120),
+                      constraints: BoxConstraints(
+                        maxWidth: SizeConfig.getResponsiveSheetWidth(desktopMaxWidth: 1120),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [

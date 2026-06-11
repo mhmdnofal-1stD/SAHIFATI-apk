@@ -4,6 +4,7 @@ import 'package:quran/quran.dart' as quran;
 
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
+import '../../core/utils/size_config.dart';
 import '../../core/utils/surah_localization.dart';
 
 class SurahPickerDialog extends StatefulWidget {
@@ -50,7 +51,10 @@ class _SurahPickerDialogState extends State<SurahPickerDialog> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
+          constraints: BoxConstraints(
+            maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 520),
+            maxHeight: SizeConfig.getResponsiveModalHeight(maxHeightPercent: 0.8),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

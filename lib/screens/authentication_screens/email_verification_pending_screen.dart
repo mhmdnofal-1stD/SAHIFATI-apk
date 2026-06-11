@@ -8,6 +8,7 @@ import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/assets.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
 
@@ -170,7 +171,7 @@ class _EmailVerificationPendingScreenState
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
+                  constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 460)),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,

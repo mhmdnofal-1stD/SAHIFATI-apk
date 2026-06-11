@@ -6,6 +6,7 @@ import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/typography/app_typography.dart';
 import '../../core/utils/localized_value.dart';
+import '../../core/utils/size_config.dart';
 import '../../core/utils/surah_localization.dart';
 import '../../models/evaluation.dart';
 import '../../services/evaluations_services.dart';
@@ -1416,7 +1417,7 @@ Future<UnifiedFilterSelection?> showUnifiedQuranFilterPopup(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: 920,
+            maxWidth: SizeConfig.getResponsiveSheetWidth(desktopMaxWidth: 920),
             maxHeight: MediaQuery.of(dialogContext).size.height * 0.86,
           ),
           child: Padding(

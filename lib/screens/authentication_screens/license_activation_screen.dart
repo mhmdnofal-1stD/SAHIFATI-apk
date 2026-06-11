@@ -8,6 +8,7 @@ import 'package:sahifaty/core/auth/post_auth_navigation.dart';
 import 'package:sahifaty/core/auth/purchase_return_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
@@ -479,7 +480,7 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
+                  constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 560)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [

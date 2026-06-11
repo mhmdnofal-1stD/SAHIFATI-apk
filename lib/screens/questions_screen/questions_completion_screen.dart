@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/providers/evaluations_provider.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/main_screen/main_screen.dart';
@@ -185,7 +186,7 @@ class _QuestionsCompletionScreenState extends State<QuestionsCompletionScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 920),
+                constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveSheetWidth(desktopMaxWidth: 920)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

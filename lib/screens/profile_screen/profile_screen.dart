@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/assets.dart';
 import '../../core/constants/colors.dart';
+import '../../core/utils/size_config.dart';
 import '../../providers/users_provider.dart';
 import '../../services/users_services.dart';
 import '../../core/typography/app_typography.dart';
@@ -248,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
+                constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 520)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

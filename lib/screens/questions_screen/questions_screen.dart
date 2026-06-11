@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:sahifaty/core/constants/colors.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/models/school.dart';
 import 'package:sahifaty/models/school_level.dart';
 import 'package:sahifaty/models/school_level_content.dart';
@@ -833,7 +834,7 @@ class _QuestionsEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
+        constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 560)),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(

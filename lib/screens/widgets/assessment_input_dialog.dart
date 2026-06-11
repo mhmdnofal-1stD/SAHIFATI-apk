@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../controllers/evaluations_controller.dart';
 import '../../core/constants/colors.dart';
 import '../../core/utils/localized_value.dart';
+import '../../core/utils/size_config.dart';
 import '../../core/typography/app_typography.dart';
 import '../../models/evaluation.dart';
 import '../../providers/evaluations_provider.dart';
@@ -206,7 +207,7 @@ Future<AssessmentSelection?> showAssessmentInputDialog({
               ),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 520,
+                  width: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 520),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     mainAxisSize: MainAxisSize.min,

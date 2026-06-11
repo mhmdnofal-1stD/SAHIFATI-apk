@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 
 import '../../core/constants/assets.dart';
 import '../../core/constants/colors.dart';
+import '../../core/utils/size_config.dart';
 
 class OnboardingLaunchScreen extends StatefulWidget {
   static const String routeName = '/launch';
@@ -308,7 +309,7 @@ class _OnboardingContentSheet extends StatelessWidget {
                         Column(
                           children: [
                             ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 320),
+                              constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(mobilePercent: 0.9, tabletMaxWidth: 320)),
                               child: Text(
                                 'هل تعرف كم تحفظ من القرآن الكريم اليوم؟',
                                 textAlign: TextAlign.center,

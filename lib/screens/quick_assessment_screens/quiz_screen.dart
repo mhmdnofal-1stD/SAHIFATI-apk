@@ -4,6 +4,7 @@ import '../widgets/soft_pattern_background.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/constants/fonts.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/models/ayat.dart';
 import 'package:sahifaty/models/evaluation.dart';
 
@@ -362,8 +363,8 @@ class _QuizScreenState extends State<QuizScreen> {
                       child: Transform.rotate(
                         angle: _cardRotation,
                         child: Container(
-                          constraints: const BoxConstraints(
-                            maxWidth: 420,
+                          constraints: BoxConstraints(
+                            maxWidth: SizeConfig.getResponsiveDialogWidth(mobilePercent: 0.85, tabletMaxWidth: 420),
                             minHeight: 340,
                           ),
                           margin: const EdgeInsets.fromLTRB(56, 80, 56, 80),

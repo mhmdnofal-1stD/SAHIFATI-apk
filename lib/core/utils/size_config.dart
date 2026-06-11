@@ -119,4 +119,31 @@ class SizeConfig {
       child: child,
     );
   }
+
+  // Get responsive max width for dialogs and sheets
+  static double getResponsiveDialogWidth({double mobilePercent = 0.9, double tabletMaxWidth = 520}) {
+    if (_resolvedScreenWidth < 480) {
+      return _resolvedScreenWidth * mobilePercent;
+    } else if (_resolvedScreenWidth < 768) {
+      return (_resolvedScreenWidth * 0.85).clamp(0, tabletMaxWidth);
+    } else {
+      return tabletMaxWidth;
+    }
+  }
+
+  // Get responsive max width for large sheets and containers
+  static double getResponsiveSheetWidth({double mobilePercent = 1.0, double desktopMaxWidth = 920}) {
+    if (_resolvedScreenWidth < 480) {
+      return _resolvedScreenWidth * mobilePercent;
+    } else if (_resolvedScreenWidth < 768) {
+      return (_resolvedScreenWidth * 0.95).clamp(0, desktopMaxWidth);
+    } else {
+      return desktopMaxWidth;
+    }
+  }
+
+  // Get responsive height for modals
+  static double getResponsiveModalHeight({double maxHeightPercent = 0.85}) {
+    return _resolvedScreenHeight * maxHeightPercent;
+  }
 }

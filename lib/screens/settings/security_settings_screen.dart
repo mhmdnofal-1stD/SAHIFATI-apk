@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/users_provider.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
-  const SecuritySettingsScreen({Key? key}) : super(key: key);
+  const SecuritySettingsScreen({super.key});
 
   @override
   State<SecuritySettingsScreen> createState() => _SecuritySettingsScreenState();

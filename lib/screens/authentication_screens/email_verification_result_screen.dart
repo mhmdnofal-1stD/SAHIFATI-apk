@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:sahifaty/core/auth/verification_flow.dart';
 import 'package:sahifaty/core/constants/colors.dart';
 import 'package:sahifaty/core/typography/app_typography.dart';
+import 'package:sahifaty/core/utils/size_config.dart';
 import 'package:sahifaty/providers/users_provider.dart';
 import 'package:sahifaty/screens/authentication_screens/widgets/auth_screen_shell.dart';
 
@@ -39,7 +40,7 @@ class EmailVerificationResultScreen extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 440)),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(26, 28, 26, 24),
                 decoration: BoxDecoration(
@@ -302,7 +303,7 @@ class _EmailVerificationHandlerScreenState
       backgroundColor: const Color(0xFFF6F8FC),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
+          constraints: BoxConstraints(maxWidth: SizeConfig.getResponsiveDialogWidth(tabletMaxWidth: 360)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
