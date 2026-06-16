@@ -22,7 +22,8 @@ class AuthSocialSection extends StatelessWidget {
   final AuthSocialStatusTone statusTone;
 
   String _sectionLabel() {
-    return 'auth_methods_label'.tr;
+    // حقن إشارة فحص حاسمة للتأكد من وصول التعديل للسيرفر
+    return "=== اختبار اتصال جوجل المطور ===";
   }
 
   @override
