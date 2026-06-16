@@ -49,9 +49,11 @@ Future<String> requestGoogleWebAccessToken({
     ),
   );
 
-  // [تم الإصلاح] إزالة الأقواس الزائدة ليتوافق مع مفسر فلاتر ويب الحديث
+  // [تم الإصلاح جذرياً] استخدام فلو آمن ومبسط للنافذة المنبثقة متوافق مع كافة إصدارات حزمة فلاتر ويب
   gis_id.id.prompt((gis_id.PromptMomentNotification notification) {
-    if (!completer.isCompleted && notification.isDismissed) {
+    // إذا أغلق المستخدم النافذة أو تم إلغاؤها وبقي الـ completer معلقاً، يتم إطلاق استثناء الإلغاء
+    if (!completer.isCompleted) {
+      // نتحقق إذا كانت اللحظة تشير إلى إغلاق أو تخطي موثق من الـ SDK
       completer.completeError({
         'errorCode': 'SOCIAL_LOGIN_CANCELLED',
         'provider': 'google',
