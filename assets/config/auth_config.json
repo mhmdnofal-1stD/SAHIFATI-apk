@@ -1,0 +1,8 @@
+{
+  "GOOGLE_WEB_CLIENT_ID": "://googleusercontent.com",
+  "APPLE_WEB_CLIENT_ID": "your-apple-service-id",
+  "APPLE_REDIRECT_URI": "https://sahifati.org",
+  "FACEBOOK_APP_ID": "your-facebook-app-id",
+  "HUAWEI_WEB_CLIENT_ID": "your-huawei-client-id",
+  "HUAWEI_WEB_REDIRECT_URI": "https://sahifati.org"
+}
