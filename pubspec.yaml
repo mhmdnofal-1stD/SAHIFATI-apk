@@ -63,6 +63,7 @@ flutter:
     - assets/icons/
     - assets/json/
     - assets/json/ayah_translations/
+    - assets/config/
 
   fonts:
     - family: DIN NEXT ARABIC
