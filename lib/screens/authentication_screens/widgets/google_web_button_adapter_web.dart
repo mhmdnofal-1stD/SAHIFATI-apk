@@ -28,7 +28,6 @@ Future<String> requestGoogleWebAccessToken({
   await initializeGoogleWebPopupAuth(clientId: clientId);
   final completer = Completer<String>();
 
-  // التوليد القياسي الآمن للـ ID Token ليتوافق مع السيرفر دون انكسار البناء
   gis_id.id.initialize(
     gis_id.IdConfiguration(
       client_id: clientId,
@@ -50,8 +49,9 @@ Future<String> requestGoogleWebAccessToken({
     ),
   );
 
+  // [تم الإصلاح] إزالة الأقواس الزائدة ليتوافق مع مفسر فلاتر ويب الحديث
   gis_id.id.prompt((gis_id.PromptMomentNotification notification) {
-    if (notification.isDismissed() && !completer.isCompleted) {
+    if (!completer.isCompleted && notification.isDismissed) {
       completer.completeError({
         'errorCode': 'SOCIAL_LOGIN_CANCELLED',
         'provider': 'google',
