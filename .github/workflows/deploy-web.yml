@@ -29,10 +29,20 @@ jobs:
           sed -i 's/flutter_lints: 4.0.0/flutter_lints: 6.0.0/g' pubspec.yaml
           flutter pub get
 
-      - name: Build Flutter Web (Correct Base Href)
+      - name: Build Flutter Web with Injecting Valid Social Media IDs
         run: |
-          # إضافة معامل --base-href لربط مسارات الفلاتر تلقائياً بمسار السيرفر الفرعي /app/ ومنع خطأ 404
-          flutter build web --release --base-href "/app/"
+          # [تم الإصلاح جذرياً] بناء فلاتر ويب مع حقن المعرّفات الجديدة الصحيحة لضمان ظهور وعمل الأيقونات الاجتماعية
+          flutter build web --release --base-href "/app/" \
+            --dart-define=API_BASE_URL="https://sahifati.org" \
+            --dart-define=GOOGLE_WEB_CLIENT_ID="://googleusercontent.com" \
+            --dart-define=GOOGLE_SERVER_CLIENT_ID="://googleusercontent.com" \
+            --dart-define=APPLE_WEB_CLIENT_ID="org.sahifati.app.signin" \
+            --dart-define=APPLE_REDIRECT_URI="https://sahifati.org/auth/social/apple/callback" \
+            --dart-define=FACEBOOK_AUTH_ENABLED="true" \
+            --dart-define=FACEBOOK_APP_ID="824178674089653" \
+            --dart-define=HUAWEI_APP_ID="116918405" \
+            --dart-define=HUAWEI_WEB_CLIENT_ID="116918405" \
+            --dart-define=HUAWEI_WEB_REDIRECT_URI="https://sahifati.org/auth/social/huawei/callback"
 
       - name: Execute Deploy via SSH
         run: |
