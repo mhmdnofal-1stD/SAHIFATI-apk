@@ -3,7 +3,7 @@
   "defines": {
     "API_BASE_URL": "https://sahifati.org/api",
     "GOOGLE_WEB_CLIENT_ID": "999583607802-m45lh6bbjmt4teb6m77uk7dfvp50crk7.apps.googleusercontent.com",
-    "GOOGLE_SERVER_CLIENT_ID": "999583607802-m45lh6bbjmt4teb6m77uk7dfvp50crk7.apps.googleusercontent.com",
+    "GOOGLE_SERVER_CLIENT_ID": "999583607802-pnju3l7iu58tfb2a8v8oiacuajsduqo0.apps.googleusercontent.com",
     "APPLE_WEB_CLIENT_ID": "org.sahifati.app.signin",
     "APPLE_REDIRECT_URI": "https://sahifati.org/api/auth/social/apple/callback",
     "FACEBOOK_AUTH_ENABLED": "true",
@@ -14,6 +14,7 @@
   },
   "profiles": {
     "release": [
+      "APP_VERSION",
       "API_BASE_URL",
       "GOOGLE_WEB_CLIENT_ID",
       "GOOGLE_SERVER_CLIENT_ID",
