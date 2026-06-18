@@ -3,7 +3,6 @@ name: Deploy Flutter Web to Server
 on:
   push:
     branches:
-      - MajedWithNofal
       - main
   workflow_dispatch:
 
