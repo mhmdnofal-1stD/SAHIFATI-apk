@@ -627,7 +627,7 @@ class UsersProvider with ChangeNotifier {
       serverClientId: kIsWeb
           ? null
           : SocialAuthConfig.googleServerClientIdOrNull ??
-              SocialAuthConfig.googleWebClientIdOrNull,
+              SocialAuthConfig.googleClientIdOrNull,
     );
 
     _googleInitialized = true;
