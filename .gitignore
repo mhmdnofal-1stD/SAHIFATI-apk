@@ -51,3 +51,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Build-generated defines (CI build intermediate; never commit)
+tool/flutter_defines.txt
+

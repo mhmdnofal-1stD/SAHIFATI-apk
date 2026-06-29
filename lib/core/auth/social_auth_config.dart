@@ -4,20 +4,26 @@ import 'package:flutter/services.dart';
 
 class SocialAuthConfig {
   // تحويل المتغيرات إلى متغيرات ديناميكية قابلة للتعديل بعد التحميل
-  static String googleWebClientId = '';
+  static String googleWebClientId =
+      const String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '');
   static String googleServerClientId = const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
-  static String appleWebClientId = '';
-  static String appleRedirectUri = '';
+  static String appleWebClientId =
+      const String.fromEnvironment('APPLE_WEB_CLIENT_ID', defaultValue: '');
+  static String appleRedirectUri =
+      const String.fromEnvironment('APPLE_REDIRECT_URI', defaultValue: '');
   
   static const bool facebookAuthEnabled = bool.fromEnvironment(
     'FACEBOOK_AUTH_ENABLED',
     defaultValue: true,
   );
-  static String facebookAppId = '';
+  static String facebookAppId =
+      const String.fromEnvironment('FACEBOOK_APP_ID', defaultValue: '');
   static const String facebookApiVersion = String.fromEnvironment('FACEBOOK_API_VERSION', defaultValue: 'v22.0');
   static const String huaweiAppId = String.fromEnvironment('HUAWEI_APP_ID');
-  static String huaweiWebClientId = '';
-  static String huaweiWebRedirectUri = '';
+  static String huaweiWebClientId =
+      const String.fromEnvironment('HUAWEI_WEB_CLIENT_ID', defaultValue: '');
+  static String huaweiWebRedirectUri =
+      const String.fromEnvironment('HUAWEI_WEB_REDIRECT_URI', defaultValue: '');
 
   /// دالة التهيئة الديناميكية التي يجب استدعاؤها في الـ main() قبل الـ runApp
   static Future<void> initialize() async {
@@ -25,12 +31,26 @@ class SocialAuthConfig {
       final jsonString = await rootBundle.loadString('assets/config/auth_config.json');
       final Map<String, dynamic> config = jsonDecode(jsonString);
       
-      googleWebClientId = config['GOOGLE_WEB_CLIENT_ID'] ?? '';
-      appleWebClientId = config['APPLE_WEB_CLIENT_ID'] ?? '';
-      appleRedirectUri = config['APPLE_REDIRECT_URI'] ?? '';
-      facebookAppId = config['FACEBOOK_APP_ID'] ?? '';
-      huaweiWebClientId = config['HUAWEI_WEB_CLIENT_ID'] ?? '';
-      huaweiWebRedirectUri = config['HUAWEI_WEB_REDIRECT_URI'] ?? '';
+      final googleWebClientIdVal = config['GOOGLE_WEB_CLIENT_ID'] ?? '';
+      if (googleWebClientIdVal.isNotEmpty) googleWebClientId = googleWebClientIdVal;
+      
+      final googleServerClientIdVal = config['GOOGLE_SERVER_CLIENT_ID'] ?? '';
+      if (googleServerClientIdVal.isNotEmpty) googleServerClientId = googleServerClientIdVal;
+      
+      final appleWebClientIdVal = config['APPLE_WEB_CLIENT_ID'] ?? '';
+      if (appleWebClientIdVal.isNotEmpty) appleWebClientId = appleWebClientIdVal;
+      
+      final appleRedirectUriVal = config['APPLE_REDIRECT_URI'] ?? '';
+      if (appleRedirectUriVal.isNotEmpty) appleRedirectUri = appleRedirectUriVal;
+      
+      final facebookAppIdVal = config['FACEBOOK_APP_ID'] ?? '';
+      if (facebookAppIdVal.isNotEmpty) facebookAppId = facebookAppIdVal;
+      
+      final huaweiWebClientIdVal = config['HUAWEI_WEB_CLIENT_ID'] ?? '';
+      if (huaweiWebClientIdVal.isNotEmpty) huaweiWebClientId = huaweiWebClientIdVal;
+      
+      final huaweiWebRedirectUriVal = config['HUAWEI_WEB_REDIRECT_URI'] ?? '';
+      if (huaweiWebRedirectUriVal.isNotEmpty) huaweiWebRedirectUri = huaweiWebRedirectUriVal;
       
       debugPrint('Social Auth Config loaded successfully from JSON.');
     } catch (e) {
@@ -43,10 +63,13 @@ class SocialAuthConfig {
     if (kIsWeb) {
       return googleWebClientId.isNotEmpty;
     }
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return false;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return googleServerClientId.isNotEmpty;
     }
-    return googleServerClientId.isNotEmpty;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return googleWebClientId.isNotEmpty;
+    }
+    return false;
   }
 
   static bool get isFacebookConfiguredForCurrentPlatform {

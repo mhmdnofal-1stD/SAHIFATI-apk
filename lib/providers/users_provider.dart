@@ -624,8 +624,10 @@ class UsersProvider with ChangeNotifier {
 
     await _googleSignIn.initialize(
       clientId: kIsWeb ? SocialAuthConfig.googleClientIdOrNull : null,
-      serverClientId:
-          kIsWeb ? null : SocialAuthConfig.googleServerClientIdOrNull,
+      serverClientId: kIsWeb
+          ? null
+          : SocialAuthConfig.googleServerClientIdOrNull ??
+              SocialAuthConfig.googleWebClientIdOrNull,
     );
 
     _googleInitialized = true;

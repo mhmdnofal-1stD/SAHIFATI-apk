@@ -11,6 +11,7 @@ import 'core/auth/password_reset_flow.dart';
 import 'core/auth/post_auth_navigation.dart';
 import 'core/reading/reading_session.dart';
 import 'core/auth/verification_flow.dart';
+import 'core/auth/social_auth_config.dart';
 import 'controllers/filter_types.dart';
 import 'core/constants/colors.dart';
 import 'core/constants/fonts.dart';
@@ -77,6 +78,17 @@ Future<void> main() async {
       'Startup typography initialization failed: $error\n$stackTrace',
     );
   }
+
+  // تهيئة إعدادات الدخول الاجتماعي من ملف الإعداد الديناميكي.
+  // يجب أن تسبق runApp حتى تظهر أزرار الدخول الاجتماعي على شاشات الـ login/signup.
+  try {
+    await SocialAuthConfig.initialize();
+  } catch (error, stackTrace) {
+    debugPrint(
+      'Startup social auth config initialization failed: $error\n$stackTrace',
+    );
+  }
+
   final TypographyConfigController typographyController =
       TypographyConfigController(initialTypography);
 

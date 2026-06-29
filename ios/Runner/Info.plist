@@ -34,6 +34,14 @@
 				<string>fb824178674089653</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>REVERSED_CLIENT_ID</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.999583607802-m45lh6bbjmt4teb6m77uk7dfvp50crk7</string>
+			</array>
+		</dict>
 	</array>
 	<key>FacebookAppID</key>
 	<string>824178674089653</string>

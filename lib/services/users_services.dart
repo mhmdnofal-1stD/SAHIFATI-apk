@@ -307,7 +307,7 @@ class UsersServices with ChangeNotifier {
           .timeout(_timeout);
 
       final responseData = json.decode(response.body);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthData.fromJson(responseData);
       }
 
@@ -332,7 +332,7 @@ class UsersServices with ChangeNotifier {
           .timeout(_timeout);
 
       final responseData = json.decode(response.body);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthData.fromJson(responseData);
       }
 
@@ -357,7 +357,7 @@ class UsersServices with ChangeNotifier {
           .timeout(_timeout);
 
       final responseData = json.decode(response.body);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthData.fromJson(responseData);
       }
 
@@ -382,7 +382,7 @@ class UsersServices with ChangeNotifier {
           .timeout(_timeout);
 
       final responseData = json.decode(response.body);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthData.fromJson(responseData);
       }
 

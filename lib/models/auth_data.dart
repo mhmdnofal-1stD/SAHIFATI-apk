@@ -13,20 +13,28 @@ class AuthData {
 
   factory AuthData.fromJson(Map<String, dynamic> json) {
     User? userData;
-    if (
-        json.containsKey('id') ||
-        json.containsKey('username')) {
+    // الشكل (a): حقول المستخدم على مستوى الجذر مع توكين مباشر
+    if (json.containsKey('id') || json.containsKey('username')) {
       userData = User.fromJson(json);
       return AuthData(
-          accessToken: json['token'],
+          accessToken: json['accessToken'] ?? json['token'],
           refreshToken: json['refreshToken'],
           user: userData);
-    } else {
+    }
+    // الشكل (b): كائن المستخدم متداخل داخل مفتاح user
+    if (json.containsKey('user') && json['user'] is Map<String, dynamic>) {
+      userData = User.fromJson(json['user'] as Map<String, dynamic>);
       return AuthData(
-        accessToken: json['accessToken'],
+        accessToken: json['accessToken'] ?? json['token'],
         refreshToken: json['refreshToken'],
+        user: userData,
       );
     }
+    // الشكل (c): استجابة بدون كائن مستخدم (توكين فقط)
+    return AuthData(
+      accessToken: json['accessToken'],
+      refreshToken: json['refreshToken'],
+    );
   }
 
   @override
