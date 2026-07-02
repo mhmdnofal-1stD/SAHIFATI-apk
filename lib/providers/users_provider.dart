@@ -10,6 +10,7 @@ import 'package:sahifaty/models/auth_data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../controllers/users_controller.dart';
+import '../core/auth/google_web_redirect.dart';
 import '../core/auth/huawei_web_auth_flow.dart';
 import '../core/auth/huawei_web_oauth.dart';
 import '../core/auth/social_auth_config.dart';
@@ -1632,6 +1633,38 @@ class UsersProvider with ChangeNotifier {
     } finally {
       resetLoading();
     }
+  }
+
+  Future<bool> tryCompleteGoogleWebSignIn() async {
+    if (!kIsWeb) {
+      return false;
+    }
+
+    final result = consumeGoogleWebRedirectResult();
+    if (result == null) {
+      return false;
+    }
+
+    final status = result['status'];
+    if (status == 'error') {
+      throw _buildSocialAuthError(
+        (result['errorCode'] as String?) ?? 'SOCIAL_LOGIN_FAILED',
+        (result['message'] as String?) ?? 'social_google_sign_in_failed'.tr,
+        provider: 'google',
+      );
+    }
+
+    final idToken = result['idToken'] as String?;
+    if (idToken == null || idToken.isEmpty) {
+      throw _buildSocialAuthError(
+        'SOCIAL_ID_TOKEN_MISSING',
+        'social_missing_id_token'.tr,
+        provider: 'google',
+      );
+    }
+
+    await signInWithGoogleIdToken(idToken, manageLoading: false);
+    return true;
   }
 
   Future<bool> tryCompleteHuaweiWebSignIn(Uri uri) async {

@@ -4,6 +4,8 @@ import 'package:google_identity_services_web/loader.dart';
 import 'package:google_identity_services_web/id.dart' as gis_id;
 
 Future<void>? _googleWebSdkFuture;
+bool _gisInitialized = false;
+Completer<String>? _activeCompleter;
 
 Future<void> initializeGoogleWebPopupAuth({
   required String clientId,
@@ -27,27 +29,32 @@ Future<String> requestGoogleWebAccessToken({
 }) async {
   await initializeGoogleWebPopupAuth(clientId: clientId);
   final completer = Completer<String>();
+  _activeCompleter = completer;
 
-  gis_id.id.initialize(
-    gis_id.IdConfiguration(
-      client_id: clientId,
-      auto_select: false,
-      callback: (gis_id.CredentialResponse response) {
-        if (completer.isCompleted) return;
+  if (!_gisInitialized) {
+    gis_id.id.initialize(
+      gis_id.IdConfiguration(
+        client_id: clientId,
+        auto_select: false,
+        callback: (gis_id.CredentialResponse response) {
+          final current = _activeCompleter;
+          if (current == null || current.isCompleted) return;
 
-        final idToken = response.credential;
-        if (idToken != null && idToken.isNotEmpty) {
-          completer.complete(idToken);
-          return;
-        }
-        completer.completeError({
-          'errorCode': 'SOCIAL_LOGIN_FAILED',
-          'provider': 'google',
-          'message': 'social_google_sign_in_failed'.tr
-        });
-      },
-    ),
-  );
+          final idToken = response.credential;
+          if (idToken != null && idToken.isNotEmpty) {
+            current.complete(idToken);
+            return;
+          }
+          current.completeError({
+            'errorCode': 'SOCIAL_LOGIN_FAILED',
+            'provider': 'google',
+            'message': 'social_google_sign_in_failed'.tr
+          });
+        },
+      ),
+    );
+    _gisInitialized = true;
+  }
 
   gis_id.id.prompt((gis_id.PromptMomentNotification notification) {
     if (completer.isCompleted) return;
@@ -62,8 +69,6 @@ Future<String> requestGoogleWebAccessToken({
     }
   });
 
-  // ضمانة أمان: حتى لو لم يُطلق الـ GIS أي إشارة معروفة (مثلاً حجب المتصفح
-  // للنوافذ المنبثقة)، يجب أن تُحلّ الـ future دائماً كي لا يبقى الزر معلّقاً.
   return completer.future.timeout(
     const Duration(minutes: 3),
     onTimeout: () {
@@ -74,7 +79,6 @@ Future<String> requestGoogleWebAccessToken({
           'message': 'social_cancelled'.tr
         });
       }
-      // الـ completer لم يُكمل خلال المهلة؛ نُطلق استثناء الإلغاء للمُستهلك.
       throw TimeoutException(
         'Google sign-in timed out waiting for GIS response',
         const Duration(minutes: 3),

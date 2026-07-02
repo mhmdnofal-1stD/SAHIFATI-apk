@@ -689,6 +689,24 @@ class _InitialScreenState extends State<InitialScreen> {
         return;
       }
 
+      _reportStage('جاري استكمال تسجيل جوجل...', 0.28);
+      final handledGoogleWebAuth =
+          await usersProvider.tryCompleteGoogleWebSignIn();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (handledGoogleWebAuth && usersProvider.selectedUser == null) {
+        await _routeToUnauthenticatedEntry();
+        return;
+      }
+
+      if (handledGoogleWebAuth && usersProvider.selectedUser != null) {
+        // Google redirect login completed — fall through to normal session
+        // bootstrap which will navigate to the correct screen.
+      }
+
       _reportStage('جاري استكمال تسجيل هواوي...', 0.30);
       final handledHuaweiWebAuth =
           await usersProvider.tryCompleteHuaweiWebSignIn(Uri.base);
