@@ -573,11 +573,7 @@ class _InitialScreenState extends State<InitialScreen> {
     // button click doesn't stall while the SDK loads.
     if (kIsWeb) {
       usersProvider.ensureFacebookInitialized().catchError((_) {});
-      // Note: Google Sign-In on web uses GoogleWebAuthButton which initializes
-      // the GIS SDK independently via google_identity_services_web. Calling
-      // GoogleSignIn.instance.initialize() here would trigger a second
-      // google.accounts.id.initialize() call, causing the GIS SDK to warn
-      // "initialize() is called multiple times" and breaking FedCM.
+      usersProvider.ensureGoogleInitialized().catchError((_) {});
     }
     try {
       _reportStage('جاري التحقق من الجلسة...', 0.10);
