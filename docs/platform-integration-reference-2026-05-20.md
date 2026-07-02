@@ -6,16 +6,16 @@
 
 ## 1) معلومات عامة وموقع الملفات
 
-- مشروع الواجهة: `frontend_users/ui`
-- سكربت البناء (Android): `frontend_users/ui/scripts/build_android_release.ps1`
+- مشروع الواجهة: `sahifati_app_v01`
+- سكربت البناء (Android): `sahifati_app_v01/scripts/build_android_release.ps1`
 - ملفات التكوين المهمة (Android/iOS/Huawei):
-  - `frontend_users/ui/android/key.properties`  (توقيع التطبيق)
-  - `frontend_users/ui/android/sahifati_key.jks` (موجود، لكن signing يستخدم `Public-data-/UP.Key.jks` عبر key.properties)
+  - `sahifati_app_v01/android/key.properties`  (توقيع التطبيق)
+  - `sahifati_app_v01/android/sahifati_key.jks` (موجود، لكن signing يستخدم `Public-data-/UP.Key.jks` عبر key.properties)
   - `Public-data-/UP.Key.jks` (keystore المستخدم للتوقيع)
-  - `frontend_users/ui/android/app/agconnect-services.json` (HMS / Huawei config)
-  - `frontend_users/ui/android/app/src/main/res/values/strings.xml` (Facebook IDs / tokens)
-  - `frontend_users/ui/ios/Runner/Info.plist` (iOS metadata)
-  - `frontend_users/ui/build/app/outputs/bundle/release/app-release.aab` (بُنية AAB المنتجة – إنشاؤها بتاريخ 2026-05-20)
+  - `sahifati_app_v01/android/app/agconnect-services.json` (HMS / Huawei config)
+  - `sahifati_app_v01/android/app/src/main/res/values/strings.xml` (Facebook IDs / tokens)
+  - `sahifati_app_v01/ios/Runner/Info.plist` (iOS metadata)
+  - `sahifati_app_v01/build/app/outputs/bundle/release/app-release.aab` (بُنية AAB المنتجة – إنشاؤها بتاريخ 2026-05-20)
 
 > ملاحظة: المفاتيح الحساسة (مثل `FACEBOOK_APP_SECRET`, مفاتيح الخادم) لا توضع في هذا المستند كنقطة أمنية إلا إذا طلبت صراحة إدراجها؛ هذا المستند يذكر مكان تواجد الإعدادات والملفات في المشروع.
 
@@ -27,8 +27,10 @@
 
 ### Google
 - Client IDs (حسب السياق):
-  - `GOOGLE_SERVER_CLIENT_ID` (build script default): `821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com` (انظر `scripts/build_android_release.ps1`)
-  - Codemagic override (`codemagic.yaml`): `GOOGLE_SERVER_CLIENT_ID` / `GOOGLE_WEB_CLIENT_ID` = `821809289982-m9g7reu9a9vfju911rg3uqg009rr12rp.apps.googleusercontent.com`
+  - `GOOGLE_WEB_CLIENT_ID`: `999583607802-m45lh6bbjmt4teb6m77uk7dfvp50crk7.apps.googleusercontent.com`
+  - `GOOGLE_SERVER_CLIENT_ID`: `999583607802-pnju3l7iu58tfb2a8v8oiacuajsduqo0.apps.googleusercontent.com`
+  - المصادر: `assets/config/auth_config.json`, `tool/build_config.json`, `sahifati_api/.env`
+  - **ملاحظة:** تم تحديث هذه القيم بتاريخ 2026-07-02 بعد التحقق الناجح من Google Sign-In. القيم القديمة (`821809289982-...`) لم تعد صالحة.
 - أين تُستخدم: `lib/core/auth/social_auth_config.dart`, build `--dart-define`، وخدمات الويب الخلفية للتحقق.
 
 ### Facebook
@@ -56,7 +58,7 @@
 - أين تُستخدم: المصدر التشغيلي الحقيقي على Android هو `android/app/agconnect-services.json` عبر AG Connect وHMS native SDK. قيمة `--dart-define=HUAWEI_APP_ID` تبقى مفيدة للتوثيق والبناء، لكنها ليست المصدر الوحيد الذي يجب أن يعتمد عليه التطبيق أثناء التشغيل.
 
 ### Signing / Keystore
-- `frontend_users/ui/android/key.properties`:
+- `sahifati_app_v01/android/key.properties`:
   - `storeFile=../../../Public-data-/UP.Key.jks`
   - `keyAlias=upload`
   - `storePassword=<keystore-password-from-secure-store>`
@@ -92,7 +94,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
 - قبل البناء تأكد من:
   - وجود `key.properties` وإمكانية الوصول إلى keystore المشار إليه.
   - وجود `agconnect-services.json` في `android/app` إذا كان `HUAWEI_APP_ID` محدد.
-  - تمرير قيم `GOOGLE_SERVER_CLIENT_ID`, `FACEBOOK_APP_ID`, `APPLE_WEB_CLIENT_ID` عبر `--dart-define` أو سكربت CI.
+  - تمرير قيم `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_SERVER_CLIENT_ID`, `FACEBOOK_APP_ID`, `APPLE_WEB_CLIENT_ID` عبر `--dart-define` أو سكربت CI.
 - ملاحظة تشغيلية: بناء `apk` عبر `scripts/build_android_release.ps1` يستهدف الآن `android-arm64` افتراضيًا، ومع بقاء `SplitPerAbi` مفعّلًا تكون الحزمة الناتجة المتوقعة هي `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`.
 - رفع على Huawei AppGallery:
   1. سجل دخول إلى AppGallery Connect.
@@ -223,7 +225,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File "e:\Sahifati\frontend_users\ui\scr
 ---
 
 ## 9) خطوات مقترحة بعد القراءة الآن
-1. قرّر إن أردت تخزين هذا الملف في repo (تم حفظه في `frontend_users/ui/docs`) أو نقل نسخة مُشفرة في إدارة أسرار.
+1. قرّر إن أردت تخزين هذا الملف في repo (تم حفظه في `sahifati_app_v01/docs`) أو نقل نسخة مُشفرة في إدارة أسرار.
 2. أخبرني إن أردت إدراج القيم الحساسة بالكامل (مثل `FACEBOOK_APP_SECRET`) داخل هذا المستند — سأقوم بذلك فقط بعد تأكيدك وطريقة الحفظ المطلوبة.
 3. أستطيع توليد ZIP جاهز للرفع يحتوي `app-release.aab`, `agconnect-services.json`, و`README` خاص بالرفع إن رغبت.
 

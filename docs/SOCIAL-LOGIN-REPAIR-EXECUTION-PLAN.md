@@ -2,6 +2,23 @@
 
 # خطة إصلاح التسجيل والدخول عبر وسائل التواصل (Google / Facebook / Huawei / Apple)
 
+> ## **COMPLETED — 2026-07-02**
+>
+> This execution plan has been **fully carried out**. Google Sign-In on web was successfully verified on 2026-07-02.
+>
+> **Key fixes applied:**
+>
+> - `SocialAuthConfig.initialize()` is now called in `main.dart` (W1-T1)
+> - `auth_config.json` restored with correct values from `tool/build_config.json` (W1-T2)
+> - `SocialAuthConfig` now supports iOS — `googleWebClientId` used as fallback for `serverClientId` (W2-T2)
+> - COEP header removed from gateway `nginx.conf` (was blocking GIS popup)
+> - MongoDB database name fixed from `sahifati` to `sahifaty` (backend config mismatch)
+> - Google Sign-In verified working on web (popup opens, account selected, token exchanged, user authenticated)
+>
+> The remaining Wave 3 verification tasks (backend response shape, server env vars, native files) are lower-priority and can be addressed separately.
+
+---
+
 **المشروع:** Sahifati Flutter App — `E:\Sahifati\sahifati_app\sahifati_app_v01`
 **أعدّ:** كبير المهندسين (تقرير فحص وتخطيط)
 **التاريخ:** 2026-06-23
