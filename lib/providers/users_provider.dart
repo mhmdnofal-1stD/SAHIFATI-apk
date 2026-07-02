@@ -622,13 +622,17 @@ class UsersProvider with ChangeNotifier {
       );
     }
 
-    await _googleSignIn.initialize(
-      clientId: kIsWeb ? SocialAuthConfig.googleClientIdOrNull : null,
-      serverClientId: kIsWeb
-          ? null
-          : SocialAuthConfig.googleServerClientIdOrNull ??
-              SocialAuthConfig.googleClientIdOrNull,
-    );
+    // On web, GoogleWebAuthButton initializes the GIS SDK independently via
+    // google_identity_services_web. Calling _googleSignIn.initialize() here
+    // would trigger a second google.accounts.id.initialize() call, causing the
+    // GIS SDK to warn "initialize() is called multiple times" and breaking
+    // Google Sign-In with FedCM errors.
+    if (!kIsWeb) {
+      await _googleSignIn.initialize(
+        serverClientId: SocialAuthConfig.googleServerClientIdOrNull ??
+            SocialAuthConfig.googleClientIdOrNull,
+      );
+    }
 
     _googleInitialized = true;
   }
