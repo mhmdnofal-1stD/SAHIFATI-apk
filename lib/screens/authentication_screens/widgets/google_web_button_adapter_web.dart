@@ -32,6 +32,7 @@ Future<String> requestGoogleWebAccessToken({
     gis_id.IdConfiguration(
       client_id: clientId,
       auto_select: false,
+      use_fedcm_for_prompt: true,
       callback: (gis_id.CredentialResponse response) {
         if (completer.isCompleted) return;
 
@@ -49,14 +50,14 @@ Future<String> requestGoogleWebAccessToken({
     ),
   );
 
-  // [تم الإصلاح] استخدام فلو آمن للنافذة المنبثقة: لا نُلغي إلا عند الإشارات
-  // الصريحة من الـ SDK بأن النافذة لم تُعرض أو تم تخطّيها أو إغلاقها.
+  // [FedCM] استخدام isSkippedMoment/isDismissedMoment فقط؛
+  // isNotDisplayed و isDisplayMoment مهملة ولن تعمل مع FedCM الإلزامي.
   gis_id.id.prompt((gis_id.PromptMomentNotification notification) {
     if (completer.isCompleted) return;
-    // نُكمل بخطأ الإلغاء عند الحالات الفعلية للإخفاء/التخطّي/الإغلاق اليدوي،
-    // وليس عند لحظة العرض (display) التي تُطلق دائماً عند الفتح.
-    if (notification.isNotDisplayed() ||
-        notification.isSkippedMoment() ||
+    // FedCM migration: only use isSkippedMoment() and isDismissedMoment().
+    // isNotDisplayed() / isDisplayMoment() are deprecated and will stop
+    // working when FedCM becomes mandatory.
+    if (notification.isSkippedMoment() ||
         notification.isDismissedMoment()) {
       completer.completeError({
         'errorCode': 'SOCIAL_LOGIN_CANCELLED',
