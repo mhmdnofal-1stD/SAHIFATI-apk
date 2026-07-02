@@ -32,7 +32,6 @@ Future<String> requestGoogleWebAccessToken({
     gis_id.IdConfiguration(
       client_id: clientId,
       auto_select: false,
-      use_fedcm_for_prompt: true,
       callback: (gis_id.CredentialResponse response) {
         if (completer.isCompleted) return;
 
@@ -50,14 +49,10 @@ Future<String> requestGoogleWebAccessToken({
     ),
   );
 
-  // [FedCM] استخدام isSkippedMoment/isDismissedMoment فقط؛
-  // isNotDisplayed و isDisplayMoment مهملة ولن تعمل مع FedCM الإلزامي.
   gis_id.id.prompt((gis_id.PromptMomentNotification notification) {
     if (completer.isCompleted) return;
-    // FedCM migration: only use isSkippedMoment() and isDismissedMoment().
-    // isNotDisplayed() / isDisplayMoment() are deprecated and will stop
-    // working when FedCM becomes mandatory.
-    if (notification.isSkippedMoment() ||
+    if (notification.isNotDisplayed() ||
+        notification.isSkippedMoment() ||
         notification.isDismissedMoment()) {
       completer.completeError({
         'errorCode': 'SOCIAL_LOGIN_CANCELLED',
