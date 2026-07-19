@@ -1054,26 +1054,39 @@ class UsersProvider with ChangeNotifier {
 
     try {
       final licenseState = await _usersService.getLicenseState();
-      selectedUser?.licenseStatus = licenseState['licenseStatus'] as String?;
-      // Extract expiry info from the enriched response
-      final expiresAtRaw = licenseState['expiresAt'];
-      if (expiresAtRaw is String) {
-        licenseExpiresAt = DateTime.tryParse(expiresAtRaw)?.toLocal();
-      } else {
+      if (licenseState == null) {
+        selectedUser?.licenseStatus = null;
         licenseExpiresAt = null;
-      }
-      final daysRaw = licenseState['daysRemaining'];
-      licenseDaysRemaining = daysRaw is int ? daysRaw : (daysRaw is num ? daysRaw.toInt() : null);
-      licenseSource = licenseState['source'] as String?;
-      final grantedAtRaw = licenseState['grantedAt'];
-      if (grantedAtRaw is String) {
-        licenseGrantedAt = DateTime.tryParse(grantedAtRaw)?.toLocal();
-      } else {
+        licenseDaysRemaining = null;
+        licenseSource = null;
         licenseGrantedAt = null;
+      } else {
+        selectedUser?.licenseStatus = licenseState['licenseStatus'] as String?;
+        final expiresAtRaw = licenseState['expiresAt'];
+        if (expiresAtRaw is String) {
+          licenseExpiresAt = DateTime.tryParse(expiresAtRaw)?.toLocal();
+        } else {
+          licenseExpiresAt = null;
+        }
+        final daysRaw = licenseState['daysRemaining'];
+        licenseDaysRemaining = daysRaw is int ? daysRaw : (daysRaw is num ? daysRaw.toInt() : null);
+        licenseSource = licenseState['source'] as String?;
+        final grantedAtRaw = licenseState['grantedAt'];
+        if (grantedAtRaw is String) {
+          licenseGrantedAt = DateTime.tryParse(grantedAtRaw)?.toLocal();
+        } else {
+          licenseGrantedAt = null;
+        }
+        if (selectedUser != null) {
+          await _setActiveUserSnapshot(selectedUser!);
+        }
       }
-      if (selectedUser != null) {
-        await _setActiveUserSnapshot(selectedUser!);
-      }
+    } catch (_) {
+      selectedUser?.licenseStatus = null;
+      licenseExpiresAt = null;
+      licenseDaysRemaining = null;
+      licenseSource = null;
+      licenseGrantedAt = null;
     } finally {
       isLicenseLoading = false;
       notifyListeners();
@@ -1388,6 +1401,16 @@ class UsersProvider with ChangeNotifier {
 
   Future<AuthData> signInWithGoogle() async {
     setLoading();
+    if (kIsWeb) {
+      resetLoading();
+      throw _buildSocialAuthError(
+        'SOCIAL_PROVIDER_UNSUPPORTED',
+        'social_provider_temporarily_unavailable'.trParams({
+          'provider': _providerLabel('google'),
+        }),
+        provider: 'google',
+      );
+    }
     try {
       await ensureGoogleInitialized();
       if (!_googleSignIn.supportsAuthenticate()) {

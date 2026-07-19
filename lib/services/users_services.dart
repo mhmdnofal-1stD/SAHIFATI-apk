@@ -617,10 +617,19 @@ class UsersServices with ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> getLicenseState() async {
+  Future<Map<String, dynamic>?> getLicenseState() async {
     try {
       final response = await SahifatyApi().get('licensing/me');
-      final responseData = json.decode(response.body);
+
+      dynamic responseData;
+      try {
+        responseData = json.decode(response.body);
+      } catch (_) {
+        if (response.statusCode == 200) {
+          return null;
+        }
+        throw BadRequestException(response.body);
+      }
 
       if (response.statusCode == 200) {
         return Map<String, dynamic>.from(responseData as Map);

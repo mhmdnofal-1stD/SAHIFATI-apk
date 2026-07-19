@@ -637,6 +637,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
 
     final nextPageSequence = _computeNavigablePages(evaluationsProvider);
     if (nextPageSequence.isEmpty) {
+      print('[IndexPage] _rebuildNavigablePages: '
+          'nextPageSequence is empty, returning false');
       return false;
     }
 
@@ -650,6 +652,10 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       nextPageSequence,
       preferredPage,
     );
+
+    print('[IndexPage] _rebuildNavigablePages: '
+        'built page sequence with ${nextPageSequence.length} pages, '
+        'resolvedPage=$resolvedPage');
 
     if (!mounted) {
       _pageSequence = nextPageSequence;
@@ -785,6 +791,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     }
 
     if (_navigationScopeAyat.isEmpty) {
+      print('[IndexPage] _ensureNavigationInitialized: '
+          '_navigationScopeAyat is empty after loading');
       return;
     }
 
@@ -809,10 +817,13 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       _currentPage =
           _resolveClosestAvailableValue(_pageSequence, preferredPage);
       _initialPage ??= _currentPage;
+      print('[IndexPage] _ensureNavigationInitialized: using page mode, '
+          '_currentPage=$_currentPage, _pageSequence.length=${_pageSequence.length}');
       return;
     }
 
     _navigationMode = _ReadingNavigationMode.hizbQuarter;
+    print('[IndexPage] _ensureNavigationInitialized: falling back to hizbQuarter mode');
 
     final quarterSequence = _extractSortedUniqueValues(
       _navigationScopeAyat,
@@ -820,6 +831,8 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     );
 
     if (quarterSequence.isEmpty) {
+      print('[IndexPage] _ensureNavigationInitialized: '
+          'quarterSequence is empty, cannot initialize hizbQuarter navigation');
       return;
     }
 
@@ -836,6 +849,9 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       quarterSequence,
       preferredQuarter,
     );
+    print('[IndexPage] _ensureNavigationInitialized: '
+        '_currentHizbQuarter=$_currentHizbQuarter, '
+        'range=$_minHizbQuarter..$_maxHizbQuarter');
     if (widget.filterTypeId == FilterTypes.parts ||
         widget.filterTypeId == FilterTypes.thirds) {
       _initialHizbQuarter = null;
@@ -1763,6 +1779,7 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
     Future<void> _loadAyat(
       int? userId, EvaluationsProvider evaluationsProvider) async {
     final usersProvider = context.read<UsersProvider>();
+    print('[IndexPage] _loadAyat called: userId=$userId, evaluationsProvider.evaluations.length=${evaluationsProvider.evaluations.length}');
     await _refreshConnectivity();
 
     // Check if user is in guest mode or registered without license
@@ -1805,48 +1822,71 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
           : _tr('quran_reading_assessment_unavailable_notice');
     }
 
-    await _ensureNavigationInitialized();
-    await _ensureAllAyatIndexedByPage();
-    await _ensureMushafLayoutsLoaded();
-    await _refreshReaderAllowedSchoolScope();
+    try {
+      await _ensureNavigationInitialized();
+      await _ensureAllAyatIndexedByPage();
+      await _ensureMushafLayoutsLoaded();
+      await _refreshReaderAllowedSchoolScope();
 
-    final rebuilt = await _rebuildNavigablePages(
-      userId: userId,
-      evaluationsProvider: evaluationsProvider,
-    );
-    if (!rebuilt) {
-      return;
-    }
-
-    await _ensureVisiblePageDataLoaded(
-      userId,
-      evaluationsProvider,
-    );
-
-    if (_isInitialLoad && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(_jumpToCurrentPageInList());
-      });
-    }
-    _isInitialLoad = false;
-
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _canOpenAssessment = canOpenAssessment;
-      _readingNotice = readingNotice;
-      _selectedAyahKeys.clear();
-      _isAyahSelectionMode = false;
-      if (_currentPage != null) {
-        _ayat
-          ..clear()
-          ..addAll(_ayatForPage(_currentPage!));
+      final rebuilt = await _rebuildNavigablePages(
+        userId: userId,
+        evaluationsProvider: evaluationsProvider,
+      );
+      if (!rebuilt) {
+        // Even when page navigation fails, hizbQuarter navigation may have been
+        // initialized. Ensure the UI updates to show whatever controls are available.
+        if (mounted) {
+          print('[IndexPage] _rebuildNavigablePages returned false; '
+              '_hasNavigationControls=$_hasNavigationControls, '
+              '_navigationMode=$_navigationMode, '
+              '_currentHizbQuarter=$_currentHizbQuarter');
+          setState(() {});
+        }
+        return;
       }
-    });
 
-    await _persistReadingSession();
+      await _ensureVisiblePageDataLoaded(
+        userId,
+        evaluationsProvider,
+      );
+
+      if (_isInitialLoad && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(_jumpToCurrentPageInList());
+        });
+      }
+      _isInitialLoad = false;
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _canOpenAssessment = canOpenAssessment;
+        _readingNotice = readingNotice;
+        _selectedAyahKeys.clear();
+        _isAyahSelectionMode = false;
+        if (_currentPage != null) {
+          _ayat
+            ..clear()
+            ..addAll(_ayatForPage(_currentPage!));
+        }
+      });
+
+      if (!_hasNavigationControls) {
+        print('[IndexPage] Warning: _hasNavigationControls is still false '
+            'after _loadAyat completed. _navigationMode=$_navigationMode, '
+            '_isPageNavigation=$_isPageNavigation, '
+            '_currentHizbQuarter=$_currentHizbQuarter');
+      }
+
+      await _persistReadingSession();
+    } catch (e, stackTrace) {
+      print('[IndexPage] _loadAyat failed: $e\n$stackTrace');
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
   Future<void> _showReadingNoticeDialog() async {
@@ -1979,19 +2019,24 @@ class _IndexPageState extends State<IndexPage> with WidgetsBindingObserver {
       final evaluationsProvider = context.read<EvaluationsProvider>();
 
       () async {
-        await _ensureViewerUserLoaded();
-        await _loadReadingDisplayPreferences(usersProvider);
-        if (!mounted) {
-          return;
-        }
+        try {
+          await _ensureViewerUserLoaded();
+          await _loadReadingDisplayPreferences(usersProvider);
+          if (!mounted) {
+            return;
+          }
 
-        await _loadAyat(usersProvider.selectedUser?.id, evaluationsProvider);
+          await _loadAyat(usersProvider.selectedUser?.id, evaluationsProvider);
+        } catch (e, stackTrace) {
+          print('[IndexPage] Initialization failed: $e\n$stackTrace');
+        }
       }();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    print('[IndexPage] build: _hasNavigationControls=$_hasNavigationControls, _isPageNavigation=$_isPageNavigation, _currentPage=$_currentPage, _currentHizbQuarter=$_currentHizbQuarter, _pageSequence.length=${_pageSequence.length}, _navigationMode=$_navigationMode, _ayat.length=${_ayat.length}');
     final evaluationProvider = Provider.of<EvaluationsProvider>(context);
     final languageProvider = Provider.of<LanguageProvider>(context);
     final usersProvider = Provider.of<UsersProvider>(context);
