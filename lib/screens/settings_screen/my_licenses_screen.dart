@@ -1200,9 +1200,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
     const accent = Color(0xFF5B3DA1);
     final tiers = [
       {
-        'qty': 20,
-        'titleKey': 'license_activation_bundle_20_title',
-        'priceKey': 'license_activation_bundle_20_price'
+        'qty': 10,
+        'titleKey': 'license_activation_bundle_10_title',
+        'priceKey': 'license_activation_bundle_10_price'
       },
       {
         'qty': 100,
@@ -1215,9 +1215,9 @@ class _MyLicensesScreenState extends State<MyLicensesScreen>
         'priceKey': 'license_activation_bundle_1000_price'
       },
       {
-        'qty': 10000,
-        'titleKey': 'license_activation_bundle_10000_title',
-        'priceKey': 'license_activation_bundle_10000_price'
+        'qty': 5000,
+        'titleKey': 'license_activation_bundle_5000_title',
+        'priceKey': 'license_activation_bundle_5000_price'
       },
     ];
 

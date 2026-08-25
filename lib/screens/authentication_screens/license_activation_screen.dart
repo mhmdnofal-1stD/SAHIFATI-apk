@@ -744,9 +744,9 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
                                   const SizedBox(height: 10),
                                   _buildPurchaseTierRow(
                                     title:
-                                        'license_activation_bundle_20_title'.tr,
+                                        'license_activation_bundle_10_title'.tr,
                                     price:
-                                        'license_activation_bundle_20_price'.tr,
+                                        'license_activation_bundle_10_price'.tr,
                                     accent: const Color(0xFF5B3DA1),
                                   ),
                                   const SizedBox(height: 6),
@@ -769,10 +769,10 @@ class _LicenseActivationScreenState extends State<LicenseActivationScreen>
                                   const SizedBox(height: 6),
                                   _buildPurchaseTierRow(
                                     title:
-                                        'license_activation_bundle_10000_title'
+                                        'license_activation_bundle_5000_title'
                                             .tr,
                                     price:
-                                        'license_activation_bundle_10000_price'
+                                        'license_activation_bundle_5000_price'
                                             .tr,
                                     accent: const Color(0xFFB53C52),
                                   ),
